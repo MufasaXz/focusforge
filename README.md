@@ -17,19 +17,13 @@ Block the feeds, run the timer, watch the streak grow.
 
 ## What this is
 
-FocusForge combines what normally takes four apps: **app shielding**, a
-**Pomodoro engine**, **study analytics** and **gamification** — in one free,
-open-source package with no ads and no account required.
+FocusForge is four apps in one. A **shield** that strips the endless feeds out
+of the apps you lose time to, a **focus timer** that keeps you in the chair,
+**analytics** that show where the hours actually went, and a **streak** that
+makes you want to come back tomorrow.
 
-This repository contains the **complete front end**: every screen, component and
-motion pattern of the design system, wired to a real state layer. Onboarding,
-the focus timer, the analytics and every setting are live and persist locally
-through `shared_preferences` — there is no mock data in any shipping screen.
-Accounts are live too: `firebase_auth` backs `AuthService` on Android, and the
-app falls back to an on-device implementation whenever Firebase is unavailable.
-The one thing still missing is the native shield engine (Android
-`AccessibilityService` / iOS `FamilyControls`), which sits behind an interface
-that is already defined and exercised.
+It is free, with no ads, no premium tier and no tracking. You do not need an
+account — the app works offline, and everything you log stays on your device.
 
 ## Screenshots
 
@@ -53,237 +47,116 @@ that is already defined and exercised.
 
 </div>
 
-## The design system
+## Features
 
-The UI follows a **deep glass** language built for 2026 hardware, where GPU
-compositing finally makes backdrop blur cheap enough to use properly.
+### 🛡️ Shield
 
-**The floating navigation bar** is the centrepiece:
+Block the parts of an app that eat your day without blocking the app.
 
-- It **floats** — inset from every edge, so content scrolls visibly past its
-  sides instead of being hidden behind an edge-to-edge slab.
-- The active indicator is a **morphing pill**. It stretches while travelling and
-  settles with a spring overshoot (`easeOutBack`) rather than snapping.
-- It **shrinks on scroll** — labels drop out and the bar shortens as you scroll
-  down, then restores on the way back up.
-- Its label expands out of the icon on selection, so the bar stays quiet until
-  you actually need the word.
+- **Three ways to block** — strip the feed and leave messages working, put a
+  daily time limit on it, or block the whole app. Per app, switchable any time.
+- **Grouped by ecosystem** — Instagram, Facebook, YouTube, TikTok, X and more,
+  organised by who owns them so you can see what you are actually giving up.
+- **A three-tier whitelist** — apps that are always allowed (phone, maps,
+  calendar), apps on a daily budget, and apps that are out.
+- **Restriction profiles** — Exam Week, Regular Study and Weekend Relax, each
+  with its own rules and its own schedule.
+- **The Deep Breath Gate** — when you reach for a blocked app, you get a breath
+  first. Three slow breaths before you decide. Most of the time you decide not
+  to.
 
-**Glass surfaces** are built from four stacked details: a translucent fill, an
-inset second rim that reads as edge *thickness*, a soft sheen across the upper
-half, and a bright specular line along the top edge. A real `BackdropFilter` is
-used sparingly — only for surfaces that genuinely float — because stacking
-blurred layers is still the fastest way to wreck a frame budget.
+### ⏱️ Focus
 
-**The canvas** is a gradient with slow-drifting colour blobs, a corner light
-source, a vignette and a film-grain overlay. The grain is generated once and
-tiled; it is what stops large dark gradients from banding on OLED panels.
+A timer that is honest about time.
 
-**Motion** follows one rule set: fast in, springy out. Presses scale to 0.96 in
-90 ms and release on an overshoot curve over 340 ms. Screens use a fade-through
-transition, and dashboard sections stagger in at 55 ms intervals.
+- **Four presets** — Classic Pomodoro (25/5), Deep Work (50/10), Sprint (15/3)
+  and Flow State (90/20), each rolling automatically into its own breaks.
+- **It survives being backgrounded.** Close the app mid-session and come back
+  an hour later: the timer is right, because it counts from the wall clock
+  rather than from ticks it may never have received.
+- **Subject tagging**, so every session lands against the right subject.
+- **A six-channel ambient mixer** — rain, forest, café, waves, fireplace and
+  brown noise, with real loops you can layer.
 
-### Tokens
+### 📊 Dashboard
 
-| Token | Value | Use |
-|---|---|---|
-| `accentPrimary` | `#A8C7FA` | Primary actions, progress |
-| `accentSecondary` | `#D0BCFF` | Secondary elements, XP |
-| `success` | `#8FE7C0` | Active shields, completed |
-| `danger` | `#FFB4AB` | Over-limit, strict mode |
-| `gold` | `#FFD166` | Streaks, achievements |
+Every number comes from your own session log, so the ring, the chart and the
+heatmap can never disagree with each other.
 
-Radii: hero `28` · card `22` · list item `16` · tile `12` · pill `999`.
-Spacing is a strict 8 dp grid. Type is Inter, with Inter Display for the largest
-sizes; every numeric style uses tabular figures so digits never jitter.
+- A daily progress ring against the goal you set
+- Your current streak
+- A weekly bar chart and a five-level focus heatmap
+- Per-app usage with a shield toggle on each row
+- A subject breakdown bar
 
-Day mode is the default. Dark mode shifts the accents to their pastel neon
-variants, which is where the glass treatment reads best — toggle it from
-**Profile → Dark appearance**.
+### 🏆 Progress
 
-## Screens
+- Levels and XP, earned from focused minutes
+- 14 achievements, from your first session to the hundredth hour
+- Weekly study goals per subject, with progress rings
+- Study groups and a leaderboard once you link an account
 
-**Onboarding** — a nine-step flow that ends with a profile the rest of the app
-can actually use: a splash, an optional account (Google or email on Android,
-an on-device record everywhere else — skip it and the app works anonymously),
-a persona that seeds the subject list, name and timezone, subject
-picking, app blocking, a daily goal, the permission walkthrough, and a summary.
-Back is intercepted so the flow cannot be reversed into a half-built state, and
-the coach marks on the dashboard pick up from where it left off.
+### 🔒 Strict Mode
 
-**Dashboard** — greeting header with streak, a 188 dp progress ring with tick
-marks and a lit centre, three stat chips, a weekly bar chart with gridlines and
-an accented "today" bar, a five-level focus heatmap, per-app usage rows with
-shield toggles, and a subject breakdown bar. Every number is derived from the
-session log, so the ring, the chart and the heatmap can never disagree.
+For when you need the decision made in advance.
 
-**Shield** — a genuinely frosted sticky header (content blurs as it scrolls
-under), a three-way segmented control, grouped feed-blocking rows with inline
-mode chips, a three-tier whitelist (always allowed / time-budgeted / blocked)
-with a search field and budget sliders, horizontally scrolling restriction
-profiles, and a Deep Breath Gate that makes breaking a block cost a breath.
+- Lock the phone for a session — up to eight hours
+- **Emergency unlock with friction, not a trap**: type a pledge that you are
+  choosing to break your commitment, wait sixty seconds, then confirm. Three
+  deliberate steps, no uninstall tricks, and nothing that a store would reject.
 
-**Focus** — Pomodoro / Countdown / Stopwatch with a **drift-free timer** that
-advances segments and rolls into breaks, a 60-tick progress ring, subject tags,
-a six-channel ambient mixer playing real CC0 loops, and a session dock pinned
-above the nav bar so the primary action is always reachable.
+### ⚙️ Settings
 
-**Profile** — hero card with avatar, persona badge and progression stats, an XP
-bar, horizontally scrolling weekly subject goals with mini rings, and a settings
-list that includes the live theme switch.
+Study Groups, Achievements, Leaderboard, Strict Mode, Notifications, Data &
+Privacy, and About. Light and dark themes both ship, and both are built from
+the same warm ember accent.
 
-**Settings** — seven pushed screens: Study Groups, Achievements (24 badges),
-Leaderboard, Strict Mode, Notifications, Data & Privacy (export and delete) and
-About.
+## Privacy
+
+Screen-time analytics and usage data stay **on-device**. Everything you log —
+your persona, goal, subjects, sessions, shield rules and statistics — lives in
+local storage on your phone and is never uploaded.
+
+Linking an account is optional, and the only thing a remote service ever holds
+is a credential: an opaque ID, an email address if you gave one, and which
+provider you used. No usage data, no screen time, no app lists.
+
+You can export everything as JSON or delete it outright at any time. Deleting
+your account removes the credential *and* wipes the local store.
 
 ## Getting started
+
+On first launch the app walks you through setup in about a minute — pick a
+persona, choose your subjects, set a daily goal, and grant the permissions you
+are comfortable with. Every one of them is optional, and the app says plainly
+what each is for.
+
+To build it yourself:
 
 ```bash
 git clone https://github.com/MufasaXz/focusforge.git
 cd focusforge
-
 flutter pub get
 
-# Desktop / device
-flutter run
-
-# Or run it in a browser
-flutter run -d chrome
+flutter run                 # desktop, device or emulator
+flutter build apk --release # installable Android build
 ```
 
-Requires **Flutter 3.47+** (Dart 3.13+). The dependency list is deliberately
-short and audited — every entry earns its place:
+Requires **Flutter 3.47+** (Dart 3.13+).
 
-| Package | Why it is here |
-|---|---|
-| `firebase_core` | Initialises the account backend — and is optional: a failure falls back to the on-device store |
-| `firebase_auth` | Real credentials, so an account survives a reinstall instead of living only in `shared_preferences` |
-| `google_sign_in` | The native account picker — `firebase_auth` cannot mint a Google credential without the idToken this returns |
-| `flutter_riverpod` | State, dependency injection and the drift-free timer engine |
-| `go_router` | The route graph, including the per-tab navigator stacks |
-| `just_audio` | The ambient mixer needs real cross-platform playback |
-| `shared_preferences` | Local persistence for everything the app remembers |
-| `confetti` | Session-completion celebration |
-| `shimmer` | Skeleton loading states |
+## A note on the shield engine
 
-Everything else is hand-written: the charts, the heatmap, the progress ring,
-the glass surfaces, the navigation bar and the whole motion system.
-
-Firebase holds **only the credential**. `AuthService` is an interface with two
-implementations, and `bootstrap()` picks one before the first frame:
-`FirebaseAuthService` when `Firebase.initializeApp()` succeeds, and
-`LocalAuthService` when it does not — offline, on web, or in a build with no
-`google-services.json`. Google sign-in works on Android. Apple sign-in is
-deliberately not offered on the Firebase backend — there is no Apple developer
-configuration behind it — and neither is Google on a platform with no Google
-client id. The sign-in screen renders from a capability surface,
-`supportedProviders` on `AuthService`, so a provider the active backend cannot
-mint is dimmed rather than failing on tap. With the on-device backend every
-button works, because there is no provider to configure — they all simply name
-the local account. The app is fully usable either way; the profile record stays
-in `shared_preferences` regardless. See [Privacy](#privacy).
-
-`cupertino_icons` is deliberately **not** a dependency — nothing in the app uses
-a Cupertino icon. The release build still prints one warning about it, because
-`go_router` references `CupertinoPageTransitionsBuilder` and that pulls the
-framework's Cupertino library into the retained tree, so the icon tree-shaker
-sees the font family. No Cupertino icon is ever rendered; the warning is noise.
-
-### Build for web
-
-```bash
-# --no-web-resources-cdn bundles CanvasKit locally instead of pulling it from
-# gstatic, which makes local previews fast and deterministic.
-flutter build web --release --no-web-resources-cdn
-```
-
-## Project structure
-
-```
-lib/
-├── app/
-│   ├── app.dart                 # MaterialApp.router, theme binding
-│   ├── bootstrap.dart           # Opens the store, rehydrates before first frame
-│   ├── router.dart              # go_router graph + AppRoutes name map
-│   ├── shell/app_shell.dart     # Tab host, status-bar theming, lifecycle resync
-│   └── theme/                   # Tokens, type scale, ThemeData
-├── core/
-│   ├── data/seed.dart           # First-run content (the only "demo data" left)
-│   ├── models/                  # Immutable domain models + icon registry
-│   ├── providers/               # Riverpod: app, study, shield, audio, social
-│   ├── services/                # LocalStore, AuthService (+Firebase/local impls), AmbientMixer, ShieldPlatformService
-│   └── utils/format.dart        # Duration / date formatting
-├── shared/widgets/              # The design system, all hand-built
-└── features/
-    ├── onboarding/              # Splash → auth → persona → … → permissions
-    ├── dashboard/               # + widgets/ (chart, heatmap, apps, subjects)
-    ├── shield/                  # Feed blocking, whitelist, profiles, breath gate
-    ├── focus/                   # Timer, presets, ambient mixer
-    ├── profile/                 # Identity, progression, settings entry
-    └── settings/                # The seven pushed sub-screens
-```
-
-### Architecture notes
-
-**The timer is not a counter.** `TimerNotifier` stores the wall-clock instant a
-segment ends and recomputes the display from it on every tick, so a backgrounded
-app that receives no timers for an hour is still correct when it wakes. Counting
-ticks would silently lose that hour.
-
-**Nothing reads `SeedData` in a shipping screen.** `seed.dart` is first-run
-content only; after that the local store is authoritative and every screen reads
-a provider. The one deliberate exception is onboarding, which uses the seed to
-offer a sensible starting set of subjects and apps to a user who has no history
-to derive them from.
-
-**The UI never touches a platform channel.** Shield mutations go through
-`ShieldPlatformService`; today the only implementation records what it was
-asked to do, so the contract is exercised and testable before the native
-engine exists.
-
-**Icons never cross the storage boundary as integers.** `flutter build apk`
-tree-shakes icons by finding constant `IconData`; one rebuilt from a runtime
-int is invisible to that analysis and renders blank in release. Persisted icons
-go through `AppIcons` by name.
-
-## Privacy
-
-Screen-time analytics and usage data stay **on-device**. The only remote
-service is Firebase Authentication, and it holds nothing but a credential —
-an opaque uid, an email if you gave one, and the provider you used. Signing in
-with Google adds its own account name to the local profile record when you have
-not already set one — still in `shared_preferences`, still never uploaded, and
-the Google email address is used only to derive that fallback and is never
-stored. Persona, daily goal, subjects, session log, shield rules and every
-statistic stay in `shared_preferences` and are never uploaded. Study-group
-membership, opt-in leaderboard scores and synced settings are the planned
-additions, and they will be opt-in and separable. You can export or delete
-everything at any time — deleting an account removes the Firebase credential
-*and* wipes the local store.
-
-## Assets
-
-The six ambient loops in `assets/audio/` are **CC0 1.0** (public domain), sourced
-from Freesound with the licence verified on each individual source page rather
-than by a search filter. Each was trimmed to a 66-second window, rebuilt as a
-seamless loop (the 1 s tail crossfades into the 1 s head, so there is no click at
-the wrap point), downmixed to mono and loudness-normalised to −23 LUFS so no loop
-drowns the others. Per-file provenance and the exact processing chain are in
-[`assets/audio/CREDITS.md`](assets/audio/CREDITS.md).
-
-## App Store reality check
-
-The anti-uninstall approach that some blockers use **will be rejected** by both
-Google Play and Apple. FocusForge uses an emergency unlock with friction instead
-(typed pledge + 60-second cooldown), which is both store-legal and more
-effective. `AccessibilityService` on Android needs a clear privacy policy and a
-written justification at review time; iOS ScreenTime requires the
-`FamilyControls` entitlement.
+The shield's rules, tiers, profiles and schedules are all fully built, and the
+interface the native blocker plugs into is defined and exercised — but the
+Android `AccessibilityService` that actually intercepts app launches is not
+wired up yet, so nothing is blocked on a real device today. The app tells you
+this in the shield status sheet rather than pretending otherwise.
 
 ## Contributing
 
-Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Good first
-issues are labelled in the tracker.
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for how to get set up and what makes a good change. Good first issues are
+labelled in the tracker.
 
 ## License
 
