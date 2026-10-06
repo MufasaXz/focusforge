@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/app_mark.dart';
 
 /// Screen 0 — the splash.
 ///
@@ -75,11 +75,11 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0, 0.55),
             child: ScaleTransition(
               scale: logoScale,
-              child: IconBadge(
-                icon: Icons.local_fire_department_rounded,
-                color: cs.primary,
+              // The app's own mark, not a stock glyph — the first thing the
+              // user sees should be the thing they tapped to get here.
+              child: const AppMark(
                 size: 108,
-                radius: 32,
+                semanticLabel: 'FocusForge',
               ),
             ),
           ),

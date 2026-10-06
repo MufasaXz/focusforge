@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The ember the whole app is tinted from. Kept as a resource rather than
+         a literal inside the adaptive-icon XML so the launcher background and
+         the theme's seed cannot drift apart. -->
+    <color name="ic_launcher_background">#E8672A</color>
+</resources>
