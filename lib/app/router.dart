@@ -108,7 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final args = state.extra;
           return BreathGateScreen(
-            appName: args is String ? args : 'Instagram',
+            appName: args is String ? args : 'That app',
           );
         },
       ),

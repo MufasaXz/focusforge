@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -12,7 +13,6 @@ import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
-import 'onboarding_state.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
 ///

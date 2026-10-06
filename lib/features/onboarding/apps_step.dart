@@ -1,26 +1,28 @@
-import '../../shared/widgets/app_page.dart';
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../core/data/seed.dart';
+import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
+import '../../core/providers/usage_providers.dart';
+import '../../core/services/app_catalog.dart';
+import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
-import 'onboarding_state.dart';
 
-/// Screen 5 — what to block during a focus session.
+/// Screen 5 — the apps to close.
 ///
-/// Only apps with a row in the shield catalogue are offered as toggles, and
-/// arming one here is the same act as arming that row on the Shield screen.
-/// The rest of the device scan is still shown, marked as not yet supported,
-/// and kept out of `blockedAppsProvider`: the completion summary counts that
-/// provider, and a count that includes apps with no shield row would promise
-/// something the engine cannot deliver.
+/// The list is the device's own, read from the platform, because a fixed
+/// catalogue can only ever offer the apps its author thought of: the app that
+/// actually costs this user their evening is very often not on anyone's list
+/// of famous distractions. A switch here writes the same rule the Shield tab
+/// writes, so the two can never disagree about what is armed.
+///
+/// Blocking is not tied to a session. The user asked for the app to close, and
+/// a rule that only applies while a timer runs is a rule they would have to
+/// remember to arm.
 class AppsStep extends ConsumerStatefulWidget {
   const AppsStep({super.key, required this.onNext});
 
@@ -31,269 +33,237 @@ class AppsStep extends ConsumerStatefulWidget {
 }
 
 class _AppsStepState extends ConsumerState<AppsStep> {
-  /// Package id to feed-shield row id. Only the apps the shield catalogue
-  /// actually carries appear here.
-  static const _feedShieldFor = <String, String>{
-    'com.instagram.android': 'instagram_reels',
-    'com.facebook.katana': 'facebook_watch',
-    'com.google.android.youtube': 'youtube_shorts',
-    'com.zhiliaoapp.musically': 'tiktok_feed',
-    'com.twitter.android': 'twitter_trending',
-  };
-
-  static const _tierSubtitle = <int, String>{
-    0: 'Feeds and endless scroll',
-    1: 'Messaging and chat',
-    2: 'Kept available during focus',
-  };
+  final _search = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _reconcile();
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
-  /// Makes the selection agree with the engine before the first frame.
+  /// Arms or disarms one package.
   ///
-  /// `feedGroupsProvider` is the persisted truth — it is what the Shield tab
-  /// renders and what the native config is built from — so the toggles start
-  /// from it rather than from the notifier's cold-install defaults. Without
-  /// this pass a relaunch would show every high-distraction app armed again,
-  /// and the selection would include packages (Snapchat, Reddit, the whole
-  /// messaging tier) that have no row to arm.
-  void _reconcile() {
-    final armed = {
-      for (final group in ref.read(feedGroupsProvider))
-        for (final row in group.rows)
-          if (row.enabled) row.id,
-    };
-    final notifier = ref.read(blockedAppsProvider.notifier);
-    for (final entry in _feedShieldFor.entries) {
-      notifier.toggle(entry.key, armed.contains(entry.value));
+  /// Removing rather than moving to "always allowed" on the way off: the user
+  /// turning a switch off here means "not this one", and leaving a row behind
+  /// for every app they considered would fill the Shield tab with entries that
+  /// do nothing.
+  Future<void> _set(String packageId, String name, bool blocked) async {
+    HapticFeedback.lightImpact();
+    final notifier = ref.read(whitelistProvider.notifier);
+    if (blocked) {
+      await notifier.addInstalledApp(
+        packageId: packageId,
+        name: name,
+        tier: WhitelistTier.blocked,
+      );
+    } else {
+      await notifier.remove('pkg:$packageId');
     }
-    for (final app in SeedData.detectableApps) {
-      if (_feedShieldFor.containsKey(app.packageId)) continue;
-      notifier.toggle(app.packageId, false);
-    }
-  }
-
-  Future<void> _set(DetectableApp app, bool value) async {
-    ref.read(blockedAppsProvider.notifier).toggle(app.packageId, value);
-    final rowId = _feedShieldFor[app.packageId];
-    if (rowId != null) {
-      await ref.read(feedGroupsProvider.notifier).toggle(rowId, value);
-    }
-  }
-
-  /// The final write-through before the flow moves on.
-  ///
-  /// Toggles already reach the shield catalogue one tap at a time and
-  /// [_reconcile] starts the selection from it, but this pass guarantees the
-  /// two agree at the moment of Continue — which is what makes the number the
-  /// Complete step shows the number of armed rows.
-  Future<void> _commit() async {
-    final selected = ref.read(blockedAppsProvider);
-    final notifier = ref.read(feedGroupsProvider.notifier);
-    for (final entry in _feedShieldFor.entries) {
-      await notifier.toggle(entry.value, selected.contains(entry.key));
-    }
-    widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final blocked = ref.watch(blockedAppsProvider);
+    final cs = Theme.of(context).colorScheme;
+    final query = _search.text.trim().toLowerCase();
+    final installed = ref.watch(installedAppsProvider);
+    final blocked = {
+      for (final entry in ref.watch(blockedAppsProvider)) entry.packageId,
+    };
+    final apps = installed.valueOrNull ?? const [];
+    final visible = query.isEmpty
+        ? apps
+        : apps
+              .where((a) => a.name.toLowerCase().contains(query))
+              .toList(growable: false);
 
     return StepScaffold(
-      title: 'Choose apps to block',
-      subtitle:
-          'These are the feeds FocusForge can shield today. Apps marked '
-          '"Not yet supported" are coming later and stay untouched. Blocking '
-          'only applies while a focus session is running.',
-      onPrimary: _commit,
+      title: 'Close the apps that pull you away',
+      subtitle: AppCatalog.isSupported
+          ? 'These are the apps on your phone. Anything you switch on closes '
+                'the moment it opens — all day, not only while a timer runs. '
+                'You can change this any time from the Shield tab.'
+          : 'Closing apps is an Android feature. On this build the list is '
+                'empty and nothing is blocked — you can set rules from the '
+                'Shield tab on a phone.',
+      onPrimary: widget.onNext,
       footnote: blocked.isEmpty
-          ? 'Nothing blocked — you can still block apps any time from Shield.'
-          : '${blocked.length} apps will be paused while you focus.',
+          ? 'Nothing blocked — you can add apps any time from Shield.'
+          : '${blocked.length} '
+                '${blocked.length == 1 ? 'app' : 'apps'} will close when '
+                'opened.',
       children: [
-        for (final tier in const [0, 1, 2]) ...[
-          Stagger(
-            index: 2 + tier,
-            child: SectionHeader(
-              title: _titleFor(tier),
-              icon: _iconFor(tier),
-              trailing: Text(
-                _trailingFor(tier),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: _colorFor(tier, t),
+        if (installed.isLoading)
+          const Stagger(
+            index: 2,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: Gap.xxl),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
                 ),
               ),
             ),
-          ),
+          )
+        else if (apps.isEmpty)
+          Stagger(index: 2, child: _NoApps(native: AppCatalog.isSupported))
+        else ...[
           Stagger(
-            index: 3 + tier,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: Gap.lg),
+            index: 2,
+            child: AppTextField(
+              controller: _search,
+              hint: 'Search your apps…',
+              icon: Icons.search_rounded,
+              textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
+          if (visible.isEmpty)
+            Stagger(
+              index: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: Gap.xl),
+                child: Text(
+                  'No app is called “${_search.text.trim()}”.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+            )
+          else
+            Stagger(
+              index: 3,
               child: Card.filled(
                 clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: Gap.xs),
                   child: Column(
                     children: [
-                      for (final app in SeedData.detectableApps.where(
-                        (a) => a.tier == tier,
-                      ))
+                      for (var i = 0; i < visible.length; i++) ...[
+                        if (i > 0) Divider(color: cs.outlineVariant, height: 1),
                         _AppRow(
-                          app: app,
-                          subtitle: _tierSubtitle[tier] ?? '',
-                          selected: blocked.contains(app.packageId),
-                          // Productive apps are never blocked; everything else
-                          // without a feed-shield row has nothing to arm yet.
-                          onChanged:
-                              tier == 0 &&
-                                  _feedShieldFor.containsKey(app.packageId)
-                              ? (value) => unawaited(_set(app, value))
-                              : null,
-                          unsupported:
-                              tier != 2 &&
-                              !_feedShieldFor.containsKey(app.packageId),
+                          packageId: visible[i].packageId,
+                          name: visible[i].name,
+                          selected: blocked.contains(visible[i].packageId),
+                          onChanged: (value) => _set(
+                            visible[i].packageId,
+                            visible[i].name,
+                            value,
+                          ),
                         ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ],
     );
   }
-
-  static String _titleFor(int tier) => switch (tier) {
-    0 => 'High distraction',
-    1 => 'Moderate',
-    _ => 'Productive',
-  };
-
-  static IconData _iconFor(int tier) => switch (tier) {
-    0 => Icons.bolt_rounded,
-    1 => Icons.chat_bubble_outline_rounded,
-    _ => Icons.verified_rounded,
-  };
-
-  static String _trailingFor(int tier) => switch (tier) {
-    0 => 'Selected for you',
-    1 => 'Coming soon',
-    _ => 'Never blocked',
-  };
-
-  static Color _colorFor(int tier, ColorScheme t) => switch (tier) {
-    0 => t.error,
-    1 => t.tertiary,
-    _ => t.tertiary,
-  };
 }
 
-class _AppRow extends StatelessWidget {
-  const _AppRow({
-    required this.app,
-    required this.subtitle,
-    required this.selected,
-    this.onChanged,
-    this.unsupported = false,
-  });
+/// Shown when the platform will not hand over an app list.
+///
+/// The two reasons are worth separating: a device that cannot be asked at all
+/// is a different problem from a phone that answered with nothing, and only
+/// one of them is worth retrying.
+class _NoApps extends StatelessWidget {
+  const _NoApps({required this.native});
 
-  final DetectableApp app;
-  final String subtitle;
-  final bool selected;
-
-  /// Null makes the row informational — there is no shield to toggle.
-  final ValueChanged<bool>? onChanged;
-
-  /// True when the shield catalogue has no row for this package yet. The row
-  /// must not read as something the user can turn on today.
-  final bool unsupported;
-
-  void _toggle() {
-    final onChanged = this.onChanged;
-    if (onChanged == null) return;
-    // A flip is a commitment — the tap that made it should be felt, not just
-    // seen.
-    HapticFeedback.lightImpact();
-    onChanged(!selected);
-  }
+  final bool native;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-
-    return ListTile(
-      leading: IconBadge(
-        icon: app.icon,
-        color: unsupported ? t.onSurfaceVariant : app.color,
-        size: 36,
-        radius: Radii.tile,
-      ),
-      title: Text(
-        app.name,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: unsupported ? t.onSurfaceVariant : null,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: t.onSurfaceVariant,
-        ),
-      ),
-      trailing: onChanged != null
-          // The switch's own semantics are excluded so a screen reader hears
-          // one labelled switch, not a bare "switch, on" in a list of twenty.
-          ? Semantics(
-              toggled: selected,
-              enabled: true,
-              label: 'Block ${app.name} during focus',
-              onTap: _toggle,
-              excludeSemantics: true,
-              child: Switch.adaptive(
-                value: selected,
-                onChanged: (_) => _toggle(),
+    final cs = Theme.of(context).colorScheme;
+    return Stagger(
+      index: 3,
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            children: [
+              IconBadge(
+                icon: native
+                    ? Icons.search_off_rounded
+                    : Icons.phone_android_rounded,
+                color: cs.onSurfaceVariant,
+                size: 48,
+                radius: 16,
               ),
-            )
-          : _StatusNote(
-              icon: unsupported
-                  ? Icons.construction_rounded
-                  : Icons.check_circle_rounded,
-              label: unsupported ? 'Not yet supported' : 'Allowed',
-              color: unsupported ? t.onSurfaceVariant : t.tertiary,
-            ),
+              const SizedBox(height: Gap.md),
+              Text(
+                native ? 'No apps to show' : 'Needs a phone',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: Gap.xs),
+              Text(
+                native
+                    ? 'Android returned an empty app list. You can still add '
+                          'rules later from the Shield tab.'
+                    : 'The app list is only readable on Android. Carry on — '
+                          'you can set rules later from the Shield tab.',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// The trailing note on an informational row. A row without a toggle has to
-/// say *why* it has none — otherwise "allowed by design" and "cannot be
-/// blocked yet" look identical.
-class _StatusNote extends StatelessWidget {
-  const _StatusNote({
-    required this.icon,
-    required this.label,
-    required this.color,
+class _AppRow extends StatelessWidget {
+  const _AppRow({
+    required this.packageId,
+    required this.name,
+    required this.selected,
+    required this.onChanged,
   });
 
-  final IconData icon;
-  final String label;
-  final Color color;
+  final String packageId;
+  final String name;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  void _toggle() => onChanged(!selected);
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: color),
-        const SizedBox(width: 4),
-        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
-      ],
+    final cs = Theme.of(context).colorScheme;
+
+    return ListTile(
+      leading: AppIconAvatar(
+        packageId: packageId,
+        fallbackIcon: Icons.android_rounded,
+        fallbackColor: cs.primary,
+        size: 36,
+        radius: Radii.tile,
+      ),
+      title: Text(name, style: Theme.of(context).textTheme.bodyLarge),
+      subtitle: Text(
+        selected ? 'Closes when opened' : 'Opens normally',
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+      // The switch's own semantics are excluded so a screen reader hears one
+      // labelled switch, not a bare "switch, on" in a list of a hundred.
+      trailing: Semantics(
+        toggled: selected,
+        enabled: true,
+        label: 'Block $name',
+        onTap: _toggle,
+        excludeSemantics: true,
+        child: Switch.adaptive(value: selected, onChanged: (_) => _toggle()),
+      ),
     );
   }
 }

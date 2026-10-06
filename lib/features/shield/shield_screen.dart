@@ -1,5 +1,3 @@
-import '../../app/theme/app_theme.dart';
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -9,25 +7,36 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
+import '../../core/providers/usage_providers.dart';
+import '../../core/services/app_catalog.dart';
+import '../../core/services/native_shield_service.dart';
+import '../../core/services/permission_manager.dart';
 import '../../core/services/shield_service.dart';
+import '../../core/utils/format.dart';
+import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/stagger.dart';
+import 'app_picker_sheet.dart';
 
-/// Tab 2 — the shielding engine: feed blocking, whitelist tiers and profiles.
+/// Tab 2 — the shielding engine.
+///
+/// Three faces of one system: the apps the user has put in a tier, the YouTube
+/// surfaces that are closed, and what the engine has actually done. Everything
+/// on screen is read from `shield_providers`; the only local state is which
+/// face is showing and which sheet is open. A control that changed only local
+/// state would be a switch that lies — every mutation has to reach its
+/// notifier, because that is what persists the rule and pushes it to the
+/// native service.
 ///
 /// The header is a solid surface pinned over the list: content scrolls
 /// underneath it, and the tonal edge keeps the two apart. No blur here — the
-/// design reserves real backdrop filters for the nav bar, bottom sheets and
-/// the breath gate.
-///
-/// Everything below the header comes from `shield_providers`; the only local
-/// state is which segment is showing. A toggle has to reach its notifier,
-/// because that is what persists the change and pushes it to the platform
-/// service — local `setState` would make the switch a lie.
+/// design reserves real backdrop filters for the nav bar, the sheets and the
+/// breath gate.
 class ShieldScreen extends ConsumerStatefulWidget {
   const ShieldScreen({super.key});
 
@@ -35,10 +44,37 @@ class ShieldScreen extends ConsumerStatefulWidget {
   ConsumerState<ShieldScreen> createState() => _ShieldScreenState();
 }
 
-class _ShieldScreenState extends ConsumerState<ShieldScreen> {
-  static const _segmentOptions = ['Feed Blocker', 'Whitelist', 'Profiles'];
+class _ShieldScreenState extends ConsumerState<ShieldScreen>
+    with WidgetsBindingObserver {
+  static const _segmentOptions = ['Apps', 'YouTube', 'Activity'];
 
   int _segment = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// The user leaves to grant accessibility or usage access, and comes back.
+  ///
+  /// Everything read from the platform is re-read here: the grant happens in
+  /// Android's settings while this app is not running, so a value cached
+  /// before the trip would still say "off" after it.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    ref.invalidate(shieldEnabledProvider);
+    ref.invalidate(usageAccessProvider);
+    ref.invalidate(appUsageTodayProvider);
+    ref.invalidate(installedAppsProvider);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +82,6 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
     final topInset = MediaQuery.paddingOf(context).top;
     final headerHeight = 172 + topInset;
     final armed = ref.watch(activeShieldCountProvider);
-    final total = ref.watch(allFeedRowsProvider).length;
 
     return Stack(
       children: [
@@ -63,9 +98,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
               ),
               children: [
                 switch (_segment) {
-                  0 => const _FeedBlockerView(),
-                  1 => const _WhitelistView(),
-                  _ => const _ProfilesView(),
+                  0 => const _AppsView(),
+                  1 => const _YoutubeView(),
+                  _ => const _ActivityView(),
                 },
               ],
             ),
@@ -96,14 +131,14 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Feed Shielding Engine',
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontSize: 24,
-                            ),
+                            'Shield',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.headlineMedium?.copyWith(fontSize: 24),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Surgically remove addictive feeds',
+                            'Close what pulls you away',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -112,7 +147,6 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
                     const SizedBox(width: Gap.md),
                     _ShieldStatusPill(
                       armed: armed,
-                      total: total,
                       onTap: _showStatusSheet,
                     ),
                   ],
@@ -144,23 +178,27 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
     );
   }
 
-  /// Explains what the green dot actually means, and — just as important —
-  /// what it does not. The badge is the only place a user can find out that
-  /// nothing is being blocked yet, so the sheet says it in plain language.
+  /// The live state of the engine, in plain language.
+  ///
+  /// The pill is the only place a user can find out that a rule exists but
+  /// cannot fire — a budget with no usage access, or a service that has been
+  /// switched off in Android's settings — so the sheet names those states
+  /// rather than leaving them to be inferred from a grey switch.
   void _showStatusSheet() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) => _ShieldStatusSheet(
-        onTryGate: () {
+        onPreviewGate: () {
           final blocked = ref
               .read(whitelistProvider)
               .where((e) => e.tier == WhitelistTier.blocked)
               .firstOrNull;
-          final app = blocked?.name ?? 'Instagram';
-          // The native interceptor does not exist yet, so the demo path fakes
-          // the interception the real engine will one day emit.
+          final app = blocked?.name ?? 'YouTube';
+          // On a device without the native engine there is nothing to
+          // intercept, so the preview emits the event the real service would
+          // have emitted. With the engine present this is a no-op.
           final service = ref.read(shieldServiceProvider);
           if (service is RecordingShieldService) service.simulate(app);
           Navigator.of(sheetContext).pop();
@@ -174,14 +212,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
 /// The header badge. It reads as a status, but it is really a button — the
 /// tappable target is the whole pill, not just the dot.
 class _ShieldStatusPill extends StatelessWidget {
-  const _ShieldStatusPill({
-    required this.armed,
-    required this.total,
-    required this.onTap,
-  });
+  const _ShieldStatusPill({required this.armed, required this.onTap});
 
   final int armed;
-  final int total;
   final VoidCallback onTap;
 
   @override
@@ -189,14 +222,12 @@ class _ShieldStatusPill extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final on = armed > 0;
     final color = on ? cs.tertiary : cs.onSurfaceVariant;
-    final label = on ? '$armed active' : 'None armed';
+    final label = on ? '$armed armed' : 'Nothing armed';
 
     return Semantics(
       button: true,
       container: true,
-      label:
-          'Shield status. $armed of $total feed shields armed. '
-          'Double tap for details.',
+      label: 'Shield status. $armed rules armed. Double tap for details.',
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(
@@ -206,9 +237,7 @@ class _ShieldStatusPill extends StatelessWidget {
           // border and the dot, not by a glow.
           child: Card.filled(
             shape: StadiumBorder(
-              side: BorderSide(
-                color: on ? cs.tertiary : cs.outlineVariant,
-              ),
+              side: BorderSide(color: on ? cs.tertiary : cs.outlineVariant),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -244,24 +273,23 @@ class _ShieldStatusPill extends StatelessWidget {
   }
 }
 
-/// What is armed, which profile is in charge, and the honest footnote about
-/// the missing native engine.
+/// What is armed, what is inert, and why.
 class _ShieldStatusSheet extends ConsumerWidget {
-  const _ShieldStatusSheet({required this.onTryGate});
+  const _ShieldStatusSheet({required this.onPreviewGate});
 
-  final VoidCallback onTryGate;
+  final VoidCallback onPreviewGate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final armed = ref.watch(activeShieldCountProvider);
-    final total = ref.watch(allFeedRowsProvider).length;
-    final profile = ref.watch(activeProfileProvider);
+    final enabled = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
+    final native = NativeShieldService.isSupported;
+    final blocked = ref.watch(blockedAppsProvider).length;
+    final budgeted = ref.watch(budgetedAppsProvider).length;
+    final youtube = ref.watch(youtubeRulesProvider);
     final strict = ref.watch(strictModeProvider);
-    final allowed = ref
-        .watch(whitelistProvider)
-        .where((e) => e.tier == WhitelistTier.alwaysAllowed)
-        .length;
+    final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final inert = budgeted > 0 && !usageAccess;
 
     return _SheetSurface(
       padding: const EdgeInsets.all(Gap.xl),
@@ -272,16 +300,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                ),
-              ),
+              const _SheetHandle(),
               const SizedBox(height: Gap.lg),
               Row(
                 children: [
@@ -310,17 +329,43 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: Gap.lg),
+              if (native)
+                _StatusLine(
+                  icon: enabled
+                      ? Icons.verified_user_rounded
+                      : Icons.gpp_bad_rounded,
+                  color: enabled ? cs.tertiary : cs.error,
+                  label: 'App blocking',
+                  value: enabled ? 'On' : 'Off',
+                ),
               _StatusLine(
-                icon: Icons.shield_rounded,
-                color: armed > 0 ? cs.tertiary : cs.onSurfaceVariant,
-                label: 'Feed shields',
-                value: '$armed of $total armed',
+                icon: Icons.block_rounded,
+                color: blocked > 0 ? cs.tertiary : cs.onSurfaceVariant,
+                label: 'Apps blocked',
+                value: '$blocked',
               ),
               _StatusLine(
-                icon: Icons.tune_rounded,
-                color: cs.primary,
-                label: 'Active profile',
-                value: profile?.name ?? 'None',
+                icon: Icons.hourglass_bottom_rounded,
+                color: budgeted > 0
+                    ? harmonize(WhitelistTier.budgeted.color, cs.primary)
+                    : cs.onSurfaceVariant,
+                label: 'Time budgets',
+                value: budgeted == 0
+                    ? 'None'
+                    : usageAccess
+                    ? '$budgeted running'
+                    : '$budgeted, not reading usage',
+              ),
+              _StatusLine(
+                icon: Icons.smart_display_rounded,
+                color: youtube.any ? cs.tertiary : cs.onSurfaceVariant,
+                label: 'YouTube',
+                value: switch ((youtube.shorts, youtube.feed)) {
+                  (true, true) => 'Shorts and feeds closed',
+                  (true, false) => 'Shorts closed',
+                  (false, true) => 'Feeds closed',
+                  _ => 'Untouched',
+                },
               ),
               _StatusLine(
                 icon: Icons.lock_rounded,
@@ -330,53 +375,59 @@ class _ShieldStatusSheet extends ConsumerWidget {
                     ? '${strict.durationMinutes} min session'
                     : 'Off',
               ),
-              _StatusLine(
-                icon: Icons.verified_user_rounded,
-                color: cs.secondary,
-                label: 'Always allowed',
-                value: '$allowed apps',
-              ),
-              const SizedBox(height: Gap.md),
-              // The honest footnote: a quieter, outlined surface so it reads
-              // as an aside rather than a control.
-              Card.outlined(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.item),
-                  side: BorderSide(color: cs.outlineVariant),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(Gap.md),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.construction_rounded,
-                        size: 16,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Expanded(
-                        child: Text(
-                          'The native interceptor is not wired up on this '
-                          'build, so nothing is actually blocked yet. Every '
-                          'switch here persists and is pushed to the shield '
-                          'service, ready for the engine to pick up.',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(height: 1.4),
+              if (!native || !enabled || inert) ...[
+                const SizedBox(height: Gap.md),
+                // The honest footnote. A rule that cannot fire is worse than
+                // no rule, because the user believes they are covered.
+                Card.outlined(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.item),
+                    side: BorderSide(color: cs.outlineVariant),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(Gap.md),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: cs.onSurfaceVariant,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: Gap.sm),
+                        Expanded(
+                          child: Text(
+                            !native
+                                ? 'App blocking runs on Android. On this '
+                                      'build the rules are saved and shown, '
+                                      'and nothing is closed.'
+                                : !enabled
+                                ? 'Android\'s accessibility service is off, so '
+                                      'no app can be closed. Turn it on from '
+                                      'the Apps tab.'
+                                : 'Time budgets need usage access before they '
+                                      'can count anything. Grant it from the '
+                                      'Apps tab.',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: Gap.md),
               Divider(color: cs.outlineVariant, height: 1),
               ListTile(
+                contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.air_outlined, color: cs.primary),
-                title: const Text('Try the breath gate'),
+                title: const Text('Preview the pause screen'),
                 subtitle: const Text(
-                  'Preview the pause before a blocked app opens',
+                  'The 4-7-8 breath exercise shown before a blocked app opens',
                 ),
-                onTap: onTryGate,
+                onTap: onPreviewGate,
               ),
             ],
           ),
@@ -407,18 +458,17 @@ class _StatusLine extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: Gap.sm),
         child: Row(
           children: [
-            IconBadge(
-              icon: icon,
-              color: color,
-              size: 34,
-              radius: 10,
-            ),
+            IconBadge(icon: icon, color: color, size: 34, radius: 10),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+            ),
             const SizedBox(width: Gap.sm),
             Text(
               value,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -427,7 +477,7 @@ class _StatusLine extends StatelessWidget {
   }
 }
 
-/// 48dp close affordance shared by both sheets.
+/// 48dp close affordance shared by the sheets on this screen.
 class _SheetCloseButton extends StatelessWidget {
   const _SheetCloseButton({required this.label, required this.onTap});
 
@@ -456,6 +506,25 @@ class _SheetCloseButton extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The grabber at the top of every sheet on this screen.
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          borderRadius: BorderRadius.circular(Radii.pill),
         ),
       ),
     );
@@ -493,219 +562,17 @@ class _SheetSurface extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Feed Blocker
+// Apps
 // ---------------------------------------------------------------------------
 
-class _FeedBlockerView extends ConsumerWidget {
-  const _FeedBlockerView();
+class _AppsView extends ConsumerStatefulWidget {
+  const _AppsView();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final groups = ref.watch(feedGroupsProvider);
-
-    // Stagger plays once per element lifetime. This branch is built the first
-    // time the tab is shown (go_router does not preload branches), so the
-    // entrance lands on the first visit and never on a provider rebuild.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var g = 0; g < groups.length; g++) ...[
-          if (g > 0) const SizedBox(height: Gap.xl),
-          // Two steps per group so the header leads its panel down the page.
-          Stagger(
-            index: g * 2,
-            child: SectionHeader(
-              title: groups[g].title,
-              icon: groups[g].icon,
-              trailing: Text(
-                '${groups[g].rows.where((r) => r.enabled).length} / '
-                '${groups[g].rows.length}',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ),
-          ),
-          Stagger(
-            index: g * 2 + 1,
-            child: Card.filled(
-              child: Padding(
-                padding: const EdgeInsets.all(Gap.lg),
-                child: Column(
-                  children: [
-                    for (var r = 0; r < groups[g].rows.length; r++) ...[
-                      if (r > 0)
-                        Divider(color: cs.outlineVariant, height: Gap.xl),
-                      _FeedRowTile(row: groups[g].rows[r]),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: Gap.xl),
-        Stagger(
-          index: groups.length * 2,
-          child: Card.filled(
-            child: Padding(
-              padding: const EdgeInsets.all(Gap.md),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 15,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: Text(
-                      'Toggles persist and sync to the shield service. The native '
-                      'interceptor is not wired up on this build.',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  ConsumerState<_AppsView> createState() => _AppsViewState();
 }
 
-class _FeedRowTile extends ConsumerWidget {
-  const _FeedRowTile({required this.row});
-
-  final FeedRow row;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final enabled = row.enabled;
-
-    void toggle() {
-      HapticFeedback.lightImpact();
-      ref.read(feedGroupsProvider.notifier).toggle(row.id, !enabled);
-    }
-
-    void setMode(int i) {
-      HapticFeedback.selectionClick();
-      ref.read(feedGroupsProvider.notifier).setMode(row.id, row.modes![i]);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // One semantic node for the whole row: "Block Reels Feed in
-        // Instagram, switch, on". Without the exclusion a screen reader would
-        // land on an unlabelled button wrapping an unlabelled switch.
-        Semantics(
-          container: true,
-          toggled: enabled,
-          label: '${row.title} in ${row.appName}',
-          onTap: toggle,
-          child: ExcludeSemantics(
-            child: Pressable(
-              onTap: toggle,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconBadge(
-                    icon: row.icon,
-                    color: row.color,
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                row.title,
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                            ),
-                            if (enabled) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: cs.tertiary,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          row.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Switch.adaptive(
-                    value: enabled,
-                    onChanged: (v) =>
-                        ref.read(feedGroupsProvider.notifier).toggle(row.id, v),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (row.modes != null && enabled) ...[
-          const SizedBox(height: Gap.md),
-          Wrap(
-            spacing: Gap.sm,
-            runSpacing: Gap.sm,
-            children: [
-              for (var i = 0; i < row.modes!.length; i++)
-                Semantics(
-                  button: true,
-                  selected: i == row.modeIndex,
-                  label: '${row.appName}: ${row.modes![i].label}',
-                  onTap: () => setMode(i),
-                  child: ExcludeSemantics(
-                    child: FilterChip(
-                      selected: i == row.modeIndex,
-                      onSelected: (_) => setMode(i),
-                      // The checkmark would shift the label inside a row of
-                      // chips; the selected fill already carries the state.
-                      showCheckmark: false,
-                      label: Text(row.modes![i].label),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Whitelist
-// ---------------------------------------------------------------------------
-
-class _WhitelistView extends ConsumerStatefulWidget {
-  const _WhitelistView();
-
-  @override
-  ConsumerState<_WhitelistView> createState() => _WhitelistViewState();
-}
-
-class _WhitelistViewState extends ConsumerState<_WhitelistView> {
+class _AppsViewState extends ConsumerState<_AppsView> {
   final _search = TextEditingController();
 
   @override
@@ -718,78 +585,282 @@ class _WhitelistViewState extends ConsumerState<_WhitelistView> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final query = _search.text.trim().toLowerCase();
-    final all = ref.watch(whitelistProvider);
+    final all = ref.watch(enrichedWhitelistProvider);
+    final native = NativeShieldService.isSupported;
+    final enabled = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
+    final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final budgeted = ref.watch(budgetedAppsProvider).length;
+
     final visible = query.isEmpty
         ? all
         : all
               .where((e) => e.name.toLowerCase().contains(query))
               .toList(growable: false);
 
+    var index = 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Stagger(
-          index: 0,
-          child: TextField(
-            controller: _search,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
-            cursorColor: cs.primary,
-            textInputAction: TextInputAction.search,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: cs.surfaceContainerHigh,
-              hintText: 'Search installed apps…',
-              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                size: 18,
-                color: cs.onSurfaceVariant,
-              ),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : _SheetCloseButton(
-                      label: 'Clear search',
-                      onTap: () => setState(_search.clear),
-                    ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radii.pill),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Radii.pill),
-                borderSide: BorderSide(color: cs.primary),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: Gap.lg,
-                vertical: Gap.md,
-              ),
+        if (native && !enabled)
+          Stagger(
+            index: index++,
+            child: const _PermissionGate(
+              icon: Icons.accessibility_new_rounded,
+              title: 'Turn on app blocking',
+              body:
+                  'Android closes an app through its accessibility service. '
+                  'FocusForge needs it on before a single rule can do '
+                  'anything.',
+              action: 'Open accessibility settings',
+              permission: AppPermission.accessibility,
             ),
+          ),
+        if (native && enabled && budgeted > 0 && !usageAccess)
+          Stagger(
+            index: index++,
+            child: const _PermissionGate(
+              icon: Icons.timelapse_rounded,
+              title: 'Time budgets are not counting',
+              body:
+                  'A budget needs to read how long an app has been open. '
+                  'Without usage access it is armed but inert.',
+              action: 'Open usage access settings',
+              permission: AppPermission.usageAccess,
+            ),
+          ),
+        Stagger(
+          index: index++,
+          child: FilledButton.tonalIcon(
+            onPressed: () => showAppPickerSheet(context),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add apps'),
           ),
         ),
         const SizedBox(height: Gap.xl),
-        if (visible.isEmpty)
-          Stagger(index: 1, child: _NoMatches(query: _search.text.trim()))
-        else
-          for (final tier in WhitelistTier.values)
-            if (visible.any((e) => e.tier == tier)) ...[
-              Stagger(
-                // Tier order, not visible order, so the sequence stays
-                // monotonic even when a tier has no matches.
-                index: tier.index + 1,
-                child: _WhitelistSection(
-                  tier: tier,
-                  entries: visible
-                      .where((e) => e.tier == tier)
-                      .toList(growable: false),
+        if (all.isEmpty)
+          Stagger(index: index++, child: const _NoRules())
+        else ...[
+          Stagger(
+            index: index++,
+            child: _SearchField(
+              controller: _search,
+              onChanged: () => setState(() {}),
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
+          if (visible.isEmpty)
+            Stagger(index: index++, child: _NoMatches(query: _search.text.trim()))
+          else
+            for (final tier in WhitelistTier.values)
+              if (visible.any((e) => e.tier == tier)) ...[
+                Stagger(
+                  // Tier order, not visible order, so the sequence stays
+                  // monotonic even when a tier has no matches.
+                  index: index++,
+                  child: _RuleSection(
+                    tier: tier,
+                    entries: visible
+                        .where((e) => e.tier == tier)
+                        .toList(growable: false),
+                  ),
                 ),
-              ),
-              const SizedBox(height: Gap.xl),
-            ],
+                const SizedBox(height: Gap.xl),
+              ],
+        ],
+        Text(
+          'A rule applies the moment you add it — there is nothing to switch '
+          'on afterwards.',
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
       ],
+    );
+  }
+}
+
+/// A blocking rule that cannot fire until the OS grants something.
+class _PermissionGate extends ConsumerWidget {
+  const _PermissionGate({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.action,
+    required this.permission,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final String action;
+  final AppPermission permission;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.xl),
+      child: Card(
+        color: cs.errorContainer,
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 20, color: cs.onErrorContainer),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(color: cs.onErrorContainer),
+                        ),
+                        const SizedBox(height: Gap.xs),
+                        Text(
+                          body,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: cs.onErrorContainer.withValues(
+                                  alpha: 0.86,
+                                ),
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              FilledButton(
+                onPressed: () async {
+                  await const PermissionManager().request(permission);
+                  // The answer arrives on resume, not here — the grant happens
+                  // in a settings page this app is not running behind.
+                  ref.invalidate(shieldEnabledProvider);
+                  ref.invalidate(usageAccessProvider);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.onErrorContainer,
+                  foregroundColor: cs.errorContainer,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+                child: Text(action),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasText = controller.text.isNotEmpty;
+
+    return TextField(
+      controller: controller,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
+      cursorColor: cs.primary,
+      textInputAction: TextInputAction.search,
+      onChanged: (_) => onChanged(),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: cs.surfaceContainerHigh,
+        hintText: 'Search your rules…',
+        hintStyle: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          size: 18,
+          color: cs.onSurfaceVariant,
+        ),
+        suffixIcon: !hasText
+            ? null
+            : _SheetCloseButton(
+                label: 'Clear search',
+                onTap: () {
+                  controller.clear();
+                  onChanged();
+                },
+              ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.pill),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.pill),
+          borderSide: BorderSide(color: cs.primary),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown before the first app is added.
+class _NoRules extends StatelessWidget {
+  const _NoRules();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.xl),
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            children: [
+              IconBadge(
+                icon: Icons.shield_outlined,
+                color: cs.primary,
+                size: 56,
+                radius: 18,
+              ),
+              const SizedBox(height: Gap.lg),
+              Text(
+                'Nothing is armed yet',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                'Add the apps you open without meaning to. Blocked apps close '
+                'the moment they open; budgeted ones close once the day\'s '
+                'allowance is spent.',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -802,31 +873,36 @@ class _NoMatches extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.xl),
-        child: Column(
-          children: [
-            Icon(
-              Icons.search_off_outlined,
-              size: 48,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(height: Gap.md),
-            Text(
-              'No apps match “$query”',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.xl),
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            children: [
+              Icon(
+                Icons.search_off_outlined,
+                size: 48,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(height: Gap.md),
+              Text(
+                'No rule matches “$query”',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _WhitelistSection extends StatelessWidget {
-  const _WhitelistSection({required this.tier, required this.entries});
+class _RuleSection extends StatelessWidget {
+  const _RuleSection({required this.tier, required this.entries});
 
   final WhitelistTier tier;
   final List<WhitelistEntry> entries;
@@ -835,7 +911,6 @@ class _WhitelistSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final accent = harmonize(tier.color, cs.primary);
-    final showRemove = tier == WhitelistTier.alwaysAllowed;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -863,7 +938,9 @@ class _WhitelistSection extends StatelessWidget {
               const Spacer(),
               Text(
                 '${entries.length}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -880,10 +957,7 @@ class _WhitelistSection extends StatelessWidget {
                   if (i > 0) Divider(color: cs.outlineVariant, height: 1),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: Gap.md),
-                    child: _WhitelistRow(
-                      entry: entries[i],
-                      showRemove: showRemove,
-                    ),
+                    child: _RuleRow(entry: entries[i]),
                   ),
                 ],
               ],
@@ -895,131 +969,478 @@ class _WhitelistSection extends StatelessWidget {
   }
 }
 
-class _WhitelistRow extends ConsumerWidget {
-  const _WhitelistRow({required this.entry, required this.showRemove});
+class _RuleRow extends StatelessWidget {
+  const _RuleRow({required this.entry});
 
   final WhitelistEntry entry;
-  final bool showRemove;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final blocked = entry.tier == WhitelistTier.blocked;
-    final budgeted = entry.budgeted && !blocked;
-
-    // Toggling a whitelist entry is really "is this app let through?" — off
-    // means blocked. A budgeted app keeps its budget when it comes back on,
-    // which is why this is not a plain two-state write.
-    void toggle() {
-      HapticFeedback.lightImpact();
-      final next = blocked
-          ? (entry.budgeted
-                ? WhitelistTier.budgeted
-                : WhitelistTier.alwaysAllowed)
-          : WhitelistTier.blocked;
-      ref.read(whitelistProvider.notifier).setTier(entry.id, next);
-    }
-
-    void remove() {
-      HapticFeedback.mediumImpact();
-      ref.read(whitelistProvider.notifier).remove(entry.id);
-    }
+    final accent = harmonize(entry.tier.color, cs.primary);
+    final budgeted = entry.tier == WhitelistTier.budgeted;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Semantics(
-                container: true,
-                toggled: !blocked,
-                label: 'Allow ${entry.name}',
-                onTap: toggle,
-                child: ExcludeSemantics(
-                  child: Pressable(
-                    onTap: toggle,
-                    child: Row(
+        Semantics(
+          button: true,
+          container: true,
+          label: _semanticLabel(entry),
+          onTap: () => _openRuleSheet(context, entry),
+          child: ExcludeSemantics(
+            child: Pressable(
+              onTap: () => _openRuleSheet(context, entry),
+              child: Row(
+                children: [
+                  AppIconAvatar(
+                    packageId: entry.packageId,
+                    fallbackIcon: entry.icon,
+                    fallbackColor: accent,
+                    size: 40,
+                    radius: 12,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconBadge(
-                          icon: entry.icon,
-                          color: entry.color,
-                          size: 36,
-                          radius: 11,
+                        Text(
+                          entry.name,
+                          style: Theme.of(context).textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: Gap.md),
-                        Expanded(
-                          child: Text(
-                            entry.name,
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                        ),
-                        if (budgeted)
-                          Text(
-                            'Daily budget: ${entry.budgetMinutes}m',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        const SizedBox(width: Gap.sm),
-                        Semantics(
-                          toggled: !blocked,
-                          enabled: true,
-                          label: 'Allow ${entry.name}',
-                          excludeSemantics: true,
-                          onTap: toggle,
-                          child: Switch.adaptive(
-                            value: !blocked,
-                            onChanged: (_) => toggle(),
-                          ),
+                        const SizedBox(height: 1),
+                        Text(
+                          _subtitle(entry),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ),
+                  const SizedBox(width: Gap.sm),
+                  _TierChip(tier: entry.tier, color: accent),
+                ],
               ),
             ),
-            // Kept outside the row's semantic node so the remove action stays
-            // independently reachable instead of being swallowed by the
-            // toggle region.
-            if (showRemove) _RemoveButton(name: entry.name, onTap: remove),
-          ],
+          ),
         ),
         if (budgeted) ...[
           const SizedBox(height: Gap.md),
-          Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  label: '${entry.name} daily budget used',
-                  value: '${(entry.usage * 100).round()} percent',
-                  child: LinearProgressIndicator(
-                    value: entry.usage,
-                    color: harmonize(entry.tier.color, cs.primary),
-                    backgroundColor: cs.surfaceContainerHighest,
-                    minHeight: 5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: Gap.sm),
-              Text(
-                '${entry.usedMinutes}m used',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: entry.usage > 0.8 ? cs.error : cs.onSurfaceVariant,
-                ),
-              ),
-            ],
+          Semantics(
+            label: '${entry.name} daily budget used',
+            value: '${entry.usedMinutes} of ${entry.budgetMinutes} minutes',
+            child: LinearProgressIndicator(
+              value: entry.usage,
+              color: entry.overBudget ? cs.error : accent,
+              backgroundColor: cs.surfaceContainerHighest,
+              minHeight: 5,
+            ),
           ),
         ],
       ],
     );
   }
+
+  static String _subtitle(WhitelistEntry entry) => switch (entry.tier) {
+    WhitelistTier.blocked => 'Closes when opened',
+    WhitelistTier.budgeted =>
+      '${formatMinutes(entry.usedMinutes)} of '
+          '${formatMinutes(entry.budgetMinutes ?? 0)} used today',
+    WhitelistTier.alwaysAllowed => 'Never closed',
+  };
+
+  static String _semanticLabel(WhitelistEntry entry) => switch (entry.tier) {
+    WhitelistTier.blocked => '${entry.name}, blocked. Change rule',
+    WhitelistTier.budgeted =>
+      '${entry.name}, budgeted at ${entry.budgetMinutes} minutes a day, '
+          '${entry.usedMinutes} used. Change rule',
+    WhitelistTier.alwaysAllowed =>
+      '${entry.name}, always allowed. Change rule',
+  };
 }
 
-class _RemoveButton extends StatelessWidget {
-  const _RemoveButton({required this.name, required this.onTap});
+/// The tier, as a chip. Tapping it opens the same sheet the row does — the
+/// chip is a label first, so it carries the state in words rather than in
+/// colour alone.
+class _TierChip extends StatelessWidget {
+  const _TierChip({required this.tier, required this.color});
 
-  final String name;
+  final WhitelistTier tier;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(Radii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        switch (tier) {
+          WhitelistTier.blocked => 'Blocked',
+          WhitelistTier.budgeted => 'Budgeted',
+          WhitelistTier.alwaysAllowed => 'Allowed',
+        },
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+/// Per-app rule editor.
+///
+/// A sheet rather than a row of controls: the three tiers are mutually
+/// exclusive and the budget only means something in one of them, so showing
+/// them together is the only way the choice reads as one decision.
+Future<void> _openRuleSheet(BuildContext context, WhitelistEntry entry) {
+  HapticFeedback.selectionClick();
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) => _AppRuleSheet(entry: entry),
+  );
+}
+
+class _AppRuleSheet extends ConsumerStatefulWidget {
+  const _AppRuleSheet({required this.entry});
+
+  final WhitelistEntry entry;
+
+  @override
+  ConsumerState<_AppRuleSheet> createState() => _AppRuleSheetState();
+}
+
+class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
+  late WhitelistTier _tier = widget.entry.tier;
+  late int _budget =
+      widget.entry.budgetMinutes ?? WhitelistNotifier.defaultBudgetMinutes;
+
+  static const _step = 5;
+  static const _min = 5;
+  static const _max = 8 * 60;
+
+  Future<void> _apply() async {
+    final notifier = ref.read(whitelistProvider.notifier);
+    if (_tier == WhitelistTier.budgeted) {
+      await notifier.setTier(widget.entry.id, _tier);
+      await notifier.setBudget(widget.entry.id, _budget);
+    } else {
+      await notifier.setTier(widget.entry.id, _tier);
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _remove() async {
+    await ref.read(whitelistProvider.notifier).remove(widget.entry.id);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // The live row, so the usage bar reflects what the platform reports rather
+    // than the snapshot the sheet was opened with.
+    final live = ref
+        .watch(enrichedWhitelistProvider)
+        .where((e) => e.id == widget.entry.id)
+        .firstOrNull;
+    final entry = live ?? widget.entry;
+
+    return _SheetSurface(
+      padding: const EdgeInsets.all(Gap.xl),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _SheetHandle(),
+              const SizedBox(height: Gap.lg),
+              Row(
+                children: [
+                  AppIconAvatar(
+                    packageId: entry.packageId,
+                    fallbackIcon: entry.icon,
+                    fallbackColor: harmonize(entry.tier.color, cs.primary),
+                    size: 48,
+                    radius: 14,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          entry.packageId ?? 'No package — cannot be enforced',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  _SheetCloseButton(
+                    label: 'Close',
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.lg),
+              for (final tier in WhitelistTier.values) ...[
+                _TierOption(
+                  tier: tier,
+                  selected: _tier == tier,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _tier = tier);
+                  },
+                ),
+                const SizedBox(height: Gap.sm),
+              ],
+              if (_tier == WhitelistTier.budgeted) ...[
+                const SizedBox(height: Gap.md),
+                Card.filled(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Gap.md,
+                      Gap.sm,
+                      Gap.md,
+                      Gap.md,
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Daily allowance',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            _StepButton(
+                              icon: Icons.remove_rounded,
+                              label: 'Less time',
+                              enabled: _budget > _min,
+                              onTap: () => setState(
+                                () => _budget = (_budget - _step).clamp(
+                                  _min,
+                                  _max,
+                                ),
+                              ),
+                            ),
+                            Semantics(
+                              label: 'Daily allowance',
+                              value: formatMinutes(_budget),
+                              child: SizedBox(
+                                width: 68,
+                                child: Text(
+                                  formatMinutes(_budget),
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleSmall,
+                                ),
+                              ),
+                            ),
+                            _StepButton(
+                              icon: Icons.add_rounded,
+                              label: 'More time',
+                              enabled: _budget < _max,
+                              onTap: () => setState(
+                                () => _budget = (_budget + _step).clamp(
+                                  _min,
+                                  _max,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (entry.usedMinutes > 0) ...[
+                          const SizedBox(height: Gap.sm),
+                          Semantics(
+                            label: 'Used today',
+                            value: formatMinutes(entry.usedMinutes),
+                            child: LinearProgressIndicator(
+                              value: (_budget == 0
+                                  ? 0
+                                  : entry.usedMinutes / _budget),
+                              color: entry.usedMinutes >= _budget
+                                  ? cs.error
+                                  : harmonize(
+                                      WhitelistTier.budgeted.color,
+                                      cs.primary,
+                                    ),
+                              backgroundColor: cs.surfaceContainerHighest,
+                              minHeight: 5,
+                            ),
+                          ),
+                          const SizedBox(height: Gap.xs),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${formatMinutes(entry.usedMinutes)} used today',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: Gap.xl),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _remove,
+                      style: TextButton.styleFrom(
+                        foregroundColor: cs.error,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                      label: const Text('Remove'),
+                    ),
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: _apply,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('Save rule'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TierOption extends StatelessWidget {
+  const _TierOption({
+    required this.tier,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final WhitelistTier tier;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = harmonize(tier.color, cs.primary);
+    final (icon, body) = switch (tier) {
+      WhitelistTier.blocked => (
+        Icons.block_rounded,
+        'Closes as soon as it opens.',
+      ),
+      WhitelistTier.budgeted => (
+        Icons.hourglass_bottom_rounded,
+        'Open until the day\'s allowance is spent, then it closes.',
+      ),
+      WhitelistTier.alwaysAllowed => (
+        Icons.check_circle_outline_rounded,
+        'Never closed. Useful for the apps your work runs through.',
+      ),
+    };
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${tier.label}. $body',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Pressable(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(Gap.md),
+            decoration: BoxDecoration(
+              color: selected
+                  ? accent.withValues(alpha: 0.12)
+                  : cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(Radii.item),
+              border: Border.all(
+                color: selected ? accent : cs.outlineVariant,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: selected ? accent : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tier.label,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        body,
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  Icon(Icons.check_rounded, size: 20, color: accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
@@ -1027,20 +1448,21 @@ class _RemoveButton extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      label: 'Remove $name from the list',
-      onTap: onTap,
+      enabled: enabled,
+      label: label,
+      onTap: enabled ? onTap : null,
       child: ExcludeSemantics(
         child: Pressable(
-          scale: 0.85,
-          onTap: onTap,
+          scale: 0.86,
+          onTap: enabled ? onTap : null,
           child: SizedBox(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             child: Center(
               child: Icon(
-                Icons.remove_circle_outline_rounded,
+                icon,
                 size: 18,
-                color: cs.onSurfaceVariant,
+                color: enabled ? cs.onSurface : cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -1051,914 +1473,535 @@ class _RemoveButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Profiles
+// YouTube
 // ---------------------------------------------------------------------------
 
-class _ProfilesView extends ConsumerWidget {
-  const _ProfilesView();
+class _YoutubeView extends ConsumerWidget {
+  const _YoutubeView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final profiles = ref.watch(profilesProvider);
-    final active = ref.watch(activeProfileProvider);
-    final schedules = [
-      for (final p in profiles)
-        for (final window in p.schedules) (profile: p, window: window),
-    ];
+    final rules = ref.watch(youtubeRulesProvider);
+    final installed = ref.watch(installedAppsProvider).valueOrNull;
+    final youtubeInstalled =
+        installed == null ||
+        installed.any((a) => a.packageId == AppCatalog.youtubePackage);
+    final fullyBlocked = ref
+        .watch(whitelistProvider)
+        .any(
+          (e) =>
+              e.packageId == AppCatalog.youtubePackage &&
+              e.tier == WhitelistTier.blocked,
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Stagger(
-          index: 0,
-          child: SectionHeader(
-            title: 'Restriction profiles',
-            icon: Icons.tune_rounded,
-          ),
-        ),
         Stagger(
-          index: 1,
-          child: SizedBox(
-            height: 178,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              itemCount: profiles.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
-              itemBuilder: (context, i) {
-                if (i == profiles.length) {
-                  return _AddProfileCard(onTap: () => _showBuilder(context));
-                }
-                final p = profiles[i];
-                return _ProfileCard(
-                  profile: p,
-                  active: p.id == active?.id,
-                  onActivate: () {
-                    HapticFeedback.selectionClick();
-                    ref.read(profilesProvider.notifier).activate(p.id);
-                  },
-                );
-              },
+          index: 0,
+          child: Card.filled(
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.lg),
+              child: Row(
+                children: [
+                  AppIconAvatar(
+                    packageId: AppCatalog.youtubePackage,
+                    fallbackIcon: Icons.smart_display_rounded,
+                    fallbackColor: cs.error,
+                    size: 48,
+                    radius: 14,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'YouTube',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          rules.any
+                              ? 'Partly closed — the rest still works'
+                              : 'Everything still works',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
         const SizedBox(height: Gap.xl),
-        const Stagger(
-          index: 2,
+        Stagger(
+          index: 1,
           child: SectionHeader(
-            title: 'Scheduled strictness',
-            icon: Icons.schedule_rounded,
+            title: 'Surfaces',
+            icon: Icons.tune_rounded,
           ),
         ),
         Stagger(
-          index: 3,
+          index: 2,
           child: Card.filled(
-            child: Padding(
-              padding: const EdgeInsets.all(Gap.lg),
-              child: schedules.isEmpty
-                  ? Text(
-                      'No schedules yet. Add one while creating a profile.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        for (var i = 0; i < schedules.length; i++) ...[
-                          if (i > 0) Divider(color: cs.outlineVariant, height: Gap.xl),
-                          _ScheduleRow(
-                            label: schedules[i].profile.name,
-                            detail: schedules[i].window,
-                            color: schedules[i].profile.active
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                          ),
-                        ],
-                      ],
-                    ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                _SurfaceSwitch(
+                  icon: Icons.slow_motion_video_rounded,
+                  title: 'Block Shorts',
+                  body:
+                      'The Shorts player closes. Ordinary videos keep playing, '
+                      'so a lecture link still works.',
+                  value: rules.shorts,
+                  onChanged: (v) =>
+                      ref.read(youtubeRulesProvider.notifier).setShorts(v),
+                ),
+                Divider(color: cs.outlineVariant, height: 1),
+                _SurfaceSwitch(
+                  icon: Icons.dynamic_feed_rounded,
+                  title: 'Block home & search',
+                  body:
+                      'Removes the recommendation feed and search results. A '
+                      'video has to be opened from a direct link.',
+                  value: rules.feed,
+                  onChanged: (v) =>
+                      ref.read(youtubeRulesProvider.notifier).setFeed(v),
+                ),
+              ],
             ),
           ),
         ),
+        const SizedBox(height: Gap.lg),
+        Stagger(
+          index: 3,
+          child: Card.outlined(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.item),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.science_outlined,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      'Shorts are recognised by the names YouTube gives its '
+                      'own screens, not by reading what is on them. A future '
+                      'YouTube update can rename them, and the block would '
+                      'stop firing until FocusForge is updated to match.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (youtubeInstalled) ...[
+          const SizedBox(height: Gap.xl),
+          Stagger(
+            index: 4,
+            child: SectionHeader(
+              title: 'Or the whole app',
+              icon: Icons.block_rounded,
+            ),
+          ),
+          Stagger(
+            index: 5,
+            child: Card.filled(
+              clipBehavior: Clip.antiAlias,
+              child: ListTile(
+                leading: Icon(
+                  fullyBlocked
+                      ? Icons.lock_open_rounded
+                      : Icons.lock_outline_rounded,
+                  color: cs.onSurfaceVariant,
+                ),
+                title: Text(
+                  fullyBlocked ? 'Stop blocking YouTube' : 'Block all of YouTube',
+                ),
+                subtitle: Text(
+                  fullyBlocked
+                      ? 'Removes it from the blocked list'
+                      : 'Closes the app entirely, Shorts and lectures alike',
+                ),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  final notifier = ref.read(whitelistProvider.notifier);
+                  if (fullyBlocked) {
+                    notifier.remove('pkg:${AppCatalog.youtubePackage}');
+                  } else {
+                    notifier.addInstalledApp(
+                      packageId: AppCatalog.youtubePackage,
+                      name: 'YouTube',
+                      tier: WhitelistTier.blocked,
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
       ],
-    );
-  }
-
-  void _showBuilder(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _ProfileBuilderSheet(),
     );
   }
 }
 
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.profile,
-    required this.active,
-    required this.onActivate,
+class _SurfaceSwitch extends StatelessWidget {
+  const _SurfaceSwitch({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.value,
+    required this.onChanged,
   });
 
-  final RestrictionProfile profile;
-  final bool active;
-  final VoidCallback onActivate;
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    return SwitchListTile.adaptive(
+      value: value,
+      onChanged: (v) {
+        HapticFeedback.selectionClick();
+        onChanged(v);
+      },
+      secondary: Icon(
+        icon,
+        color: value ? cs.tertiary : cs.onSurfaceVariant,
+      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          body,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+        ),
+      ),
+    );
+  }
+}
 
-    return Semantics(
-      button: true,
-      container: true,
-      selected: active,
-      label: active
-          ? '${profile.name} profile, active'
-          : 'Activate ${profile.name} profile',
-      onTap: onActivate,
-      child: ExcludeSemantics(
-        child: SizedBox(
-          width: 196,
-          child: Pressable(
-            onTap: onActivate,
-            child: Card.outlined(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.card),
-                side: BorderSide(
-                  color: active ? cs.primary : cs.outlineVariant,
+// ---------------------------------------------------------------------------
+// Activity
+// ---------------------------------------------------------------------------
+
+class _ActivityView extends ConsumerWidget {
+  const _ActivityView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final events = ref.watch(breathEventsProvider);
+    final usage = ref.watch(appUsageTodayProvider).valueOrNull;
+    final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final rules = ref.watch(enrichedWhitelistProvider);
+
+    final walkedAway = events.where((e) => e.walkedAway).length;
+    final openedAnyway = events.length - walkedAway;
+    final recent = events.reversed.take(12).toList(growable: false);
+
+    // Only the apps the user has a rule for: a usage list of everything on the
+    // phone is a screen the user cannot act on.
+    final measured = [
+      for (final entry in rules)
+        if (entry.packageId != null && (usage?[entry.packageId] ?? 0) > 0)
+          entry,
+    ]..sort((a, b) => b.usedMinutes.compareTo(a.usedMinutes));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Stagger(
+          index: 0,
+          child: Row(
+            children: [
+              Expanded(
+                child: _StatTile(
+                  label: 'Walked away',
+                  value: '$walkedAway',
+                  icon: Icons.air_rounded,
+                  color: cs.tertiary,
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(Gap.lg),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: _StatTile(
+                  label: 'Went in anyway',
+                  value: '$openedAnyway',
+                  icon: Icons.login_rounded,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
+        Stagger(
+          index: 1,
+          child: SectionHeader(
+            title: 'Recent blocks',
+            icon: Icons.history_rounded,
+          ),
+        ),
+        Stagger(
+          index: 2,
+          child: events.isEmpty
+              ? const _EmptyLog()
+              : Card.filled(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < recent.length; i++) ...[
+                        if (i > 0)
+                          Divider(color: cs.outlineVariant, height: 1),
+                        _EventRow(event: recent[i]),
+                      ],
+                    ],
+                  ),
+                ),
+        ),
+        const SizedBox(height: Gap.xl),
+        Stagger(
+          index: 3,
+          child: SectionHeader(
+            title: 'Today on your list',
+            icon: Icons.schedule_rounded,
+          ),
+        ),
+        Stagger(
+          index: 4,
+          child: !usageAccess
+              ? const _UsageNotice(
+                  icon: Icons.timelapse_rounded,
+                  body:
+                      'Usage access is off, so today\'s screen time cannot be '
+                      'read. Grant it from the Apps tab to see real numbers '
+                      'here.',
+                )
+              : measured.isEmpty
+              ? const _UsageNotice(
+                  icon: Icons.hourglass_empty_rounded,
+                  body:
+                      'Nothing on your list has been opened yet today. The '
+                      'numbers appear here as soon as something is.',
+                )
+              : Card.filled(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.lg,
+                      vertical: Gap.sm,
+                    ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < measured.length; i++) ...[
+                          if (i > 0)
+                            Divider(color: cs.outlineVariant, height: 1),
+                          _UsageRow(
+                            entry: measured[i],
+                            maxMinutes: measured.first.usedMinutes,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconBadge(icon: icon, color: color, size: 34, radius: 10),
+              const SizedBox(height: Gap.md),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventRow extends StatelessWidget {
+  const _EventRow({required this.event});
+
+  final BreathEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final walked = event.walkedAway;
+    final color = walked ? cs.tertiary : cs.onSurfaceVariant;
+
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
+        child: Row(
+          children: [
+            IconBadge(
+              icon: walked ? Icons.air_rounded : Icons.login_rounded,
+              color: color,
+              size: 34,
+              radius: 10,
+            ),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.appName.isEmpty ? 'An app' : event.appName,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    formatRelativeTime(event.at),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Gap.sm),
+            Text(
+              walked ? 'Walked away' : 'Opened anyway',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UsageRow extends StatelessWidget {
+  const _UsageRow({required this.entry, required this.maxMinutes});
+
+  final WhitelistEntry entry;
+  final int maxMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = harmonize(entry.tier.color, cs.primary);
+    final share = maxMinutes == 0 ? 0.0 : entry.usedMinutes / maxMinutes;
+
+    return Semantics(
+      label: '${entry.name}, ${formatMinutes(entry.usedMinutes)} today',
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.md),
+          child: Row(
+            children: [
+              AppIconAvatar(
+                packageId: entry.packageId,
+                fallbackIcon: entry.icon,
+                fallbackColor: accent,
+                size: 34,
+                radius: 10,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        IconBadge(
-                          icon: profile.icon,
-                          color: active ? cs.primary : cs.onSurfaceVariant,
-                          size: 34,
-                          radius: 10,
-                        ),
-                        const Spacer(),
-                        if (active)
-                          Icon(
-                            Icons.check_circle_rounded,
-                            size: 17,
-                            color: cs.primary,
+                        Expanded(
+                          child: Text(
+                            entry.name,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ),
+                        const SizedBox(width: Gap.sm),
+                        Text(
+                          formatMinutes(entry.usedMinutes),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: Gap.md),
-                    Text(profile.name, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${profile.blockedApps} apps blocked',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${profile.dailyTargetHours}h daily target',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const Spacer(),
-                    FilterChip(
-                      selected: active,
-                      onSelected: (_) => onActivate(),
-                      showCheckmark: false,
-                      label: Text(active ? 'Active' : 'Activate'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AddProfileCard extends StatelessWidget {
-  const _AddProfileCard({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: 'Create a new restriction profile',
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: SizedBox(
-          width: 132,
-          child: Pressable(
-            onTap: onTap,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Radii.card),
-                border: Border.all(
-                  color: cs.outlineVariant,
-                  style: BorderStyle.solid,
-                ),
-                color: cs.surfaceContainerLow,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_rounded, size: 26, color: cs.onSurfaceVariant),
-                  const SizedBox(height: Gap.sm),
-                  Text('New profile', style: Theme.of(context).textTheme.labelSmall),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScheduleRow extends StatelessWidget {
-  const _ScheduleRow({
-    required this.label,
-    required this.detail,
-    required this.color,
-  });
-
-  final String label;
-  final String detail;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return MergeSemantics(
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: Gap.md),
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
-          Text(
-            detail,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Profile creation
-// ---------------------------------------------------------------------------
-
-/// A five-step builder in a near-full-height sheet: name, icon, apps, target,
-/// schedule. It writes once, at the end, through the profiles notifier — an
-/// abandoned flow must leave no trace.
-class _ProfileBuilderSheet extends ConsumerStatefulWidget {
-  const _ProfileBuilderSheet();
-
-  @override
-  ConsumerState<_ProfileBuilderSheet> createState() =>
-      _ProfileBuilderSheetState();
-}
-
-class _ProfileBuilderSheetState extends ConsumerState<_ProfileBuilderSheet> {
-  static const _stepCount = 5;
-  static const _stepTitles = [
-    'Name',
-    'Icon',
-    'Apps',
-    'Daily target',
-    'Schedule',
-  ];
-  static const _schedulePresets = [
-    'Weekdays 16:00–21:00',
-    'Every day 07:00–09:00',
-    'Evening 20:00–22:30',
-  ];
-
-  final _name = TextEditingController();
-  final _apps = <String>{};
-  int _step = 0;
-  String _icon = ProfileIcons.names.first;
-  double _hours = 3;
-  String? _schedule;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  bool get _canAdvance => _step != 0 || _name.text.trim().isNotEmpty;
-
-  void _next() {
-    if (_step < _stepCount - 1) {
-      setState(() => _step += 1);
-    } else {
-      _save();
-    }
-  }
-
-  void _save() {
-    ref
-        .read(profilesProvider.notifier)
-        .add(
-          RestrictionProfile(
-            id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-            name: _name.text.trim(),
-            icon: ProfileIcons.resolve(_icon),
-            blockedApps: _apps.length,
-            dailyTargetHours: _hours,
-            schedules: _schedule == null ? const [] : [_schedule!],
-          ),
-        );
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    // The sheet has to give way to the keyboard rather than be covered by it.
-    final height = math.max(
-      320.0,
-      media.size.height * 0.94 - media.viewInsets.bottom,
-    );
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-      child: SizedBox(
-        height: height,
-        child: _SheetSurface(
-          child: Column(
-            children: [
-              _SheetHeader(
-                title: 'New profile',
-                subtitle:
-                    'Step ${_step + 1} of $_stepCount · ${_stepTitles[_step]}',
-                onClose: () => Navigator.of(context).pop(),
-              ),
-              _StepBar(step: _step, count: _stepCount),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Gap.xl,
-                    Gap.lg,
-                    Gap.xl,
-                    Gap.lg,
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: KeyedSubtree(
-                      key: ValueKey(_step),
-                      child: _buildStep(),
-                    ),
-                  ),
-                ),
-              ),
-              _SheetFooter(
-                step: _step,
-                stepCount: _stepCount,
-                canAdvance: _canAdvance,
-                onBack: () => setState(() => _step -= 1),
-                onNext: _next,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStep() => switch (_step) {
-    0 => _NameStep(controller: _name, onChanged: () => setState(() {})),
-    1 => _IconStep(
-      selected: _icon,
-      name: _name.text.trim(),
-      onSelect: (name) => setState(() => _icon = name),
-    ),
-    2 => _AppsStep(
-      selected: _apps,
-      onToggle: (name) => setState(
-        () => _apps.contains(name) ? _apps.remove(name) : _apps.add(name),
-      ),
-    ),
-    3 => _TargetStep(
-      hours: _hours,
-      onChanged: (v) => setState(() => _hours = v),
-    ),
-    _ => _ScheduleStep(
-      selected: _schedule,
-      presets: _schedulePresets,
-      onSelect: (s) => setState(() => _schedule = s),
-    ),
-  };
-}
-
-class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({
-    required this.title,
-    required this.subtitle,
-    required this.onClose,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.lg, Gap.md, Gap.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _SheetCloseButton(label: 'Close', onTap: onClose),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepBar extends StatelessWidget {
-  const _StepBar({required this.step, required this.count});
-
-  final int step;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, 0),
-      child: Row(
-        children: [
-          for (var i = 0; i < count; i++)
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
-                height: 3,
-                margin: EdgeInsets.only(right: i == count - 1 ? 0 : Gap.xs),
-                decoration: BoxDecoration(
-                  color: i <= step ? cs.primary : cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SheetFooter extends StatelessWidget {
-  const _SheetFooter({
-    required this.step,
-    required this.stepCount,
-    required this.canAdvance,
-    required this.onBack,
-    required this.onNext,
-  });
-
-  final int step;
-  final int stepCount;
-  final bool canAdvance;
-  final VoidCallback onBack;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    final isLast = step == stepCount - 1;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.sm, Gap.xl, Gap.lg),
-        child: Row(
-          children: [
-            if (step > 0)
-              TextButton(
-                onPressed: onBack,
-                child: const Text('Back'),
-              ),
-            const Spacer(),
-            FilledButton(
-              onPressed: canAdvance ? onNext : null,
-              child: Text(isLast ? 'Save profile' : 'Next'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StepIntro extends StatelessWidget {
-  const _StepIntro({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: Gap.xs),
-        Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-}
-
-class _NameStep extends StatelessWidget {
-  const _NameStep({required this.controller, required this.onChanged});
-
-  final TextEditingController controller;
-  final VoidCallback onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _StepIntro(
-          title: 'Name your profile',
-          subtitle: 'A label you will recognise at a glance.',
-        ),
-        const SizedBox(height: Gap.lg),
-        Card.outlined(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.item),
-            side: BorderSide(color: cs.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
-            child: TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.done,
-              onChanged: (_) => onChanged(),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
-              cursorColor: cs.primary,
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: 'e.g. Exam Week',
-                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 15),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _IconStep extends StatelessWidget {
-  const _IconStep({
-    required this.selected,
-    required this.name,
-    required this.onSelect,
-  });
-
-  final String selected;
-  final String name;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _StepIntro(
-          title: 'Pick an icon',
-          subtitle: 'Shown on the profile card in the row.',
-        ),
-        const SizedBox(height: Gap.lg),
-        Center(
-          child: IconBadge(
-            icon: ProfileIcons.resolve(selected),
-            color: cs.primary,
-            size: 64,
-            radius: 20,
-          ),
-        ),
-        const SizedBox(height: Gap.sm),
-        Center(
-          child: Text(
-            name.isEmpty ? 'Your profile' : name,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-        Wrap(
-          spacing: Gap.md,
-          runSpacing: Gap.md,
-          alignment: WrapAlignment.center,
-          children: [
-            for (final iconName in ProfileIcons.names)
-              _IconChoice(
-                name: iconName,
-                selected: iconName == selected,
-                onTap: () => onSelect(iconName),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _IconChoice extends StatelessWidget {
-  const _IconChoice({
-    required this.name,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String name;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: 'Icon $name',
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          scale: 0.9,
-          onTap: onTap,
-          child: IconBadge(
-            icon: ProfileIcons.resolve(name),
-            color: selected ? cs.primary : cs.onSurfaceVariant,
-            size: 52,
-            radius: 16,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AppChoice {
-  const _AppChoice(this.name, this.icon, this.color);
-
-  final String name;
-  final IconData icon;
-  final Color color;
-}
-
-class _AppsStep extends ConsumerWidget {
-  const _AppsStep({required this.selected, required this.onToggle});
-
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final choices = <_AppChoice>[];
-    for (final row in ref.watch(allFeedRowsProvider)) {
-      if (choices.every((c) => c.name != row.appName)) {
-        choices.add(_AppChoice(row.appName, row.icon, row.color));
-      }
-    }
-    for (final entry in ref.watch(whitelistProvider)) {
-      if (entry.tier == WhitelistTier.blocked &&
-          choices.every((c) => c.name != entry.name)) {
-        choices.add(_AppChoice(entry.name, entry.icon, entry.color));
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _StepIntro(
-          title: 'What should it block?',
-          subtitle: '${selected.length} selected · tap to toggle',
-        ),
-        const SizedBox(height: Gap.lg),
-        Wrap(
-          spacing: Gap.sm,
-          runSpacing: Gap.sm,
-          children: [
-            for (final choice in choices)
-              Semantics(
-                button: true,
-                selected: selected.contains(choice.name),
-                label: 'Block ${choice.name}',
-                onTap: () => onToggle(choice.name),
-                child: ExcludeSemantics(
-                  child: FilterChip(
-                    selected: selected.contains(choice.name),
-                    onSelected: (_) => onToggle(choice.name),
-                    showCheckmark: false,
-                    avatar: Icon(choice.icon, size: 15, color: choice.color),
-                    label: Text(choice.name),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TargetStep extends StatelessWidget {
-  const _TargetStep({required this.hours, required this.onChanged});
-
-  final double hours;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _StepIntro(
-          title: 'Daily focus target',
-          subtitle: 'How much focused time this profile aims for each day.',
-        ),
-        const SizedBox(height: Gap.xl),
-        Center(
-          child: Text(
-            '${hours.toStringAsFixed(1)}h',
-            style: Theme.of(context).textTheme.displayMedium,
-          ),
-        ),
-        const SizedBox(height: Gap.sm),
-        Slider(
-          value: hours,
-          min: 1,
-          max: 8,
-          divisions: 14,
-          semanticFormatterCallback: (v) =>
-              '${v.toStringAsFixed(1)} hours daily target',
-          onChanged: onChanged,
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('1h', style: Theme.of(context).textTheme.labelSmall),
-              Text('8h', style: Theme.of(context).textTheme.labelSmall),
-            ],
-          ),
-        ),
-        const SizedBox(height: Gap.lg),
-        Text(
-          'You can change this later — it only sets the goal the dashboard '
-          'measures against.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-}
-
-class _ScheduleStep extends StatelessWidget {
-  const _ScheduleStep({
-    required this.selected,
-    required this.presets,
-    required this.onSelect,
-  });
-
-  final String? selected;
-  final List<String> presets;
-  final ValueChanged<String?> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _StepIntro(
-          title: 'Schedule (optional)',
-          subtitle: 'When this profile should apply itself.',
-        ),
-        const SizedBox(height: Gap.lg),
-        _ScheduleOption(
-          label: 'No schedule',
-          icon: Icons.remove_circle_outline_rounded,
-          selected: selected == null,
-          onTap: () => onSelect(null),
-        ),
-        for (final preset in presets)
-          _ScheduleOption(
-            label: preset,
-            icon: Icons.schedule_rounded,
-            selected: selected == preset,
-            onTap: () => onSelect(preset),
-          ),
-      ],
-    );
-  }
-}
-
-class _ScheduleOption extends StatelessWidget {
-  const _ScheduleOption({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gap.sm),
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        onTap: onTap,
-        child: ExcludeSemantics(
-          child: Pressable(
-            onTap: onTap,
-            child: Card.outlined(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.item),
-                side: BorderSide(
-                  color: selected ? cs.primary : cs.outlineVariant,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gap.lg,
-                  vertical: Gap.md,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      icon,
-                      size: 18,
-                      color: selected ? cs.primary : cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: Gap.md),
-                    Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
-                    if (selected)
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 18,
-                        color: cs.primary,
+                    const SizedBox(height: Gap.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      child: LinearProgressIndicator(
+                        value: share,
+                        color: accent,
+                        backgroundColor: cs.surfaceContainerHighest,
+                        minHeight: 4,
                       ),
+                    ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1966,15 +2009,85 @@ class _ScheduleOption extends StatelessWidget {
   }
 }
 
-/// Holds a screen's staggered entrance until its tab is actually on screen.
+class _UsageNotice extends StatelessWidget {
+  const _UsageNotice({required this.icon, required this.body});
+
+  final IconData icon;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: cs.onSurfaceVariant),
+            const SizedBox(width: Gap.sm),
+            Expanded(
+              child: Text(
+                body,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(height: 1.4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyLog extends StatelessWidget {
+  const _EmptyLog();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.xl),
+        child: Column(
+          children: [
+            IconBadge(
+              icon: Icons.history_rounded,
+              color: cs.onSurfaceVariant,
+              size: 48,
+              radius: 16,
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              'Nothing blocked yet',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: Gap.xs),
+            Text(
+              'Every time a rule fires it is logged here — and whether you '
+              'went in anyway or walked away.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Fades a tab's content in when the branch first builds.
 ///
-/// The shell keeps every visited tab mounted in an `IndexedStack`, and
-/// go_router wraps the inactive branches in a disabled [TickerMode]. A
-/// [Stagger] starts its delay clock in `initState`, so a tree that is built
-/// before the branch is shown plays its entrance to an empty room and the user
-/// sees nothing move when they switch in. Deferring the first build until the
-/// ticker mode is enabled starts the clock on the frame the tab first appears;
-/// the flag latches, so a later switch back does not replay the entrance.
+/// The tab branches are kept alive by the shell, so a plain [Stagger] would
+/// have finished animating long before the user ever reaches the tab. This
+/// holds the entrance until the widget is actually laid out on screen.
 class _TabEntrance extends StatefulWidget {
   const _TabEntrance({required this.child});
 
@@ -1984,19 +2097,45 @@ class _TabEntrance extends StatefulWidget {
   State<_TabEntrance> createState() => _TabEntranceState();
 }
 
-class _TabEntranceState extends State<_TabEntrance> {
-  bool _entered = false;
+class _TabEntranceState extends State<_TabEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // `TickerMode.valuesOf` registers a dependency on the branch's on-stage
-    // state, so this runs again the moment the tab is switched in. No setState:
-    // the framework rebuilds immediately after this call.
-    if (!_entered && TickerMode.valuesOf(context).enabled) _entered = true;
+  void initState() {
+    super.initState();
+    // One frame late: the branch is built while the shell is still laying the
+    // nav bar out, and starting immediately would spend the animation behind
+    // the first paint.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.forward();
+    });
   }
 
   @override
-  Widget build(BuildContext context) =>
-      _entered ? widget.child : const SizedBox.shrink();
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final curved = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.02),
+          end: Offset.zero,
+        ).animate(curved),
+        child: widget.child,
+      ),
+    );
+  }
 }
