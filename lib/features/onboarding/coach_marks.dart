@@ -117,8 +117,20 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
     });
   }
 
-  /// Measures every spot and starts the sequence over whatever is on screen.
+  /// Inserts the overlay, then measures once it has been laid out.
+  ///
+  /// Two passes rather than one: the targets are measured in the overlay's own
+  /// coordinate space, and until the entry has been built there is no space to
+  /// measure them against.
   void _show() {
+    _insertEntry();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _measure();
+    });
+  }
+
+  /// Resolves every spot to a real box and starts the sequence.
+  void _measure() {
     final steps = <_Step>[];
     for (final spot in widget.spots) {
       final rect = _rectOf(spot.target);
@@ -139,7 +151,11 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
         ),
       );
     }
-    if (steps.isEmpty) return;
+
+    if (steps.isEmpty) {
+      _removeEntry();
+      return;
+    }
 
     setState(() {
       _steps = steps;
@@ -147,7 +163,7 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
       _from = steps.first.hole;
       _to = steps.first.hole;
     });
-    _insertEntry();
+    _entry?.markNeedsBuild();
   }
 
   /// The widget's box in the overlay's coordinate space.
@@ -224,62 +240,68 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
 
   Widget _buildOverlay(BuildContext context) {
     final step = _index < _steps.length ? _steps[_index] : null;
-    if (step == null) return const SizedBox.shrink();
 
+    // The stack is built even before the first measurement lands, because the
+    // measurement needs it: the holes are expressed in the overlay's own
+    // coordinate space, and that space does not exist until this subtree has
+    // been laid out. `StackFit.expand` is what makes it fill the overlay
+    // rather than shrink to nothing while it has no visible children.
     return Stack(
       key: _overlayKey,
+      fit: StackFit.expand,
       children: [
-        Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _move,
-            builder: (context, _) {
-              final hole = _current;
-              final padding = MediaQuery.paddingOf(context);
-              final insets = EdgeInsets.fromLTRB(
-                math.max(Gap.xl, padding.left + Gap.sm),
-                math.max(Gap.lg, padding.top + Gap.sm),
-                math.max(Gap.xl, padding.right + Gap.sm),
-                math.max(Gap.lg, padding.bottom + Gap.sm),
-              );
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _go(_index + 1),
-                      child: CustomPaint(
-                        painter: _SpotlightPainter(
-                          center: hole.center,
-                          radius: hole.radius,
-                          progress: (_index + 1) / _steps.length,
-                          scrim: Colors.black.withValues(alpha: 0.68),
-                          ring: Theme.of(context).colorScheme.primary,
+        if (step != null)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _move,
+              builder: (context, _) {
+                final hole = _current;
+                final padding = MediaQuery.paddingOf(context);
+                final insets = EdgeInsets.fromLTRB(
+                  math.max(Gap.xl, padding.left + Gap.sm),
+                  math.max(Gap.lg, padding.top + Gap.sm),
+                  math.max(Gap.xl, padding.right + Gap.sm),
+                  math.max(Gap.lg, padding.bottom + Gap.sm),
+                );
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _go(_index + 1),
+                        child: CustomPaint(
+                          painter: _SpotlightPainter(
+                            center: hole.center,
+                            radius: hole.radius,
+                            progress: (_index + 1) / _steps.length,
+                            scrim: Colors.black.withValues(alpha: 0.68),
+                            ring: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned.fill(
-                    child: CustomSingleChildLayout(
-                      delegate: _BubbleLayout(
-                        center: hole.center,
-                        radius: hole.radius,
-                        gap: Gap.lg,
-                        insets: insets,
-                      ),
-                      child: _Bubble(
-                        spot: step.spot,
-                        index: _index,
-                        total: _steps.length,
-                        onNext: () => _go(_index + 1),
-                        onDismiss: _dismiss,
+                    Positioned.fill(
+                      child: CustomSingleChildLayout(
+                        delegate: _BubbleLayout(
+                          center: hole.center,
+                          radius: hole.radius,
+                          gap: Gap.lg,
+                          insets: insets,
+                        ),
+                        child: _Bubble(
+                          spot: step.spot,
+                          index: _index,
+                          total: _steps.length,
+                          onNext: () => _go(_index + 1),
+                          onDismiss: _dismiss,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
