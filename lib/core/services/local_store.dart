@@ -180,4 +180,5 @@ class StoreKeys {
   static const ambientActive = 'audio.active';
   static const dailyGoal = 'goal.daily';
   static const presets = 'focus.presets';
+  static const coachSeen = 'coachmarks.seen';
 }

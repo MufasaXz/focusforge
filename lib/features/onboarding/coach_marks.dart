@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/services/local_store.dart';
 import '../../shared/widgets/icon_badge.dart';
 
 /// One stop in the first-run sequence: a widget to point at, and the copy.
@@ -66,7 +67,7 @@ class CoachMarks extends ConsumerStatefulWidget {
 
 class _CoachMarksState extends ConsumerState<CoachMarks>
     with SingleTickerProviderStateMixin {
-  static const _seenKey = 'coachmarks.seen';
+  static const _seenKey = StoreKeys.coachSeen;
 
   /// Marks the overlay's own coordinate space, so a widget's global position
   /// can be converted into it. The root overlay usually starts at the window's
