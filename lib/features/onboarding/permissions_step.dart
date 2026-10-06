@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/stagger.dart';
@@ -38,7 +37,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return StepScaffold(
       title: 'Almost ready',
@@ -68,14 +67,14 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.lock_outline_rounded, size: 15, color: t.success),
+              Icon(Icons.lock_outline_rounded, size: 15, color: cs.tertiary),
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
                   'Your data stays on this device. FocusForge does not upload '
                   'usage history, messages or personal data — ever.',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -162,7 +161,7 @@ class _PermissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return GlassPanel(
       radius: Radii.card,
@@ -174,13 +173,13 @@ class _PermissionCard extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: permission.icon,
-                color: t.accentPrimary,
+                color: cs.primary,
                 size: 40,
                 radius: Radii.tile,
               ),
               const SizedBox(width: Gap.md),
               Expanded(
-                child: Text(permission.title, style: context.type.titleMedium),
+                child: Text(permission.title, style: Theme.of(context).textTheme.titleMedium),
               ),
               GlassPill(
                 padding: const EdgeInsets.symmetric(
@@ -189,8 +188,8 @@ class _PermissionCard extends StatelessWidget {
                 ),
                 child: Text(
                   permission.platform,
-                  style: context.type.labelSmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                     fontSize: 10,
                   ),
                 ),
@@ -200,18 +199,18 @@ class _PermissionCard extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(
             permission.why,
-            style: context.type.bodyMedium?.copyWith(color: t.textSecondary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: Gap.sm),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.lock_outline_rounded, size: 13, color: t.success),
+              Icon(Icons.lock_outline_rounded, size: 13, color: cs.tertiary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   permission.privacy,
-                  style: context.type.bodySmall?.copyWith(color: t.success),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.tertiary),
                 ),
               ),
             ],
@@ -220,12 +219,12 @@ class _PermissionCard extends StatelessWidget {
           if (deferred)
             Row(
               children: [
-                Icon(Icons.schedule_rounded, size: 16, color: t.textTertiary),
+                Icon(Icons.schedule_rounded, size: 16, color: cs.onSurfaceVariant),
                 const SizedBox(width: Gap.sm),
                 Text(
                   'Set up later',
-                  style: context.type.labelLarge?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -234,7 +233,7 @@ class _PermissionCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: GlassPill(
-                accent: t.accentPrimary,
+                accent: cs.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: Gap.lg,
                   vertical: Gap.sm + 2,
@@ -245,15 +244,15 @@ class _PermissionCard extends StatelessWidget {
                   children: [
                     Text(
                       'Enable',
-                      style: context.type.labelLarge?.copyWith(
-                        color: t.accentPrimary,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: cs.primary,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_forward_rounded,
                       size: 15,
-                      color: t.accentPrimary,
+                      color: cs.primary,
                     ),
                   ],
                 ),

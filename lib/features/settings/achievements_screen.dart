@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
 import '../../shared/widgets/glass_page.dart';
@@ -55,7 +54,7 @@ class AchievementsScreen extends ConsumerWidget {
           SectionHeader(
             title: 'Locked',
             icon: Icons.lock_outline_rounded,
-            trailing: Text('${locked.length}', style: context.type.labelMedium),
+            trailing: Text('${locked.length}', style: Theme.of(context).textTheme.labelMedium),
           ),
           _BadgeGrid(badges: locked),
         ],
@@ -73,7 +72,7 @@ class _ClosestBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     if (locked.isEmpty) return const SizedBox.shrink();
 
     final closest = locked.reduce((a, b) => a.ratio >= b.ratio ? a : b);
@@ -85,7 +84,7 @@ class _ClosestBadge extends StatelessWidget {
         children: [
           GlassIconBadge(
             icon: closest.icon,
-            color: Color.lerp(closest.color, t.textTertiary, 0.7)!,
+            color: Color.lerp(closest.color, cs.onSurfaceVariant, 0.7)!,
             size: 44,
             radius: 13,
           ),
@@ -95,7 +94,7 @@ class _ClosestBadge extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Nothing unlocked yet', style: context.type.titleSmall),
+                Text('Nothing unlocked yet', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 2),
                 Text(
                   closest.ratio >= 1
@@ -103,8 +102,8 @@ class _ClosestBadge extends StatelessWidget {
                       : 'Closest: ${closest.name} — '
                             '${(closest.ratio * 100).round()}% of the way '
                             'there.',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: Gap.sm),
@@ -155,11 +154,11 @@ class _BadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final unlocked = badge.unlocked;
     final color = unlocked
         ? badge.color
-        : Color.lerp(badge.color, t.textTertiary, 0.78)!;
+        : Color.lerp(badge.color, cs.onSurfaceVariant, 0.78)!;
 
     return Pressable(
       onTap: () => _openDetail(context, badge),
@@ -187,18 +186,18 @@ class _BadgeTile extends StatelessWidget {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: context.type.labelMedium?.copyWith(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontSize: 11.5,
-                color: unlocked ? t.textPrimary : t.textSecondary,
+                color: unlocked ? cs.onSurface : cs.onSurfaceVariant,
               ),
             ),
             const Spacer(),
             if (unlocked)
               Text(
                 _earnedOn(badge.unlockedAt),
-                style: context.type.labelSmall?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontSize: 10,
-                  color: t.textTertiary,
+                  color: cs.onSurfaceVariant,
                 ),
               )
             else ...[
@@ -216,9 +215,9 @@ class _BadgeTile extends StatelessWidget {
                 badge.ratio >= 1
                     ? 'Complete'
                     : '${(badge.ratio * 100).round()}%',
-                style: context.type.labelSmall?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontSize: 10,
-                  color: t.textTertiary,
+                  color: cs.onSurfaceVariant,
                 ),
               ),
             ],
@@ -231,11 +230,11 @@ class _BadgeTile extends StatelessWidget {
 
 /// Transparent-barrier sheet with the badge's full story.
 void _openDetail(BuildContext context, Achievement badge) {
-  final t = context.glass;
+  final cs = Theme.of(context).colorScheme;
   final unlocked = badge.unlocked;
   final color = unlocked
       ? badge.color
-      : Color.lerp(badge.color, t.textTertiary, 0.6)!;
+      : Color.lerp(badge.color, cs.onSurfaceVariant, 0.6)!;
   final capped = badge.progress > badge.target ? badge.target : badge.progress;
   final remaining = badge.target - capped;
 
@@ -252,7 +251,7 @@ void _openDetail(BuildContext context, Achievement badge) {
       ),
       child: GlassPanel(
         level: 2,
-        blur: t.blurL2,
+        blur: 20.0,
         radius: Radii.hero,
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
@@ -264,7 +263,7 @@ void _openDetail(BuildContext context, Achievement badge) {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: t.textTertiary,
+                  color: cs.onSurfaceVariant,
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),
               ),
@@ -284,26 +283,26 @@ void _openDetail(BuildContext context, Achievement badge) {
             Text(
               badge.name,
               textAlign: TextAlign.center,
-              style: context.type.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: Gap.sm),
             Text(
               badge.description,
               textAlign: TextAlign.center,
-              style: context.type.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: Gap.xl),
             if (unlocked)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_rounded, size: 18, color: t.success),
+                  Icon(Icons.check_circle_rounded, size: 18, color: cs.tertiary),
                   const SizedBox(width: Gap.sm),
                   Text(
                     isUnknownUnlockTime(badge.unlockedAt)
                         ? 'Earned earlier'
                         : 'Earned on ${_formatDate(badge.unlockedAt!)}',
-                    style: context.type.labelLarge?.copyWith(color: t.success),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.tertiary),
                   ),
                 ],
               )
@@ -319,13 +318,13 @@ void _openDetail(BuildContext context, Achievement badge) {
                 children: [
                   Text(
                     '${_formatAmount(capped)} of ${_formatAmount(badge.target)}',
-                    style: context.type.labelMedium,
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
                   const Spacer(),
                   Text(
                     '${_formatAmount(remaining)} to go',
-                    style: context.type.labelMedium?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ],

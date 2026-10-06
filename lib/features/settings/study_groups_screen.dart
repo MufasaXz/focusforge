@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/social_providers.dart';
@@ -136,7 +135,7 @@ class _GroupList extends ConsumerWidget {
           if (i > 0) const SizedBox(height: Gap.md),
           _GroupCard(
             group: groups[i],
-            accent: SubjectColors.all[i % SubjectColors.all.length],
+            accent: SubjectPalette.all[i % SubjectPalette.all.length],
           ),
         ],
         const SizedBox(height: Gap.xl),
@@ -193,7 +192,7 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final percent = (group.progress * 100).round();
     final remaining = group.targetHours - group.weeklyHours;
 
@@ -218,13 +217,13 @@ class _GroupCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(group.name, style: context.type.titleSmall),
+                    Text(group.name, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 2),
                     Text(
                       '${group.memberCount} members · '
                       '${formatHours(group.weeklyHours)} this week',
-                      style: context.type.bodySmall?.copyWith(
-                        color: t.textTertiary,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -257,15 +256,15 @@ class _GroupCard extends StatelessWidget {
               Text(
                 '${formatHours(group.weeklyHours)} of '
                 '${formatHours(group.targetHours)} target',
-                style: context.type.labelSmall,
+                style: Theme.of(context).textTheme.labelSmall,
               ),
               const Spacer(),
               Text(
                 remaining <= 0
                     ? 'Target met'
                     : '${formatHours(remaining)} to go',
-                style: context.type.labelSmall?.copyWith(
-                  color: remaining <= 0 ? accent : t.textTertiary,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: remaining <= 0 ? accent : cs.onSurfaceVariant,
                 ),
               ),
             ],

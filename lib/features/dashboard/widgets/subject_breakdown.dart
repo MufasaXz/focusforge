@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
 import '../../../core/utils/format.dart';
 
@@ -34,17 +33,17 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     if (widget.subjects.isEmpty) {
       return Row(
         children: [
-          Icon(Icons.donut_large_rounded, size: 18, color: t.textTertiary),
+          Icon(Icons.donut_large_rounded, size: 18, color: cs.onSurfaceVariant),
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(
               'No subjects yet — add one from the Focus tab.',
-              style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ],
@@ -142,7 +141,7 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -150,13 +149,13 @@ class _Legend extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           label,
-          style: context.type.labelMedium?.copyWith(color: t.textSecondary),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(width: 5),
         Text(
           value,
-          style: context.type.labelMedium?.copyWith(
-            color: t.textPrimary,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: cs.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),

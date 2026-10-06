@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -62,7 +61,7 @@ class _PersonaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return GlassPanel(
       radius: Radii.card,
@@ -85,12 +84,12 @@ class _PersonaCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(persona.label, style: context.type.titleMedium),
+                  Text(persona.label, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 2),
                   Text(
                     persona.blurb,
-                    style: context.type.bodySmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -109,7 +108,7 @@ class _PersonaCard extends StatelessWidget {
                   : Icon(
                       Icons.radio_button_unchecked_rounded,
                       key: const ValueKey('unselected'),
-                      color: t.textTertiary,
+                      color: cs.onSurfaceVariant,
                       size: 24,
                     ),
             ),

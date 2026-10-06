@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import 'glass_surface.dart';
 
 /// Glass capsule toggle with a spring-loaded thumb and an accent glow when on.
@@ -29,8 +28,8 @@ class GlassToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final a = accent ?? t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final a = accent ?? cs.primary;
     final thumb = height - 6;
     final enabled = onChanged != null;
 
@@ -61,9 +60,9 @@ class GlassToggle extends StatelessWidget {
                     ],
                   )
                 : null,
-            color: value ? null : t.track,
+            color: value ? null : cs.surfaceContainerHighest,
             border: Border.all(
-              color: value ? a.withValues(alpha: 0.9) : t.glassL2Border,
+              color: value ? a.withValues(alpha: 0.9) : cs.outlineVariant,
             ),
             boxShadow: value
                 ? [
@@ -84,7 +83,7 @@ class GlassToggle extends StatelessWidget {
               height: thumb,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: value ? Colors.white : t.textTertiary,
+                color: value ? Colors.white : cs.onSurfaceVariant,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.25),
@@ -136,7 +135,7 @@ class GlassProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final v = value.clamp(0.0, 1.0);
 
     final bar = SizedBox(
@@ -147,7 +146,7 @@ class GlassProgressBar extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: trackColor ?? t.track),
+            ColoredBox(color: trackColor ?? cs.surfaceContainerHighest),
             Align(
               alignment: Alignment.centerLeft,
               child: TweenAnimationBuilder<double>(

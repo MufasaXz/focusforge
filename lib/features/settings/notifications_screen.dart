@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
 import '../../shared/widgets/glass_page.dart';
@@ -21,7 +20,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final prefs = ref.watch(notificationsProvider);
 
     return GlassPage(
@@ -37,7 +36,7 @@ class NotificationsScreen extends ConsumerWidget {
                 title: 'Session reminders',
                 subtitle: '“Time to study Physics!”',
                 value: prefs.sessionReminders,
-                accent: t.accentPrimary,
+                accent: cs.primary,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(sessionReminders: v)),
                 showDivider: false,
@@ -51,21 +50,21 @@ class NotificationsScreen extends ConsumerWidget {
                 title: 'Daily summary',
                 subtitle: 'Your focus total at the end of the day',
                 value: prefs.dailySummary,
-                accent: t.success,
+                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(dailySummary: v)),
               ),
               _SwitchRow(
                 title: 'Weekly report',
                 subtitle: 'A Sunday recap of the week',
                 value: prefs.weeklyReport,
-                accent: t.success,
+                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(weeklyReport: v)),
               ),
               _SwitchRow(
                 title: 'Streak risk alerts',
                 subtitle: 'A nudge before a streak breaks',
                 value: prefs.streakAlerts,
-                accent: t.success,
+                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(streakAlerts: v)),
                 showDivider: false,
               ),
@@ -81,7 +80,7 @@ class NotificationsScreen extends ConsumerWidget {
                 title: 'Real-time block alerts',
                 subtitle: '“Instagram Reels blocked”',
                 value: prefs.blockingAlerts,
-                accent: t.danger,
+                accent: cs.error,
                 onChanged: (v) => _save(ref, prefs.copyWith(blockingAlerts: v)),
                 showDivider: false,
               ),
@@ -94,21 +93,21 @@ class NotificationsScreen extends ConsumerWidget {
                 title: 'Study buddy updates',
                 subtitle: 'When a buddy starts or finishes a session',
                 value: prefs.buddyUpdates,
-                accent: t.accentSecondary,
+                accent: cs.secondary,
                 onChanged: (v) => _save(ref, prefs.copyWith(buddyUpdates: v)),
               ),
               _SwitchRow(
                 title: 'Group activity',
                 subtitle: 'Targets met and new members',
                 value: prefs.groupActivity,
-                accent: t.accentSecondary,
+                accent: cs.secondary,
                 onChanged: (v) => _save(ref, prefs.copyWith(groupActivity: v)),
               ),
               _SwitchRow(
                 title: 'Challenge invitations',
                 subtitle: 'Weekly challenges from friends',
                 value: prefs.challengeInvites,
-                accent: t.accentSecondary,
+                accent: cs.secondary,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(challengeInvites: v)),
                 showDivider: false,
@@ -149,7 +148,7 @@ class NotificationsScreen extends ConsumerWidget {
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
-          final t = context.glass;
+          final cs = Theme.of(context).colorScheme;
 
           Future<void> write(NotificationPrefs next) async {
             prefs = next;
@@ -183,7 +182,7 @@ class NotificationsScreen extends ConsumerWidget {
             ),
             child: GlassPanel(
               level: 2,
-              blur: t.blurL2,
+              blur: 20.0,
               radius: Radii.hero,
               padding: const EdgeInsets.all(Gap.xl),
               child: Column(
@@ -195,18 +194,18 @@ class NotificationsScreen extends ConsumerWidget {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: t.textTertiary,
+                        color: cs.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(Radii.pill),
                       ),
                     ),
                   ),
                   const SizedBox(height: Gap.xl),
-                  Text('Quiet hours', style: context.type.titleMedium),
+                  Text('Quiet hours', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: Gap.xs),
                   Text(
                     'Mute every reminder between these times.',
-                    style: context.type.bodySmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: Gap.lg),
@@ -299,7 +298,7 @@ class _TimeValue extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: context.type.titleSmall),
+        Text(value, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(width: Gap.xs),
         const GlassChevron(),
       ],

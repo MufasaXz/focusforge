@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
+import '../../app/theme/app_theme.dart';
 import '../models/shield.dart';
 import '../models/social.dart';
 import '../models/study.dart';
@@ -200,7 +200,7 @@ class SeedData {
       id: 'math',
       name: 'Math',
       icon: Icons.square_foot_rounded,
-      color: SubjectColors.math,
+      color: SubjectPalette.math,
       minutesToday: 65,
       weekDone: 5.5,
       weekTarget: 7,
@@ -209,7 +209,7 @@ class SeedData {
       id: 'physics',
       name: 'Physics',
       icon: Icons.bolt_rounded,
-      color: SubjectColors.physics,
+      color: SubjectPalette.physics,
       minutesToday: 52,
       weekDone: 3.2,
       weekTarget: 5,
@@ -218,7 +218,7 @@ class SeedData {
       id: 'english',
       name: 'English',
       icon: Icons.menu_book_rounded,
-      color: SubjectColors.english,
+      color: SubjectPalette.english,
       minutesToday: 40,
       weekDone: 4,
       weekTarget: 4,
@@ -227,7 +227,7 @@ class SeedData {
       id: 'history',
       name: 'History',
       icon: Icons.history_edu_rounded,
-      color: SubjectColors.history,
+      color: SubjectPalette.history,
       minutesToday: 35,
       weekDone: 1.5,
       weekTarget: 3,
@@ -774,29 +774,29 @@ class SeedData {
   // -- Onboarding ------------------------------------------------------------
 
   static const studentSubjects = <SubjectTemplate>[
-    SubjectTemplate('Math', Icons.square_foot_rounded, SubjectColors.math),
-    SubjectTemplate('Physics', Icons.bolt_rounded, SubjectColors.physics),
-    SubjectTemplate('English', Icons.menu_book_rounded, SubjectColors.english),
-    SubjectTemplate('History', Icons.history_edu_rounded, SubjectColors.history),
-    SubjectTemplate('Chemistry', Icons.science_rounded, SubjectColors.chemistry),
-    SubjectTemplate('Biology', Icons.biotech_rounded, SubjectColors.biology),
+    SubjectTemplate('Math', Icons.square_foot_rounded, SubjectPalette.math),
+    SubjectTemplate('Physics', Icons.bolt_rounded, SubjectPalette.physics),
+    SubjectTemplate('English', Icons.menu_book_rounded, SubjectPalette.english),
+    SubjectTemplate('History', Icons.history_edu_rounded, SubjectPalette.history),
+    SubjectTemplate('Chemistry', Icons.science_rounded, SubjectPalette.chemistry),
+    SubjectTemplate('Biology', Icons.biotech_rounded, SubjectPalette.biology),
     SubjectTemplate('Computer Science', Icons.code_rounded, Color(0xFF7FC8FF)),
     SubjectTemplate('Art', Icons.palette_rounded, Color(0xFFFFB3D9)),
   ];
 
   static const professionalSubjects = <SubjectTemplate>[
-    SubjectTemplate('Deep Work', Icons.psychology_rounded, SubjectColors.math),
-    SubjectTemplate('Planning', Icons.insights_rounded, SubjectColors.physics),
-    SubjectTemplate('Writing', Icons.edit_note_rounded, SubjectColors.english),
+    SubjectTemplate('Deep Work', Icons.psychology_rounded, SubjectPalette.math),
+    SubjectTemplate('Planning', Icons.insights_rounded, SubjectPalette.physics),
+    SubjectTemplate('Writing', Icons.edit_note_rounded, SubjectPalette.english),
     SubjectTemplate('Coding', Icons.code_rounded, Color(0xFF7FC8FF)),
-    SubjectTemplate('Meetings', Icons.call_rounded, SubjectColors.history),
-    SubjectTemplate('Email', Icons.mail_rounded, SubjectColors.chemistry),
+    SubjectTemplate('Meetings', Icons.call_rounded, SubjectPalette.history),
+    SubjectTemplate('Email', Icons.mail_rounded, SubjectPalette.chemistry),
   ];
 
   static const parentSubjects = <SubjectTemplate>[
-    SubjectTemplate('Homework', Icons.assignment_rounded, SubjectColors.math),
-    SubjectTemplate('Reading', Icons.menu_book_rounded, SubjectColors.english),
-    SubjectTemplate('Revision', Icons.refresh_rounded, SubjectColors.physics),
+    SubjectTemplate('Homework', Icons.assignment_rounded, SubjectPalette.math),
+    SubjectTemplate('Reading', Icons.menu_book_rounded, SubjectPalette.english),
+    SubjectTemplate('Revision', Icons.refresh_rounded, SubjectPalette.physics),
     SubjectTemplate('Creative', Icons.palette_rounded, Color(0xFFFFB3D9)),
   ];
 

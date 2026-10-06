@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/app_providers.dart';
 import 'router.dart';
-import 'theme/glass_theme.dart';
+import 'theme/app_theme.dart';
 
 /// The application root.
 ///
-/// All this does is bind the router to the two glass themes and keep the
-/// system chrome in step with whichever one is active — see [SystemChrome] in
-/// the shell, which is where the status-bar brightness is actually driven from.
+/// All this does is bind the router to the two generated themes and keep the
+/// system chrome in step with whichever one is active — see the shell, which
+/// is where the status-bar brightness is actually driven from.
 class FocusForgeApp extends ConsumerWidget {
   const FocusForgeApp({super.key});
 
@@ -21,8 +21,8 @@ class FocusForgeApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'FocusForge',
       debugShowCheckedModeBanner: false,
-      theme: GlassTheme.light(),
-      darkTheme: GlassTheme.dark(),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: mode,
       routerConfig: router,
       scrollBehavior: const _NoGlowScrollBehavior(),
@@ -30,8 +30,9 @@ class FocusForgeApp extends ConsumerWidget {
   }
 }
 
-/// Touch platforms get a stretch overscroll indicator that fights the glass
-/// surfaces; the app draws its own edge treatment instead.
+/// Material's default stretch overscroll indicator is drawn with a tinted
+/// glow that reads as a smudge over a flat tonal surface. The app suppresses
+/// it and relies on the platform's own edge feedback instead.
 class _NoGlowScrollBehavior extends MaterialScrollBehavior {
   const _NoGlowScrollBehavior();
 

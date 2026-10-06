@@ -17,7 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:focusforge/app/theme/glass_theme.dart';
+import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
@@ -46,7 +46,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: GlassTheme.light(),
+          theme: AppTheme.light(),
           home: Scaffold(body: child),
         ),
       );

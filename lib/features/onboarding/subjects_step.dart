@@ -1,10 +1,9 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -179,7 +178,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   }
 
   Future<void> _addCustom() async {
-    final accent = context.glass.accentSecondary;
+    final accent = Theme.of(context).colorScheme.secondary;
     final name = await showDialog<String>(
       context: context,
       builder: (_) => _CustomSubjectDialog(validate: _collisionFor),
@@ -241,7 +240,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final recommended = SeedData.goalSuggestions(_persona)[1];
     final chosen = _templates
         .where((template) => _selected.contains(template.name))
@@ -276,7 +275,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
                         template.icon,
                         size: 15,
                         color: _selected.contains(template.name)
-                            ? t.textPrimary
+                            ? cs.onSurface
                             : template.color,
                       ),
                       const SizedBox(width: 6),
@@ -289,7 +288,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded, size: 15, color: t.accentPrimary),
+                    Icon(Icons.add_rounded, size: 15, color: cs.primary),
                     const SizedBox(width: 6),
                     const Text('Add custom'),
                   ],
@@ -303,14 +302,14 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
           index: 3,
           child: Row(
             children: [
-              Icon(Icons.lightbulb_outline_rounded, size: 15, color: t.gold),
+              Icon(Icons.lightbulb_outline_rounded, size: 15, color: cs.tertiary),
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
                   'Most ${_persona.label.toLowerCase()}s aim for '
                   '${formatMinutes(recommended)} of focus a day.',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -381,11 +380,11 @@ class _TargetSlider extends StatelessWidget {
               ),
               const SizedBox(width: Gap.sm),
               Expanded(
-                child: Text(template.name, style: context.type.bodyLarge),
+                child: Text(template.name, style: Theme.of(context).textTheme.bodyLarge),
               ),
               Text(
                 label,
-                style: context.type.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: template.color,
                 ),
               ),
@@ -466,12 +465,12 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Add a subject', style: context.type.titleLarge),
+            Text('Add a subject', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: Gap.sm),
             Text(
               'Name it the way you think about it.',
-              style: context.type.bodySmall?.copyWith(
-                color: context.glass.textTertiary,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: Gap.lg),
@@ -489,14 +488,14 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
                   Icon(
                     Icons.error_outline_rounded,
                     size: 15,
-                    color: context.glass.danger,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
                       _error!,
-                      style: context.type.bodySmall?.copyWith(
-                        color: context.glass.danger,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),

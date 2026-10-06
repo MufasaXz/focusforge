@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/glass_theme.dart';
 
 /// The app canvas: a deep gradient, slow-drifting colour blobs, a light source
 /// in the top corner, a vignette and a film-grain overlay.
@@ -74,7 +73,7 @@ class _MeshBackgroundState extends State<MeshBackground>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final grain = _grain;
 
     return DecoratedBox(
@@ -82,7 +81,7 @@ class _MeshBackgroundState extends State<MeshBackground>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: t.canvasGradient,
+          colors: [cs.surface, cs.surface],
           stops: const [0, 0.55, 1],
         ),
       ),
@@ -97,7 +96,7 @@ class _MeshBackgroundState extends State<MeshBackground>
                 builder: (context, _) => CustomPaint(
                   painter: _MeshPainter(
                     progress: _controller.value,
-                    colors: t.blobs,
+                    colors: [cs.surfaceContainerLow, cs.surfaceContainer, cs.surfaceContainerHigh, cs.surfaceContainerLow],
                   ),
                 ),
               ),
@@ -111,8 +110,8 @@ class _MeshBackgroundState extends State<MeshBackground>
                   center: const Alignment(0.85, -0.9),
                   radius: 1.1,
                   colors: [
-                    t.accentPrimary.withValues(alpha: 0.10),
-                    t.accentPrimary.withValues(alpha: 0),
+                    cs.primary.withValues(alpha: 0.10),
+                    cs.primary.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -125,7 +124,7 @@ class _MeshBackgroundState extends State<MeshBackground>
                 gradient: RadialGradient(
                   center: Alignment.center,
                   radius: 0.95,
-                  colors: [t.vignette.withValues(alpha: 0), t.vignette],
+                  colors: [cs.surface.withValues(alpha: 0), cs.surface],
                 ),
               ),
             ),
@@ -133,7 +132,7 @@ class _MeshBackgroundState extends State<MeshBackground>
           if (grain != null)
             IgnorePointer(
               child: Opacity(
-                opacity: t.grainOpacity,
+                opacity: 0.0,
                 child: RawImage(
                   image: grain,
                   repeat: ImageRepeat.repeat,

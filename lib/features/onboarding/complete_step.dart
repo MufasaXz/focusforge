@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -51,7 +50,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final persona = ref.watch(userProvider).persona;
     final subjectCount = ref.watch(subjectsProvider).length;
     final blockedCount = ref.watch(blockedAppsProvider).length;
@@ -80,7 +79,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               Expanded(
                 child: _StatTile(
                   icon: Icons.menu_book_rounded,
-                  color: t.accentSecondary,
+                  color: cs.secondary,
                   value: '$subjectCount',
                   label: subjectCount == 1 ? 'Subject' : 'Subjects',
                 ),
@@ -96,7 +95,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               Expanded(
                 child: _StatTile(
                   icon: Icons.shield_rounded,
-                  color: t.success,
+                  color: cs.tertiary,
                   value: '$blockedCount',
                   label: 'Apps blocked',
                 ),
@@ -105,7 +104,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               Expanded(
                 child: _StatTile(
                   icon: Icons.timer_rounded,
-                  color: t.gold,
+                  color: cs.tertiary,
                   value: formatMinutes(goal),
                   label: 'Daily goal',
                 ),
@@ -160,7 +159,7 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return GlassPanel(
       level: 2,
@@ -179,14 +178,14 @@ class _StatTile extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(
             value,
-            style: context.type.titleLarge?.copyWith(letterSpacing: -0.4),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(letterSpacing: -0.4),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 1),
           Text(
             label,
-            style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -203,14 +202,14 @@ class _Tip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       children: [
         if (divider)
           Padding(
             padding: const EdgeInsets.only(left: Gap.md + 19 + Gap.md),
-            child: Divider(height: 1, thickness: 1, color: t.hairline),
+            child: Divider(height: 1, thickness: 1, color: cs.outlineVariant),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(
@@ -219,9 +218,9 @@ class _Tip extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 19, color: t.accentPrimary),
+              Icon(icon, size: 19, color: cs.primary),
               const SizedBox(width: Gap.md),
-              Expanded(child: Text(text, style: context.type.bodyLarge)),
+              Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyLarge)),
             ],
           ),
         ),

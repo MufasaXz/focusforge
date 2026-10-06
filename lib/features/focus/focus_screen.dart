@@ -1,3 +1,4 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -5,8 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/shell/app_shell.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/models/study.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/audio_providers.dart';
@@ -108,7 +107,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final timer = ref.watch(timerProvider);
     final presets = ref.watch(presetsProvider);
     final preset = presets[timer.presetIndex];
@@ -186,12 +185,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Focus Engine', style: context.type.headlineMedium),
+                      Text('Focus Engine', style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 3),
                       Text(
                         'Deep work, measured',
-                        style: context.type.bodySmall?.copyWith(
-                          color: t.textTertiary,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: t.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -223,7 +222,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               Icon(
                                 Icons.expand_more_rounded,
                                 size: 16,
-                                color: t.textTertiary,
+                                color: t.onSurfaceVariant,
                               ),
                             ],
                           ),
@@ -329,8 +328,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    t.success.withValues(alpha: 0.30),
-                                    t.success.withValues(alpha: 0),
+                                    t.tertiary.withValues(alpha: 0.30),
+                                    t.tertiary.withValues(alpha: 0),
                                   ],
                                   stops: const [0, 0.82],
                                 ),
@@ -345,7 +344,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           ticks: 60,
                           colors: [
                             accent,
-                            Color.lerp(accent, t.accentSecondary, 0.7)!,
+                            Color.lerp(accent, t.secondary, 0.7)!,
                           ],
                           semanticLabel:
                               '${timer.phase.label}, $clock remaining, '
@@ -362,7 +361,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                     fit: BoxFit.scaleDown,
                                     child: AnimatedDigits(
                                       text: clock,
-                                      style: context.type.displayLarge!
+                                      style: Theme.of(context).textTheme.displayLarge!
                                           .copyWith(
                                             fontSize: 52,
                                             height: 1.02,
@@ -374,7 +373,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 const SizedBox(height: Gap.xs),
                                 Text(
                                   timer.phase.label,
-                                  style: context.type.labelLarge?.copyWith(
+                                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                     color: accent,
                                     fontSize: 12.5,
                                     letterSpacing: 0.3,
@@ -438,7 +437,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                     Icon(
                                       Icons.stop_circle_outlined,
                                       size: 15,
-                                      color: t.textSecondary,
+                                      color: t.onSurfaceVariant,
                                     ),
                                     const SizedBox(width: 5),
                                     const Text(
@@ -483,7 +482,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         // silent track would be a control with nothing to control.
                         if (active.isNotEmpty) ...[
                           const SizedBox(height: Gap.sm),
-                          Divider(height: 1, thickness: 1, color: t.hairline),
+                          Divider(height: 1, thickness: 1, color: t.outlineVariant),
                           for (final sound in catalogue.where(
                             (s) => active.contains(s.id),
                           ))
@@ -518,7 +517,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       Expanded(
                         child: _InfoCapsule(
                           icon: Icons.local_fire_department_rounded,
-                          color: t.gold,
+                          color: t.tertiary,
                           value: 'Day ${stats.currentStreak}',
                           semanticLabel: 'Streak: ${stats.currentStreak} days',
                         ),
@@ -527,7 +526,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       Expanded(
                         child: _InfoCapsule(
                           icon: Icons.timer_rounded,
-                          color: t.accentPrimary,
+                          color: t.primary,
                           value: formatMinutes(minutesToday),
                           semanticLabel:
                               'Focus time today: ${formatMinutes(minutesToday)}',
@@ -537,7 +536,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       Expanded(
                         child: _InfoCapsule(
                           icon: Icons.check_circle_rounded,
-                          color: t.success,
+                          color: t.tertiary,
                           value: '$sessionsToday today',
                           semanticLabel: 'Sessions today: $sessionsToday',
                         ),
@@ -612,13 +611,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               Icon(
                                 Icons.refresh_rounded,
                                 size: 16,
-                                color: t.textSecondary,
+                                color: t.onSurfaceVariant,
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 'Reset',
-                                style: context.type.labelLarge?.copyWith(
-                                  color: t.textSecondary,
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: t.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -649,7 +648,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           end: Alignment.bottomRight,
                           colors: [
                             accent,
-                            Color.lerp(accent, t.accentSecondary, 0.7)!,
+                            Color.lerp(accent, t.secondary, 0.7)!,
                           ],
                         ),
                         boxShadow: [
@@ -695,15 +694,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             children: [
                               Text(
                                 'Skip',
-                                style: context.type.labelLarge?.copyWith(
-                                  color: t.textSecondary,
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: t.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Icon(
                                 Icons.skip_next_rounded,
                                 size: 16,
-                                color: t.textSecondary,
+                                color: t.onSurfaceVariant,
                               ),
                             ],
                           ),
@@ -720,7 +719,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     );
   }
 
-  Widget _buildBanner(GlassTokens t, _Completion completion) {
+  Widget _buildBanner(ColorScheme t, _Completion completion) {
     final subject = completion.subject;
     return Semantics(
       container: true,
@@ -729,7 +728,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       child: GlassPanel(
         radius: Radii.card,
         blur: 18,
-        accent: t.gold,
+        accent: t.tertiary,
         glowStrength: 0.45,
         padding: const EdgeInsets.all(Gap.md),
         child: Column(
@@ -739,7 +738,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               children: [
                 GlassIconBadge(
                   icon: Icons.bolt_rounded,
-                  color: t.gold,
+                  color: t.tertiary,
                   size: 38,
                   radius: 11,
                   glow: 0.55,
@@ -752,15 +751,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     children: [
                       Text(
                         'Focus block complete',
-                        style: context.type.titleSmall,
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 1),
                       Text(
                         subject == null
                             ? '${completion.minutes} minutes of deep work'
                             : '${subject.name} · ${completion.minutes} minutes',
-                        style: context.type.labelSmall?.copyWith(
-                          color: t.textTertiary,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: t.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -771,8 +770,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(width: Gap.sm),
                 Text(
                   '+${completion.minutes} XP',
-                  style: context.type.titleSmall?.copyWith(
-                    color: t.gold,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: t.tertiary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -843,13 +842,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: sheetContext.glass.textTertiary,
+                    color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                 ),
               ),
               const SizedBox(height: Gap.lg),
-              Text('Pomodoro presets', style: sheetContext.type.titleMedium),
+              Text('Pomodoro presets', style: Theme.of(sheetContext).textTheme.titleMedium),
               const SizedBox(height: Gap.sm),
               for (var i = 0; i < presets.length; i++)
                 _PresetRow(
@@ -876,10 +875,10 @@ class _Completion {
   final Subject? subject;
 }
 
-Color _phaseColor(GlassTokens t, TimerPhase phase) => switch (phase) {
-  TimerPhase.focus => t.accentPrimary,
-  TimerPhase.shortBreak => t.success,
-  TimerPhase.longBreak => t.accentSecondary,
+Color _phaseColor(ColorScheme t, TimerPhase phase) => switch (phase) {
+  TimerPhase.focus => t.primary,
+  TimerPhase.shortBreak => t.tertiary,
+  TimerPhase.longBreak => t.secondary,
 };
 
 class _SegmentDot extends StatelessWidget {
@@ -895,14 +894,14 @@ class _SegmentDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: current ? 18 : 7,
       height: 7,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
-        color: done || current ? color : t.track,
+        color: done || current ? color : t.surfaceContainerHighest,
         boxShadow: current
             ? [BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 10)]
             : null,
@@ -924,7 +923,7 @@ class _AmbientTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
 
     return Semantics(
       button: true,
@@ -942,11 +941,11 @@ class _AmbientTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(Radii.tile),
             color: active
                 ? tile.color.withValues(alpha: 0.20)
-                : t.glassL2At(0.55),
+                : t.surfaceContainer.withValues(alpha: 0.55),
             border: Border.all(
               color: active
                   ? tile.color.withValues(alpha: 0.72)
-                  : t.glassL2Border,
+                  : t.outlineVariant,
               width: active ? 1.3 : 1,
             ),
             boxShadow: active
@@ -964,14 +963,14 @@ class _AmbientTile extends StatelessWidget {
               Icon(
                 tile.icon,
                 size: 17,
-                color: active ? tile.color : t.textTertiary,
+                color: active ? tile.color : t.onSurfaceVariant,
               ),
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
                   tile.name,
-                  style: context.type.labelMedium?.copyWith(
-                    color: active ? t.textPrimary : t.textSecondary,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: active ? t.onSurface : t.onSurfaceVariant,
                     fontSize: 12,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -1001,7 +1000,7 @@ class _VolumeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final percent = (value * 100).round();
 
     return MergeSemantics(
@@ -1030,8 +1029,8 @@ class _VolumeRow extends StatelessWidget {
                   child: Text(
                     '$percent%',
                     textAlign: TextAlign.right,
-                    style: context.type.labelSmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: t.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -1057,7 +1056,7 @@ class _PresetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       selected: selected,
@@ -1074,7 +1073,7 @@ class _PresetRow extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: preset.icon,
-                color: t.accentPrimary,
+                color: t.primary,
                 size: 38,
                 radius: 11,
                 glow: selected ? 0.6 : 0,
@@ -1085,12 +1084,12 @@ class _PresetRow extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(preset.name, style: context.type.titleSmall),
+                    Text(preset.name, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 1),
                     Text(
                       '${preset.focus}m focus · ${preset.shortBreak}m break · '
                       '${preset.segments} segments',
-                      style: context.type.labelSmall,
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
                 ),
@@ -1099,7 +1098,7 @@ class _PresetRow extends StatelessWidget {
                 Icon(
                   Icons.check_circle_rounded,
                   size: 18,
-                  color: t.accentPrimary,
+                  color: t.primary,
                 ),
             ],
           ),
@@ -1141,8 +1140,8 @@ class _InfoCapsule extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               value,
-              style: context.type.labelMedium?.copyWith(
-                color: context.glass.textPrimary,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
               ),

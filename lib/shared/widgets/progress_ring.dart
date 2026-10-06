@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/theme/glass_theme.dart';
 
 /// Circular progress ring with a gradient sweep, a glowing leading cap and an
 /// optional ambient pulse.
@@ -98,8 +97,8 @@ class _ProgressRingState extends State<ProgressRing>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final colors = widget.colors ?? [t.accentPrimary, t.accentSecondary];
+    final cs = Theme.of(context).colorScheme;
+    final colors = widget.colors ?? [cs.primary, cs.secondary];
     final reduce = MediaQuery.disableAnimationsOf(context);
     final value = widget.value.clamp(0.0, 1.0);
 
@@ -158,10 +157,10 @@ class _ProgressRingState extends State<ProgressRing>
                           value: animated,
                           stroke: widget.stroke,
                           colors: colors,
-                          track: t.track,
+                          track: cs.surfaceContainerHighest,
                           trackVisible: widget.trackVisible,
                           ticks: widget.ticks,
-                          dot: t.textPrimary,
+                          dot: cs.onSurface,
                         ),
                       ),
                     ),
@@ -371,20 +370,20 @@ class MiniRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return ProgressRing(
       value: value,
       size: size,
       stroke: stroke,
       pulse: false,
       innerGlow: 0.25,
-      colors: [color, Color.lerp(color, t.accentSecondary, 0.5)!],
+      colors: [color, Color.lerp(color, cs.secondary, 0.5)!],
       child: label == null
           ? null
           : Text(
               label!,
-              style: context.type.labelMedium?.copyWith(
-                color: t.textPrimary,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: cs.onSurface,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
               ),

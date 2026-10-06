@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
 
 /// Month heatmap — a 7-column calendar where each cell is shaded by focus
@@ -109,7 +108,7 @@ class _FocusHeatmapState extends State<FocusHeatmap>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
     return Semantics(
@@ -124,8 +123,8 @@ class _FocusHeatmapState extends State<FocusHeatmap>
                   child: Center(
                     child: Text(
                       label,
-                      style: context.type.labelSmall?.copyWith(
-                        color: t.textTertiary,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: t.onSurfaceVariant,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
@@ -165,9 +164,9 @@ class _FocusHeatmapState extends State<FocusHeatmap>
               children: [
                 Text(
                   'Less',
-                  style: context.type.labelSmall?.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 10,
-                    color: t.textTertiary,
+                    color: t.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: Gap.sm),
@@ -183,9 +182,9 @@ class _FocusHeatmapState extends State<FocusHeatmap>
                 const SizedBox(width: Gap.sm),
                 Text(
                   'More',
-                  style: context.type.labelSmall?.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 10,
-                    color: t.textTertiary,
+                    color: t.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -256,7 +255,7 @@ class _Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final label = _spokenValue(cell);
 
     return Semantics(
@@ -272,19 +271,19 @@ class _Cell extends StatelessWidget {
         preferBelow: false,
         verticalOffset: 8,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        textStyle: context.type.labelSmall?.copyWith(
-          color: t.textPrimary,
+        textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: t.onSurface,
           fontWeight: FontWeight.w600,
           fontSize: 11.5,
         ),
         decoration: BoxDecoration(
           color: Color.alphaBlend(
-            t.accentPrimary.withValues(alpha: 0.14),
-            t.canvasGradient.last,
+            t.primary.withValues(alpha: 0.14),
+            [t.surface, t.surface].last,
           ),
           borderRadius: BorderRadius.circular(Radii.tile),
-          border: Border.all(color: t.accentPrimary.withValues(alpha: 0.55)),
-          boxShadow: [BoxShadow(color: t.glassL1Shadow, blurRadius: 18)],
+          border: Border.all(color: t.primary.withValues(alpha: 0.55)),
+          boxShadow: [BoxShadow(color: t.shadow, blurRadius: 18)],
         ),
         child: AspectRatio(
           aspectRatio: 1,
@@ -304,7 +303,7 @@ class _Cell extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: t.textPrimary.withValues(alpha: 0.75),
+                        color: t.onSurface.withValues(alpha: 0.75),
                         width: 1.4,
                       ),
                     ),
@@ -332,14 +331,14 @@ class _Swatch extends StatelessWidget {
   /// Eased 0..1 progress handed down from the grid's single controller.
   final double reveal;
   final double radius;
-  final GlassTokens t;
+  final ColorScheme t;
 
   Color get _color => switch (level) {
-    0 => t.track.withValues(alpha: t.track.a * 0.55),
-    1 => t.accentPrimary.withValues(alpha: 0.24),
-    2 => t.accentPrimary.withValues(alpha: 0.46),
-    3 => t.accentPrimary.withValues(alpha: 0.74),
-    _ => t.accentSecondary,
+    0 => t.surfaceContainerHighest.withValues(alpha: t.surfaceContainerHighest.a * 0.55),
+    1 => t.primary.withValues(alpha: 0.24),
+    2 => t.primary.withValues(alpha: 0.46),
+    3 => t.primary.withValues(alpha: 0.74),
+    _ => t.secondary,
   };
 
   @override
@@ -354,13 +353,13 @@ class _Swatch extends StatelessWidget {
             color: _color,
             border: Border.all(
               color: level >= 4
-                  ? t.accentSecondary.withValues(alpha: 0.7)
-                  : t.hairline,
+                  ? t.secondary.withValues(alpha: 0.7)
+                  : t.outlineVariant,
             ),
             boxShadow: level >= 4
                 ? [
                     BoxShadow(
-                      color: t.accentSecondary.withValues(alpha: 0.40),
+                      color: t.secondary.withValues(alpha: 0.40),
                       blurRadius: 12,
                       spreadRadius: -3,
                     ),

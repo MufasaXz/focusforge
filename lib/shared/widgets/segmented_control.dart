@@ -1,9 +1,8 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import 'glass_surface.dart';
 
 /// Sliding segmented control. The active segment is a glowing pill that
@@ -26,8 +25,8 @@ class SegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final a = accent ?? t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final a = accent ?? cs.primary;
     final n = options.length;
 
     // Material's 48dp minimum target. The 4dp inset around the pill is kept
@@ -42,8 +41,8 @@ class SegmentedControl extends StatelessWidget {
       padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
-        color: t.glassL2At(0.55),
-        border: Border.all(color: t.glassL2Border),
+        color: cs.surfaceContainer.withValues(alpha: 0.55),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Stack(
         children: [
@@ -60,7 +59,7 @@ class SegmentedControl extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       a.withValues(alpha: 0.30),
-                      t.accentSecondary.withValues(alpha: 0.20),
+                      cs.secondary.withValues(alpha: 0.20),
                     ],
                   ),
                   border: Border.all(color: a.withValues(alpha: 0.55)),
@@ -91,9 +90,9 @@ class SegmentedControl extends StatelessWidget {
                       child: Center(
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 220),
-                          style: context.type.labelLarge!.copyWith(
+                          style: Theme.of(context).textTheme.labelLarge!.copyWith(
                             fontSize: 13,
-                            color: i == index ? t.textPrimary : t.textTertiary,
+                            color: i == index ? cs.onSurface : cs.onSurfaceVariant,
                             fontWeight: i == index
                                 ? FontWeight.w700
                                 : FontWeight.w600,

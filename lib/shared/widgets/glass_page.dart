@@ -1,10 +1,9 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import 'glass_surface.dart';
 
 /// Page chrome for every pushed sub-screen.
@@ -35,7 +34,7 @@ class GlassPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -45,8 +44,8 @@ class GlassPage extends StatelessWidget {
           ClipRect(
             child: BackdropFilter(
               filter: ui.ImageFilter.blur(
-                sigmaX: t.blurNav,
-                sigmaY: t.blurNav,
+                sigmaX: 20.0,
+                sigmaY: 20.0,
               ),
               child: Container(
                 padding: EdgeInsets.fromLTRB(
@@ -56,8 +55,8 @@ class GlassPage extends StatelessWidget {
                   Gap.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: t.navFill,
-                  border: Border(bottom: BorderSide(color: t.hairline)),
+                  color: cs.surfaceContainer,
+                  border: Border(bottom: BorderSide(color: cs.outlineVariant)),
                 ),
                 child: Row(
                   children: [
@@ -70,7 +69,7 @@ class GlassPage extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: context.type.titleMedium?.copyWith(
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
@@ -79,8 +78,8 @@ class GlassPage extends StatelessWidget {
                           if (subtitle != null)
                             Text(
                               subtitle!,
-                              style: context.type.labelSmall?.copyWith(
-                                color: t.textTertiary,
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -119,7 +118,7 @@ class GlassPage extends StatelessWidget {
 class _BackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     // `canPop` is false when the route was reached by deep link; falling back
     // to the profile root keeps the button from being a dead end.
     final canPop = context.canPop();
@@ -146,7 +145,7 @@ class _BackButton extends StatelessWidget {
               child: Icon(
                 Icons.arrow_back_rounded,
                 size: 20,
-                color: t.textPrimary,
+                color: cs.onSurface,
               ),
             ),
           ),
@@ -171,7 +170,7 @@ class GlassSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -179,8 +178,8 @@ class GlassSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(6, 0, 6, Gap.sm),
           child: Text(
             title.toUpperCase(),
-            style: context.type.labelMedium?.copyWith(
-              color: t.textTertiary,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: cs.onSurfaceVariant,
               letterSpacing: 1.3,
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
@@ -197,7 +196,7 @@ class GlassSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(6, Gap.sm, 6, 0),
             child: Text(
               footnote!,
-              style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         const SizedBox(height: Gap.xl),
@@ -230,13 +229,13 @@ class GlassRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 19, color: iconColor ?? t.textSecondary),
+            Icon(icon, size: 19, color: iconColor ?? cs.onSurfaceVariant),
             const SizedBox(width: Gap.md),
           ],
           Expanded(
@@ -244,14 +243,14 @@ class GlassRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: context.type.bodyLarge),
+                Text(title, style: Theme.of(context).textTheme.bodyLarge),
                 if (subtitle != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       subtitle!,
-                      style: context.type.bodySmall
-                          ?.copyWith(color: t.textTertiary),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
               ],
@@ -280,7 +279,7 @@ class GlassRow extends StatelessWidget {
         if (showDivider)
           Padding(
             padding: const EdgeInsets.only(left: Gap.md + 19 + Gap.md),
-            child: Divider(height: 1, thickness: 1, color: t.hairline),
+            child: Divider(height: 1, thickness: 1, color: cs.outlineVariant),
           ),
       ],
     );
@@ -295,6 +294,6 @@ class GlassChevron extends StatelessWidget {
   Widget build(BuildContext context) => Icon(
         Icons.chevron_right_rounded,
         size: 20,
-        color: context.glass.textTertiary,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       );
 }

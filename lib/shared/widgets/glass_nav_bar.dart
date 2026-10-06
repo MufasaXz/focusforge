@@ -1,11 +1,10 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import 'glass_surface.dart';
 
 class NavItem {
@@ -86,7 +85,7 @@ class _GlassNavBarState extends State<GlassNavBar>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final height = widget.compact
         ? GlassNavBar.compactHeight
@@ -108,13 +107,13 @@ class _GlassNavBarState extends State<GlassNavBar>
           borderRadius: r,
           boxShadow: [
             BoxShadow(
-              color: t.navShadow.withValues(alpha: t.navShadow.a * 0.6),
+              color: cs.shadow.withValues(alpha: cs.shadow.a * 0.6),
               blurRadius: 44,
               spreadRadius: -8,
               offset: const Offset(0, 18),
             ),
             BoxShadow(
-              color: t.navShadow.withValues(alpha: t.navShadow.a * 0.9),
+              color: cs.shadow.withValues(alpha: cs.shadow.a * 0.9),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -125,12 +124,12 @@ class _GlassNavBarState extends State<GlassNavBar>
           child: BackdropFilter(
             // Theme-driven: a pale canvas needs less blur than a dark one to
             // read as frosted, and over-blurring it just smears to grey.
-            filter: ui.ImageFilter.blur(sigmaX: t.blurNav, sigmaY: t.blurNav),
+            filter: ui.ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: t.navFill,
+                color: cs.surfaceContainer,
                 borderRadius: r,
-                border: Border.all(color: t.navBorder),
+                border: Border.all(color: cs.outlineVariant),
               ),
               child: Stack(
                 children: [
@@ -142,7 +141,7 @@ class _GlassNavBarState extends State<GlassNavBar>
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(Radii.pill),
-                            border: Border.all(color: t.innerRim),
+                            border: Border.all(color: cs.outlineVariant),
                           ),
                         ),
                       ),
@@ -159,9 +158,9 @@ class _GlassNavBarState extends State<GlassNavBar>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              t.specular.withValues(alpha: 0),
-                              t.specular,
-                              t.specular.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.14).withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.14),
+                              Colors.white.withValues(alpha: 0.14).withValues(alpha: 0),
                             ],
                           ),
                         ),
@@ -218,7 +217,7 @@ class _GlassNavBarState extends State<GlassNavBar>
   }
 
   Widget _indicator(BuildContext context, double itemWidth, BorderRadius r) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final barHeight = widget.compact
         ? GlassNavBar.compactHeight
         : GlassNavBar.height;
@@ -247,19 +246,19 @@ class _GlassNavBarState extends State<GlassNavBar>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              t.accentPrimary.withValues(alpha: 0.30),
-              t.accentSecondary.withValues(alpha: 0.18),
+              cs.primary.withValues(alpha: 0.30),
+              cs.secondary.withValues(alpha: 0.18),
             ],
           ),
-          border: Border.all(color: t.accentPrimary.withValues(alpha: 0.48)),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.48)),
           boxShadow: [
             BoxShadow(
-              color: t.accentPrimary.withValues(alpha: 0.34),
+              color: cs.primary.withValues(alpha: 0.34),
               blurRadius: 24,
               spreadRadius: -4,
             ),
             BoxShadow(
-              color: t.accentPrimary.withValues(alpha: 0.14),
+              color: cs.primary.withValues(alpha: 0.14),
               blurRadius: 44,
               spreadRadius: -6,
             ),
@@ -275,7 +274,7 @@ class _GlassNavBarState extends State<GlassNavBar>
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [t.sheen, t.sheen.withValues(alpha: 0)],
+                      colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.06).withValues(alpha: 0)],
                       stops: const [0, 0.7],
                     ),
                   ),
@@ -306,7 +305,7 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final showLabel = selected && !compact;
 
     return Semantics(
@@ -330,7 +329,7 @@ class _NavButton extends StatelessWidget {
                   Icon(
                     selected ? item.activeIcon : item.icon,
                     size: compact ? 21 : 22.5,
-                    color: selected ? t.textPrimary : t.textSecondary,
+                    color: selected ? cs.onSurface : cs.onSurfaceVariant,
                   ),
                   if (item.statusDot)
                     Positioned(
@@ -353,8 +352,8 @@ class _NavButton extends StatelessWidget {
                             padding: const EdgeInsets.only(left: 8),
                             child: Text(
                               item.label,
-                              style: context.type.labelLarge?.copyWith(
-                                color: t.textPrimary,
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: cs.onSurface,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13.5,
                                 letterSpacing: -0.2,
@@ -398,7 +397,7 @@ class _StatusDotState extends State<_StatusDot>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
@@ -408,14 +407,14 @@ class _StatusDotState extends State<_StatusDot>
           height: 7,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: t.success,
+            color: cs.tertiary,
             border: Border.all(
-              color: t.canvasGradient.first.withValues(alpha: 0.9),
+              color: [cs.surface, cs.surface].first.withValues(alpha: 0.9),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: t.success.withValues(alpha: 0.7 * v),
+                color: cs.tertiary.withValues(alpha: 0.7 * v),
                 blurRadius: 8 * v + 2,
               ),
             ],

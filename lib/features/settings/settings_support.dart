@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/glass_nav_bar.dart';
 import '../../shared/widgets/glass_surface.dart';
 
@@ -29,7 +28,6 @@ Future<T?> showGlassDialog<T>({
     barrierDismissible: barrierDismissible,
     barrierColor: Colors.black.withValues(alpha: 0.62),
     builder: (context) {
-      final t = context.glass;
       final insets = MediaQuery.viewInsetsOf(context);
       return Center(
         child: SingleChildScrollView(
@@ -43,7 +41,7 @@ Future<T?> showGlassDialog<T>({
             constraints: const BoxConstraints(maxWidth: 360),
             child: GlassPanel(
               level: 2,
-              blur: t.blurL2,
+              blur: 20.0,
               radius: Radii.hero,
               padding: const EdgeInsets.all(Gap.xl),
               child: builder(context),
@@ -138,8 +136,8 @@ class GlassActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final a = accent ?? (destructive ? t.danger : t.accentPrimary);
+    final cs = Theme.of(context).colorScheme;
+    final a = accent ?? (destructive ? cs.error : cs.primary);
     final enabled = onTap != null;
 
     return Pressable(
@@ -153,12 +151,12 @@ class GlassActionButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 19, color: enabled ? a : t.textTertiary),
+            Icon(icon, size: 19, color: enabled ? a : cs.onSurfaceVariant),
             const SizedBox(width: Gap.sm),
             Text(
               label,
-              style: context.type.labelLarge?.copyWith(
-                color: enabled ? t.textPrimary : t.textTertiary,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: enabled ? cs.onSurface : cs.onSurfaceVariant,
               ),
             ),
           ],
@@ -237,8 +235,8 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final accent = widget.destructive ? t.danger : t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final accent = widget.destructive ? cs.error : cs.primary;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -255,17 +253,17 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text(widget.title, style: context.type.titleMedium),
+              child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
             ),
           ],
         ),
         const SizedBox(height: Gap.md),
-        Text(widget.message, style: context.type.bodyMedium),
+        Text(widget.message, style: Theme.of(context).textTheme.bodyMedium),
         if (widget.requirePhrase != null) ...[
           const SizedBox(height: Gap.lg),
           Text(
             'Type “${widget.requirePhrase}” to continue.',
-            style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: Gap.sm),
           _DialogField(
@@ -278,7 +276,7 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
           const SizedBox(height: Gap.md),
           Text(
             widget.footnote!,
-            style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
         const SizedBox(height: Gap.xl),
@@ -287,7 +285,7 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
             Expanded(
               child: _DialogButton(
                 label: widget.cancelLabel,
-                accent: t.textSecondary,
+                accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(false),
               ),
             ),
@@ -343,7 +341,7 @@ class _InputBodyState extends State<_InputBody> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final value = _controller.text.trim();
 
     return Column(
@@ -354,19 +352,19 @@ class _InputBodyState extends State<_InputBody> {
           children: [
             GlassIconBadge(
               icon: widget.icon,
-              color: t.accentPrimary,
+              color: cs.primary,
               size: 40,
               radius: 12,
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text(widget.title, style: context.type.titleMedium),
+              child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
             ),
           ],
         ),
         const SizedBox(height: Gap.md),
-        Text(widget.message, style: context.type.bodyMedium),
+        Text(widget.message, style: Theme.of(context).textTheme.bodyMedium),
         const SizedBox(height: Gap.lg),
         _DialogField(
           controller: _controller,
@@ -379,7 +377,7 @@ class _InputBodyState extends State<_InputBody> {
           const SizedBox(height: Gap.md),
           Text(
             widget.footnote!,
-            style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
         const SizedBox(height: Gap.xl),
@@ -388,7 +386,7 @@ class _InputBodyState extends State<_InputBody> {
             Expanded(
               child: _DialogButton(
                 label: 'Cancel',
-                accent: t.textSecondary,
+                accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(),
               ),
             ),
@@ -396,7 +394,7 @@ class _InputBodyState extends State<_InputBody> {
             Expanded(
               child: _DialogButton(
                 label: widget.actionLabel,
-                accent: t.accentPrimary,
+                accent: cs.primary,
                 filled: true,
                 onTap: value.isEmpty
                     ? null
@@ -427,12 +425,12 @@ class _DialogField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.item),
-        color: t.glassL2At(0.5),
-        border: Border.all(color: t.glassL2Border),
+        color: cs.surfaceContainer.withValues(alpha: 0.5),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: TextField(
         controller: controller,
@@ -441,13 +439,13 @@ class _DialogField extends StatelessWidget {
         textInputAction: TextInputAction.done,
         onChanged: onChanged,
         onSubmitted: (_) => onChanged?.call(controller.text),
-        style: context.type.bodyLarge?.copyWith(fontSize: 15),
-        cursorColor: t.accentPrimary,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
+        cursorColor: cs.primary,
         decoration: InputDecoration(
           isDense: true,
           border: InputBorder.none,
           hintText: hintText,
-          hintStyle: context.type.bodyMedium?.copyWith(color: t.textTertiary),
+          hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: Gap.md,
             vertical: 14,
@@ -473,7 +471,7 @@ class _DialogButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final enabled = onTap != null;
 
     return Pressable(
@@ -486,11 +484,11 @@ class _DialogButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(Radii.pill),
           color: filled
               ? accent.withValues(alpha: enabled ? 0.22 : 0.08)
-              : t.glassL2At(0.5),
+              : cs.surfaceContainer.withValues(alpha: 0.5),
           border: Border.all(
             color: filled
                 ? accent.withValues(alpha: enabled ? 0.62 : 0.20)
-                : t.glassL2Border,
+                : cs.outlineVariant,
           ),
         ),
         child: Center(
@@ -498,11 +496,11 @@ class _DialogButton extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.type.labelLarge?.copyWith(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               fontSize: 13.5,
               color: filled
-                  ? (enabled ? accent : t.textTertiary)
-                  : t.textSecondary,
+                  ? (enabled ? accent : cs.onSurfaceVariant)
+                  : cs.onSurfaceVariant,
             ),
           ),
         ),

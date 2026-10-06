@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/stagger.dart';
 
@@ -16,8 +15,8 @@ import '../../shared/widgets/stagger.dart';
 /// Text colour that stays legible on the accent gradient. The dark theme's
 /// accents are pastels (dark text) and the light theme's are saturated (white
 /// text), so this cannot be a constant.
-Color onAccentColor(GlassTokens t) =>
-    ThemeData.estimateBrightnessForColor(t.accentPrimary) == Brightness.dark
+Color onAccentColor(ColorScheme t) =>
+    ThemeData.estimateBrightnessForColor(t.primary) == Brightness.dark
     ? Colors.white
     : const Color(0xFF0C1226);
 
@@ -49,7 +48,7 @@ class StepScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,7 +59,7 @@ class StepScaffold extends StatelessWidget {
             children: [
               Stagger(
                 index: 0,
-                child: Text(title, style: context.type.headlineMedium),
+                child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
               ),
               if (subtitle != null)
                 Stagger(
@@ -69,8 +68,8 @@ class StepScaffold extends StatelessWidget {
                     padding: const EdgeInsets.only(top: Gap.sm),
                     child: Text(
                       subtitle!,
-                      style: context.type.bodyMedium?.copyWith(
-                        color: t.textSecondary,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: t.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -106,8 +105,8 @@ class StepScaffold extends StatelessWidget {
                   child: Text(
                     footnote!,
                     textAlign: TextAlign.center,
-                    style: context.type.bodySmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: t.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -138,7 +137,7 @@ class PrimaryAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final on = onAccentColor(t);
     final active = enabled && !busy;
 
@@ -149,13 +148,13 @@ class PrimaryAction extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         child: GlassPanel(
           radius: Radii.pill,
-          accent: t.accentPrimary,
+          accent: t.primary,
           glowStrength: active ? 0.9 : 0,
           padding: const EdgeInsets.symmetric(vertical: Gap.lg),
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [t.accentPrimary, t.accentSecondary],
+            colors: [t.primary, t.secondary],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -169,7 +168,7 @@ class PrimaryAction extends StatelessWidget {
               else ...[
                 Text(
                   label,
-                  style: context.type.labelLarge?.copyWith(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: on,
                     fontSize: 15,
                     letterSpacing: 0.1,
@@ -198,7 +197,7 @@ class GhostAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return Pressable(
       onTap: onTap,
       child: Padding(
@@ -208,11 +207,11 @@ class GhostAction extends StatelessWidget {
           children: [
             Text(
               label,
-              style: context.type.labelLarge?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: t.onSurfaceVariant),
             ),
             if (icon != null) ...[
               const SizedBox(width: Gap.xs),
-              Icon(icon, size: 16, color: t.textTertiary),
+              Icon(icon, size: 16, color: t.onSurfaceVariant),
             ],
           ],
         ),
@@ -248,7 +247,7 @@ class GlassTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
 
     return GlassPanel(
       level: 2,
@@ -260,7 +259,7 @@ class GlassTextField extends StatelessWidget {
         child: Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 18, color: t.textTertiary),
+              Icon(icon, size: 18, color: t.onSurfaceVariant),
               const SizedBox(width: Gap.md),
             ],
             Expanded(
@@ -271,13 +270,13 @@ class GlassTextField extends StatelessWidget {
                 textInputAction: textInputAction,
                 onSubmitted: onSubmitted,
                 autofocus: autofocus,
-                style: context.type.bodyLarge,
-                cursorColor: t.accentPrimary,
+                style: Theme.of(context).textTheme.bodyLarge,
+                cursorColor: t.primary,
                 cursorRadius: const Radius.circular(Radii.pill),
                 decoration: InputDecoration.collapsed(
                   hintText: hint,
-                  hintStyle: context.type.bodyLarge?.copyWith(
-                    color: t.textTertiary,
+                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: t.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -297,7 +296,7 @@ void showGlassSnack(
   IconData icon = Icons.info_outline_rounded,
   bool danger = false,
 }) {
-  final t = context.glass;
+  final t = Theme.of(context).colorScheme;
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
 
@@ -315,13 +314,13 @@ void showGlassSnack(
           ),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: danger ? t.danger : t.accentPrimary),
+              Icon(icon, size: 18, color: danger ? t.error : t.primary),
               const SizedBox(width: Gap.md),
               Expanded(
                 child: Text(
                   message,
-                  style: context.type.bodyMedium?.copyWith(
-                    color: t.textPrimary,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: t.onSurface,
                   ),
                 ),
               ),

@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/services/auth_service.dart';
@@ -154,7 +153,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Widget _content(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final providers = ref.watch(authServiceProvider).supportedProviders;
     final missing = [
       if (!providers.contains('google')) 'Google',
@@ -173,7 +172,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             index: 0,
             child: GlassIconBadge(
               icon: Icons.local_fire_department_rounded,
-              color: t.accentPrimary,
+              color: cs.primary,
               size: 64,
               radius: Radii.card,
               glow: 0.7,
@@ -185,7 +184,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               'Welcome to FocusForge',
               textAlign: TextAlign.center,
-              style: context.type.headlineMedium,
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
           ),
           const SizedBox(height: Gap.sm),
@@ -194,7 +193,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               'Your focus starts here',
               textAlign: TextAlign.center,
-              style: context.type.bodyLarge?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 3),
@@ -259,7 +258,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         'this build. Use email or skip — you can link a real '
                         'account later without losing anything.',
               textAlign: TextAlign.center,
-              style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: Gap.md),
@@ -268,7 +267,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               'By continuing you agree to our Terms & Privacy Policy.',
               textAlign: TextAlign.center,
-              style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 1),
@@ -298,7 +297,7 @@ class _AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return Opacity(
       opacity: onTap == null ? 0.45 : 1,
@@ -315,26 +314,26 @@ class _AuthButton extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: icon,
-                color: t.accentPrimary,
+                color: cs.primary,
                 size: 34,
                 radius: Radii.tile,
               ),
               const SizedBox(width: Gap.md),
-              Expanded(child: Text(label, style: context.type.titleSmall)),
+              Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
               if (busy)
                 SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: t.accentPrimary,
+                    color: cs.primary,
                   ),
                 )
               else
                 Icon(
                   Icons.chevron_right_rounded,
                   size: 20,
-                  color: t.textTertiary,
+                  color: cs.onSurfaceVariant,
                 ),
             ],
           ),
@@ -427,7 +426,7 @@ class _EmailSheetState extends State<_EmailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
@@ -435,7 +434,7 @@ class _EmailSheetState extends State<_EmailSheet> {
       child: GlassPanel(
         level: 2,
         radius: Radii.hero,
-        blur: t.blurL2,
+        blur: 20.0,
         padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.xl),
         child: SingleChildScrollView(
           child: Column(
@@ -447,7 +446,7 @@ class _EmailSheetState extends State<_EmailSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: t.track,
+                    color: cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                 ),
@@ -455,12 +454,12 @@ class _EmailSheetState extends State<_EmailSheet> {
               const SizedBox(height: Gap.xl),
               Text(
                 _signUp ? 'Create your account' : 'Sign in with email',
-                style: context.type.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: Gap.xs),
               Text(
                 'Stored on this device for now — nothing is sent to a server.',
-                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.xl),
               GlassTextField(

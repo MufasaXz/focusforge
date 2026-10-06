@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/shell/app_shell.dart';
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/models/study.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../shared/widgets/glass_surface.dart';
@@ -53,7 +52,7 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final s = widget.subject;
     final met = _target > 0 && s.weekDone >= _target;
     // Measured against the pending target, not the saved one, so the number
@@ -82,7 +81,7 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: t.textTertiary,
+                    color: cs.onSurfaceVariant,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                 ),
@@ -102,11 +101,11 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(s.name, style: context.type.titleMedium),
+                        Text(s.name, style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 1),
                         Text(
                           '${_hours(s.weekDone)} done · $percent% of target',
-                          style: context.type.labelSmall,
+                          style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
                     ),
@@ -116,11 +115,11 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
               const SizedBox(height: Gap.xl),
               Row(
                 children: [
-                  Text('Weekly target', style: context.type.bodyLarge),
+                  Text('Weekly target', style: Theme.of(context).textTheme.bodyLarge),
                   const Spacer(),
                   Text(
                     _hours(_target),
-                    style: context.type.titleSmall?.copyWith(color: s.color),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: s.color),
                   ),
                 ],
               ),
@@ -130,15 +129,15 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                 max: _max,
                 divisions: ((_max - _min) / _step).round(),
                 activeColor: s.color,
-                inactiveColor: t.track,
+                inactiveColor: cs.surfaceContainerHighest,
                 label: _hours(_target),
                 onChanged: (v) => setState(() => _target = v),
               ),
               Row(
                 children: [
-                  Text('1h', style: context.type.labelSmall),
+                  Text('1h', style: Theme.of(context).textTheme.labelSmall),
                   const Spacer(),
-                  Text('20h', style: context.type.labelSmall),
+                  Text('20h', style: Theme.of(context).textTheme.labelSmall),
                 ],
               ),
               const SizedBox(height: Gap.md),
@@ -165,7 +164,7 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                     ? 'You are already past this target for the week.'
                     : 'A target is a floor, not a ceiling — it only drives the '
                           'progress ring.',
-                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.lg),
               GlassButton(

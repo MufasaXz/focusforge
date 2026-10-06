@@ -1,3 +1,4 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
@@ -5,8 +6,6 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
 
@@ -168,7 +167,7 @@ class _CoachMarksState extends State<CoachMarks>
                                     radius: spot.radius,
                                     progress: (_index + 1) / _spots.length,
                                     scrim: Colors.black.withValues(alpha: 0.68),
-                                    ring: context.glass.accentPrimary,
+                                    ring: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -242,13 +241,13 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final last = index == total - 1;
 
     return GlassPanel(
       level: 2,
       radius: Radii.card,
-      blur: t.blurL2,
+      blur: 20.0,
       padding: const EdgeInsets.all(Gap.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,14 +257,14 @@ class _Bubble extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: spot.icon,
-                color: t.accentPrimary,
+                color: cs.primary,
                 size: 34,
                 radius: Radii.tile,
                 glow: 0.5,
               ),
               const SizedBox(width: Gap.md),
               Expanded(
-                child: Text(spot.title, style: context.type.titleMedium),
+                child: Text(spot.title, style: Theme.of(context).textTheme.titleMedium),
               ),
               Pressable(
                 onTap: onDismiss,
@@ -275,7 +274,7 @@ class _Bubble extends StatelessWidget {
                   child: Icon(
                     Icons.close_rounded,
                     size: 18,
-                    color: t.textTertiary,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -284,7 +283,7 @@ class _Bubble extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(
             spot.body,
-            style: context.type.bodyMedium?.copyWith(color: t.textSecondary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: Gap.lg),
           Row(
@@ -296,14 +295,14 @@ class _Bubble extends StatelessWidget {
                     width: i == index ? 16 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: i == index ? t.accentPrimary : t.track,
+                      color: i == index ? cs.primary : cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                   ),
                 ),
               const Spacer(),
               GlassPill(
-                accent: t.accentPrimary,
+                accent: cs.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: Gap.lg,
                   vertical: Gap.sm,
@@ -311,8 +310,8 @@ class _Bubble extends StatelessWidget {
                 onTap: onNext,
                 child: Text(
                   last ? 'Got it' : 'Next',
-                  style: context.type.labelLarge?.copyWith(
-                    color: t.accentPrimary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.primary,
                   ),
                 ),
               ),

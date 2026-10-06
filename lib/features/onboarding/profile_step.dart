@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/stagger.dart';
@@ -89,7 +88,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final initials = _initialsOf(_name.text);
 
     return StepScaffold(
@@ -120,7 +119,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               'Leave it blank to stay nameless — everything still works.',
-              style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -136,7 +135,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
               children: [
                 GlassIconBadge(
                   icon: Icons.public_rounded,
-                  color: t.success,
+                  color: cs.tertiary,
                   size: 36,
                   radius: Radii.tile,
                 ),
@@ -147,19 +146,19 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
                     children: [
                       Text(
                         'Detected from your device',
-                        style: context.type.bodySmall?.copyWith(
-                          color: t.textTertiary,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(_timezone, style: context.type.titleSmall),
+                      Text(_timezone, style: Theme.of(context).textTheme.titleSmall),
                     ],
                   ),
                 ),
                 GlassPill(
                   child: Text(
                     'Auto',
-                    style: context.type.labelSmall?.copyWith(color: t.success),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.tertiary),
                   ),
                 ),
               ],
@@ -178,7 +177,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       width: 96,
@@ -189,14 +188,14 @@ class _Avatar extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            t.accentPrimary.withValues(alpha: 0.38),
-            t.accentSecondary.withValues(alpha: 0.18),
+            cs.primary.withValues(alpha: 0.38),
+            cs.secondary.withValues(alpha: 0.18),
           ],
         ),
-        border: Border.all(color: t.accentPrimary.withValues(alpha: 0.45)),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
-            color: t.accentPrimary.withValues(alpha: 0.22),
+            color: cs.primary.withValues(alpha: 0.22),
             blurRadius: 26,
             spreadRadius: -4,
           ),
@@ -207,11 +206,11 @@ class _Avatar extends StatelessWidget {
             ? Icon(
                 Icons.person_rounded,
                 size: 38,
-                color: t.accentPrimary.withValues(alpha: 0.9),
+                color: cs.primary.withValues(alpha: 0.9),
               )
             : Text(
                 initials,
-                style: context.type.displayMedium?.copyWith(fontSize: 32),
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(fontSize: 32),
               ),
       ),
     );

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/models/shield.dart';
 import '../../../core/providers/shield_providers.dart';
 import '../../../shared/widgets/glass_surface.dart';
@@ -20,20 +19,20 @@ class AppDistribution extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final rows = ref.watch(allFeedRowsProvider);
 
     if (rows.isEmpty) {
       return Text(
         'No feeds configured yet.',
-        style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       );
     }
 
     return Column(
       children: [
         for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) Divider(color: t.hairline, height: Gap.md),
+          if (i > 0) Divider(color: cs.outlineVariant, height: Gap.md),
           _ShieldRow(row: rows[i]),
         ],
       ],
@@ -48,7 +47,7 @@ class _ShieldRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     void toggle() {
       HapticFeedback.lightImpact();
@@ -83,7 +82,7 @@ class _ShieldRow extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               row.appName,
-                              style: context.type.titleSmall,
+                              style: Theme.of(context).textTheme.titleSmall,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -94,10 +93,10 @@ class _ShieldRow extends ConsumerWidget {
                               height: 6,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: t.success,
+                                color: cs.tertiary,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: t.success.withValues(alpha: 0.7),
+                                    color: cs.tertiary.withValues(alpha: 0.7),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -109,8 +108,8 @@ class _ShieldRow extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         row.title,
-                        style: context.type.bodySmall?.copyWith(
-                          color: t.textTertiary,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

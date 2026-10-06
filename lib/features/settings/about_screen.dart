@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/glass_page.dart';
 import '../../shared/widgets/glass_surface.dart';
 import 'settings_support.dart';
@@ -25,7 +24,7 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return GlassPage(
       title: 'About',
@@ -41,26 +40,26 @@ class AboutScreen extends StatelessWidget {
               children: [
                 GlassIconBadge(
                   icon: Icons.local_fire_department_rounded,
-                  color: t.accentPrimary,
+                  color: cs.primary,
                   size: 72,
                   radius: 24,
                   glow: 0.6,
                 ),
                 const SizedBox(height: Gap.lg),
-                Text('FocusForge', style: context.type.headlineMedium),
+                Text('FocusForge', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: Gap.xs),
-                Text('Version $_version', style: context.type.labelSmall),
+                Text('Version $_version', style: Theme.of(context).textTheme.labelSmall),
                 const SizedBox(height: Gap.lg),
                 GlassPill(
                   selected: true,
-                  accent: t.success,
+                  accent: cs.tertiary,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.verified_user_rounded,
                         size: 13,
-                        color: t.success,
+                        color: cs.tertiary,
                       ),
                       const SizedBox(width: 6),
                       const Text(
@@ -75,8 +74,8 @@ class AboutScreen extends StatelessWidget {
                   'MIT licensed. The whole app lives on GitHub — the shield '
                   'rules, the Pomodoro engine and the glass you are looking at.',
                   textAlign: TextAlign.center,
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -155,14 +154,14 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Text(
                   'Made by the FocusForge community',
-                  style: context.type.labelSmall,
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'v$_version · MIT',
-                  style: context.type.labelSmall?.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 10.5,
-                    color: t.textTertiary,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -212,7 +211,7 @@ class _CopyGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Icon(Icons.copy_rounded, size: 17, color: context.glass.textTertiary);
+      Icon(Icons.copy_rounded, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant);
 }
 
 class _AudioCreditsBody extends StatelessWidget {
@@ -229,7 +228,7 @@ class _AudioCreditsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,14 +237,14 @@ class _AudioCreditsBody extends StatelessWidget {
           children: [
             GlassIconBadge(
               icon: Icons.graphic_eq_rounded,
-              color: t.accentSecondary,
+              color: cs.secondary,
               size: 40,
               radius: 12,
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text('Ambient audio', style: context.type.titleMedium),
+              child: Text('Ambient audio', style: Theme.of(context).textTheme.titleMedium),
             ),
           ],
         ),
@@ -255,11 +254,11 @@ class _AudioCreditsBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
               children: [
-                Expanded(child: Text(title, style: context.type.bodyMedium)),
+                Expanded(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)),
                 Text(
                   author,
-                  style: context.type.labelSmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -270,7 +269,7 @@ class _AudioCreditsBody extends StatelessWidget {
           'All six loops are CC0 1.0 (public domain) and were sourced from '
           'freesound.org. Credit is given here although the licence does not '
           'require it.',
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.xl),
         GlassActionButton(
@@ -296,10 +295,10 @@ class _TextBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final text = Text(
       body,
-      style: context.type.bodySmall?.copyWith(height: 1.5),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5),
     );
 
     return Column(
@@ -310,13 +309,13 @@ class _TextBody extends StatelessWidget {
           children: [
             GlassIconBadge(
               icon: Icons.balance_rounded,
-              color: t.accentPrimary,
+              color: cs.primary,
               size: 40,
               radius: 12,
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(title, style: context.type.titleMedium)),
+            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
           ],
         ),
         const SizedBox(height: Gap.lg),
@@ -325,8 +324,8 @@ class _TextBody extends StatelessWidget {
             height: 260,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.item),
-              color: t.glassL2At(0.45),
-              border: Border.all(color: t.glassL2Border),
+              color: cs.surfaceContainer.withValues(alpha: 0.45),
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(Gap.md),

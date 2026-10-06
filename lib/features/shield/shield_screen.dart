@@ -1,3 +1,4 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,8 +9,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/services/shield_service.dart';
@@ -40,7 +39,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final topInset = MediaQuery.paddingOf(context).top;
     final headerHeight = 172 + topInset;
     final armed = ref.watch(activeShieldCountProvider);
@@ -91,9 +90,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      t.canvasGradient.first.withValues(alpha: 0.96),
-                      t.canvasGradient[1].withValues(alpha: 0.90),
-                      t.canvasGradient[1].withValues(alpha: 0),
+                      [cs.surface, cs.surface].first.withValues(alpha: 0.96),
+                      [cs.surface, cs.surface][1].withValues(alpha: 0.90),
+                      [cs.surface, cs.surface][1].withValues(alpha: 0),
                     ],
                     stops: const [0, 0.80, 1],
                   ),
@@ -109,14 +108,14 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen> {
                             children: [
                               Text(
                                 'Feed Shielding Engine',
-                                style: context.type.headlineMedium?.copyWith(
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                   fontSize: 24,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Surgically remove addictive feeds',
-                                style: context.type.bodySmall,
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
                           ),
@@ -187,9 +186,9 @@ class _ShieldStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final on = armed > 0;
-    final color = on ? t.success : t.textTertiary;
+    final color = on ? cs.tertiary : cs.onSurfaceVariant;
     final label = on ? '$armed active' : 'None armed';
 
     return Semantics(
@@ -231,8 +230,8 @@ class _ShieldStatusPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: context.type.labelSmall?.copyWith(
-                    color: t.textPrimary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -254,7 +253,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final armed = ref.watch(activeShieldCountProvider);
     final total = ref.watch(allFeedRowsProvider).length;
     final profile = ref.watch(activeProfileProvider);
@@ -270,7 +269,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
         padding: const EdgeInsets.all(Gap.md),
         child: GlassPanel(
           radius: Radii.hero,
-          blur: t.blurL2,
+          blur: 20.0,
           padding: const EdgeInsets.all(Gap.xl),
           child: SingleChildScrollView(
             child: Column(
@@ -282,7 +281,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: t.textTertiary,
+                      color: cs.onSurfaceVariant,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                   ),
@@ -296,13 +295,13 @@ class _ShieldStatusSheet extends ConsumerWidget {
                         children: [
                           Text(
                             'What is being enforced',
-                            style: context.type.titleMedium,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Live state of the shield engine',
-                            style: context.type.bodySmall?.copyWith(
-                              color: t.textTertiary,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -317,19 +316,19 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 const SizedBox(height: Gap.lg),
                 _StatusLine(
                   icon: Icons.shield_rounded,
-                  color: armed > 0 ? t.success : t.textTertiary,
+                  color: armed > 0 ? cs.tertiary : cs.onSurfaceVariant,
                   label: 'Feed shields',
                   value: '$armed of $total armed',
                 ),
                 _StatusLine(
                   icon: Icons.tune_rounded,
-                  color: t.accentPrimary,
+                  color: cs.primary,
                   label: 'Active profile',
                   value: profile?.name ?? 'None',
                 ),
                 _StatusLine(
                   icon: Icons.lock_rounded,
-                  color: strict.enabled ? t.gold : t.textTertiary,
+                  color: strict.enabled ? cs.tertiary : cs.onSurfaceVariant,
                   label: 'Strict mode',
                   value: strict.enabled
                       ? '${strict.durationMinutes} min session'
@@ -337,7 +336,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 ),
                 _StatusLine(
                   icon: Icons.verified_user_rounded,
-                  color: t.accentSecondary,
+                  color: cs.secondary,
                   label: 'Always allowed',
                   value: '$allowed apps',
                 ),
@@ -352,7 +351,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
                       Icon(
                         Icons.construction_rounded,
                         size: 16,
-                        color: t.textTertiary,
+                        color: cs.onSurfaceVariant,
                       ),
                       const SizedBox(width: Gap.sm),
                       Expanded(
@@ -361,19 +360,19 @@ class _ShieldStatusSheet extends ConsumerWidget {
                           'build, so nothing is actually blocked yet. Every '
                           'switch here persists and is pushed to the shield '
                           'service, ready for the engine to pick up.',
-                          style: context.type.labelSmall?.copyWith(height: 1.4),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(height: 1.4),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: Gap.md),
-                Divider(color: t.hairline, height: 1),
+                Divider(color: cs.outlineVariant, height: 1),
                 GlassRow(
                   title: 'Try the breath gate',
                   subtitle: 'Preview the pause before a blocked app opens',
                   icon: Icons.air_rounded,
-                  iconColor: t.accentPrimary,
+                  iconColor: cs.primary,
                   onTap: onTryGate,
                   showDivider: false,
                 ),
@@ -401,7 +400,7 @@ class _StatusLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return MergeSemantics(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gap.sm),
@@ -415,11 +414,11 @@ class _StatusLine extends StatelessWidget {
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(label, style: context.type.bodyLarge)),
+            Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
             const SizedBox(width: Gap.sm),
             Text(
               value,
-              style: context.type.labelMedium?.copyWith(color: t.textSecondary),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -437,7 +436,7 @@ class _SheetCloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       label: label,
@@ -453,7 +452,7 @@ class _SheetCloseButton extends StatelessWidget {
               child: Icon(
                 Icons.close_rounded,
                 size: 20,
-                color: t.textSecondary,
+                color: cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -472,7 +471,7 @@ class _FeedBlockerView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final groups = ref.watch(feedGroupsProvider);
 
     // Stagger plays once per element lifetime. This branch is built the first
@@ -492,7 +491,7 @@ class _FeedBlockerView extends ConsumerWidget {
               trailing: Text(
                 '${groups[g].rows.where((r) => r.enabled).length} / '
                 '${groups[g].rows.length}',
-                style: context.type.labelSmall,
+                style: Theme.of(context).textTheme.labelSmall,
               ),
             ),
           ),
@@ -504,7 +503,7 @@ class _FeedBlockerView extends ConsumerWidget {
               child: Column(
                 children: [
                   for (var r = 0; r < groups[g].rows.length; r++) ...[
-                    if (r > 0) Divider(color: t.hairline, height: Gap.xl),
+                    if (r > 0) Divider(color: cs.outlineVariant, height: Gap.xl),
                     _FeedRowTile(row: groups[g].rows[r]),
                   ],
                 ],
@@ -523,14 +522,14 @@ class _FeedBlockerView extends ConsumerWidget {
                 Icon(
                   Icons.info_outline_rounded,
                   size: 15,
-                  color: t.textTertiary,
+                  color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: Text(
                     'Toggles persist and sync to the shield service. The native '
                     'interceptor is not wired up on this build.',
-                    style: context.type.labelSmall?.copyWith(fontSize: 11),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
                   ),
                 ),
               ],
@@ -549,7 +548,7 @@ class _FeedRowTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final enabled = row.enabled;
 
     void toggle() {
@@ -594,7 +593,7 @@ class _FeedRowTile extends ConsumerWidget {
                             Flexible(
                               child: Text(
                                 row.title,
-                                style: context.type.titleSmall,
+                                style: Theme.of(context).textTheme.titleSmall,
                               ),
                             ),
                             if (enabled) ...[
@@ -604,10 +603,10 @@ class _FeedRowTile extends ConsumerWidget {
                                 height: 6,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: t.success,
+                                  color: cs.tertiary,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: t.success.withValues(alpha: 0.75),
+                                      color: cs.tertiary.withValues(alpha: 0.75),
                                       blurRadius: 8,
                                     ),
                                   ],
@@ -619,8 +618,8 @@ class _FeedRowTile extends ConsumerWidget {
                         const SizedBox(height: 3),
                         Text(
                           row.description,
-                          style: context.type.bodySmall?.copyWith(
-                            color: t.textTertiary,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
                             height: 1.35,
                           ),
                         ),
@@ -700,7 +699,7 @@ class _WhitelistViewState extends ConsumerState<_WhitelistView> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final query = _search.text.trim().toLowerCase();
     final all = ref.watch(whitelistProvider);
     final visible = query.isEmpty
@@ -720,21 +719,21 @@ class _WhitelistViewState extends ConsumerState<_WhitelistView> {
             padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
             child: Row(
               children: [
-                Icon(Icons.search_rounded, size: 18, color: t.textTertiary),
+                Icon(Icons.search_rounded, size: 18, color: cs.onSurfaceVariant),
                 const SizedBox(width: Gap.md),
                 Expanded(
                   child: TextField(
                     controller: _search,
-                    style: context.type.bodyLarge?.copyWith(fontSize: 15),
-                    cursorColor: t.accentPrimary,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
+                    cursorColor: cs.primary,
                     textInputAction: TextInputAction.search,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       hintText: 'Search installed apps…',
-                      hintStyle: context.type.bodyMedium?.copyWith(
-                        color: t.textTertiary,
+                      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 15),
                     ),
@@ -780,17 +779,17 @@ class _NoMatches extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.card,
       padding: const EdgeInsets.all(Gap.xl),
       child: Column(
         children: [
-          Icon(Icons.search_off_rounded, size: 22, color: t.textTertiary),
+          Icon(Icons.search_off_rounded, size: 22, color: cs.onSurfaceVariant),
           const SizedBox(height: Gap.md),
           Text(
             'No apps match “$query”',
-            style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ],
@@ -807,7 +806,7 @@ class _WhitelistSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final accent = tier.color;
     final showRemove = tier == WhitelistTier.alwaysAllowed;
 
@@ -835,15 +834,15 @@ class _WhitelistSection extends StatelessWidget {
               const SizedBox(width: Gap.sm),
               Text(
                 tier.label,
-                style: context.type.labelMedium?.copyWith(
-                  color: t.textSecondary,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
                   letterSpacing: 0.4,
                 ),
               ),
               const Spacer(),
               Text(
                 '${entries.length}',
-                style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -857,7 +856,7 @@ class _WhitelistSection extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < entries.length; i++) ...[
-                if (i > 0) Divider(color: t.hairline, height: 1),
+                if (i > 0) Divider(color: cs.outlineVariant, height: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: Gap.md),
                   child: _WhitelistRow(
@@ -882,7 +881,7 @@ class _WhitelistRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final blocked = entry.tier == WhitelistTier.blocked;
     final budgeted = entry.budgeted && !blocked;
 
@@ -931,14 +930,14 @@ class _WhitelistRow extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             entry.name,
-                            style: context.type.titleSmall,
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ),
                         if (budgeted)
                           Text(
                             'Daily budget: ${entry.budgetMinutes}m',
-                            style: context.type.labelSmall?.copyWith(
-                              color: t.textTertiary,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                         const SizedBox(width: Gap.sm),
@@ -974,8 +973,8 @@ class _WhitelistRow extends ConsumerWidget {
               const SizedBox(width: Gap.sm),
               Text(
                 '${entry.usedMinutes}m used',
-                style: context.type.labelSmall?.copyWith(
-                  color: entry.usage > 0.8 ? t.danger : t.textTertiary,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: entry.usage > 0.8 ? cs.error : cs.onSurfaceVariant,
                 ),
               ),
             ],
@@ -994,7 +993,7 @@ class _RemoveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       label: 'Remove $name from the list',
@@ -1010,7 +1009,7 @@ class _RemoveButton extends StatelessWidget {
               child: Icon(
                 Icons.remove_circle_outline_rounded,
                 size: 18,
-                color: t.textTertiary,
+                color: cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -1029,7 +1028,7 @@ class _ProfilesView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final profiles = ref.watch(profilesProvider);
     final active = ref.watch(activeProfileProvider);
     final schedules = [
@@ -1089,20 +1088,20 @@ class _ProfilesView extends ConsumerWidget {
             child: schedules.isEmpty
                 ? Text(
                     'No schedules yet. Add one while creating a profile.',
-                    style: context.type.bodySmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   )
                 : Column(
                     children: [
                       for (var i = 0; i < schedules.length; i++) ...[
-                        if (i > 0) Divider(color: t.hairline, height: Gap.xl),
+                        if (i > 0) Divider(color: cs.outlineVariant, height: Gap.xl),
                         _ScheduleRow(
                           label: schedules[i].profile.name,
                           detail: schedules[i].window,
                           color: schedules[i].profile.active
-                              ? t.accentPrimary
-                              : t.textTertiary,
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
                         ),
                       ],
                     ],
@@ -1136,7 +1135,7 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return Semantics(
       button: true,
@@ -1154,7 +1153,7 @@ class _ProfileCard extends StatelessWidget {
             child: GlassPanel(
               radius: Radii.card,
               padding: const EdgeInsets.all(Gap.lg),
-              accent: active ? t.accentPrimary : null,
+              accent: active ? cs.primary : null,
               glowStrength: active ? 0.8 : 0,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1163,7 +1162,7 @@ class _ProfileCard extends StatelessWidget {
                     children: [
                       GlassIconBadge(
                         icon: profile.icon,
-                        color: active ? t.accentPrimary : t.textTertiary,
+                        color: active ? cs.primary : cs.onSurfaceVariant,
                         size: 34,
                         radius: 10,
                         glow: active ? 0.6 : 0,
@@ -1173,21 +1172,21 @@ class _ProfileCard extends StatelessWidget {
                         Icon(
                           Icons.check_circle_rounded,
                           size: 17,
-                          color: t.accentPrimary,
+                          color: cs.primary,
                         ),
                     ],
                   ),
                   const SizedBox(height: Gap.md),
-                  Text(profile.name, style: context.type.titleSmall),
+                  Text(profile.name, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 3),
                   Text(
                     '${profile.blockedApps} apps blocked',
-                    style: context.type.labelSmall,
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${profile.dailyTargetHours}h daily target',
-                    style: context.type.labelSmall,
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
                   const Spacer(),
                   GlassPill(
@@ -1219,7 +1218,7 @@ class _AddProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       label: 'Create a new restriction profile',
@@ -1233,17 +1232,17 @@ class _AddProfileCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Radii.card),
                 border: Border.all(
-                  color: t.glassL2Border,
+                  color: cs.outlineVariant,
                   style: BorderStyle.solid,
                 ),
-                color: t.glassL1Fill,
+                color: cs.surfaceContainerLow,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_rounded, size: 26, color: t.textTertiary),
+                  Icon(Icons.add_rounded, size: 26, color: cs.onSurfaceVariant),
                   const SizedBox(height: Gap.sm),
-                  Text('New profile', style: context.type.labelSmall),
+                  Text('New profile', style: Theme.of(context).textTheme.labelSmall),
                 ],
               ),
             ),
@@ -1267,7 +1266,7 @@ class _ScheduleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return MergeSemantics(
       child: Row(
         children: [
@@ -1283,10 +1282,10 @@ class _ScheduleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: Gap.md),
-          Expanded(child: Text(label, style: context.type.bodyLarge)),
+          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
           Text(
             detail,
-            style: context.type.labelMedium?.copyWith(color: t.textTertiary),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -1365,7 +1364,6 @@ class _ProfileBuilderSheetState extends ConsumerState<_ProfileBuilderSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
     final media = MediaQuery.of(context);
     // The sheet has to give way to the keyboard rather than be covered by it.
     final height = math.max(
@@ -1381,7 +1379,7 @@ class _ProfileBuilderSheetState extends ConsumerState<_ProfileBuilderSheet> {
           padding: const EdgeInsets.fromLTRB(Gap.md, Gap.lg, Gap.md, Gap.md),
           child: GlassPanel(
             radius: Radii.hero,
-            blur: t.blurL2,
+            blur: 20.0,
             padding: EdgeInsets.zero,
             child: Column(
               children: [
@@ -1464,7 +1462,7 @@ class _SheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.lg, Gap.md, Gap.sm),
       child: Row(
@@ -1473,12 +1471,12 @@ class _SheetHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: context.type.titleMedium),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: context.type.labelSmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -1499,7 +1497,7 @@ class _StepBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, 0),
       child: Row(
@@ -1511,7 +1509,7 @@ class _StepBar extends StatelessWidget {
                 height: 3,
                 margin: EdgeInsets.only(right: i == count - 1 ? 0 : Gap.xs),
                 decoration: BoxDecoration(
-                  color: i <= step ? t.accentPrimary : t.track,
+                  color: i <= step ? cs.primary : cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),
               ),
@@ -1586,15 +1584,15 @@ class _StepIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.type.titleMedium),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: Gap.xs),
         Text(
           subtitle,
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );
@@ -1609,7 +1607,7 @@ class _NameStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1628,14 +1626,14 @@ class _NameStep extends StatelessWidget {
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.done,
             onChanged: (_) => onChanged(),
-            style: context.type.bodyLarge?.copyWith(fontSize: 15),
-            cursorColor: t.accentPrimary,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
+            cursorColor: cs.primary,
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
               hintText: 'e.g. Exam Week',
-              hintStyle: context.type.bodyMedium?.copyWith(
-                color: t.textTertiary,
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
             ),
@@ -1659,7 +1657,7 @@ class _IconStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1671,7 +1669,7 @@ class _IconStep extends StatelessWidget {
         Center(
           child: GlassIconBadge(
             icon: ProfileIcons.resolve(selected),
-            color: t.accentPrimary,
+            color: cs.primary,
             size: 64,
             radius: 20,
             glow: 0.7,
@@ -1681,7 +1679,7 @@ class _IconStep extends StatelessWidget {
         Center(
           child: Text(
             name.isEmpty ? 'Your profile' : name,
-            style: context.type.labelMedium,
+            style: Theme.of(context).textTheme.labelMedium,
           ),
         ),
         const SizedBox(height: Gap.xl),
@@ -1716,7 +1714,7 @@ class _IconChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       selected: selected,
@@ -1728,7 +1726,7 @@ class _IconChoice extends StatelessWidget {
           onTap: onTap,
           child: GlassIconBadge(
             icon: ProfileIcons.resolve(name),
-            color: selected ? t.accentPrimary : t.textTertiary,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
             size: 52,
             radius: 16,
             glow: selected ? 0.6 : 0,
@@ -1824,7 +1822,7 @@ class _TargetStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1836,7 +1834,7 @@ class _TargetStep extends StatelessWidget {
         Center(
           child: Text(
             '${hours.toStringAsFixed(1)}h',
-            style: context.type.displayMedium,
+            style: Theme.of(context).textTheme.displayMedium,
           ),
         ),
         const SizedBox(height: Gap.sm),
@@ -1854,8 +1852,8 @@ class _TargetStep extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('1h', style: context.type.labelSmall),
-              Text('8h', style: context.type.labelSmall),
+              Text('1h', style: Theme.of(context).textTheme.labelSmall),
+              Text('8h', style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
         ),
@@ -1863,7 +1861,7 @@ class _TargetStep extends StatelessWidget {
         Text(
           'You can change this later — it only sets the goal the dashboard '
           'measures against.',
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );
@@ -1924,7 +1922,7 @@ class _ScheduleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.sm),
       child: Semantics(
@@ -1938,7 +1936,7 @@ class _ScheduleOption extends StatelessWidget {
             child: GlassPanel(
               level: selected ? 2 : 1,
               radius: Radii.item,
-              accent: selected ? t.accentPrimary : null,
+              accent: selected ? cs.primary : null,
               glowStrength: selected ? 0.6 : 0,
               padding: const EdgeInsets.symmetric(
                 horizontal: Gap.lg,
@@ -1949,15 +1947,15 @@ class _ScheduleOption extends StatelessWidget {
                   Icon(
                     icon,
                     size: 18,
-                    color: selected ? t.accentPrimary : t.textTertiary,
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
                   ),
                   const SizedBox(width: Gap.md),
-                  Expanded(child: Text(label, style: context.type.bodyLarge)),
+                  Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
                   if (selected)
                     Icon(
                       Icons.check_circle_rounded,
                       size: 18,
-                      color: t.accentPrimary,
+                      color: cs.primary,
                     ),
                 ],
               ),

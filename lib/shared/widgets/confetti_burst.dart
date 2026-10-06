@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/theme/glass_theme.dart';
 
 /// A single burst of particles, drawn by hand.
 ///
@@ -127,7 +126,7 @@ class _BurstSurfaceState extends State<_BurstSurface>
   @override
   Widget build(BuildContext context) {
     if (MediaQuery.disableAnimationsOf(context)) return const SizedBox.shrink();
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return IgnorePointer(
       child: RepaintBoundary(
@@ -137,7 +136,7 @@ class _BurstSurfaceState extends State<_BurstSurface>
             painter: _BurstPainter(
               burst: _burst,
               progress: _c.value,
-              palette: [t.accentPrimary, t.accentSecondary, t.success, t.gold],
+              palette: [cs.primary, cs.secondary, cs.tertiary, cs.tertiary],
             ),
             size: Size.infinite,
           ),

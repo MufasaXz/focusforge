@@ -1,11 +1,10 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../shared/widgets/glass_page.dart';
@@ -32,7 +31,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final config = ref.watch(strictModeProvider);
     final hours = _draggingHours ?? config.durationMinutes / 60;
 
@@ -41,7 +40,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
       subtitle: config.enabled ? 'Locked in' : 'Not active',
       trailing: GlassPill(
         selected: config.enabled,
-        accent: config.enabled ? t.danger : null,
+        accent: config.enabled ? cs.error : null,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         child: Text(
           config.enabled ? 'Active' : 'Off',
@@ -68,22 +67,22 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                   children: [
                     Row(
                       children: [
-                        Text('Lock length', style: context.type.bodyMedium),
+                        Text('Lock length', style: Theme.of(context).textTheme.bodyMedium),
                         const Spacer(),
                         Text(
                           _formatWindow(hours),
-                          style: context.type.titleSmall?.copyWith(
-                            color: t.danger,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: cs.error,
                           ),
                         ),
                       ],
                     ),
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: t.danger,
-                        thumbColor: t.danger,
-                        inactiveTrackColor: t.track,
-                        overlayColor: t.danger.withValues(alpha: 0.14),
+                        activeTrackColor: cs.error,
+                        thumbColor: cs.error,
+                        inactiveTrackColor: cs.surfaceContainerHighest,
+                        overlayColor: cs.error.withValues(alpha: 0.14),
                       ),
                       child: Slider(
                         value: hours.clamp(
@@ -101,9 +100,9 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                     ),
                     Row(
                       children: [
-                        Text('15 min', style: context.type.labelSmall),
+                        Text('15 min', style: Theme.of(context).textTheme.labelSmall),
                         const Spacer(),
-                        Text('8 h', style: context.type.labelSmall),
+                        Text('8 h', style: Theme.of(context).textTheme.labelSmall),
                       ],
                     ),
                   ],
@@ -316,10 +315,10 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     // Ending early is the destructive direction — the commitment being broken
     // — so the accent swaps with the verb, matching the page button.
-    final accent = widget.activating ? t.accentPrimary : t.danger;
+    final accent = widget.activating ? cs.primary : cs.error;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -340,7 +339,7 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
             Expanded(
               child: Text(
                 widget.activating ? 'Start Strict Mode?' : 'End Strict Mode?',
-                style: context.type.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
           ],
@@ -353,7 +352,7 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
                     'window ends.'
               : 'Ending early is the emergency unlock. The lock releases only '
                     'after all three steps are done.',
-          style: context.type.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: Gap.lg),
         AnimatedSwitcher(
@@ -387,7 +386,7 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
             Expanded(
               child: _SheetButton(
                 label: 'Cancel',
-                accent: t.textSecondary,
+                accent: cs.onSurfaceVariant,
                 onTap: _dismiss,
               ),
             ),
@@ -433,35 +432,35 @@ class _PhraseStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Step 1 of 3 — type “$phrase” to continue.',
-          style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.sm),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.item),
-            color: t.glassL2At(0.5),
-            border: Border.all(color: t.glassL2Border),
+            color: cs.surfaceContainer.withValues(alpha: 0.5),
+            border: Border.all(color: cs.outlineVariant),
           ),
           child: TextField(
             controller: controller,
             autofocus: true,
             textInputAction: TextInputAction.done,
             onChanged: (_) => onChanged(),
-            style: context.type.bodyLarge?.copyWith(fontSize: 15),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
             cursorColor: accent,
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
               hintText: 'Type the phrase',
-              hintStyle: context.type.bodyMedium?.copyWith(
-                color: t.textTertiary,
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: Gap.md,
@@ -489,13 +488,13 @@ class _CooldownStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'Step 2 of 3 — wait without touching the screen.',
-          style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.lg),
         _CooldownRing(remaining: remaining, total: total, color: accent),
@@ -504,7 +503,7 @@ class _CooldownStep extends StatelessWidget {
           'The confirm unlocks when the ring empties. Dismissing this sheet '
           'cancels it.',
           textAlign: TextAlign.center,
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );
@@ -534,7 +533,7 @@ class _ReadyStep extends StatelessWidget {
           'Step 3 of 3 — the wait is done. Confirm to '
           '${activating ? 'start the lock' : 'release the lock'}.',
           textAlign: TextAlign.center,
-          style: context.type.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
     );
@@ -555,7 +554,7 @@ class _CooldownRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final fraction = total <= Duration.zero
         ? 0.0
         : (remaining.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
@@ -575,7 +574,7 @@ class _CooldownRing extends StatelessWidget {
                 child: CustomPaint(
                   painter: _CooldownRingPainter(
                     fraction: fraction,
-                    track: t.track,
+                    track: cs.surfaceContainerHighest,
                     color: color,
                   ),
                 ),
@@ -585,17 +584,17 @@ class _CooldownRing extends StatelessWidget {
                 children: [
                   Text(
                     '$seconds',
-                    style: context.type.titleLarge?.copyWith(
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontSize: 34,
                       height: 1.1,
-                      color: t.textPrimary,
+                      color: cs.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'seconds',
-                    style: context.type.labelSmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -679,7 +678,7 @@ class _SheetButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final enabled = onTap != null;
 
     return Pressable(
@@ -692,11 +691,11 @@ class _SheetButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(Radii.pill),
           color: filled
               ? accent.withValues(alpha: enabled ? 0.22 : 0.08)
-              : t.glassL2At(0.5),
+              : cs.surfaceContainer.withValues(alpha: 0.5),
           border: Border.all(
             color: filled
                 ? accent.withValues(alpha: enabled ? 0.62 : 0.20)
-                : t.glassL2Border,
+                : cs.outlineVariant,
           ),
         ),
         child: Center(
@@ -704,11 +703,11 @@ class _SheetButton extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.type.labelLarge?.copyWith(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               fontSize: 13.5,
               color: filled
-                  ? (enabled ? accent : t.textTertiary)
-                  : t.textSecondary,
+                  ? (enabled ? accent : cs.onSurfaceVariant)
+                  : cs.onSurfaceVariant,
             ),
           ),
         ),
@@ -722,10 +721,10 @@ class _WarningPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.card,
-      accent: t.danger,
+      accent: cs.error,
       glowStrength: 0.35,
       padding: const EdgeInsets.all(Gap.lg),
       child: Row(
@@ -733,7 +732,7 @@ class _WarningPanel extends StatelessWidget {
         children: [
           GlassIconBadge(
             icon: Icons.warning_amber_rounded,
-            color: t.danger,
+            color: cs.error,
             size: 42,
             radius: 12,
             glow: 0.35,
@@ -746,14 +745,14 @@ class _WarningPanel extends StatelessWidget {
               children: [
                 Text(
                   'Strict Mode locks your phone during focus.',
-                  style: context.type.titleSmall,
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'You can’t change blocks or uninstall FocusForge until the '
                   'timer expires.',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textSecondary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -773,7 +772,7 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Gap.sm),
       child: Row(
@@ -785,19 +784,19 @@ class _Step extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: t.danger.withValues(alpha: 0.16),
-              border: Border.all(color: t.danger.withValues(alpha: 0.5)),
+              color: cs.error.withValues(alpha: 0.16),
+              border: Border.all(color: cs.error.withValues(alpha: 0.5)),
             ),
             child: Text(
               '$number',
-              style: context.type.labelMedium?.copyWith(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontSize: 11.5,
-                color: t.danger,
+                color: cs.error,
               ),
             ),
           ),
           const SizedBox(width: Gap.md),
-          Expanded(child: Text(text, style: context.type.bodyMedium)),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
         ],
       ),
     );
@@ -823,7 +822,7 @@ class _AllowRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassRow(
       title: title,
       subtitle: subtitle,
@@ -831,7 +830,7 @@ class _AllowRow extends StatelessWidget {
       showDivider: showDivider,
       trailing: GlassToggle(
         value: value,
-        accent: t.success,
+        accent: cs.tertiary,
         semanticLabel: title,
         onChanged: onChanged,
       ),

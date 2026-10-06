@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -52,7 +51,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final suggestions = SeedData.goalSuggestions(_persona);
 
     return StepScaffold(
@@ -68,11 +67,11 @@ class _GoalStepState extends ConsumerState<GoalStep> {
             child: ShaderMask(
               blendMode: BlendMode.srcIn,
               shaderCallback: (rect) =>
-                  LinearGradient(colors: [t.accentPrimary, t.accentSecondary])
+                  LinearGradient(colors: [cs.primary, cs.secondary])
                       .createShader(rect),
               child: Text(
                 formatMinutes(_minutes.round()),
-                style: context.type.displayLarge?.copyWith(
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   fontSize: 68,
                   height: 1.05,
                   letterSpacing: -2,
@@ -86,7 +85,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
           child: Center(
             child: Text(
               'of focus per day',
-              style: context.type.bodyMedium?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -110,9 +109,9 @@ class _GoalStepState extends ConsumerState<GoalStep> {
             padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
             child: Row(
               children: [
-                Text('30m', style: context.type.labelSmall),
+                Text('30m', style: Theme.of(context).textTheme.labelSmall),
                 const Spacer(),
-                Text('6h', style: context.type.labelSmall),
+                Text('6h', style: Theme.of(context).textTheme.labelSmall),
               ],
             ),
           ),
@@ -140,10 +139,10 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                         const SizedBox(height: 2),
                         Text(
                           formatMinutes(suggestions[i]),
-                          style: context.type.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: _minutes.round() == suggestions[i]
-                                ? t.accentPrimary
-                                : t.textTertiary,
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -167,14 +166,14 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                 Icon(
                   Icons.psychology_alt_rounded,
                   size: 18,
-                  color: t.accentSecondary,
+                  color: cs.secondary,
                 ),
                 const SizedBox(width: Gap.md),
                 Expanded(
                   child: Text(
                     _insight,
-                    style: context.type.bodySmall?.copyWith(
-                      color: t.textSecondary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ),

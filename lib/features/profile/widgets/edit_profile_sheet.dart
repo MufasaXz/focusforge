@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/shell/app_shell.dart';
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/glass_surface.dart';
@@ -59,7 +58,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         Gap.lg,
@@ -80,7 +79,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
             children: [
               const _SheetHandle(),
               const SizedBox(height: Gap.lg),
-              Text('Edit profile', style: context.type.titleMedium),
+              Text('Edit profile', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: Gap.lg),
               _FieldLabel(text: 'Display name'),
               const SizedBox(height: Gap.sm),
@@ -88,30 +87,30 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.done,
-                style: context.type.bodyLarge,
-                cursorColor: t.accentPrimary,
+                style: Theme.of(context).textTheme.bodyLarge,
+                cursorColor: cs.primary,
                 onChanged: (_) => setState(() {}),
                 onSubmitted: (_) {
                   if (_valid) _save();
                 },
                 decoration: InputDecoration(
                   hintText: 'Your name',
-                  hintStyle: context.type.bodyLarge?.copyWith(
-                    color: t.textTertiary,
+                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                   filled: true,
-                  fillColor: t.glassL2At(0.5),
+                  fillColor: cs.surfaceContainer.withValues(alpha: 0.5),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: Gap.md,
                     vertical: Gap.md,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(Radii.item),
-                    borderSide: BorderSide(color: t.glassL2Border),
+                    borderSide: BorderSide(color: cs.outlineVariant),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(Radii.item),
-                    borderSide: BorderSide(color: t.accentPrimary, width: 1.4),
+                    borderSide: BorderSide(color: cs.primary, width: 1.4),
                   ),
                 ),
               ),
@@ -137,7 +136,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                           Icon(
                             p.icon,
                             size: 15,
-                            color: p == _persona ? p.color : t.textSecondary,
+                            color: p == _persona ? p.color : cs.onSurfaceVariant,
                           ),
                           const SizedBox(width: 6),
                           Text(p.label),
@@ -168,8 +167,8 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text.toUpperCase(),
-    style: context.type.labelMedium?.copyWith(
-      color: context.glass.textTertiary,
+    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
       letterSpacing: 1.3,
       fontSize: 10.5,
       fontWeight: FontWeight.w700,
@@ -187,7 +186,7 @@ class _SheetHandle extends StatelessWidget {
       width: 40,
       height: 4,
       decoration: BoxDecoration(
-        color: context.glass.textTertiary,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         borderRadius: BorderRadius.circular(Radii.pill),
       ),
     ),

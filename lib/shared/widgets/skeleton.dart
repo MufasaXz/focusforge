@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../app/theme/app_theme.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 
 /// Shimmering placeholder block.
 ///
@@ -49,12 +48,12 @@ class _SkeletonState extends State<Skeleton>
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final radius = BorderRadius.circular(widget.radius);
-    final base = t.textPrimary.withValues(alpha: 0.07);
+    final base = cs.onSurface.withValues(alpha: 0.07);
     final highlight = Color.lerp(
-      t.textPrimary,
-      t.accentPrimary,
+      cs.onSurface,
+      cs.primary,
       0.55,
     )!.withValues(alpha: 0.16);
 

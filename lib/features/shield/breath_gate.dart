@@ -1,3 +1,4 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,8 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -298,7 +297,7 @@ class _GateHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         GlassPill(
@@ -309,12 +308,12 @@ class _GateHeader extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.shield_rounded, size: 14, color: t.accentPrimary),
+              Icon(Icons.shield_rounded, size: 14, color: cs.primary),
               const SizedBox(width: 6),
               Text(
                 'Deep Breath Gate',
-                style: context.type.labelSmall?.copyWith(
-                  color: t.textSecondary,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
                   letterSpacing: 0.6,
                 ),
               ),
@@ -324,13 +323,13 @@ class _GateHeader extends StatelessWidget {
         const SizedBox(height: Gap.lg),
         Text(
           'You reached for $appName',
-          style: context.type.titleLarge,
+          style: Theme.of(context).textTheme.titleLarge,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xs),
         Text(
           'Three slow breaths before you decide.',
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
       ],
@@ -348,11 +347,11 @@ class _BreathOrb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final color = switch (frame.phase) {
-      _Phase.hold => t.accentSecondary,
-      _Phase.complete => t.success,
-      _ => t.accentPrimary,
+      _Phase.hold => cs.secondary,
+      _Phase.complete => cs.tertiary,
+      _ => cs.primary,
     };
     final orb = size * 0.74;
     final instructionSize = (size * 0.095).clamp(18.0, 28.0);
@@ -387,7 +386,7 @@ class _BreathOrb extends StatelessWidget {
             painter: _ProgressRingPainter(
               progress: frame.progress,
               color: color,
-              track: t.track,
+              track: cs.surfaceContainerHighest,
             ),
           ),
           ExcludeSemantics(
@@ -436,14 +435,14 @@ class _BreathOrb extends StatelessWidget {
                 children: [
                   Text(
                     frame.phase.instruction,
-                    style: context.type.headlineMedium?.copyWith(
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontSize: instructionSize,
                     ),
                   ),
                   const SizedBox(height: Gap.xs),
                   Text(
                     'Cycle ${frame.cycle} / ${_Protocol.cycles}',
-                    style: context.type.labelSmall,
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],
               ),
@@ -500,7 +499,7 @@ class _Countdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final remaining = frame.remaining;
     final label =
         '${remaining.inMinutes}:'
@@ -513,15 +512,15 @@ class _Countdown extends StatelessWidget {
           child: ExcludeSemantics(
             child: Text(
               label,
-              style: context.type.titleLarge?.copyWith(
-                color: t.textSecondary,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: cs.onSurfaceVariant,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
         ),
         const SizedBox(height: Gap.xs),
-        Text('left in this session', style: context.type.labelSmall),
+        Text('left in this session', style: Theme.of(context).textTheme.labelSmall),
       ],
     );
   }
@@ -539,20 +538,20 @@ class _CompletionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Nicely done.',
-          style: context.type.titleMedium,
+          style: Theme.of(context).textTheme.titleMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xs),
         Text(
           'The urge usually passes in under a minute. Choose what happens '
           'next.',
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xl),
@@ -591,7 +590,7 @@ class _GateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       label: label,
@@ -605,13 +604,13 @@ class _GateButton extends StatelessWidget {
               horizontal: Gap.xl,
               vertical: Gap.lg,
             ),
-            accent: primary ? t.accentPrimary : null,
+            accent: primary ? cs.primary : null,
             glowStrength: primary ? 0.8 : 0,
             gradient: primary
                 ? LinearGradient(
                     colors: [
-                      t.accentPrimary.withValues(alpha: 0.30),
-                      t.accentSecondary.withValues(alpha: 0.18),
+                      cs.primary.withValues(alpha: 0.30),
+                      cs.secondary.withValues(alpha: 0.18),
                     ],
                   )
                 : null,
@@ -621,13 +620,13 @@ class _GateButton extends StatelessWidget {
                 Icon(
                   icon,
                   size: 18,
-                  color: primary ? t.textPrimary : t.textTertiary,
+                  color: primary ? cs.onSurface : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: Gap.sm),
                 Text(
                   label,
-                  style: context.type.labelLarge?.copyWith(
-                    color: primary ? t.textPrimary : t.textTertiary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: primary ? cs.onSurface : cs.onSurfaceVariant,
                   ),
                 ),
               ],

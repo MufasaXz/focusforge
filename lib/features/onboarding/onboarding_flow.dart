@@ -1,10 +1,9 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/glass_toggle.dart';
@@ -145,7 +144,7 @@ class _FlowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.lg, Gap.sm),
@@ -162,7 +161,7 @@ class _FlowHeader extends StatelessWidget {
                 child: Icon(
                   Icons.arrow_back_rounded,
                   size: 20,
-                  color: t.textPrimary,
+                  color: cs.onSurface,
                 ),
               ),
             ),
@@ -171,13 +170,13 @@ class _FlowHeader extends StatelessWidget {
           Expanded(
             child: GlassProgressBar(
               value: index / total,
-              color: t.accentPrimary,
+              color: cs.primary,
               height: 4,
               semanticLabel: 'Setup progress',
             ),
           ),
           const SizedBox(width: Gap.md),
-          Text('$index/$total', style: context.type.labelSmall),
+          Text('$index/$total', style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );

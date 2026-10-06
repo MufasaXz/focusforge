@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/theme/glass_theme.dart';
 
 /// Scale-on-press wrapper. Springs back with a slight overshoot so taps feel
 /// physical rather than binary.
@@ -42,12 +41,12 @@ class _PressableState extends State<Pressable> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final enabled = widget.onTap != null || widget.onLongPress != null;
 
     Color? wash;
     if (enabled && _focused) {
-      wash = t.accentPrimary.withValues(alpha: 0.16);
+      wash = cs.primary.withValues(alpha: 0.16);
     } else if (enabled && _hover) {
       wash = Theme.of(context).brightness == Brightness.dark
           ? Colors.white.withValues(alpha: 0.07)
@@ -161,7 +160,6 @@ class GlassIconBadge extends StatelessWidget {
   }
 
   Widget _buildBadge(BuildContext context) {
-    final t = context.glass;
 
     return Container(
       width: size,
@@ -196,7 +194,7 @@ class GlassIconBadge extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [t.sheen, t.sheen.withValues(alpha: 0)],
+                    colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.06).withValues(alpha: 0)],
                     stops: const [0, 0.7],
                   ),
                 ),

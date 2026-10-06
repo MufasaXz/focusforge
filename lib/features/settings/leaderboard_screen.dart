@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
 import '../../shared/widgets/glass_page.dart';
@@ -84,19 +83,19 @@ class _SampleBoardNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.card,
       padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: t.textTertiary),
+          Icon(Icons.info_outline_rounded, size: 16, color: cs.onSurfaceVariant),
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(
               'Only your row is real. The other standings are sample data '
               'until the backend ships.',
-              style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ],
@@ -117,7 +116,7 @@ class _Podium extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.hero,
       blur: 18,
@@ -130,7 +129,7 @@ class _Podium extends StatelessWidget {
               entry: entries[1],
               place: 2,
               height: 64,
-              accent: t.accentPrimary,
+              accent: cs.primary,
             ),
           ),
           const SizedBox(width: Gap.sm),
@@ -139,7 +138,7 @@ class _Podium extends StatelessWidget {
               entry: entries[0],
               place: 1,
               height: 92,
-              accent: t.gold,
+              accent: cs.tertiary,
             ),
           ),
           const SizedBox(width: Gap.sm),
@@ -148,7 +147,7 @@ class _Podium extends StatelessWidget {
               entry: entries[2],
               place: 3,
               height: 52,
-              accent: t.accentSecondary,
+              accent: cs.secondary,
             ),
           ),
         ],
@@ -172,7 +171,7 @@ class _PodiumPlace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final top = place == 1;
 
     return Column(
@@ -184,7 +183,7 @@ class _PodiumPlace extends StatelessWidget {
         ],
         GlassIconBadge(
           glyph: entry.initials,
-          color: entry.isMe ? t.accentPrimary : accent,
+          color: entry.isMe ? cs.primary : accent,
           size: top ? 54 : 44,
           radius: top ? 18 : 14,
           glow: top ? 0.6 : 0.25,
@@ -196,15 +195,15 @@ class _PodiumPlace extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: context.type.labelMedium?.copyWith(
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             fontSize: 11.5,
-            color: t.textPrimary,
+            color: cs.onSurface,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           formatHours(entry.hours),
-          style: context.type.labelSmall?.copyWith(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
             fontSize: 10.5,
             color: accent,
           ),
@@ -229,7 +228,7 @@ class _PodiumPlace extends StatelessWidget {
           child: Center(
             child: Text(
               '$place',
-              style: context.type.titleMedium?.copyWith(color: accent),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: accent),
             ),
           ),
         ),
@@ -279,9 +278,9 @@ class _RankRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final isMe = entry.isMe;
-    final accent = t.accentPrimary;
+    final accent = cs.primary;
 
     return Column(
       children: [
@@ -304,14 +303,14 @@ class _RankRow extends StatelessWidget {
                 width: 22,
                 child: Text(
                   '$rank',
-                  style: context.type.labelMedium?.copyWith(
-                    color: isMe ? accent : t.textTertiary,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: isMe ? accent : cs.onSurfaceVariant,
                   ),
                 ),
               ),
               GlassIconBadge(
                 glyph: entry.initials,
-                color: isMe ? accent : t.textTertiary,
+                color: isMe ? accent : cs.onSurfaceVariant,
                 size: 30,
                 radius: 10,
               ),
@@ -321,21 +320,21 @@ class _RankRow extends StatelessWidget {
                   entry.isMe ? 'You' : entry.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.type.bodyLarge?.copyWith(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: isMe ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),
               Text(
                 formatHours(entry.hours),
-                style: context.type.titleSmall?.copyWith(
-                  color: isMe ? accent : t.textPrimary,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: isMe ? accent : cs.onSurface,
                 ),
               ),
             ],
           ),
         ),
-        if (showDivider) Divider(height: 1, thickness: 1, color: t.hairline),
+        if (showDivider) Divider(height: 1, thickness: 1, color: cs.outlineVariant),
       ],
     );
   }
@@ -353,7 +352,7 @@ class _MyRankCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final mine = me;
     final leader = entries.isEmpty ? null : entries.first;
 
@@ -363,7 +362,7 @@ class _MyRankCard extends StatelessWidget {
         padding: const EdgeInsets.all(Gap.lg),
         child: Text(
           'Not on this board yet — finish a session to appear here.',
-          style: context.type.bodyMedium?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
       );
     }
@@ -387,8 +386,8 @@ class _MyRankCard extends StatelessWidget {
     return GlassPanel(
       level: 2,
       radius: Radii.card,
-      blur: t.blurL2,
-      accent: t.accentPrimary,
+      blur: 20.0,
+      accent: cs.primary,
       glowStrength: 0.5,
       padding: const EdgeInsets.all(Gap.lg),
       child: Column(
@@ -398,7 +397,7 @@ class _MyRankCard extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: Icons.military_tech_rounded,
-                color: t.accentPrimary,
+                color: cs.primary,
                 size: 44,
                 radius: 14,
                 glow: 0.45,
@@ -409,12 +408,12 @@ class _MyRankCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('#$rank this week', style: context.type.titleSmall),
+                    Text('#$rank this week', style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 2),
                     Text(
                       '${formatHours(mine.hours)} of focused study',
-                      style: context.type.bodySmall?.copyWith(
-                        color: t.textTertiary,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -425,12 +424,12 @@ class _MyRankCard extends StatelessWidget {
           const SizedBox(height: Gap.lg),
           GlassProgressBar(
             value: leader.hours <= 0 ? 1 : mine.hours / leader.hours,
-            color: t.accentPrimary,
+            color: cs.primary,
             height: 6,
             semanticLabel: 'Progress toward first place',
           ),
           const SizedBox(height: Gap.sm),
-          Text(message, style: context.type.labelSmall),
+          Text(message, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );

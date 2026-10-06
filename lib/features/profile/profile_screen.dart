@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
@@ -36,7 +35,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
 
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
@@ -79,7 +78,7 @@ class ProfileScreen extends ConsumerWidget {
         label: 'Strict Mode',
         routeName: AppRoutes.strictMode,
         trailing: strict.enabled ? 'On' : 'Off',
-        trailingColor: strict.enabled ? t.danger : null,
+        trailingColor: strict.enabled ? t.error : null,
       ),
       _SettingSpec(
         icon: Icons.notifications_active_rounded,
@@ -137,7 +136,7 @@ class ProfileScreen extends ConsumerWidget {
               icon: Icons.flag_rounded,
               trailing: Text(
                 'Tap to edit',
-                style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.onSurfaceVariant),
               ),
             ),
           ),
@@ -191,7 +190,7 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < settings.length; i++) ...[
-                    if (i > 0) Divider(color: t.hairline, height: 1),
+                    if (i > 0) Divider(color: t.outlineVariant, height: 1),
                     _SettingTile(
                       spec: settings[i],
                       onTap: () => context.goNamed(settings[i].routeName!),
@@ -238,7 +237,7 @@ class ProfileScreen extends ConsumerWidget {
               child: Text(
                 'Onboarding starts over from the first screen. Nothing already '
                 'logged is deleted.',
-                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.onSurfaceVariant),
               ),
             ),
           ),
@@ -264,7 +263,7 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.hero,
       blur: 18,
@@ -284,7 +283,7 @@ class _HeroCard extends StatelessWidget {
                       user.displayName.trim().isEmpty
                           ? 'Your profile'
                           : user.displayName,
-                      style: context.type.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -333,7 +332,7 @@ class _HeroCard extends StatelessWidget {
                 child: _HeroStat(
                   value: '${stats.currentStreak}',
                   label: 'Day streak',
-                  accent: t.gold,
+                  accent: t.tertiary,
                 ),
               ),
               _Divider(t: t),
@@ -348,18 +347,18 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: Gap.xl),
           Row(
             children: [
-              Text('Level ${stats.level}', style: context.type.titleSmall),
+              Text('Level ${stats.level}', style: Theme.of(context).textTheme.titleSmall),
               const Spacer(),
               Text(
                 '${stats.xp} / ${stats.xpForNext} XP',
-                style: context.type.labelSmall,
+                style: Theme.of(context).textTheme.labelSmall,
               ),
             ],
           ),
           const SizedBox(height: Gap.sm),
           GlassProgressBar(
             value: stats.levelProgress,
-            color: t.accentSecondary,
+            color: t.secondary,
             height: 7,
             semanticLabel:
                 'Level ${stats.level}, ${stats.xp} of ${stats.xpForNext} XP',
@@ -379,7 +378,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final ink = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF0A1020)
         : Colors.white;
@@ -400,14 +399,14 @@ class _Avatar extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              t.accentPrimary.withValues(alpha: 0.85),
-              t.accentSecondary.withValues(alpha: 0.85),
+              t.primary.withValues(alpha: 0.85),
+              t.secondary.withValues(alpha: 0.85),
             ],
           ),
-          border: Border.all(color: t.specular, width: 1.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: t.accentPrimary.withValues(alpha: 0.35),
+              color: t.primary.withValues(alpha: 0.35),
               blurRadius: 22,
               spreadRadius: -4,
             ),
@@ -416,7 +415,7 @@ class _Avatar extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           user.initials,
-          style: context.type.titleLarge?.copyWith(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: ink,
             fontWeight: FontWeight.w700,
           ),
@@ -431,7 +430,7 @@ class _EditProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     void open() => showEditProfileSheet(context);
 
     return Semantics(
@@ -443,7 +442,7 @@ class _EditProfileButton extends StatelessWidget {
         onTap: open,
         child: GlassIconBadge(
           icon: Icons.edit_rounded,
-          color: t.accentPrimary,
+          color: t.primary,
           size: 36,
           radius: 11,
         ),
@@ -495,11 +494,11 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.card,
       padding: const EdgeInsets.all(Gap.lg),
-      accent: t.accentPrimary,
+      accent: t.primary,
       glowStrength: 0.2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -509,7 +508,7 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
             children: [
               GlassIconBadge(
                 icon: Icons.smartphone_rounded,
-                color: t.accentPrimary,
+                color: t.primary,
                 size: 40,
                 radius: 12,
               ),
@@ -518,13 +517,13 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Local account', style: context.type.titleSmall),
+                    Text('Local account', style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 2),
                     Text(
                       'You are using a local account. Everything you log stays '
                       'on this device and is never uploaded.',
-                      style: context.type.bodySmall?.copyWith(
-                        color: t.textTertiary,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: t.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -536,13 +535,13 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.lock_rounded, size: 14, color: t.textTertiary),
+              Icon(Icons.lock_rounded, size: 14, color: t.onSurfaceVariant),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Study groups and the leaderboard need a linked account.',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: t.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -568,7 +567,7 @@ class _AppearanceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final pref = ref.watch(themeProvider);
 
     return GlassPanel(
@@ -580,17 +579,17 @@ class _AppearanceCard extends ConsumerWidget {
             children: [
               GlassIconBadge(
                 icon: pref.icon,
-                color: t.accentSecondary,
+                color: t.secondary,
                 size: 36,
                 radius: 10,
               ),
               const SizedBox(width: Gap.md),
               Expanded(
-                child: Text('Appearance', style: context.type.bodyLarge),
+                child: Text('Appearance', style: Theme.of(context).textTheme.bodyLarge),
               ),
               Text(
                 pref.label,
-                style: context.type.labelSmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.onSurfaceVariant),
               ),
             ],
           ),
@@ -598,7 +597,7 @@ class _AppearanceCard extends ConsumerWidget {
           SegmentedControl(
             options: [for (final p in ThemePreference.values) p.label],
             index: pref.index,
-            accent: t.accentSecondary,
+            accent: t.secondary,
             onChanged: (i) =>
                 ref.read(themeProvider.notifier).set(ThemePreference.values[i]),
           ),
@@ -617,7 +616,7 @@ class _SubjectGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final s = subject;
     final spoken =
         '${s.name}, ${_hours(s.weekDone)} of ${_hours(s.weekTarget)} '
@@ -654,7 +653,7 @@ class _SubjectGoalCard extends StatelessWidget {
                     children: [
                       Icon(s.icon, size: 13, color: s.color),
                       const SizedBox(width: 6),
-                      Text(s.name, style: context.type.titleSmall),
+                      Text(s.name, style: Theme.of(context).textTheme.titleSmall),
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -662,10 +661,10 @@ class _SubjectGoalCard extends StatelessWidget {
                     children: [
                       Text(
                         '${_hours(s.weekDone)} / ${_hours(s.weekTarget)}',
-                        style: context.type.labelSmall,
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                       const SizedBox(width: 6),
-                      Icon(Icons.tune_rounded, size: 12, color: t.textTertiary),
+                      Icon(Icons.tune_rounded, size: 12, color: t.onSurfaceVariant),
                     ],
                   ),
                 ],
@@ -709,7 +708,7 @@ class _SettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return Pressable(
       onTap: onTap,
       scale: 0.985,
@@ -723,7 +722,7 @@ class _SettingTile extends StatelessWidget {
             children: [
               GlassIconBadge(
                 icon: spec.icon,
-                color: t.accentPrimary,
+                color: t.primary,
                 size: 36,
                 radius: 10,
               ),
@@ -733,14 +732,14 @@ class _SettingTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(spec.label, style: context.type.bodyLarge),
+                    Text(spec.label, style: Theme.of(context).textTheme.bodyLarge),
                     if (spec.subtitle != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
                           spec.subtitle!,
-                          style: context.type.bodySmall?.copyWith(
-                            color: t.textTertiary,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: t.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -748,14 +747,14 @@ class _SettingTile extends StatelessWidget {
                 ),
               ),
               if (spec.locked) ...[
-                Icon(Icons.lock_rounded, size: 14, color: t.textTertiary),
+                Icon(Icons.lock_rounded, size: 14, color: t.onSurfaceVariant),
                 const SizedBox(width: 6),
               ],
               if (spec.trailing != null) ...[
                 Text(
                   spec.trailing!,
-                  style: context.type.labelSmall?.copyWith(
-                    color: spec.trailingColor ?? t.textTertiary,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: spec.trailingColor ?? t.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -763,7 +762,7 @@ class _SettingTile extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: t.textTertiary,
+                color: t.onSurfaceVariant,
               ),
             ],
           ),
@@ -782,20 +781,20 @@ class _HeroStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     return Column(
       children: [
         Text(
           value,
-          style: context.type.titleLarge?.copyWith(
-            color: accent ?? t.textPrimary,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: accent ?? t.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: context.type.labelSmall?.copyWith(fontSize: 10.5),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10.5),
           textAlign: TextAlign.center,
         ),
       ],
@@ -806,11 +805,11 @@ class _HeroStat extends StatelessWidget {
 class _Divider extends StatelessWidget {
   const _Divider({required this.t});
 
-  final GlassTokens t;
+  final ColorScheme t;
 
   @override
   Widget build(BuildContext context) =>
-      Container(width: 1, height: 30, color: t.hairline);
+      Container(width: 1, height: 30, color: t.outlineVariant);
 }
 
 /// Holds a screen's staggered entrance until its tab is actually on screen.

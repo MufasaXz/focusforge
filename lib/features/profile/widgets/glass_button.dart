@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/glass_surface.dart';
 
 /// Full-width primary action for the profile sheets.
@@ -31,8 +30,8 @@ class GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final a = accent ?? t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final a = accent ?? cs.primary;
     final enabled = onTap != null && !busy;
     final ink = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF0A1020)
@@ -59,7 +58,7 @@ class GlassButton extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [a, Color.lerp(a, t.accentSecondary, 0.45)!],
+                colors: [a, Color.lerp(a, cs.secondary, 0.45)!],
               ),
               border: Border.all(color: a.withValues(alpha: 0.85)),
               boxShadow: [
@@ -89,7 +88,7 @@ class GlassButton extends StatelessWidget {
                       ],
                       Text(
                         label,
-                        style: context.type.labelLarge?.copyWith(
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: ink,
                           fontWeight: FontWeight.w700,
                         ),

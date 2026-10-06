@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../app/theme/color_tokens.dart';
-import '../../../app/theme/glass_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
 
 /// Weekly focus bars.
@@ -96,7 +95,7 @@ class _WeeklyChartState extends State<WeeklyChart>
     final days = widget.days;
     if (days.isEmpty) return SizedBox(height: widget.height);
 
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final maxHours = days
         .map((d) => d.hours)
         .fold<double>(1, (a, b) => a > b ? a : b);
@@ -130,7 +129,7 @@ class _WeeklyChartState extends State<WeeklyChart>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         for (var i = 0; i < 4; i++)
-                          Container(height: 1, color: t.hairline),
+                          Container(height: 1, color: cs.outlineVariant),
                       ],
                     ),
                   ),
@@ -166,11 +165,11 @@ class _WeeklyChartState extends State<WeeklyChart>
                                       curve: Curves.easeOutCubic,
                                     ),
                                   ),
-                                  accent: t.accentPrimary,
-                                  accent2: t.accentSecondary,
-                                  muted: t.textPrimary,
-                                  hairline: t.hairline,
-                                  label: context.type.labelSmall!,
+                                  accent: cs.primary,
+                                  accent2: cs.secondary,
+                                  muted: cs.onSurface,
+                                  hairline: cs.outlineVariant,
+                                  label: Theme.of(context).textTheme.labelSmall!,
                                 ),
                               ),
                             ),
@@ -199,7 +198,7 @@ class _WeeklyChartState extends State<WeeklyChart>
                           duration: const Duration(milliseconds: 180),
                           child: _Bubble(
                             label: _displayHours(days[index].hours),
-                            accent: t.accentPrimary,
+                            accent: cs.primary,
                           ),
                         ),
                       ),
@@ -245,12 +244,12 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     // Opaque enough to stay legible over gridlines and bars, but tinted from
     // the active theme so it never reads as a foreign Material tooltip.
     final fill = Color.alphaBlend(
       accent.withValues(alpha: 0.16),
-      t.canvasGradient.last,
+      [cs.surface, cs.surface].last,
     );
 
     return Container(
@@ -272,7 +271,7 @@ class _Bubble extends StatelessWidget {
         child: Text(
           label,
           key: ValueKey(label),
-          style: context.type.labelMedium?.copyWith(
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: accent,
             fontWeight: FontWeight.w700,
             fontSize: 12,
@@ -311,7 +310,7 @@ class _Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final fraction = (day.hours / maxHours).clamp(0.0, 1.0);
 
     return Column(
@@ -373,7 +372,7 @@ class _Bar extends StatelessWidget {
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
           style: label.copyWith(
-            color: highlighted ? accent : t.textTertiary,
+            color: highlighted ? accent : cs.onSurfaceVariant,
             fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
             fontSize: 11,
           ),

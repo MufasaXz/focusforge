@@ -1,9 +1,8 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 /// Screen 0 — the splash.
@@ -66,7 +65,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     final logoScale = Tween<double>(
       begin: 0.8,
@@ -86,7 +85,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                 animation: _pulse,
                 builder: (context, _) => GlassIconBadge(
                   icon: Icons.local_fire_department_rounded,
-                  color: t.accentPrimary,
+                  color: cs.primary,
                   size: 108,
                   radius: 32,
                   glow: 0.45 + 0.55 * _pulse.value,
@@ -99,7 +98,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0.15, 0.7),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('FocusForge', style: context.type.displayLarge),
+              child: Text('FocusForge', style: Theme.of(context).textTheme.displayLarge),
             ),
           ),
           const SizedBox(height: Gap.sm),
@@ -107,7 +106,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0.4, 1),
             child: Text(
               'Forge your focus',
-              style: context.type.bodyLarge?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 2),
@@ -119,7 +118,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   }
 
   Widget _loadingDots(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       label: 'Starting up',
       child: AnimatedBuilder(
@@ -135,7 +134,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                   height: 7,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: t.accentPrimary.withValues(
+                    color: cs.primary.withValues(
                       // A travelling wave, so the three read as one animation
                       // rather than three independent blinks.
                       alpha: 0.25 + 0.75 * _wave(i),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import 'glass_surface.dart';
 
 /// Centred empty state: a haloed icon, a headline, a supporting line and an
@@ -27,8 +26,8 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final accent = t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final accent = cs.primary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -60,7 +59,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: Gap.xl),
           Text(
             title,
-            style: context.type.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: Gap.sm),
@@ -68,7 +67,7 @@ class EmptyState extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 320),
             child: Text(
               subtitle,
-              style: context.type.bodyMedium?.copyWith(color: t.textTertiary),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ),

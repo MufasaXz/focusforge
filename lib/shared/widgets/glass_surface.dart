@@ -1,9 +1,8 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import 'pressable.dart';
 
 // Interaction primitives moved to their own file to keep this one to the
@@ -68,12 +67,12 @@ class GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final isL2 = level >= 2;
 
-    final fill = isL2 ? t.glassL2Fill : t.glassL1Fill;
-    final border = isL2 ? t.glassL2Border : t.glassL1Border;
-    final shadow = isL2 ? t.glassL2Shadow : t.glassL1Shadow;
+    final fill = isL2 ? cs.surfaceContainer : cs.surfaceContainerLow;
+    final border = isL2 ? cs.outlineVariant : cs.outlineVariant;
+    final shadow = isL2 ? cs.shadow : cs.shadow;
     final r = BorderRadius.circular(radius);
 
     final borderColor = accent == null
@@ -128,7 +127,7 @@ class GlassPanel extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [t.sheen, t.sheen.withValues(alpha: 0)],
+                      colors: [Colors.white.withValues(alpha: 0.06), Colors.white.withValues(alpha: 0.06).withValues(alpha: 0)],
                       stops: const [0, 0.62],
                     ),
                   ),
@@ -143,7 +142,7 @@ class GlassPanel extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(radius - 1),
-                    border: Border.all(color: t.innerRim),
+                    border: Border.all(color: cs.outlineVariant),
                   ),
                 ),
               ),
@@ -160,9 +159,9 @@ class GlassPanel extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      t.specular.withValues(alpha: 0),
-                      t.specular,
-                      t.specular.withValues(alpha: 0),
+                      Colors.white.withValues(alpha: 0.14).withValues(alpha: 0),
+                      Colors.white.withValues(alpha: 0.14),
+                      Colors.white.withValues(alpha: 0.14).withValues(alpha: 0),
                     ],
                   ),
                 ),
@@ -213,8 +212,8 @@ class GlassPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final a = accent ?? t.accentPrimary;
+    final cs = Theme.of(context).colorScheme;
+    final a = accent ?? cs.primary;
 
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 240),
@@ -222,9 +221,9 @@ class GlassPill extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        color: selected ? a.withValues(alpha: 0.22) : t.glassL2At(0.6),
+        color: selected ? a.withValues(alpha: 0.22) : cs.surfaceContainer.withValues(alpha: 0.6),
         border: Border.all(
-          color: selected ? a.withValues(alpha: 0.70) : t.glassL2Border,
+          color: selected ? a.withValues(alpha: 0.70) : cs.outlineVariant,
           width: selected ? 1.2 : 1,
         ),
         boxShadow: selected
@@ -239,7 +238,7 @@ class GlassPill extends StatelessWidget {
       ),
       child: DefaultTextStyle.merge(
         style: TextStyle(
-          color: selected ? t.textPrimary : t.textSecondary,
+          color: selected ? cs.onSurface : cs.onSurfaceVariant,
           fontWeight: FontWeight.w600,
           fontSize: 13,
           letterSpacing: -0.1,
@@ -268,20 +267,20 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 0, 6, Gap.md),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 15, color: t.textTertiary),
+            Icon(icon, size: 15, color: cs.onSurfaceVariant),
             const SizedBox(width: Gap.sm),
           ],
           Expanded(
             child: Text(
               title.toUpperCase(),
-              style: context.type.labelMedium?.copyWith(
-                color: t.textTertiary,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: cs.onSurfaceVariant,
                 letterSpacing: 1.3,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,

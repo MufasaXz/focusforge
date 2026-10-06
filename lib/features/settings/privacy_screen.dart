@@ -1,3 +1,4 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -8,8 +9,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/bootstrap.dart';
 import '../../app/router.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
@@ -31,7 +30,7 @@ class PrivacyScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final user = ref.watch(userProvider);
 
     return GlassPage(
@@ -49,7 +48,7 @@ class PrivacyScreen extends ConsumerWidget {
               children: [
                 GlassIconBadge(
                   icon: Icons.smartphone_rounded,
-                  color: t.success,
+                  color: cs.tertiary,
                   size: 42,
                   radius: 12,
                   glow: 0.25,
@@ -62,15 +61,15 @@ class PrivacyScreen extends ConsumerWidget {
                     children: [
                       Text(
                         'Everything stays on this device',
-                        style: context.type.titleSmall,
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Focus sessions, shield events, badges and settings '
                         'are stored locally. Usage patterns are never uploaded '
                         'to any server.',
-                        style: context.type.bodySmall?.copyWith(
-                          color: t.textSecondary,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -126,7 +125,7 @@ class PrivacyScreen extends ConsumerWidget {
                 title: 'Clear local analytics',
                 subtitle: 'Removes focus history, totals and subject progress',
                 icon: Icons.cleaning_services_rounded,
-                iconColor: t.danger,
+                iconColor: cs.error,
                 trailing: const GlassChevron(),
                 onTap: () => _clearAnalytics(context, ref),
               ),
@@ -134,7 +133,7 @@ class PrivacyScreen extends ConsumerWidget {
                 title: 'Delete account',
                 subtitle: 'Erases every local record',
                 icon: Icons.delete_outline_rounded,
-                iconColor: t.danger,
+                iconColor: cs.error,
                 trailing: const GlassChevron(),
                 showDivider: false,
                 onTap: () => _deleteAccount(context, ref),
@@ -336,7 +335,7 @@ class _ExportBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,29 +344,29 @@ class _ExportBody extends StatelessWidget {
           children: [
             GlassIconBadge(
               icon: Icons.description_rounded,
-              color: t.accentPrimary,
+              color: cs.primary,
               size: 40,
               radius: 12,
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text('Exported JSON', style: context.type.titleMedium),
+              child: Text('Exported JSON', style: Theme.of(context).textTheme.titleMedium),
             ),
           ],
         ),
         const SizedBox(height: Gap.md),
         Text(
           '$keyCount stored keys. Nothing has left this device.',
-          style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.lg),
         Container(
           height: 220,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.item),
-            color: t.glassL2At(0.45),
-            border: Border.all(color: t.glassL2Border),
+            color: cs.surfaceContainer.withValues(alpha: 0.45),
+            border: Border.all(color: cs.outlineVariant),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(Gap.md),
@@ -377,7 +376,7 @@ class _ExportBody extends StatelessWidget {
                 fontFamily: 'monospace',
                 fontSize: 11.5,
                 height: 1.45,
-                color: t.textSecondary,
+                color: cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -389,7 +388,7 @@ class _ExportBody extends StatelessWidget {
               child: GlassActionButton(
                 label: 'Close',
                 icon: Icons.close_rounded,
-                accent: t.textSecondary,
+                accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(false),
               ),
             ),
@@ -420,7 +419,7 @@ class _InfoBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -429,17 +428,17 @@ class _InfoBody extends StatelessWidget {
           children: [
             GlassIconBadge(
               icon: Icons.article_rounded,
-              color: t.accentPrimary,
+              color: cs.primary,
               size: 40,
               radius: 12,
               glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(title, style: context.type.titleMedium)),
+            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
           ],
         ),
         const SizedBox(height: Gap.lg),
-        Text(body, style: context.type.bodySmall),
+        Text(body, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: Gap.xl),
         GlassActionButton(
           label: 'Close',

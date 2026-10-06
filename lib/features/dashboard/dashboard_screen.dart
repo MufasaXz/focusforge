@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
@@ -68,7 +67,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     final now = DateTime.now();
 
     final user = ref.watch(userProvider);
@@ -94,8 +93,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return CoachMarks(
       child: RefreshIndicator(
         onRefresh: _refresh,
-        color: t.accentPrimary,
-        backgroundColor: t.canvasGradient.last,
+        color: cs.primary,
+        backgroundColor: [cs.surface, cs.surface].last,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
@@ -187,8 +186,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   icon: Icons.shield_rounded,
                   trailing: Text(
                     '$activeShields active',
-                    style: context.type.labelSmall?.copyWith(
-                      color: t.textTertiary,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -254,7 +253,7 @@ class _Greeting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(
@@ -263,12 +262,12 @@ class _Greeting extends StatelessWidget {
             children: [
               Text(
                 '${greetingFor(now)}, $name',
-                style: context.type.headlineMedium,
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 3),
               Text(
                 formatDate(now),
-                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -281,7 +280,7 @@ class _Greeting extends StatelessWidget {
               horizontal: Gap.md,
               vertical: 8,
             ),
-            accent: t.gold,
+            accent: cs.tertiary,
             glowStrength: 0.55,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -289,13 +288,13 @@ class _Greeting extends StatelessWidget {
                 Icon(
                   Icons.local_fire_department_rounded,
                   size: 15,
-                  color: t.gold,
+                  color: cs.tertiary,
                 ),
                 const SizedBox(width: 5),
                 Text(
                   '$streak',
-                  style: context.type.labelLarge?.copyWith(
-                    color: t.textPrimary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -329,7 +328,7 @@ class _DailyOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
 
     return GlassPanel(
       radius: Radii.hero,
@@ -351,7 +350,7 @@ class _DailyOverview extends StatelessWidget {
               children: [
                 Text(
                   formatMinutes(minutesToday),
-                  style: context.type.displayMedium?.copyWith(
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
                     fontSize: 36,
                     letterSpacing: -1.4,
                   ),
@@ -359,8 +358,8 @@ class _DailyOverview extends StatelessWidget {
                 const SizedBox(height: 1),
                 Text(
                   'of ${formatMinutes(goalMinutes)} goal',
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -434,7 +433,7 @@ class _WeeklyPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.card,
       padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
@@ -446,7 +445,7 @@ class _WeeklyPanel extends StatelessWidget {
             children: [
               Text(
                 '${total.toStringAsFixed(1)}h',
-                style: context.type.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                 ),
@@ -454,13 +453,13 @@ class _WeeklyPanel extends StatelessWidget {
               const SizedBox(width: Gap.sm),
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
-                child: Text('focused', style: context.type.bodySmall),
+                child: Text('focused', style: Theme.of(context).textTheme.bodySmall),
               ),
               const Spacer(),
               _MetaPill(
                 icon: Icons.insights_rounded,
                 label: '${average.toStringAsFixed(1)}h avg',
-                color: t.accentSecondary,
+                color: cs.secondary,
               ),
             ],
           ),
@@ -480,7 +479,7 @@ class _NoSessions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       radius: Radii.hero,
       blur: 18,
@@ -498,7 +497,7 @@ class _NoSessions extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.play_arrow_rounded, size: 18, color: t.accentPrimary),
+              Icon(Icons.play_arrow_rounded, size: 18, color: cs.primary),
               const SizedBox(width: 6),
               const Text('Start focusing'),
             ],
@@ -522,7 +521,7 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final cs = Theme.of(context).colorScheme;
     return GlassPanel(
       level: 2,
       radius: Radii.item,
@@ -531,11 +530,11 @@ class _StatChip extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: t.accentPrimary),
+          Icon(icon, size: 16, color: cs.primary),
           const SizedBox(height: 7),
           Text(
             value,
-            style: context.type.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,
             ),
@@ -545,9 +544,9 @@ class _StatChip extends StatelessWidget {
           const SizedBox(height: 1),
           Text(
             label,
-            style: context.type.labelSmall?.copyWith(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontSize: 10,
-              color: t.textTertiary,
+              color: cs.onSurfaceVariant,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -587,7 +586,7 @@ class _MetaPill extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             label,
-            style: context.type.labelSmall?.copyWith(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: c,
               fontWeight: FontWeight.w700,
             ),

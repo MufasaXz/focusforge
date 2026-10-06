@@ -1,10 +1,9 @@
+import '../../app/theme/app_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme/color_tokens.dart';
-import '../../app/theme/glass_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -102,7 +101,7 @@ class _AppsStepState extends ConsumerState<AppsStep> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
     final blocked = ref.watch(blockedAppsProvider);
 
     return StepScaffold(
@@ -124,7 +123,7 @@ class _AppsStepState extends ConsumerState<AppsStep> {
               icon: _iconFor(tier),
               trailing: Text(
                 _trailingFor(tier),
-                style: context.type.labelSmall?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: _colorFor(tier, t),
                 ),
               ),
@@ -185,10 +184,10 @@ class _AppsStepState extends ConsumerState<AppsStep> {
     _ => 'Never blocked',
   };
 
-  static Color _colorFor(int tier, GlassTokens t) => switch (tier) {
-    0 => t.danger,
-    1 => t.gold,
-    _ => t.success,
+  static Color _colorFor(int tier, ColorScheme t) => switch (tier) {
+    0 => t.error,
+    1 => t.tertiary,
+    _ => t.tertiary,
   };
 }
 
@@ -214,7 +213,7 @@ class _AppRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
+    final t = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -225,7 +224,7 @@ class _AppRow extends StatelessWidget {
         children: [
           GlassIconBadge(
             icon: app.icon,
-            color: unsupported ? t.textTertiary : app.color,
+            color: unsupported ? t.onSurfaceVariant : app.color,
             size: 36,
             radius: Radii.tile,
           ),
@@ -236,14 +235,14 @@ class _AppRow extends StatelessWidget {
               children: [
                 Text(
                   app.name,
-                  style: context.type.bodyLarge?.copyWith(
-                    color: unsupported ? t.textSecondary : null,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: unsupported ? t.onSurfaceVariant : null,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: context.type.bodySmall?.copyWith(
-                    color: t.textTertiary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: t.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -263,7 +262,7 @@ class _AppRow extends StatelessWidget {
                   ? Icons.construction_rounded
                   : Icons.check_circle_rounded,
               label: unsupported ? 'Not yet supported' : 'Allowed',
-              color: unsupported ? t.textTertiary : t.success,
+              color: unsupported ? t.onSurfaceVariant : t.tertiary,
             ),
         ],
       ),
@@ -292,7 +291,7 @@ class _StatusNote extends StatelessWidget {
       children: [
         Icon(icon, size: 15, color: color),
         const SizedBox(width: 4),
-        Text(label, style: context.type.labelSmall?.copyWith(color: color)),
+        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
       ],
     );
   }
