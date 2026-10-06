@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -130,7 +132,13 @@ class _WeeklyChartState extends State<WeeklyChart>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         for (var i = 0; i < 4; i++)
-                          Container(height: 1, color: cs.outlineVariant),
+                          Container(
+                            height: 1,
+                            // A whisper of a rule. At full outlineVariant the
+                            // grid competes with the bars it is meant to sit
+                            // behind.
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
                       ],
                     ),
                   ),
@@ -168,7 +176,6 @@ class _WeeklyChartState extends State<WeeklyChart>
                                   ),
                                   accent: cs.primary,
                                   muted: cs.onSurface,
-                                  hairline: cs.outlineVariant,
                                   label: Theme.of(context).textTheme.labelSmall!,
                                 ),
                               ),
@@ -264,6 +271,18 @@ class _Bubble extends StatelessWidget {
   }
 }
 
+/// One day's bar.
+///
+/// The treatment is lifted from a chart that got the details right: a faint
+/// full-height track behind every bar so an empty day still reads as a slot
+/// rather than as a gap in the row, a vertical gradient that darkens as the
+/// bar rises, and a short white highlight across the top edge that gives the
+/// fill a lit surface instead of a flat sticker.
+///
+/// The heights are scaled by a 0.75 power rather than linearly. On a week with
+/// one long day and six short ones, a linear scale flattens the six into an
+/// unreadable stub row; the power curve keeps the tall day dominant while
+/// leaving the others distinguishable.
 class _Bar extends StatelessWidget {
   const _Bar({
     required this.day,
@@ -272,7 +291,6 @@ class _Bar extends StatelessWidget {
     required this.animation,
     required this.accent,
     required this.muted,
-    required this.hairline,
     required this.label,
   });
 
@@ -285,13 +303,20 @@ class _Bar extends StatelessWidget {
   final Animation<double> animation;
   final Color accent;
   final Color muted;
-  final Color hairline;
   final TextStyle label;
+
+  /// The bar's share of the tallest day, curved so short days stay readable.
+  double get _visual {
+    if (maxHours <= 0 || day.hours <= 0) return 0;
+    final linear = (day.hours / maxHours).clamp(0.0, 1.0);
+    return math.pow(linear, 0.75).toDouble().clamp(0.06, 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fraction = (day.hours / maxHours).clamp(0.0, 1.0);
+    final radius = BorderRadius.circular(16);
+    final fill = highlighted ? accent : muted.withValues(alpha: 0.30);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -300,40 +325,91 @@ class _Bar extends StatelessWidget {
           child: AnimatedBuilder(
             animation: animation,
             builder: (context, _) {
-              final v = (fraction * animation.value).clamp(0.0, 1.0);
-              return Align(
+              final v = (_visual * animation.value).clamp(0.0, 1.0);
+              return Stack(
                 alignment: Alignment.bottomCenter,
-                child: FractionallySizedBox(
-                  heightFactor: v.clamp(0.03, 1.0),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: highlighted
-                          ? accent
-                          : muted.withValues(alpha: 0.14),
-                      border: highlighted
-                          ? null
-                          : Border.all(color: hairline),
+                children: [
+                  // The track. Fixed height, so the row never looks ragged
+                  // while the bars are still growing.
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: radius,
+                        color: muted.withValues(alpha: 0.04),
+                      ),
                     ),
                   ),
-                ),
+                  if (v > 0)
+                    FractionallySizedBox(
+                      heightFactor: v.clamp(0.04, 1.0),
+                      child: AnimatedContainer(
+                        duration: Motion.base,
+                        curve: Motion.emphasized,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              fill,
+                              Color.alphaBlend(
+                                fill.withValues(alpha: 0.62),
+                                cs.surface,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // The lit top edge.
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: FractionallySizedBox(
+                            heightFactor: 0.06,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.vertical(
+                                  top: radius.topLeft,
+                                ),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.30),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
         ),
         const SizedBox(height: Gap.sm),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          style: label.copyWith(
-            color: highlighted ? accent : cs.onSurfaceVariant,
-            fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 11,
+        // Today is a filled pill rather than a bolder word: at this size a
+        // weight change is invisible, and the pill survives a glance.
+        AnimatedContainer(
+          duration: Motion.base,
+          curve: Motion.emphasized,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Radii.pill),
+            color: highlighted ? accent : Colors.transparent,
           ),
-          child: Text(day.label),
+          child: AnimatedDefaultTextStyle(
+            duration: Motion.base,
+            curve: Motion.emphasized,
+            style: label.copyWith(
+              color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,
+              fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
+              fontSize: 11,
+            ),
+            child: Text(day.label),
+          ),
         ),
       ],
     );

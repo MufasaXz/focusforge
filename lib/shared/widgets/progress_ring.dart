@@ -20,6 +20,8 @@ class ProgressRing extends StatefulWidget {
     this.trackVisible = true,
     this.ticks = 0,
     this.colors,
+    this.outer,
+    this.outerStroke = 4,
     this.semanticLabel,
   });
 
@@ -36,6 +38,21 @@ class ProgressRing extends StatefulWidget {
 
   /// Overrides the arc gradient (used by subject-coloured mini rings).
   final List<Color>? colors;
+
+  /// A second, slower measure drawn as a thinner ring just outside the main
+  /// one, or null for none.
+  ///
+  /// The dial this comes from pairs a fast hand with a slow one — seconds
+  /// inside, minutes outside — so one glance carries two horizons. Here the
+  /// inner arc is the block in progress and this one is how far through the
+  /// set of blocks the session is. A single arc can only ever answer one of
+  /// those questions, and "how much longer" is not the same question as "how
+  /// many more".
+  final double? outer;
+
+  /// Stroke of the outer ring. Kept thinner than the main arc so the two never
+  /// read as a single thick band.
+  final double outerStroke;
 
   /// Spoken in place of the ring, e.g. "3 hours 12 minutes of a 5 hour goal,
   /// 64 percent". The ring only knows the fraction, so a caller that knows the
@@ -77,6 +94,10 @@ class _ProgressRingState extends State<ProgressRing> {
                       trackVisible: widget.trackVisible,
                       ticks: widget.ticks,
                       dot: cs.primary,
+                      outer: widget.outer,
+                      outerStroke: widget.outerStroke,
+                      outerTrack: cs.surfaceContainerHighest,
+                      outerColor: colors.first,
                     ),
                   ),
                 ),
@@ -100,6 +121,10 @@ class _RingPainter extends CustomPainter {
     required this.trackVisible,
     required this.ticks,
     required this.dot,
+    required this.outer,
+    required this.outerStroke,
+    required this.outerTrack,
+    required this.outerColor,
   });
 
   final double value;
@@ -109,6 +134,10 @@ class _RingPainter extends CustomPainter {
   final bool trackVisible;
   final int ticks;
   final Color dot;
+  final double? outer;
+  final double outerStroke;
+  final Color outerTrack;
+  final Color outerColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -147,6 +176,36 @@ class _RingPainter extends CustomPainter {
       }
     }
 
+    // The outer ring sits in its own lane outside the main stroke, so the two
+    // never overlap however thick either gets.
+    final outerValue = outer;
+    if (outerValue != null) {
+      final outerRadius = radius + stroke / 2 + outerStroke / 2 + 3;
+      final outerRect = Rect.fromCircle(center: center, radius: outerRadius);
+      canvas.drawCircle(
+        center,
+        outerRadius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = outerStroke
+          ..color = outerTrack.withValues(alpha: 0.55),
+      );
+      final outerSweep = 2 * math.pi * outerValue.clamp(0.0, 1.0);
+      if (outerSweep > 0) {
+        canvas.drawArc(
+          outerRect,
+          -math.pi / 2,
+          outerSweep,
+          false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = outerStroke
+            ..strokeCap = StrokeCap.round
+            ..color = outerColor.withValues(alpha: 0.75),
+        );
+      }
+    }
+
     if (value <= 0) return;
 
     final sweep = 2 * math.pi * value;
@@ -182,7 +241,11 @@ class _RingPainter extends CustomPainter {
       old.track != track ||
       old.trackVisible != trackVisible ||
       old.ticks != ticks ||
-      old.dot != dot;
+      old.dot != dot ||
+      old.outer != outer ||
+      old.outerStroke != outerStroke ||
+      old.outerTrack != outerTrack ||
+      old.outerColor != outerColor;
 }
 
 /// Compact ring for goals and subject targets.

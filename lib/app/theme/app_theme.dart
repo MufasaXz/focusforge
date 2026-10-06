@@ -43,16 +43,24 @@ class AppTheme {
         elevation: 0,
       ),
 
-      // Elevation 0 with a tonal fill: M3 expresses hierarchy through surface
-      // tone, and a drop shadow on a card that already sits on a tinted
-      // surface reads as a mistake.
+      // Flat, hairline-ruled cards.
+      //
+      // Three of the reference apps arrived at the same treatment from
+      // different directions — zero elevation, no tonal fill, and a 1dp
+      // `outlineVariant` border at roughly 40% — and it is the better answer
+      // here than a tonal surface. A container fill has to be re-tuned for
+      // every surface it sits on, and this app nests cards inside sheets inside
+      // pages; a border says "this is a group" once and stays legible on all of
+      // them. It also survives the light/dark switch without a second guess.
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.card),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
-        color: cs.surfaceContainerLow,
+        color: cs.surface,
+        surfaceTintColor: Colors.transparent,
       ),
 
       chipTheme: ChipThemeData(
@@ -165,6 +173,57 @@ class Gap {
   static const double lg = 16;
   static const double xl = 24;
   static const double xxl = 32;
+}
+
+/// How the app moves.
+///
+/// Named by intent rather than by number so a screen asks for "the emphasised
+/// entrance" instead of guessing at 400ms and 0.2/0/0/1 for the fortieth time.
+/// Two curves cover everything: [standard] for anything the user caused
+/// directly, [emphasized] for anything that changes what is on screen — a
+/// section appearing, a state flipping, a value committing. The spring is for
+/// the things that should feel physical: a bar growing, a tile settling, a
+/// press releasing.
+class Motion {
+  const Motion._();
+
+  /// Material 3's emphasised easing. Slow out, slow in, decisive through the
+  /// middle — the curve that makes a transition read as deliberate rather than
+  /// as a jump cut with a fade on it.
+  static const Curve emphasized = Cubic(0.2, 0.0, 0.0, 1.0);
+
+  /// For direct manipulation: a tap, a hover, a toggle. Symmetric, so the
+  /// return trip looks like the outbound one.
+  static const Curve standard = Curves.easeInOutCubic;
+
+  /// A bar that grows, a ring that fills — anything with momentum.
+  static const Curve decelerate = Curves.easeOutCubic;
+
+  /// A tile settling into place. Damped enough to stop, loose enough that the
+  /// overshoot is visible.
+  static const SpringDescription settle = SpringDescription(
+    mass: 1,
+    stiffness: 350,
+    damping: 0.7,
+  );
+
+  /// How far a pressable shrinks under a finger. Small: a control that visibly
+  /// collapses reads as broken, not as responsive.
+  static const double pressScale = 0.94;
+
+  /// The quickest motion in the app — a state that has to acknowledge a tap
+  /// inside a frame budget.
+  static const Duration quick = Duration(milliseconds: 150);
+
+  /// The default for anything that changes content in place.
+  static const Duration base = Duration(milliseconds: 220);
+
+  /// For a screen-level change: a section appearing, a sheet settling.
+  static const Duration emphasizedDuration = Duration(milliseconds: 400);
+
+  /// For the one or two moments that should be noticed — a chart drawing
+  /// itself for the first time.
+  static const Duration deliberate = Duration(milliseconds: 550);
 }
 
 /// Rotates a categorical colour into the live theme's temperature.

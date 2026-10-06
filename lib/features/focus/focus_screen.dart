@@ -296,6 +296,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       size: 208,
                       stroke: 11,
                       ticks: 60,
+                      // The second horizon: how far through the set of focus
+                      // blocks this session is. The inner arc answers "how
+                      // much longer", which is a different question from "how
+                      // many more", and a timer that shows only one of them
+                      // makes the other a mental sum.
+                      outer: preset.segments <= 0
+                          ? null
+                          : (timer.completedFocusSegments % preset.segments) /
+                                preset.segments,
                       colors: [
                         accent,
                         Color.lerp(accent, t.secondary, 0.7)!,
