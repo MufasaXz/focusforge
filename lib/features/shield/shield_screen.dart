@@ -1925,14 +1925,49 @@ class _EventRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Gap.sm),
-            Text(
-              walked ? 'Walked away' : 'Opened anyway',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+            _OutcomePill(
+              label: walked ? 'Walked away' : 'Opened anyway',
+              color: color,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The outcome of one interception, as a pill.
+///
+/// The two states used to be plain coloured text, which reads as a sentence
+/// rather than as a column of results — finding the rows that went the wrong
+/// way meant reading every one of them. A tinted stadium makes the column
+/// scannable: the shape says "this is a result" before the words do. The fill
+/// is the state's own colour at low alpha rather than a fixed green or red, so
+/// it survives a palette switch and a true-black surface without a second
+/// guess.
+class _OutcomePill extends StatelessWidget {
+  const _OutcomePill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Gap.sm + 2,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(Radii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
