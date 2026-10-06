@@ -30,6 +30,7 @@ import 'package:focusforge/core/providers/coach_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
+import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
 import 'package:focusforge/features/onboarding/coach_marks.dart';
@@ -61,10 +62,19 @@ void main() {
     Map<String, int> usage = const {},
     bool usageAccess = false,
     bool shieldEnabled = false,
+    Set<String> protectedPackages = const {},
   }) {
+    final engine = RecordingShieldService()..protectedSet = protectedPackages;
+    addTearDown(engine.dispose);
+
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
+        // The engine is replaced rather than reached: `NativeShieldService`
+        // reads `defaultTargetPlatform`, which *is* android inside a widget
+        // test, so the real one would call a platform channel that never
+        // answers and the protected set would stay pending forever.
+        shieldServiceProvider.overrideWithValue(engine),
         installedAppsProvider.overrideWith((ref) async => apps),
         appUsageTodayProvider.overrideWith((ref) async => usage),
         usageAccessProvider.overrideWith((ref) async => usageAccess),
@@ -117,19 +127,54 @@ void main() {
   }
 
   group('Shield screen', () {
-    testWidgets('an empty rule list renders its designed state', (tester) async {
+    testWidgets('every installed app is listed, with no add step', (
+      tester,
+    ) async {
       useTallPhone(tester);
-      await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
+      final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.example.social',
+            name: 'Social App',
+            isSystem: false,
+          ),
+          InstalledApp(
+            packageId: 'com.example.vendor',
+            name: 'Vendor Browser',
+            isSystem: true,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(wrap(container, const ShieldScreen()));
       await settle(tester);
 
-      expect(find.text('Nothing is armed yet'), findsOneWidget);
-      expect(find.text('Add apps'), findsOneWidget);
+      expect(find.text('Social App'), findsOneWidget);
+      expect(find.text('Vendor Browser'), findsOneWidget);
+      // The system app is listed, and says that it is one.
+      expect(find.text('System'), findsOneWidget);
+      // There is no picker to open: the list *is* the device.
+      expect(find.text('Add apps'), findsNothing);
+      expect(find.text('All apps'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a rule renders with its tier and its name', (tester) async {
+    testWidgets('a rule shows on the app it applies to', (tester) async {
       useTallPhone(tester);
-      final container = freshContainer();
+      final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.example.blocked',
+            name: 'Blocked App',
+            isSystem: false,
+          ),
+          InstalledApp(
+            packageId: 'com.example.budget',
+            name: 'Budgeted App',
+            isSystem: false,
+          ),
+        ],
+      );
       await container.read(whitelistProvider.notifier).addInstalledApp(
         packageId: 'com.example.blocked',
         name: 'Blocked App',
@@ -147,22 +192,28 @@ void main() {
 
       expect(find.text('Blocked App'), findsOneWidget);
       expect(find.text('Budgeted App'), findsOneWidget);
-      // "Blocked" twice: the section heading and the row's chip. The budgeted
-      // heading reads "Time budgeted", so only the chip carries "Budgeted".
-      expect(find.text('Blocked'), findsNWidgets(2));
-      expect(find.text('Time budgeted'), findsOneWidget);
-      expect(find.text('Budgeted'), findsOneWidget);
       expect(
         find.text('Closes when opened'),
         findsOneWidget,
         reason: 'a rule says what it will do, not just which tier it is in',
       );
+      expect(find.text('0m of 30m used today'), findsOneWidget);
+      // Both rows are switched on, and neither carries a tier chip any more —
+      // the switch and the sentence under the name are the whole state.
+      expect(find.byType(Switch), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('a budgeted rule shows today\'s real usage', (tester) async {
       useTallPhone(tester);
       final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.example.budget',
+            name: 'Budgeted App',
+            isSystem: false,
+          ),
+        ],
         usage: const {'com.example.budget': 12},
         usageAccess: true,
       );
@@ -177,6 +228,65 @@ void main() {
       await settle(tester);
 
       expect(find.text('12m of 30m used today'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the apps the user actually opens are suggested first', (
+      tester,
+    ) async {
+      useTallPhone(tester);
+      final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.example.busy',
+            name: 'Busy App',
+            isSystem: false,
+          ),
+          InstalledApp(
+            packageId: 'com.example.quiet',
+            name: 'Quiet App',
+            isSystem: false,
+          ),
+        ],
+        usage: const {'com.example.busy': 90, 'com.example.quiet': 3},
+        usageAccess: true,
+      );
+
+      await tester.pumpWidget(wrap(container, const ShieldScreen()));
+      await settle(tester);
+
+      expect(find.text('Most used today'), findsOneWidget);
+      expect(find.text('From your own usage'), findsOneWidget);
+      // The busy app is suggested *and* listed, so it appears twice; the quiet
+      // one has real usage too, so it is suggested as well.
+      expect(find.text('Busy App'), findsNWidgets(2));
+      expect(find.text('1h 30m'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an app the engine will never cover says so', (tester) async {
+      useTallPhone(tester);
+      final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.android.systemui',
+            name: 'System UI',
+            isSystem: true,
+          ),
+        ],
+        // Straight from the engine: this is the list the running service
+        // refuses to cover, not a copy the screen keeps.
+        protectedPackages: const {'com.android.systemui'},
+      );
+
+      await tester.pumpWidget(wrap(container, const ShieldScreen()));
+      await settle(tester);
+
+      expect(
+        find.text('Android needs this — it cannot be closed'),
+        findsOneWidget,
+        reason: 'the row must not offer a switch the engine will ignore',
+      );
       expect(tester.takeException(), isNull);
     });
 

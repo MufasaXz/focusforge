@@ -92,3 +92,84 @@ final enrichedWhitelistProvider = Provider<List<WhitelistEntry>>((ref) {
       ),
   ];
 });
+
+/// The packages the engine refuses to cover, asked of the engine itself.
+final protectedPackagesProvider = FutureProvider<Set<String>>(
+  (ref) => ref.watch(shieldServiceProvider).protectedPackages(),
+);
+
+/// One row of the shield's app list: an app, its rule, and today's usage.
+@immutable
+class ShieldAppRow {
+  const ShieldAppRow({
+    required this.packageId,
+    required this.name,
+    required this.isSystem,
+    required this.usedMinutes,
+    required this.isProtected,
+    required this.rule,
+  });
+
+  final String packageId;
+  final String name;
+  final bool isSystem;
+  final int usedMinutes;
+
+  /// The engine will not cover this whatever the rule says — the launcher, the
+  /// keyboard, the status bar, the settings app, this app.
+  final bool isProtected;
+
+  /// The user's rule for this app, or null when there is none.
+  final WhitelistEntry? rule;
+
+  /// True when a rule is in force. "Always allowed" is a rule too, but it is
+  /// the absence of a restriction, so it reads as off.
+  bool get isRestricted => rule?.tier.isEnforced ?? false;
+}
+
+/// Every app on the device, joined with its rule and today's usage.
+///
+/// One list rather than a list of rules plus a picker: with the whole device
+/// on screen, "add an app" stops being a step and a rule becomes something you
+/// switch on a row that is already there.
+final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
+  final apps = ref.watch(installedAppsProvider).valueOrNull;
+  if (apps == null) return const [];
+
+  final usage = ref.watch(appUsageTodayProvider).valueOrNull ?? const {};
+  final protectedSet =
+      ref.watch(protectedPackagesProvider).valueOrNull ?? const {};
+
+  final rules = <String, WhitelistEntry>{
+    for (final entry in ref.watch(whitelistProvider))
+      if (entry.packageId case final String id) id: entry,
+  };
+
+  return [
+    for (final app in apps)
+      ShieldAppRow(
+        packageId: app.packageId,
+        name: app.name,
+        isSystem: app.isSystem,
+        usedMinutes: usage[app.packageId] ?? 0,
+        isProtected: protectedSet.contains(app.packageId),
+        rule: rules[app.packageId],
+      ),
+  ];
+});
+
+/// The handful of apps worth putting at the top of the list.
+///
+/// Ranked by what the user actually spends time in, because two hundred rows
+/// in alphabetical order bury the four that matter. Only apps with real usage
+/// today qualify, and an app that is already restricted is left out — the
+/// suggestion is about what is not handled yet, and repeating a decision the
+/// user has already made is not a suggestion.
+final mostUsedAppsProvider = Provider<List<ShieldAppRow>>((ref) {
+  final candidates = [
+    for (final row in ref.watch(shieldAppRowsProvider))
+      if (!row.isRestricted && !row.isProtected && row.usedMinutes > 0) row,
+  ]..sort((a, b) => b.usedMinutes.compareTo(a.usedMinutes));
+
+  return candidates.take(6).toList(growable: false);
+});

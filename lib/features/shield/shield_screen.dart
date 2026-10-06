@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,8 +20,8 @@ import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
-import 'app_picker_sheet.dart';
 import 'breath_gate.dart';
 
 /// Tab 2 — the shielding engine.
@@ -89,21 +90,22 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
           // The entrance waits for the branch to be on screen; see
           // [_TabEntrance].
           child: _TabEntrance(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                Gap.lg + 4,
-                headerHeight + Gap.md,
-                Gap.lg + 4,
-                kNavBarClearance,
+            // Each segment owns its own scroll view. The app list is the whole
+            // device — hundreds of rows on a real phone — and a single
+            // `ListView` holding all of them would build every row, every
+            // toggle and every icon before the first one was painted. Only the
+            // app list needs that; the other two stay as they were.
+            child: switch (_segment) {
+              0 => _AppsView(topPadding: headerHeight + Gap.md),
+              1 => _SegmentScroll(
+                topPadding: headerHeight + Gap.md,
+                child: const _YoutubeView(),
               ),
-              children: [
-                switch (_segment) {
-                  0 => const _AppsView(),
-                  1 => const _YoutubeView(),
-                  _ => const _ActivityView(),
-                },
-              ],
-            ),
+              _ => _SegmentScroll(
+                topPadding: headerHeight + Gap.md,
+                child: const _ActivityView(),
+              ),
+            },
           ),
         ),
         Positioned(
@@ -565,8 +567,39 @@ class _SheetSurface extends StatelessWidget {
 // Apps
 // ---------------------------------------------------------------------------
 
+/// One segment's worth of content in the screen's standard padding.
+///
+/// Used by the two segments that are a short, fixed set of sections. The app
+/// list does not use it — it builds its own slivers so it can be lazy.
+class _SegmentScroll extends StatelessWidget {
+  const _SegmentScroll({required this.topPadding, required this.child});
+
+  final double topPadding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: EdgeInsets.fromLTRB(
+          Gap.lg + 4,
+          topPadding,
+          Gap.lg + 4,
+          kNavBarClearance,
+        ),
+        children: [child],
+      );
+}
+
+/// Every app on the device, with a switch on each row.
+///
+/// There is no "add apps" step and no allowed/blocked split: the list is the
+/// device, and a rule is something switched on a row that is already there.
+/// The grouping that used to head this screen answered a question nobody asks
+/// — "which of my rules are of which kind" — while hiding the one that matters,
+/// which is "is this app closed".
 class _AppsView extends ConsumerStatefulWidget {
-  const _AppsView();
+  const _AppsView({required this.topPadding});
+
+  final double topPadding;
 
   @override
   ConsumerState<_AppsView> createState() => _AppsViewState();
@@ -585,7 +618,11 @@ class _AppsViewState extends ConsumerState<_AppsView> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final query = _search.text.trim().toLowerCase();
-    final all = ref.watch(enrichedWhitelistProvider);
+
+    final all = ref.watch(shieldAppRowsProvider);
+    final mostUsed = ref.watch(mostUsedAppsProvider);
+    final loading = ref.watch(installedAppsProvider).isLoading;
+
     final native = NativeShieldService.isSupported;
     final enabled = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
@@ -594,90 +631,186 @@ class _AppsViewState extends ConsumerState<_AppsView> {
     final visible = query.isEmpty
         ? all
         : all
-              .where((e) => e.name.toLowerCase().contains(query))
+              .where((r) => r.name.toLowerCase().contains(query))
               .toList(growable: false);
 
-    var index = 0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (native && !enabled)
-          Stagger(
-            index: index++,
-            child: const _PermissionGate(
-              icon: Icons.accessibility_new_rounded,
-              title: 'Turn on app blocking',
-              body:
-                  'Android closes an app through its accessibility service. '
-                  'FocusForge needs it on before a single rule can do '
-                  'anything.',
-              action: 'Open accessibility settings',
-              permission: AppPermission.accessibility,
-            ),
+    // Suggestions are a starting point, not a section to scroll past. While
+    // the user is searching they are noise.
+    final showSuggestions = query.isEmpty && mostUsed.isNotEmpty;
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            widget.topPadding,
+            Gap.lg + 4,
+            0,
           ),
-        if (native && enabled && budgeted > 0 && !usageAccess)
-          Stagger(
-            index: index++,
-            child: const _PermissionGate(
-              icon: Icons.timelapse_rounded,
-              title: 'Time budgets are not counting',
-              body:
-                  'A budget needs to read how long an app has been open. '
-                  'Without usage access it is armed but inert.',
-              action: 'Open usage access settings',
-              permission: AppPermission.usageAccess,
-            ),
-          ),
-        Stagger(
-          index: index++,
-          child: FilledButton.tonalIcon(
-            onPressed: () => showAppPickerSheet(context),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-            ),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add apps'),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-        if (all.isEmpty)
-          Stagger(index: index++, child: const _NoRules())
-        else ...[
-          Stagger(
-            index: index++,
-            child: _SearchField(
-              controller: _search,
-              onChanged: () => setState(() {}),
-            ),
-          ),
-          const SizedBox(height: Gap.xl),
-          if (visible.isEmpty)
-            Stagger(index: index++, child: _NoMatches(query: _search.text.trim()))
-          else
-            for (final tier in WhitelistTier.values)
-              if (visible.any((e) => e.tier == tier)) ...[
-                Stagger(
-                  // Tier order, not visible order, so the sequence stays
-                  // monotonic even when a tier has no matches.
-                  index: index++,
-                  child: _RuleSection(
-                    tier: tier,
-                    entries: visible
-                        .where((e) => e.tier == tier)
-                        .toList(growable: false),
-                  ),
+          sliver: SliverList.list(
+            children: [
+              if (native && !enabled)
+                const _PermissionGate(
+                  icon: Icons.accessibility_new_rounded,
+                  title: 'Turn on app blocking',
+                  body:
+                      'Android closes an app through its accessibility '
+                      'service. FocusForge needs it on before a single rule can '
+                      'do anything.',
+                  action: 'Open accessibility settings',
+                  permission: AppPermission.accessibility,
+                ),
+              if (native && enabled && budgeted > 0 && !usageAccess)
+                const _PermissionGate(
+                  icon: Icons.timelapse_rounded,
+                  title: 'Time budgets are not counting',
+                  body:
+                      'A budget needs to read how long an app has been open. '
+                      'Without usage access it is armed but inert.',
+                  action: 'Open usage access settings',
+                  permission: AppPermission.usageAccess,
+                ),
+              _SearchField(
+                controller: _search,
+                onChanged: () => setState(() {}),
+              ),
+              const SizedBox(height: Gap.xl),
+              if (showSuggestions) ...[
+                _ListHeading(
+                  title: 'Most used today',
+                  note: 'From your own usage',
+                  icon: Icons.local_fire_department_rounded,
+                ),
+                const SizedBox(height: Gap.sm),
+                _SuggestionRow(
+                  rows: mostUsed,
+                  onTap: (row) => _openRule(row),
                 ),
                 const SizedBox(height: Gap.xl),
               ],
-        ],
-        Text(
-          'A rule applies the moment you add it — there is nothing to switch '
-          'on afterwards.',
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              _ListHeading(
+                title: query.isEmpty ? 'All apps' : 'Results',
+                note: loading
+                    ? 'Reading the device…'
+                    : '${visible.length} ${visible.length == 1 ? 'app' : 'apps'}',
+                icon: Icons.apps_rounded,
+              ),
+              const SizedBox(height: Gap.sm),
+            ],
+          ),
         ),
+        if (loading)
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverToBoxAdapter(child: SkeletonList(count: 6)),
+          )
+        else if (visible.isEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverToBoxAdapter(
+              child: all.isEmpty
+                  ? const _NoApps()
+                  : _NoMatches(query: _search.text.trim()),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverList.separated(
+              itemCount: visible.length,
+              separatorBuilder: (_, _) => Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.35),
+              ),
+              itemBuilder: (context, i) => _AppRuleRow(
+                row: visible[i],
+                onOpen: () => _openRule(visible[i]),
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            Gap.xl,
+            Gap.lg + 4,
+            kNavBarClearance,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Text(
+              'A rule applies the moment you switch it on — there is nothing '
+              'to enable afterwards.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Opens the full rule for an app: closed, budgeted, or never closed.
+  void _openRule(ShieldAppRow row) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => AppRuleSheet(
+        packageId: row.packageId,
+        name: row.name,
+        icon: Icons.android_rounded,
+        usedMinutes: row.usedMinutes,
+      ),
+    );
+  }
+}
+
+/// A section heading inside the app list.
+class _ListHeading extends StatelessWidget {
+  const _ListHeading({
+    required this.title,
+    required this.icon,
+    this.note,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Both sides flex. The heading and its note are the two longest strings in
+    // the list, and a Row of two unbounded texts overflows the moment the
+    // reader has large type on — which is exactly when an overflow stripe is
+    // least welcome.
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: cs.onSurfaceVariant),
+        const SizedBox(width: Gap.sm),
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (note != null) ...[
+          const SizedBox(width: Gap.sm),
+          Flexible(
+            child: Text(
+              note!,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -787,7 +920,7 @@ class _SearchField extends StatelessWidget {
         isDense: true,
         filled: true,
         fillColor: cs.surfaceContainerHigh,
-        hintText: 'Search your rules…',
+        hintText: 'Search every app…',
         hintStyle: Theme.of(
           context,
         ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
@@ -823,42 +956,44 @@ class _SearchField extends StatelessWidget {
 }
 
 /// Shown before the first app is added.
-class _NoRules extends StatelessWidget {
-  const _NoRules();
+/// No apps to show at all — the device list came back empty.
+///
+/// Distinct from "nothing is armed yet": with the whole device on screen, an
+/// empty list is never the user's doing. It means the platform would not
+/// answer, and saying so is more useful than an invitation to add something.
+class _NoApps extends StatelessWidget {
+  const _NoApps();
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gap.xl),
-      child: Card.filled(
-        child: Padding(
-          padding: const EdgeInsets.all(Gap.xl),
-          child: Column(
-            children: [
-              IconBadge(
-                icon: Icons.shield_outlined,
-                color: cs.primary,
-                size: 56,
-                radius: 18,
-              ),
-              const SizedBox(height: Gap.lg),
-              Text(
-                'Nothing is armed yet',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: Gap.sm),
-              Text(
-                'Add the apps you open without meaning to. Blocked apps close '
-                'the moment they open; budgeted ones close once the day\'s '
-                'allowance is spent.',
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
-          ),
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.xl),
+        child: Column(
+          children: [
+            IconBadge(
+              icon: Icons.phonelink_erase_rounded,
+              color: cs.onSurfaceVariant,
+              size: 56,
+              radius: 18,
+            ),
+            const SizedBox(height: Gap.lg),
+            Text(
+              'No apps to list',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(
+              'Android did not hand over the installed app list. That is a '
+              'platform problem rather than a settings one — nothing here can '
+              'be switched on until it answers.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
         ),
       ),
     );
@@ -887,7 +1022,7 @@ class _NoMatches extends StatelessWidget {
               ),
               const SizedBox(height: Gap.md),
               Text(
-                'No rule matches “$query”',
+                'No app matches “$query”',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -901,261 +1036,435 @@ class _NoMatches extends StatelessWidget {
   }
 }
 
-class _RuleSection extends StatelessWidget {
-  const _RuleSection({required this.tier, required this.entries});
+/// One app, one switch.
+///
+/// The whole row opens the full rule; the switch is the one-tap answer to "is
+/// this closed", which is the only question most people come here with.
+class _AppRuleRow extends ConsumerWidget {
+  const _AppRuleRow({required this.row, required this.onOpen});
 
-  final WhitelistTier tier;
-  final List<WhitelistEntry> entries;
+  final ShieldAppRow row;
+  final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final accent = harmonize(tier.color, cs.primary);
+    final tt = Theme.of(context).textTheme;
+    final tier = row.rule?.tier;
+    final accent = harmonize(tier?.color ?? cs.primary, cs.primary);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: Gap.md),
+    return Semantics(
+      button: true,
+      label: _semanticLabel,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.md),
           child: Row(
             children: [
-              Container(
-                width: 3,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(2),
+              AppIconAvatar(
+                packageId: row.packageId,
+                fallbackIcon: Icons.android_rounded,
+                fallbackColor: accent,
+                size: 40,
+                radius: 12,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            row.name,
+                            style: tt.bodyLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (row.isSystem) ...[
+                          const SizedBox(width: Gap.sm),
+                          _Tag(label: 'System'),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _meta,
+                      style: tt.labelSmall?.copyWith(
+                        color: row.isRestricted
+                            ? accent
+                            : cs.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: Gap.sm),
-              Text(
-                tier.label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 0.4,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${entries.length}',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              _ShieldSwitch(
+                value: row.isRestricted,
+                // A switch that cannot do anything is worse than no switch:
+                // the engine will never cover the launcher or the keyboard, so
+                // those rows say so and leave the control inert.
+                onChanged: row.isProtected
+                    ? null
+                    : (on) => _setRestricted(ref, on),
+                semanticLabel: row.isRestricted
+                    ? 'Close ${row.name}'
+                    : 'Stop closing ${row.name}',
               ),
             ],
           ),
         ),
-        Card.filled(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.lg,
-              vertical: Gap.xs,
-            ),
-            child: Column(
-              children: [
-                for (var i = 0; i < entries.length; i++) ...[
-                  if (i > 0) Divider(color: cs.outlineVariant, height: 1),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Gap.md),
-                    child: _RuleRow(entry: entries[i]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
+  }
+
+  Future<void> _setRestricted(WidgetRef ref, bool restricted) async {
+    HapticFeedback.selectionClick();
+    final notifier = ref.read(whitelistProvider.notifier);
+
+    if (!restricted) {
+      final existing = ref
+          .read(whitelistProvider)
+          .where((e) => e.packageId == row.packageId)
+          .firstOrNull;
+      if (existing != null) await notifier.remove(existing.id);
+      return;
+    }
+
+    await notifier.addInstalledApp(
+      packageId: row.packageId,
+      name: row.name,
+      tier: WhitelistTier.blocked,
+    );
+  }
+
+  String get _meta {
+    if (row.isProtected) return 'Android needs this — it cannot be closed';
+    return switch (row.rule?.tier) {
+      WhitelistTier.blocked => 'Closes when opened',
+      WhitelistTier.budgeted =>
+        '${formatMinutes(row.usedMinutes)} of '
+            '${formatMinutes(row.rule?.budgetMinutes ?? 0)} used today',
+      WhitelistTier.alwaysAllowed => 'Never closed',
+      null when row.usedMinutes > 0 => '${formatMinutes(row.usedMinutes)} today',
+      null => row.isSystem ? 'System app' : 'Open — not restricted',
+    };
+  }
+
+  String get _semanticLabel {
+    if (row.isProtected) {
+      return '${row.name}, protected by Android, cannot be closed';
+    }
+    return switch (row.rule?.tier) {
+      WhitelistTier.blocked => '${row.name}, closes when opened',
+      WhitelistTier.budgeted =>
+        '${row.name}, ${formatMinutes(row.rule?.budgetMinutes ?? 0)} a day, '
+            '${formatMinutes(row.usedMinutes)} used today',
+      WhitelistTier.alwaysAllowed => '${row.name}, never closed',
+      null => '${row.name}, not restricted',
+    };
   }
 }
 
-class _RuleRow extends StatelessWidget {
-  const _RuleRow({required this.entry});
+/// A small factual tag — "System", and nothing that is not a fact.
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
 
-  final WhitelistEntry entry;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final accent = harmonize(entry.tier.color, cs.primary);
-    final budgeted = entry.tier == WhitelistTier.budgeted;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          button: true,
-          container: true,
-          label: _semanticLabel(entry),
-          onTap: () => _openRuleSheet(context, entry),
-          child: ExcludeSemantics(
-            child: Pressable(
-              onTap: () => _openRuleSheet(context, entry),
-              child: Row(
-                children: [
-                  AppIconAvatar(
-                    packageId: entry.packageId,
-                    fallbackIcon: entry.icon,
-                    fallbackColor: accent,
-                    size: 40,
-                    radius: 12,
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.name,
-                          style: Theme.of(context).textTheme.titleSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          _subtitle(entry),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  _TierChip(tier: entry.tier, color: accent),
-                ],
-              ),
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(Radii.pill),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: cs.onSurfaceVariant,
+          fontSize: 10,
+          letterSpacing: 0.3,
         ),
-        if (budgeted) ...[
-          const SizedBox(height: Gap.md),
-          Semantics(
-            label: '${entry.name} daily budget used',
-            value: '${entry.usedMinutes} of ${entry.budgetMinutes} minutes',
-            child: LinearProgressIndicator(
-              value: entry.usage,
-              color: entry.overBudget ? cs.error : accent,
-              backgroundColor: cs.surfaceContainerHighest,
-              minHeight: 5,
-            ),
-          ),
-        ],
-      ],
+      ),
+    );
+  }
+}
+
+/// The rule switch.
+///
+/// Not a Material switch: this is the one control on the screen that changes
+/// what the phone does, so it is drawn as a shield that closes. The knob
+/// travels on a spring and overshoots slightly, which is what makes flipping it
+/// feel like a physical control rather than like a value being assigned — and
+/// the glyph inside the knob means the state is legible without reading the
+/// track colour, which matters for the two states that are one hue apart.
+class _ShieldSwitch extends StatefulWidget {
+  const _ShieldSwitch({
+    required this.value,
+    required this.onChanged,
+    required this.semanticLabel,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final String semanticLabel;
+
+  @override
+  State<_ShieldSwitch> createState() => _ShieldSwitchState();
+}
+
+class _ShieldSwitchState extends State<_ShieldSwitch>
+    with SingleTickerProviderStateMixin {
+  static const _width = 56.0;
+  static const _height = 32.0;
+  static const _knob = 24.0;
+  static const _inset = 4.0;
+
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    value: widget.value ? 1 : 0,
+  );
+
+  @override
+  void didUpdateWidget(_ShieldSwitch old) {
+    super.didUpdateWidget(old);
+    if (old.value == widget.value) return;
+    _c.animateWith(
+      SpringSimulation(Motion.settle, _c.value, widget.value ? 1 : 0, 0),
     );
   }
 
-  static String _subtitle(WhitelistEntry entry) => switch (entry.tier) {
-    WhitelistTier.blocked => 'Closes when opened',
-    WhitelistTier.budgeted =>
-      '${formatMinutes(entry.usedMinutes)} of '
-          '${formatMinutes(entry.budgetMinutes ?? 0)} used today',
-    WhitelistTier.alwaysAllowed => 'Never closed',
-  };
-
-  static String _semanticLabel(WhitelistEntry entry) => switch (entry.tier) {
-    WhitelistTier.blocked => '${entry.name}, blocked. Change rule',
-    WhitelistTier.budgeted =>
-      '${entry.name}, budgeted at ${entry.budgetMinutes} minutes a day, '
-          '${entry.usedMinutes} used. Change rule',
-    WhitelistTier.alwaysAllowed =>
-      '${entry.name}, always allowed. Change rule',
-  };
-}
-
-/// The tier, as a chip. Tapping it opens the same sheet the row does — the
-/// chip is a label first, so it carries the state in words rather than in
-/// colour alone.
-class _TierChip extends StatelessWidget {
-  const _TierChip({required this.tier, required this.color});
-
-  final WhitelistTier tier;
-  final Color color;
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        switch (tier) {
-          WhitelistTier.blocked => 'Blocked',
-          WhitelistTier.budgeted => 'Budgeted',
-          WhitelistTier.alwaysAllowed => 'Allowed',
-        },
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
+    final cs = Theme.of(context).colorScheme;
+    final enabled = widget.onChanged != null;
+
+    return Semantics(
+      label: widget.semanticLabel,
+      toggled: widget.value,
+      enabled: enabled,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? () => widget.onChanged!(!widget.value) : null,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            final fill = _c.value.clamp(0.0, 1.0);
+            // The travel is allowed a hair past each end so the overshoot is
+            // visible; the colour is not, or the track would flash.
+            final travel = _c.value.clamp(-0.05, 1.05);
+
+            final track = Color.lerp(
+              cs.surfaceContainerHighest,
+              enabled ? cs.primary : cs.surfaceContainerHighest,
+              fill,
+            );
+            final knob = Color.lerp(cs.onSurfaceVariant, cs.onPrimary, fill);
+
+            return Opacity(
+              opacity: enabled ? 1 : 0.55,
+              child: Container(
+                width: _width,
+                height: _height,
+                padding: const EdgeInsets.all(_inset),
+                decoration: BoxDecoration(
+                  color: track,
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                ),
+                child: Align(
+                  alignment: Alignment(-1 + 2 * travel, 0),
+                  child: Container(
+                    width: _knob,
+                    height: _knob,
+                    decoration: BoxDecoration(
+                      color: knob,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.value
+                          ? Icons.shield_rounded
+                          : Icons.shield_outlined,
+                      size: 14,
+                      color: track,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-/// Per-app rule editor.
+/// The apps worth suggesting, as a horizontal strip.
 ///
-/// A sheet rather than a row of controls: the three tiers are mutually
-/// exclusive and the budget only means something in one of them, so showing
-/// them together is the only way the choice reads as one decision.
-Future<void> _openRuleSheet(BuildContext context, WhitelistEntry entry) {
-  HapticFeedback.selectionClick();
-  return showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) => _AppRuleSheet(entry: entry),
-  );
-}
+/// A strip rather than a list because this is a shortcut past the list, not a
+/// section of it: the user who knows which app they want should not have to
+/// scroll past a second list to reach the first one.
+class _SuggestionRow extends StatelessWidget {
+  const _SuggestionRow({required this.rows, required this.onTap});
 
-class _AppRuleSheet extends ConsumerStatefulWidget {
-  const _AppRuleSheet({required this.entry});
-
-  final WhitelistEntry entry;
+  final List<ShieldAppRow> rows;
+  final ValueChanged<ShieldAppRow> onTap;
 
   @override
-  ConsumerState<_AppRuleSheet> createState() => _AppRuleSheetState();
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        itemCount: rows.length,
+        separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
+        itemBuilder: (context, i) {
+          final row = rows[i];
+          return Pressable(
+            onTap: () => onTap(row),
+            child: Container(
+              width: 116,
+              padding: const EdgeInsets.all(Gap.md),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(Radii.card),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppIconAvatar(
+                    packageId: row.packageId,
+                    fallbackIcon: Icons.android_rounded,
+                    fallbackColor: cs.primary,
+                    size: 32,
+                    radius: 10,
+                  ),
+                  const Spacer(),
+                  Text(
+                    row.name,
+                    style: tt.labelMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    formatMinutes(row.usedMinutes),
+                    style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
-  late WhitelistTier _tier = widget.entry.tier;
-  late int _budget =
-      widget.entry.budgetMinutes ?? WhitelistNotifier.defaultBudgetMinutes;
+/// Per-app rule editor, for any app on the device.
+///
+/// Opened from a row that may have no rule at all yet, so it works from the
+/// package rather than from an entry: the entry is created when the user saves,
+/// which is what keeps the list free of a separate "add" step.
+///
+/// A sheet rather than controls on the row because the tiers are mutually
+/// exclusive and the budget only means something in one of them — showing them
+/// together is the only way the choice reads as one decision.
+class AppRuleSheet extends ConsumerStatefulWidget {
+  const AppRuleSheet({
+    super.key,
+    required this.packageId,
+    required this.name,
+    required this.icon,
+    required this.usedMinutes,
+  });
+
+  final String packageId;
+  final String name;
+  final IconData icon;
+  final int usedMinutes;
+
+  @override
+  ConsumerState<AppRuleSheet> createState() => _AppRuleSheetState();
+}
+
+class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
+  late WhitelistTier _tier;
+  late int _budget;
+  bool _hadRule = false;
 
   static const _step = 5;
   static const _min = 5;
   static const _max = 8 * 60;
 
+  @override
+  void initState() {
+    super.initState();
+    final existing = _existing;
+    _hadRule = existing != null;
+    _tier = existing?.tier ?? WhitelistTier.blocked;
+    _budget = existing?.budgetMinutes ?? WhitelistNotifier.defaultBudgetMinutes;
+  }
+
+  WhitelistEntry? get _existing => ref
+      .read(whitelistProvider)
+      .where((e) => e.packageId == widget.packageId)
+      .firstOrNull;
+
   Future<void> _apply() async {
     final notifier = ref.read(whitelistProvider.notifier);
+    await notifier.addInstalledApp(
+      packageId: widget.packageId,
+      name: widget.name,
+      tier: _tier,
+      budgetMinutes: _budget,
+    );
+    // `addInstalledApp` moves an app that is already listed by changing its
+    // tier, and a tier change deliberately drops the budget — so a budgeted
+    // save has to set the allowance back. Doing it here rather than in the
+    // notifier keeps "moving to another tier clears the budget" true.
     if (_tier == WhitelistTier.budgeted) {
-      await notifier.setTier(widget.entry.id, _tier);
-      await notifier.setBudget(widget.entry.id, _budget);
-    } else {
-      await notifier.setTier(widget.entry.id, _tier);
+      await notifier.setBudget('pkg:${widget.packageId}', _budget);
     }
     if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _remove() async {
-    await ref.read(whitelistProvider.notifier).remove(widget.entry.id);
+    final existing = _existing;
+    if (existing != null) {
+      await ref.read(whitelistProvider.notifier).remove(existing.id);
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // The live row, so the usage bar reflects what the platform reports rather
-    // than the snapshot the sheet was opened with.
-    final live = ref
-        .watch(enrichedWhitelistProvider)
-        .where((e) => e.id == widget.entry.id)
-        .firstOrNull;
-    final entry = live ?? widget.entry;
+    final accent = harmonize(_tier.color, cs.primary);
+    final used = widget.usedMinutes;
 
     return _SheetSurface(
       padding: const EdgeInsets.all(Gap.xl),
@@ -1171,9 +1480,9 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
               Row(
                 children: [
                   AppIconAvatar(
-                    packageId: entry.packageId,
-                    fallbackIcon: entry.icon,
-                    fallbackColor: harmonize(entry.tier.color, cs.primary),
+                    packageId: widget.packageId,
+                    fallbackIcon: widget.icon,
+                    fallbackColor: accent,
                     size: 48,
                     radius: 14,
                   ),
@@ -1183,14 +1492,14 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          entry.name,
+                          widget.name,
                           style: Theme.of(context).textTheme.titleMedium,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          entry.packageId ?? 'No package — cannot be enforced',
+                          widget.packageId,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: cs.onSurfaceVariant),
                           maxLines: 1,
@@ -1275,16 +1584,16 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
                             ),
                           ],
                         ),
-                        if (entry.usedMinutes > 0) ...[
+                        if (used > 0) ...[
                           const SizedBox(height: Gap.sm),
                           Semantics(
                             label: 'Used today',
-                            value: formatMinutes(entry.usedMinutes),
+                            value: formatMinutes(used),
                             child: LinearProgressIndicator(
-                              value: (_budget == 0
+                              value: _budget == 0
                                   ? 0
-                                  : entry.usedMinutes / _budget),
-                              color: entry.usedMinutes >= _budget
+                                  : (used / _budget).clamp(0.0, 1.0),
+                              color: used >= _budget
                                   ? cs.error
                                   : harmonize(
                                       WhitelistTier.budgeted.color,
@@ -1298,7 +1607,7 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '${formatMinutes(entry.usedMinutes)} used today',
+                              '${formatMinutes(used)} used today',
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
@@ -1312,18 +1621,26 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
               const SizedBox(height: Gap.xl),
               Row(
                 children: [
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: _remove,
-                      style: TextButton.styleFrom(
-                        foregroundColor: cs.error,
-                        minimumSize: const Size.fromHeight(48),
+                  // Only offered when there is something to remove: on an app
+                  // with no rule the button would be a no-op dressed as an
+                  // action.
+                  if (_hadRule) ...[
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: _remove,
+                        style: TextButton.styleFrom(
+                          foregroundColor: cs.error,
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Remove'),
                       ),
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      label: const Text('Remove'),
                     ),
-                  ),
-                  const SizedBox(width: Gap.md),
+                    const SizedBox(width: Gap.md),
+                  ],
                   Expanded(
                     flex: 2,
                     child: FilledButton(
@@ -1343,6 +1660,7 @@ class _AppRuleSheetState extends ConsumerState<_AppRuleSheet> {
     );
   }
 }
+
 
 class _TierOption extends StatelessWidget {
   const _TierOption({

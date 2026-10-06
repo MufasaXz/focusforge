@@ -231,10 +231,16 @@ class Motion {
 
   /// A tile settling into place. Damped enough to stop, loose enough that the
   /// overshoot is visible.
-  static const SpringDescription settle = SpringDescription(
+  ///
+  /// Written as a damping *ratio* rather than a raw coefficient on purpose:
+  /// `damping` is the coefficient, and 0.7 against a stiffness of 350 is a
+  /// ratio of about 0.02 — a spring that rings for seconds instead of settling.
+  /// The ratio is the number that describes what this should feel like, so the
+  /// ratio is the number to state.
+  static final SpringDescription settle = SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 350,
-    damping: 0.7,
+    ratio: 0.7,
   );
 
   /// How far a pressable shrinks under a finger. Small: a control that visibly

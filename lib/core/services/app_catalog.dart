@@ -44,18 +44,23 @@ class AppCatalog {
   /// the life of the process. An app's icon does not change while it runs.
   static final Map<String, Uint8List?> _icons = {};
 
-  /// The packages the user can meaningfully block.
+  /// Every app on the device, system apps included.
   ///
-  /// System apps are excluded — the list is for choosing what to close, and
-  /// offering the user the ability to block the settings app or their keyboard
-  /// is offering them a way to break their phone. FocusForge itself is
-  /// excluded for the same reason.
+  /// System apps are in the list because the user asked for the whole device
+  /// and because "is this a system app" is not the same question as "can this
+  /// be blocked" — a vendor's browser or a preinstalled social app is a system
+  /// app and is exactly the sort of thing someone wants closed. The packages
+  /// that genuinely cannot be blocked are named by the engine itself and
+  /// arrive through `NativeShieldService.protectedPackages()`; the screen marks
+  /// those instead of hiding them, so the list stays complete and the switch
+  /// never lies. FocusForge is the one package dropped outright, since blocking
+  /// yourself is not a rule anyone wants.
   static Future<List<InstalledApp>> installed({
     String? excludePackage,
   }) async {
     if (!isSupported) return const [];
     try {
-      final raw = await UsageStats.queryInstalledApps(includeSystem: false);
+      final raw = await UsageStats.queryInstalledApps(includeSystem: true);
       final apps = <InstalledApp>[];
       for (final app in raw) {
         final packageId = app.packageName;
