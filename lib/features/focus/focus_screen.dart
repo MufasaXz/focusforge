@@ -18,6 +18,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import 'subject_picker.dart';
 
 /// Tab 3 — the focus engine: Pomodoro, subject tagging, an ambient mixer and a
 /// live session dock pinned above the navigation bar.
@@ -105,7 +106,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final timer = ref.watch(timerProvider);
     final presets = ref.watch(presetsProvider);
     final preset = presets[timer.presetIndex];
-    final subjects = ref.watch(subjectsProvider);
     final catalogue = ref.watch(ambientCatalogueProvider);
     final active = ref.watch(activeSoundsProvider);
     final volumes = ref.watch(volumesProvider);
@@ -229,61 +229,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 // Subject tags ------------------------------------------------
                 Stagger(
                   index: 2,
-                  child: EdgeFade(
-                    trailing: 32,
-                    child: SizedBox(
-                      height: 48,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: subjects.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(width: Gap.sm),
-                        itemBuilder: (context, i) {
-                          final s = subjects[i];
-                          final selected = timer.subjectId == s.id;
-                          void toggle() => ref
-                              .read(timerProvider.notifier)
-                              .setSubject(selected ? null : s.id);
-                          return Semantics(
-                            button: true,
-                            selected: selected,
-                            label:
-                                'Subject ${s.name}, '
-                                '${selected ? 'selected' : 'not selected'}',
-                            excludeSemantics: true,
-                            onTap: toggle,
-                            child: FilterChip(
-                              selected: selected,
-                              onSelected: (_) => toggle(),
-                              // The subject dot is the leading glyph; a
-                              // checkmark would replace it and drop the
-                              // colour that identifies the subject.
-                              showCheckmark: false,
-                              selectedColor: s.color.withValues(alpha: 0.20),
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: s.color,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 7),
-                                  Text(
-                                    s.name,
-                                    style: const TextStyle(fontSize: 12.5),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+                  child: SubjectPicker(accent: accent),
                 ),
                 const SizedBox(height: Gap.xl),
 

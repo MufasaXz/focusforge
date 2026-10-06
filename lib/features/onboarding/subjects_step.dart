@@ -1,11 +1,13 @@
 import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/app_page.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/seed.dart';
+import '../../core/models/subject_naming.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -90,25 +92,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   }
 
   /// The store's key for a subject name.
-  ///
-  /// Lowercased and reduced to `[a-z0-9-]` so the id is stable across launches
-  /// and safe to log. A name with no ASCII alphanumerics at all — "!!!", "📚",
-  /// "数学" — reduces to nothing, and an empty id is not merely ugly: every
-  /// such subject would share one key, so the second is rejected as a
-  /// duplicate of the first and `remove`/`setWeeklyTarget` would hit all of
-  /// them at once. The fallback encodes the code units instead, which is
-  /// deterministic across launches in a way `String.hashCode` does not
-  /// promise.
-  static String _slug(String name) {
-    final trimmed = name.trim();
-    final slug = trimmed
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    if (slug.isNotEmpty) return slug;
-    // Radix-36 digits never contain '-', so the separator is unambiguous.
-    return 's-${trimmed.codeUnits.map((u) => u.toRadixString(36)).join('-')}';
-  }
+  static String _slug(String name) => SubjectNaming.slug(name);
 
   Future<void> _toggle(SubjectTemplate template) async {
     final id = _slug(template.name);
@@ -146,37 +130,14 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
 
   /// Why [rawName] cannot be added as a custom subject, or null when it can.
   ///
-  /// Names are the picker's identity and slug ids are the store's, so either
-  /// can collide. A name that matches a template is skipped by the rebuild in
-  /// [initState], which would drop the chip while the subject stayed in the
-  /// store; two different names can also slug to one id — "Math!" against
-  /// "Math" — and then `setWeeklyTarget` and `remove` would hit both subjects
-  /// at once. Rejecting here, while the dialog is still open, keeps the
-  /// message next to the field instead of failing silently.
-  String? _collisionFor(String rawName) {
-    final name = rawName.trim();
-    final normalised = name.toLowerCase();
-    final templates = _templates;
-
-    for (final template in templates) {
-      if (template.name.trim().toLowerCase() == normalised) {
-        return '“${template.name}” is already on your list.';
-      }
-    }
-
-    final id = _slug(name);
-    for (final subject in ref.read(subjectsProvider)) {
-      if (subject.id == id) {
-        return 'That name is too similar to “${subject.name}”.';
-      }
-    }
-    for (final template in templates) {
-      if (_slug(template.name) == id) {
-        return 'That name is too similar to “${template.name}”.';
-      }
-    }
-    return null;
-  }
+  /// The rule lives with the subject list it protects; the dialog only renders
+  /// it. The unselected templates are reserved rather than stored, so a name
+  /// the user has not picked yet is still a name they cannot take by hand.
+  String? _collisionFor(String rawName) => SubjectNaming.reasonUnavailable(
+    rawName,
+    existing: ref.read(subjectsProvider),
+    reserved: _templates.map((t) => t.name),
+  );
 
   Future<void> _addCustom() async {
     final accent = Theme.of(context).colorScheme.secondary;
@@ -291,15 +252,18 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
           index: 3,
           child: Row(
             children: [
-              Icon(Icons.lightbulb_outline_rounded, size: 15, color: cs.tertiary),
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 15,
+                color: cs.tertiary,
+              ),
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
                   'Most ${_persona.label.toLowerCase()}s aim for '
                   '${formatMinutes(recommended)} of focus a day.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
             ],
@@ -373,13 +337,15 @@ class _TargetSlider extends StatelessWidget {
                 ),
                 const SizedBox(width: Gap.sm),
                 Expanded(
-                  child: Text(template.name, style: Theme.of(context).textTheme.bodyLarge),
+                  child: Text(
+                    template.name,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: template.color,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: template.color),
                 ),
                 const SizedBox(width: Gap.sm),
               ],
@@ -457,7 +423,10 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Add a subject', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Add a subject',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: Gap.sm),
             Text(
               'Name it the way you think about it.',

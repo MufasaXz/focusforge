@@ -5,12 +5,14 @@
 // WHAT INVARIANT: the picker's names and the store's ids are each unique, and
 // a rejected name never reaches the store.
 //
-// WHY IT MATTERS: this is the only screen that creates subjects, and the
-// store it writes is what the dashboard and the focus timer read. Two names
-// that reduce to one slug id make `remove` and `setWeeklyTarget` hit several
-// subjects at once; a rejected name that still reaches the store renders a
-// chip the picker cannot rebuild from its template list. Both classes of bug
-// are silent at runtime, so they are pinned here.
+// WHY IT MATTERS: this screen creates subjects into the store the dashboard
+// and the focus timer read — as does the focus tab's own picker, which shares
+// these rules through `SubjectNaming` and is covered in
+// test/focus_subject_test.dart. Two names that reduce to one slug id make
+// `remove` and `setWeeklyTarget` hit several subjects at once; a rejected name
+// that still reaches the store renders a chip the picker cannot rebuild from
+// its template list. Both classes of bug are silent at runtime, so they are
+// pinned here.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
