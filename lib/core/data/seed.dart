@@ -66,134 +66,19 @@ class DetectableApp {
   final int tier;
 }
 
-/// The starting content for a fresh install.
+/// The catalogue a fresh install starts from.
 ///
-/// This is what the repositories seed themselves with on first launch; after
-/// that the local store is authoritative. Keeping it in one file means the
-/// demo data is obviously demo data, and deleting it later is a one-line
-/// change rather than an archaeology exercise.
+/// Nothing here is anybody's history. It is the reference content the app
+/// cannot function without — the subject templates offered during onboarding,
+/// the apps it knows how to detect, the feed groups and whitelist tiers a
+/// shield is built from, the badge definitions, the ambient tracks. All of it
+/// is the same for every user and none of it claims to be progress.
+///
+/// The numbers that used to live here — a demo account, 129 hours, a 12-day
+/// streak, five weeks of invented heatmap history — are gone. A new user's
+/// dashboard starts at zero and earns its shape.
 class SeedData {
   const SeedData._();
-
-  // -- Account ---------------------------------------------------------------
-
-  static const userName = 'Alex';
-  static const userFullName = 'Alex Rivera';
-  static const userInitials = 'AR';
-  static const persona = 'Student';
-  static const personaIcon = Icons.school_rounded;
-
-  static UserProfile get user => UserProfile(
-        uid: 'demo-local',
-        displayName: userFullName,
-        persona: Persona.student,
-        timezone: 'Asia/Kolkata',
-        onboardingComplete: true,
-        isAnonymous: true,
-        dailyGoalMinutes: focusGoalMinutes,
-        createdAt: DateTime(2026, 1, 6),
-      );
-
-  static GamificationStats get stats => GamificationStats(
-        xp: xp,
-        level: level,
-        currentStreak: streakDays,
-        longestStreak: 23,
-        totalFocusHours: totalHours,
-        totalSessions: 412,
-        badges: badges
-            .where((a) => a.unlocked)
-            .map((a) => a.id)
-            .toList(growable: false),
-      );
-
-  // -- Dashboard -------------------------------------------------------------
-
-  static const focusMinutesToday = 192;
-  static const focusGoalMinutes = 300;
-  static const pickups = 24;
-  static const unlocks = 52;
-  static const focusMinutesStat = 145;
-  static const streakDays = 12;
-  static const sessionCountToday = 3;
-  static const weekTotalHours = 24.2;
-
-  static const week = <DayBar>[
-    DayBar('M', 3.2),
-    DayBar('T', 4.1),
-    DayBar('W', 2.6),
-    DayBar('T', 5.0, isToday: true),
-    DayBar('F', 3.8),
-    DayBar('S', 1.9),
-    DayBar('S', 3.2),
-  ];
-
-  /// Five weeks of intensity buckets, oldest row first. Legacy shape — kept
-  /// for the pre-provider heatmap widget. New code uses [heatmapCells].
-  static const heatmap = <List<double>>[
-    [0.2, 0.6, 0.1, 0.8, 0.4, 0.0, 0.3],
-    [0.5, 0.9, 0.3, 0.7, 0.6, 0.2, 0.1],
-    [0.1, 0.4, 1.0, 0.5, 0.3, 0.0, 0.4],
-    [0.7, 0.8, 0.2, 0.9, 0.5, 0.3, 0.2],
-    [0.3, 0.5, 0.6, 0.64, 0.0, 0.0, 0.0],
-  ];
-
-  /// Five weeks of dated history ending today, oldest row first.
-  static List<List<HeatCell>> heatmapCells() {
-    const hours = <List<double>>[
-      [1.2, 3.6, 0.6, 4.8, 2.4, 0.0, 1.8],
-      [3.0, 5.4, 1.8, 4.2, 3.6, 1.2, 0.6],
-      [0.6, 2.4, 6.0, 3.0, 1.8, 0.0, 2.4],
-      [4.2, 4.8, 1.2, 5.4, 3.0, 1.8, 1.2],
-      [1.8, 3.0, 3.6, 3.84, 0.0, 0.0, 0.0],
-    ];
-    final today = DateTime.now();
-    final start = today.subtract(const Duration(days: 34));
-    return List.generate(hours.length, (row) {
-      return List.generate(7, (col) {
-        final offset = row * 7 + col;
-        return HeatCell(
-          date: DateTime(start.year, start.month, start.day + offset),
-          hours: hours[row][col],
-        );
-      });
-    });
-  }
-
-  static const apps = <TrackedApp>[
-    TrackedApp(
-      name: 'Instagram',
-      icon: Icons.photo_camera_rounded,
-      color: Color(0xFFFF9FC4),
-      minutes: 48,
-      limit: 30,
-      shielded: true,
-    ),
-    TrackedApp(
-      name: 'WhatsApp',
-      icon: Icons.chat_bubble_rounded,
-      color: Color(0xFF8FE39B),
-      minutes: 62,
-      limit: 90,
-      shielded: false,
-    ),
-    TrackedApp(
-      name: 'YouTube',
-      icon: Icons.smart_display_rounded,
-      color: Color(0xFFFFB4AB),
-      minutes: 95,
-      limit: 45,
-      shielded: true,
-    ),
-    TrackedApp(
-      name: 'LinkedIn',
-      icon: Icons.work_rounded,
-      color: Color(0xFF7FA9FF),
-      minutes: 18,
-      limit: 30,
-      shielded: false,
-    ),
-  ];
 
   static const subjects = <Subject>[
     Subject(
@@ -806,6 +691,14 @@ class SeedData {
         Persona.parent => parentSubjects,
       };
 
+  /// The daily goal before the user has chosen one.
+  ///
+  /// A product default, not a claim about anyone: the goal step treats this
+  /// exact value as "not chosen yet" and opens on the persona's recommended
+  /// suggestion instead. Any other number is a deliberate choice and is left
+  /// alone.
+  static const focusGoalMinutes = 300;
+
   /// Daily-goal suggestions, in minutes — Light / Recommended / Intense.
   static List<int> goalSuggestions(Persona p) => switch (p) {
         Persona.student => const [120, 180, 300],
@@ -940,10 +833,6 @@ class SettingRow {
   final String label;
   final String? trailing;
 }
-
-/// The seed content used to be called `DemoData`. The alias keeps older call
-/// sites compiling while screens migrate to the Riverpod providers.
-typedef DemoData = SeedData;
 
 /// Old name for [AmbientSound].
 typedef AmbientTile = AmbientSound;

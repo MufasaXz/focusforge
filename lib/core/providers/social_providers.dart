@@ -8,24 +8,6 @@ import 'app_providers.dart';
 import 'shield_providers.dart';
 import 'study_providers.dart';
 
-// -- Prototype history -------------------------------------------------------
-//
-// `UserNotifier._installPrototypeHistory` seeds two weeks of demo sessions on
-// a first run so the dashboard has something to show. That is a designed demo
-// affordance for the charts; it is not the user's work, and neither an
-// achievement nor a leaderboard place may claim it. Both the badge recompute
-// and the board therefore filter these rows out.
-
-/// The prefix the first-run seeder mints prototype session ids with —
-/// `proto-<daysAgo>-<i>`. Real sessions are `s-<micros>` (see `TimerNotifier`),
-/// so the shape is a durable marker in the data, not a flag a real row could
-/// also carry. Duplicated from app_providers.dart, where the constant is
-/// private.
-const _prototypeSessionPrefix = 'proto-';
-
-bool _isPrototypeSession(FocusSession session) =>
-    session.id.startsWith(_prototypeSessionPrefix);
-
 // -- Achievements ------------------------------------------------------------
 
 /// Catalogue ids whose progress can be measured from state the app really
@@ -132,15 +114,10 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
   /// The synchronous half of [refresh]; true when something was newly unlocked
   /// and therefore needs persisting.
   bool _recompute() {
-    // Demo rows from the first-run seeder are dropped before anything is
-    // measured: an achievement is a claim about the user, and the prototype
-    // history is not the user's work. The stats aggregate is deliberately not
-    // read either — on a first run it holds the seeder's demo numbers, so a
-    // badge measured from it could unlock for study that never happened.
-    final sessions = ref
-        .read(sessionsProvider)
-        .where((s) => !_isPrototypeSession(s))
-        .toList(growable: false);
+    // Measured from the session log, never from the stats aggregate: a badge
+    // is a claim about the user, and the aggregate is a running total that a
+    // cleared log would leave behind.
+    final sessions = ref.read(sessionsProvider).toList(growable: false);
     final subjects = ref.read(subjectsProvider);
     final walkedAway = ref
         .read(breathEventsProvider)
@@ -212,7 +189,7 @@ double? _measure(
   return switch (id) {
     // Every session-derived number comes from the log — totals, streaks,
     // times of day and per-subject splits. The stats aggregate is deliberately
-    // not read: it carries the prototype seeder's demo values on a first run,
+    // not read: it is a running total that a cleared log would leave behind,
     // and a badge unlocked by those would be credit the user never earned.
     'first_focus' => done.isEmpty ? 0.0 : 1.0,
     // The streak is the longest run of consecutive days carrying a completed
@@ -293,9 +270,9 @@ double _bestSubjectHours(List<FocusSession> sessions) {
 /// Share of this week's subject targets that have been met.
 ///
 /// The week's minutes are summed from [sessions] rather than read from
-/// [Subject.weekDone]: the subject counters are derived from the whole log,
-/// demo rows included, so trusting them would let prototype history complete a
-/// real achievement. The targets themselves are real user settings.
+/// [Subject.weekDone]: the subject counters are a lifetime total, not a weekly
+/// one, so trusting them would credit this week with last term's work. The
+/// targets themselves are real user settings.
 double _subjectTargetFraction(
   List<Subject> subjects,
   List<FocusSession> sessions,
@@ -369,20 +346,18 @@ final leaderboardScopeProvider =
       LeaderboardScopeNotifier.new,
     );
 
-/// Hours of completed, non-prototype focus logged since Monday 00:00 local —
-/// the span the subject rings and the heatmap call "this week".
+/// Hours of completed focus logged since Monday 00:00 local — the span the
+/// subject rings and the heatmap call "this week".
 ///
 /// Deliberately not [weekTotalHoursProvider]: that one is a rolling
 /// last-seven-days window, so reading it under a "This week" label put the
-/// board and the rest of the app on different weeks. Prototype demo rows are
-/// excluded for the same reason the badge recompute drops them — a standing is
-/// a claim about the user.
+/// board and the rest of the app on different weeks.
 final leaderboardWeekHoursProvider = Provider<double>((ref) {
   final now = DateTime.now();
   final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   var minutes = 0;
   for (final session in ref.watch(sessionsProvider)) {
-    if (!session.completed || _isPrototypeSession(session)) continue;
+    if (!session.completed) continue;
     if (session.startedAt.isBefore(monday)) continue;
     minutes += session.minutes;
   }
@@ -395,8 +370,7 @@ final leaderboardWeekHoursProvider = Provider<double>((ref) {
 /// to supply friends or global standings, and the screen says so. The user's
 /// row is real: it is measured over the current Monday-aligned week, inserted
 /// at the rank those hours actually earn, and omitted at zero so a fresh
-/// install — including one whose log holds only prototype demo history — is
-/// never handed a standing it has not earned.
+/// install is never handed a standing it has not earned.
 final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
   final scope = ref.watch(leaderboardScopeProvider);
   final myHours = ref.watch(leaderboardWeekHoursProvider);

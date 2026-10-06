@@ -246,11 +246,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setSubject(null);
 
   await store.clearAll();
-  // The demo history is a one-shot first-run affordance. The wipe just erased
-  // the marker that says so, so re-arm it: re-onboarding after a deletion must
-  // not refill the blank slate with prototype sessions.
-  await store.setBool(prototypeHistorySeededKey, true);
-  // The wipe also erased the empty subject list the removals above wrote, and
+  // The wipe erased the empty subject list the removals above wrote, and
   // an absent key reads as a first run — which would restore the seed
   // catalogue. Writing the empty list back keeps the deleted state deleted.
   await store.setList(StoreKeys.subjects, const []);
