@@ -6,6 +6,7 @@ import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
@@ -62,10 +63,10 @@ class _SignInGateState extends ConsumerState<_SignInGate> {
       );
       await ref.read(userProvider.notifier).save(profile);
       if (!mounted) return;
-      showGlassSnack(context, 'Account linked. Study groups are unlocked.');
+      showAppSnack(context, 'Account linked. Study groups are unlocked.');
     } on AuthException catch (e) {
       if (!mounted) return;
-      showGlassSnack(context, e.friendly);
+      showAppSnack(context, e.friendly);
     } finally {
       if (mounted) setState(() => _linking = false);
     }
@@ -83,7 +84,7 @@ class _SignInGateState extends ConsumerState<_SignInGate> {
               'Groups compare your week with other people, so they need a real '
               'account. Linking one is instant and keeps every session you have '
               'already logged.',
-          action: GlassActionButton(
+          action: AppActionButton(
             label: _linking ? 'Linking…' : 'Link my account',
             icon: Icons.link_rounded,
             onTap: _linking ? null : _link,
@@ -161,7 +162,7 @@ class _GroupList extends ConsumerWidget {
   }
 
   Future<void> _join(BuildContext context, WidgetRef ref) async {
-    final code = await showGlassInputDialog(
+    final code = await showAppInputDialog(
       context: context,
       title: 'Join a group',
       message: 'Enter the invite code a member shared with you.',
@@ -178,7 +179,7 @@ class _GroupList extends ConsumerWidget {
         .where((g) => g.inviteCode.toUpperCase() == code.toUpperCase())
         .firstOrNull;
 
-    showGlassSnack(
+    showAppSnack(
       context,
       match == null
           ? 'No group matches “$code”. Check the code and try again.'
@@ -226,7 +227,7 @@ class _GroupCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '${group.memberCount} members · '
-                        '${formatHours(group.weeklyHours)} this week',
+                        '${formatHoursShort(group.weeklyHours)} this week',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -257,15 +258,15 @@ class _GroupCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '${formatHours(group.weeklyHours)} of '
-                  '${formatHours(group.targetHours)} target',
+                  '${formatHoursShort(group.weeklyHours)} of '
+                  '${formatHoursShort(group.targetHours)} target',
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const Spacer(),
                 Text(
                   remaining <= 0
                       ? 'Target met'
-                      : '${formatHours(remaining)} to go',
+                      : '${formatHoursShort(remaining)} to go',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: remaining <= 0 ? accent : cs.onSurfaceVariant,
                   ),

@@ -21,7 +21,7 @@ import '../../shared/widgets/icon_badge.dart';
 /// here — a bare surface would stretch edge to edge. The backdrop blur is one
 /// of the few the design allows: a modal floats over the page, and the blur is
 /// what says so.
-Future<T?> showGlassDialog<T>({
+Future<T?> showAppDialog<T>({
   required BuildContext context,
   required Widget Function(BuildContext context) builder,
   bool barrierDismissible = true,
@@ -69,7 +69,7 @@ Future<T?> showGlassDialog<T>({
 /// The typed gate is the point of the destructive actions in this folder: a
 /// tap is too easy to give away, and spelling the commitment out is the
 /// cheapest way to make the user mean it.
-Future<bool> showGlassConfirmDialog({
+Future<bool> showAppConfirmDialog({
   required BuildContext context,
   required String title,
   required String message,
@@ -81,7 +81,7 @@ Future<bool> showGlassConfirmDialog({
   bool destructive = false,
   IconData icon = Icons.help_outline_rounded,
 }) async {
-  final result = await showGlassDialog<bool>(
+  final result = await showAppDialog<bool>(
     context: context,
     // A decision that erases data should not be dismissible by a stray tap.
     barrierDismissible: requirePhrase == null && !destructive,
@@ -101,7 +101,7 @@ Future<bool> showGlassConfirmDialog({
 }
 
 /// A single-field prompt. Returns the trimmed value, or null if cancelled.
-Future<String?> showGlassInputDialog({
+Future<String?> showAppInputDialog({
   required BuildContext context,
   required String title,
   required String message,
@@ -111,7 +111,7 @@ Future<String?> showGlassInputDialog({
   TextInputType? keyboardType,
   String? footnote,
 }) {
-  return showGlassDialog<String>(
+  return showAppDialog<String>(
     context: context,
     builder: (context) => _InputBody(
       title: title,
@@ -130,8 +130,8 @@ Future<String?> showGlassInputDialog({
 /// Destructive verbs pass [destructive] rather than a raw colour so that
 /// "delete" and "clear" cannot end up two slightly different reds. A caller
 /// that passes [accent] gets the secondary, outlined treatment instead.
-class GlassActionButton extends StatelessWidget {
-  const GlassActionButton({
+class AppActionButton extends StatelessWidget {
+  const AppActionButton({
     super.key,
     required this.label,
     required this.icon,
@@ -184,7 +184,7 @@ const double _snackBarNavClearance = 80 + Gap.sm;
 
 /// Themed snackbar. Floating, and lifted clear of the nav bar — these screens
 /// live inside the tab shell, where a default snackbar would sit behind it.
-void showGlassSnack(BuildContext context, String message) {
+void showAppSnack(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
@@ -200,11 +200,6 @@ void showGlassSnack(BuildContext context, String message) {
       ),
     );
 }
-
-/// "48h", "12.5h" — hours without a pointless trailing zero.
-String formatHours(double hours) => hours == hours.roundToDouble()
-    ? '${hours.toInt()}h'
-    : '${hours.toStringAsFixed(1)}h';
 
 class _ConfirmBody extends StatefulWidget {
   const _ConfirmBody({

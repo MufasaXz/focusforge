@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
+import '../../../core/utils/format.dart';
 
 /// Weekly focus bars.
 ///
@@ -196,7 +197,7 @@ class _WeeklyChartState extends State<WeeklyChart>
                           opacity: _selected == null ? 0 : 1,
                           duration: const Duration(milliseconds: 180),
                           child: _Bubble(
-                            label: _displayHours(days[index].hours),
+                            label: formatHoursShort(days[index].hours),
                             accent: cs.primary,
                           ),
                         ),
@@ -217,22 +218,11 @@ class _WeeklyChartState extends State<WeeklyChart>
   String _summary(List<DayBar> days) {
     final parts = [
       for (var i = 0; i < days.length; i++)
-        '${_weekdays[i % 7]} ${_spokenHours(days[i].hours)}',
+        '${_weekdays[i % 7]} ${spokenHours(days[i].hours)}',
     ];
     return 'Weekly focus, ${parts.join(', ')}';
   }
 }
-
-String _spokenHours(double hours) {
-  if (hours == hours.roundToDouble()) {
-    final n = hours.toInt();
-    return '$n ${n == 1 ? 'hour' : 'hours'}';
-  }
-  return '$hours hours';
-}
-
-String _displayHours(double hours) =>
-    hours == hours.roundToDouble() ? '${hours.toInt()}h' : '${hours}h';
 
 /// Small tonal bubble pinned above the selected bar.
 class _Bubble extends StatelessWidget {

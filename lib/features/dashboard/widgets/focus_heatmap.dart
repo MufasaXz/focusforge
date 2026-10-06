@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
+import '../../../core/utils/format.dart';
 
 /// Month heatmap — a 7-column calendar where each cell is shaded by focus
 /// intensity. Reads left-to-right, oldest week first.
@@ -214,21 +215,13 @@ const _monthsShort = [
   'Dec',
 ];
 
-String _spokenHours(double hours) {
-  if (hours == hours.roundToDouble()) {
-    final n = hours.toInt();
-    return '$n ${n == 1 ? 'hour' : 'hours'}';
-  }
-  return '$hours hours';
-}
-
 /// "Tuesday 14 Oct - 2.5 hours focused" — the same sentence is used for the
 /// tooltip and for the cell's semantics label.
 String _spokenValue(HeatCell cell) {
   final date =
       '${cell.weekday} ${cell.date.day} ${_monthsShort[cell.date.month - 1]}';
   if (cell.hours <= 0) return '$date - no focus logged';
-  return '$date - ${_spokenHours(cell.hours)} focused';
+  return '$date - ${spokenHours(cell.hours)} focused';
 }
 
 /// Maps a 0..1 intensity onto one of five discrete levels.

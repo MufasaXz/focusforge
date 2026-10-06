@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
+import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
-import 'settings_support.dart';
 
 /// Weekly standings, three scopes deep.
 ///
@@ -218,7 +218,7 @@ class _PodiumPlace extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          formatHours(entry.hours),
+          formatHoursShort(entry.hours),
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             fontSize: 10.5,
             color: accent,
@@ -327,7 +327,7 @@ class _RankRow extends StatelessWidget {
               ),
             ),
             trailing: Text(
-              formatHours(entry.hours),
+              formatHoursShort(entry.hours),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: isMe ? accent : cs.onSurface,
               ),
@@ -381,15 +381,15 @@ class _MyRankCard extends StatelessWidget {
       final runnerUp = entries[1];
       message =
           'You lead ${runnerUp.name} by '
-          '${formatHours(mine.hours - runnerUp.hours)}.';
+          '${formatHoursShort(mine.hours - runnerUp.hours)}.';
     } else if (isLeader) {
       message = 'You are #1 this week.';
     } else {
-      message = '${formatHours(behind)} behind ${leader.name}.';
+      message = '${formatHoursShort(behind)} behind ${leader.name}.';
     }
 
-    // The old glass surface was elevated and accent-tinted; a tonal outline
-    // carries the same "this one is different" cue without a glow.
+    // Outlined rather than filled: the leader's card should read as different
+    // from the ranked rows below it, and an outline does that without a glow.
     final progress = leader.hours <= 0
         ? 1.0
         : (mine.hours / leader.hours).clamp(0.0, 1.0);
@@ -424,7 +424,7 @@ class _MyRankCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${formatHours(mine.hours)} of focused study',
+                        '${formatHoursShort(mine.hours)} of focused study',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),

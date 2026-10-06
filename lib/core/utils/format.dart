@@ -26,6 +26,26 @@ String formatHours(double hours) {
   return '${h}h ${m}m';
 }
 
+/// "48h", "12.5h", "0.4h" — hours to one decimal, without a pointless trailing
+/// zero.
+///
+/// Every hour value that reaches the screen goes through here, because
+/// interpolating a `double` straight into a string is how a chart label ends up
+/// reading "0.4166666666666667h" and wrapping out of its bubble.
+String formatHoursShort(double hours) => hours == hours.roundToDouble()
+    ? '${hours.toInt()}h'
+    : '${hours.toStringAsFixed(1)}h';
+
+/// The spoken form of [formatHoursShort], for semantics labels and tooltips:
+/// "2 hours", "1 hour", "0.4 hours".
+String spokenHours(double hours) {
+  if (hours == hours.roundToDouble()) {
+    final n = hours.toInt();
+    return '$n ${n == 1 ? 'hour' : 'hours'}';
+  }
+  return '${hours.toStringAsFixed(1)} hours';
+}
+
 const _months = [
   'January',
   'February',
