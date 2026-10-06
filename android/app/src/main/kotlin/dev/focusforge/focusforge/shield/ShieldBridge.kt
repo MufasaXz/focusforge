@@ -119,6 +119,33 @@ class ShieldBridge(
                 }
             }
 
+            "openApp" -> {
+                // The other half of "open it anyway": once the pause is over,
+                // the app the user asked for is the app they get. Reached
+                // through the launcher intent rather than a raw package name,
+                // so an app with no launcher activity is a no rather than a
+                // crash.
+                val target = call.argument<String>("package")
+                val launch = if (target.isNullOrBlank()) {
+                    null
+                } else {
+                    context.packageManager.getLaunchIntentForPackage(target)
+                }
+                if (launch == null) {
+                    result.success(false)
+                } else {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    result.success(
+                        try {
+                            context.startActivity(launch)
+                            true
+                        } catch (_: Exception) {
+                            false
+                        },
+                    )
+                }
+            }
+
             "blockedApp" -> result.success(takeLaunch())
 
             else -> result.notImplemented()

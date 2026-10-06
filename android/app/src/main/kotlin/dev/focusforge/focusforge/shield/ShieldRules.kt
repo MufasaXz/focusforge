@@ -77,7 +77,12 @@ data class ShieldRules(
             strictUntilMillis = null,
         )
 
-        const val DEFAULT_GRACE_SECONDS = 30
+        /**
+         * Fallback only. The live value is written by the Dart side and arrives
+         * in [parse]; this is what the service uses before the app has ever
+         * pushed a config.
+         */
+        const val DEFAULT_GRACE_SECONDS = 300
 
         /**
          * Reads the payload the Dart side wrote.

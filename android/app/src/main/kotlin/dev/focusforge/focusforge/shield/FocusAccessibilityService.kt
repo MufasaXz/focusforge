@@ -208,8 +208,13 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun reasonToBlock(packageName: String): String? {
         val current = rules
 
+        // The surface rules are additive, not decisive: they can only ever add
+        // a reason. A user who closes Shorts and also blocks the app outright
+        // must still be covered while watching an ordinary video, so a surface
+        // rule that finds nothing falls through to the package rule instead of
+        // clearing the app.
         if (packageName == YOUTUBE && current.youtube.any) {
-            return youtubeReason(current.youtube)
+            youtubeReason(current.youtube)?.let { return it }
         }
 
         val rule = current.ruleFor(packageName) ?: return null
@@ -401,16 +406,17 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * The quiet action. The app opens, and FocusForge gets out of the way for a
-     * short while — long enough to do the thing that made the user tap it, and
-     * short enough that it is not a way to disable the block by repetition.
+     * The quiet action. FocusForge comes to the front and the app the user
+     * tapped waits behind it.
      *
-     * It also opens the app's own screen for this package, so the user lands
-     * somewhere that explains what they just chose and can undo it.
+     * The grace is deliberately *not* granted here. The pause that follows
+     * lasts longer than the grace does, so starting the clock now would spend
+     * it before the user ever reached the app — and they would be covered
+     * again the moment they opened it. The app grants the grace when the pause
+     * is actually over.
      */
     private fun openAnyway(packageName: String, label: String) {
-        val seconds = rules.graceSeconds
-        grantGrace(packageName, seconds)
+        dismissOverlay()
         ShieldEvents.emit(packageName, label, ShieldEvents.OPENED_ANYWAY)
 
         try {
@@ -422,11 +428,13 @@ class FocusAccessibilityService : AccessibilityService() {
                     )
                     .putExtra(EXTRA_BLOCKED_PACKAGE, packageName)
                     .putExtra(EXTRA_BLOCKED_LABEL, label)
-                    .putExtra(EXTRA_GRACE_SECONDS, seconds),
+                    .putExtra(EXTRA_GRACE_SECONDS, rules.graceSeconds),
             )
         } catch (_: Exception) {
-            // No UI to hand over to. The grace is already granted, so the user
-            // is not trapped in a loop of block screens.
+            // No UI to hand over to, so nothing will grant the grace later.
+            // Granting it here is the only way out that is not a loop of block
+            // screens.
+            grantGrace(packageName, rules.graceSeconds)
         }
     }
 
