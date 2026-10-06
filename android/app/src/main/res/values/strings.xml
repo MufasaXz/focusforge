@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in Android's Accessibility settings list, next to the toggle the
+         user has to flip by hand. It is the only explanation they get at the
+         moment of granting, so it says what the service watches and what it
+         does not. -->
+    <string name="accessibility_service_description">FocusForge watches which app comes to the foreground so it can hide the addictive parts of it — Reels, Shorts, the Watch tab — without blocking the whole app. It cannot read what is on your screen, your messages or your passwords.</string>
+</resources>

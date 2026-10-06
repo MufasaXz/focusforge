@@ -21,10 +21,16 @@ dependencies:
   hive_flutter: ^1.1.0
   shared_preferences: ^2.3.4
   # Permissions — real system dialogs, not local state.
+  #
+  # No `app_settings`: the guide lists it for opening system settings pages,
+  # but `permission_handler` already exposes `openAppSettings()` and the two
+  # Android plugins below open their own pages, so it would be a third route
+  # to the same two screens. Its pinned release also hardcodes
+  # `compileSdkVersion 33`, which cannot build against the AndroidX versions
+  # the rest of the graph pulls in.
   permission_handler: ^11.3.1
   flutter_accessibility_service: ^0.3.0
   usage_stats: ^2.0.1
-  app_settings: ^5.1.1
   just_audio: ^0.9.41
   # UI
   fl_chart: ^0.70.2

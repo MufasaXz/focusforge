@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the FocusForge accessibility service is allowed to observe.
+
+  Window-state changes only: the service needs to know which app came to the
+  foreground so the shield can decide whether to act. It deliberately does not
+  request window content, text, view IDs, gesture injection or key events —
+  nothing in the shield reads what is on screen, only which app is showing it.
+  Keeping `canRetrieveWindowContent` false is what makes that promise
+  enforceable by the platform rather than merely stated in the UI.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowsChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackVisual"
+    android:notificationTimeout="300"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_service_description"
+/>

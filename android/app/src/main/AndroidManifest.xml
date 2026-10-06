@@ -1,4 +1,24 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Notifications. Android 13+ makes this a runtime permission, so it has
+         to be declared here or `Permission.notification.request()` returns
+         "permanently denied" without ever showing a dialog. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Overlay, for the Deep Breath Gate. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+
+    <!-- Usage access, for the per-app screen-time breakdown. A special
+         permission: the user grants it from Settings rather than from a
+         dialog. The tools:ignore is required because lint treats every
+         PACKAGE_USAGE_STATS declaration as a Play Store policy risk. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions"/>
+
+    <!-- Do Not Disturb access, for Strict Mode. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+
     <application
         android:label="FocusForge"
         android:name="${applicationName}"
@@ -25,6 +45,25 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- The accessibility service the shield runs on. This is the listener
+             shipped by `flutter_accessibility_service`; the app does not
+             subclass it. Android has no dialog for accessibility access — the
+             user enables it from Settings — so this declaration is what makes
+             FocusForge appear in that list at all. -->
+        <service
+            android:name="slayer.accessibility.service.flutter_accessibility_service.AccessibilityListener"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false"
+            android:label="FocusForge">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibilityservice"/>
+        </service>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
