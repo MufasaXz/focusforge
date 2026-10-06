@@ -70,7 +70,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
     // A settings page leaves the user somewhere that cannot explain itself.
     // Say what to do while they are still looking at this screen.
     if (outcome == PermissionOutcome.openedSettings) {
-      showGlassSnack(
+      showAppSnack(
         context,
         'Find FocusForge in that list, turn it on, then come back here.',
       );

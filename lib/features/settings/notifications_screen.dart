@@ -232,7 +232,7 @@ class NotificationsScreen extends ConsumerWidget {
                         onTap: () => pick(start: false),
                       ),
                       const SizedBox(height: Gap.xl),
-                      GlassActionButton(
+                      AppActionButton(
                         label: 'Done',
                         icon: Icons.check_rounded,
                         onTap: () => Navigator.of(context).pop(),

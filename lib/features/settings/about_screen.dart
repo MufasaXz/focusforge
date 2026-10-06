@@ -161,7 +161,7 @@ class AboutScreen extends StatelessWidget {
   Future<void> _copy(BuildContext context, String url, String label) async {
     await Clipboard.setData(ClipboardData(text: url));
     if (!context.mounted) return;
-    showGlassSnack(context, '$label copied to the clipboard.');
+    showAppSnack(context, '$label copied to the clipboard.');
   }
 
   void _showLicences(BuildContext context) {
@@ -174,7 +174,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   void _showMit(BuildContext context) {
-    showGlassDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (context) => const _TextBody(
         title: 'MIT licence',
@@ -185,7 +185,7 @@ class AboutScreen extends StatelessWidget {
   }
 
   void _showAudioCredits(BuildContext context) {
-    showGlassDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (context) => const _AudioCreditsBody(),
     );
@@ -257,7 +257,7 @@ class _AudioCreditsBody extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.xl),
-        GlassActionButton(
+        AppActionButton(
           label: 'Close',
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),
@@ -319,7 +319,7 @@ class _TextBody extends StatelessWidget {
         else
           text,
         const SizedBox(height: Gap.xl),
-        GlassActionButton(
+        AppActionButton(
           label: 'Close',
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),

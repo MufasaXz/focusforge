@@ -356,7 +356,7 @@ void _openDetail(BuildContext context, Achievement badge) {
               ),
             ],
             const SizedBox(height: Gap.xl),
-            GlassActionButton(
+            AppActionButton(
               label: 'Close',
               icon: Icons.close_rounded,
               onTap: () => Navigator.of(context).pop(),

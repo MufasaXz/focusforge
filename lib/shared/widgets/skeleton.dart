@@ -100,7 +100,7 @@ class _SweepTransform extends GradientTransform {
       Matrix4.translationValues(bounds.width * (progress * 2 - 1), 0, 0);
 }
 
-/// Card-sized skeleton — stands in for a whole [GlassPanel].
+/// Card-sized skeleton — stands in for a whole [AppSection].
 class SkeletonCard extends StatelessWidget {
   const SkeletonCard({super.key, this.height = 160, this.radius = Radii.card});
 

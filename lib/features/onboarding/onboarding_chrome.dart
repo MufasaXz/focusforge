@@ -205,8 +205,8 @@ class GhostAction extends StatelessWidget {
 ///
 /// The tonal fill marks the input area and the primary-coloured focus border
 /// is the M3 focus tell; the field carries no elevation of its own.
-class GlassTextField extends StatelessWidget {
-  const GlassTextField({
+class AppTextField extends StatelessWidget {
+  const AppTextField({
     super.key,
     required this.controller,
     this.hint,
@@ -273,7 +273,7 @@ class GlassTextField extends StatelessWidget {
 
 /// Floating snackbar. Errors from the auth service surface here with [danger]
 /// set so a failure never looks like a success.
-void showGlassSnack(
+void showAppSnack(
   BuildContext context,
   String message, {
   IconData icon = Icons.info_outline_rounded,

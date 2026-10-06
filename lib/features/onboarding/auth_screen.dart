@@ -78,7 +78,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _finish();
     } on AuthException catch (e) {
       if (!mounted) return;
-      showGlassSnack(
+      showAppSnack(
         context,
         e.friendly,
         icon: Icons.error_outline_rounded,
@@ -371,7 +371,7 @@ class _EmailSheetState extends State<_EmailSheet> {
       Navigator.of(context).pop(profile);
     } on AuthException catch (e) {
       if (!mounted) return;
-      showGlassSnack(
+      showAppSnack(
         context,
         e.friendly,
         icon: Icons.error_outline_rounded,
@@ -385,7 +385,7 @@ class _EmailSheetState extends State<_EmailSheet> {
   Future<void> _reset() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      showGlassSnack(
+      showAppSnack(
         context,
         'Enter your email first, then tap reset.',
         icon: Icons.error_outline_rounded,
@@ -396,14 +396,14 @@ class _EmailSheetState extends State<_EmailSheet> {
     try {
       await widget.service.sendPasswordReset(email);
       if (!mounted) return;
-      showGlassSnack(
+      showAppSnack(
         context,
         'If an account exists for $email, a reset link is on its way.',
         icon: Icons.mark_email_read_outlined,
       );
     } on AuthException catch (e) {
       if (!mounted) return;
-      showGlassSnack(
+      showAppSnack(
         context,
         e.friendly,
         icon: Icons.error_outline_rounded,
@@ -434,7 +434,7 @@ class _EmailSheetState extends State<_EmailSheet> {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.xl),
-            GlassTextField(
+            AppTextField(
               controller: _email,
               hint: 'you@example.com',
               icon: Icons.alternate_email_rounded,
@@ -443,7 +443,7 @@ class _EmailSheetState extends State<_EmailSheet> {
               autofocus: true,
             ),
             const SizedBox(height: Gap.md),
-            GlassTextField(
+            AppTextField(
               controller: _password,
               hint: 'Password',
               icon: Icons.lock_outline_rounded,

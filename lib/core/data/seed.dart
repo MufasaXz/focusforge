@@ -799,40 +799,4 @@ class SeedData {
       tier: 2,
     ),
   ];
-
-  // -- Legacy aliases --------------------------------------------------------
-  // These mirror the pre-provider constants so screens that have not yet been
-  // migrated keep compiling. Delete once every screen reads from a provider.
-
-  static const totalHours = 128.5;
-  static const level = 14;
-  static const xp = 2340;
-  static const xpForNext = 3000;
-
-  /// Count of unlocked badges. Superseded by `badges.where(unlocked).length`.
-  static const achievements = 8;
-  static const achievementsTotal = 24;
-
-  static const settings = <SettingRow>[
-    SettingRow(Icons.groups_rounded, 'Study Groups', trailing: '3 active'),
-    SettingRow(Icons.emoji_events_rounded, 'Achievements', trailing: '8 / 24'),
-    SettingRow(Icons.leaderboard_rounded, 'Leaderboard', trailing: '#12'),
-    SettingRow(Icons.lock_rounded, 'Strict Mode', trailing: 'Off'),
-    SettingRow(Icons.notifications_active_rounded, 'Notifications'),
-    SettingRow(Icons.shield_rounded, 'Data & Privacy'),
-    SettingRow(Icons.info_rounded, 'About FocusForge', trailing: 'v0.1.0'),
-  ];
 }
-
-/// A row in the Profile settings list. Superseded by the router-driven
-/// `_SettingTile` in the settings feature.
-class SettingRow {
-  const SettingRow(this.icon, this.label, {this.trailing});
-
-  final IconData icon;
-  final String label;
-  final String? trailing;
-}
-
-/// Old name for [AmbientSound].
-typedef AmbientTile = AmbientSound;

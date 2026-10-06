@@ -73,14 +73,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
-  confetti:
-    dependency: "direct main"
-    description:
-      name: confetti
-      sha256: "79376a99648efbc3f23582f5784ced0fe239922bd1a0fb41f582051eba750751"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.8.0"
   crypto:
     dependency: transitive
     description:
@@ -89,30 +81,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
-  cupertino_ui:
-    dependency: transitive
-    description:
-      name: cupertino_ui
-      sha256: c23816577a1280cff409e989541767887011f8f1d8c1863a794ed308af46f2a9
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
-  dynamic_color:
-    dependency: transitive
-    description:
-      name: dynamic_color
-      sha256: "869b3bce0100eb519768ecd71c0111f0b5ea679f5f62e1f59c49d80067e730c5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
-  equatable:
-    dependency: transitive
-    description:
-      name: equatable
-      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -193,14 +161,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  fl_chart:
-    dependency: "direct main"
-    description:
-      name: fl_chart
-      sha256: "5276944c6ffc975ae796569a826c38a62d2abcf264e26b88fa6f482e107f4237"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.70.2"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -214,14 +174,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.0"
-  flutter_animate:
-    dependency: "direct main"
-    description:
-      name: flutter_animate
-      sha256: "7befe2d3252728afb77aecaaea1dec88a89d35b9b1d2eea6d04479e8af9117b5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.5.2"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -230,11 +182,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_localizations:
-    dependency: transitive
-    description: flutter
-    source: sdk
-    version: "0.0.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -243,14 +190,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
-  flutter_shaders:
-    dependency: transitive
-    description:
-      name: flutter_shaders
-      sha256: "34794acadd8275d971e02df03afee3dee0f98dbfb8c4837082ad0034f612a3e2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.3"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -317,22 +256,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.12.4+4"
-  hive:
-    dependency: transitive
-    description:
-      name: hive
-      sha256: "8dcf6db979d7933da8217edcec84e9df1bdb4e4edc7fc77dbd5aa74356d6d941"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.3"
-  hive_flutter:
-    dependency: "direct main"
-    description:
-      name: hive_flutter
-      sha256: dca1da446b1d808a51689fb5d0c6c9510c0a2ba01e22805d492c73b68e33eecc
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   hooks:
     dependency: transitive
     description:
@@ -357,14 +280,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
-  intl:
-    dependency: transitive
-    description:
-      name: intl
-      sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.20.3"
   jni:
     dependency: transitive
     description:
@@ -461,14 +376,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.12.20"
-  material_3_expressive:
-    dependency: "direct main"
-    description:
-      name: material_3_expressive
-      sha256: b61ffed1c8614320921a685499b6f91fedfff550d29988a02daf68824954f798
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.5"
   material_color_utilities:
     dependency: "direct main"
     description:
@@ -477,22 +384,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
-  material_new_shapes:
-    dependency: transitive
-    description:
-      name: material_new_shapes
-      sha256: e4bc375205e187e8fb232573387112dd8c0dd45b03af8aa2b3c79eb4b9e3e0dc
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
-  material_ui:
-    dependency: transitive
-    description:
-      name: material_ui
-      sha256: "32d98f11cf5942a095a8c3e01b03e4de3b17941437713dcf36b1088fb62e23d2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.5.0"
   meta:
     dependency: transitive
     description:
@@ -501,14 +392,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.18.3"
-  motor:
-    dependency: transitive
-    description:
-      name: motor
-      sha256: cbd49f21b00e568c2b1a55f134ed803614a107782f4fea7769693bca32940c58
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   objective_c:
     dependency: transitive
     description:
@@ -669,14 +552,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
-  riverpod_annotation:
-    dependency: "direct main"
-    description:
-      name: riverpod_annotation
-      sha256: e14b0bf45b71326654e2705d462f21b958f987087be850afd60578fcd502d1b8
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.6.1"
   rxdart:
     dependency: transitive
     description:
@@ -741,38 +616,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-  shimmer:
-    dependency: "direct main"
-    description:
-      name: shimmer
-      sha256: "61ef3b8de6bdb9f16db1bb78d502cb991a12b5223fd2c0b9114d41e782227b55"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.0"
-  sign_in_with_apple:
-    dependency: "direct main"
-    description:
-      name: sign_in_with_apple
-      sha256: e84a62e17b7e463abf0a64ce826c2cd1f0b72dff07b7b275e32d5302d76fb4c5
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.4"
-  sign_in_with_apple_platform_interface:
-    dependency: transitive
-    description:
-      name: sign_in_with_apple_platform_interface
-      sha256: c2ef2ce6273fce0c61acd7e9ff5be7181e33d7aa2b66508b39418b786cca2119
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
-  sign_in_with_apple_web:
-    dependency: transitive
-    description:
-      name: sign_in_with_apple_web
-      sha256: "2f7c38368f49e3f2043bca4b46a4a61aaae568c140a79aa0675dc59ad0ca49bc"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -908,4 +751,4 @@ packages:
     version: "3.1.4"
 sdks:
   dart: ">=3.13.5 <4.0.0"
-  flutter: ">=3.47.0"
+  flutter: ">=3.44.0"

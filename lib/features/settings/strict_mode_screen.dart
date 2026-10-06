@@ -174,7 +174,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
             ],
           ),
           const SizedBox(height: Gap.sm),
-          GlassActionButton(
+          AppActionButton(
             label: config.enabled ? 'End Strict Mode' : 'Activate Strict Mode',
             icon: config.enabled ? Icons.lock_open_rounded : Icons.lock_rounded,
             destructive: config.enabled,
@@ -201,7 +201,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
     final activating = !config.enabled;
     final window = _formatWindow(config.durationMinutes / 60);
 
-    final confirmed = await showGlassDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       // Dismissal is the escape hatch. Leaving the sheet at any point is a
       // cancel, and a cancel never touches the stored config.
@@ -216,7 +216,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
 
     await ref.read(strictModeProvider.notifier).setEnabled(activating);
     if (!mounted) return;
-    showGlassSnack(
+    showAppSnack(
       context,
       activating ? 'Strict Mode is on for $window.' : 'Strict Mode ended.',
     );

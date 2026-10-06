@@ -466,7 +466,7 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
               ),
             ),
             const SizedBox(height: Gap.lg),
-            GlassTextField(
+            AppTextField(
               controller: _controller,
               hint: 'e.g. Thesis',
               autofocus: true,

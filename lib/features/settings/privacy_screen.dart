@@ -180,7 +180,7 @@ class PrivacyScreen extends ConsumerWidget {
     if (kIsWeb) {
       await Clipboard.setData(ClipboardData(text: json));
       if (!context.mounted) return;
-      showGlassSnack(
+      showAppSnack(
         context,
         'Copied ${data.length} stored keys to the clipboard as JSON.',
       );
@@ -188,19 +188,19 @@ class PrivacyScreen extends ConsumerWidget {
     }
 
     if (!context.mounted) return;
-    final copied = await showGlassDialog<bool>(
+    final copied = await showAppDialog<bool>(
       context: context,
       builder: (context) => _ExportBody(json: json, keyCount: data.length),
     );
     if (copied == true && context.mounted) {
-      showGlassSnack(context, 'JSON copied to the clipboard.');
+      showAppSnack(context, 'JSON copied to the clipboard.');
     }
   }
 
   // -- Clear analytics ------------------------------------------------------
 
   Future<void> _clearAnalytics(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showGlassConfirmDialog(
+    final confirmed = await showAppConfirmDialog(
       context: context,
       title: 'Clear local analytics?',
       message:
@@ -237,13 +237,13 @@ class PrivacyScreen extends ConsumerWidget {
     ref.read(subjectsProvider.notifier).hydrate(subjects);
 
     if (!context.mounted) return;
-    showGlassSnack(context, 'Local analytics cleared.');
+    showAppSnack(context, 'Local analytics cleared.');
   }
 
   // -- Delete account -------------------------------------------------------
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showGlassConfirmDialog(
+    final confirmed = await showAppConfirmDialog(
       context: context,
       title: 'Delete your account?',
       message:
@@ -270,7 +270,7 @@ class PrivacyScreen extends ConsumerWidget {
       await ref.read(authServiceProvider).deleteAccount();
     } on AuthException catch (e) {
       if (!context.mounted) return;
-      showGlassSnack(context, e.friendly);
+      showAppSnack(context, e.friendly);
       return;
     }
 
@@ -301,7 +301,7 @@ class PrivacyScreen extends ConsumerWidget {
     required String title,
     required String body,
   }) {
-    showGlassDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (context) => _InfoBody(title: title, body: body),
     );
@@ -365,7 +365,7 @@ class _ExportBody extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: GlassActionButton(
+              child: AppActionButton(
                 label: 'Close',
                 icon: Icons.close_rounded,
                 accent: cs.onSurfaceVariant,
@@ -374,7 +374,7 @@ class _ExportBody extends StatelessWidget {
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: GlassActionButton(
+              child: AppActionButton(
                 label: 'Copy JSON',
                 icon: Icons.copy_rounded,
                 onTap: () async {
@@ -419,7 +419,7 @@ class _InfoBody extends StatelessWidget {
         const SizedBox(height: Gap.lg),
         Text(body, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: Gap.xl),
-        GlassActionButton(
+        AppActionButton(
           label: 'Close',
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),

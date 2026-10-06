@@ -105,9 +105,9 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
         const Stagger(index: 3, child: SectionHeader(title: 'Display name')),
         Stagger(
           index: 4,
-          child: GlassTextField(
+          child: AppTextField(
             controller: _name,
-            hint: 'Alex Rivera',
+            hint: 'Your name',
             icon: Icons.badge_outlined,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _commit(),
