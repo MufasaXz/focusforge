@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/user.dart';
@@ -170,23 +171,22 @@ class FirebaseAuthService extends AuthService {
   /// proved ownership of it — and [_profileFor] re-keys the stored record onto
   /// the resulting uid either way, so nothing the user built is orphaned.
   Future<UserProfile> _linkWithGoogle() async {
-    final google = GoogleSignIn.instance;
-    final GoogleSignInAccount account;
+    final GoogleSignInAccount? account;
     try {
-      await _googleInitialize();
-      if (!google.supportsAuthenticate()) {
-        throw const AuthException(AuthFailure.providerUnavailable);
-      }
-      account = await google.authenticate();
-    } on GoogleSignInException catch (e) {
+      account = await _googleSignIn().signIn();
+    } on PlatformException catch (e) {
       throw _translateGoogle(e);
     }
+    // The plugin's own cancellation signal: null, not an exception.
+    if (account == null) {
+      throw const AuthException(AuthFailure.cancelled);
+    }
 
-    final idToken = account.authentication.idToken;
+    final idToken = (await account.authentication).idToken;
     if (idToken == null || idToken.isEmpty) {
       // A completed round-trip with no ID token is the client configuration
       // failing to mint one, not the user backing out — cancellation arrives
-      // as a GoogleSignInException above.
+      // as a null account above.
       throw const AuthException(
         AuthFailure.providerUnavailable,
         'Google returned no ID token',
@@ -197,7 +197,7 @@ class FirebaseAuthService extends AuthService {
     Future<UserProfile> apply(User user) => _persist(
       _profileFor(
         user,
-        providerName: account.displayName,
+        providerName: account!.displayName,
         email: account.email,
       ),
     );
@@ -231,19 +231,15 @@ class FirebaseAuthService extends AuthService {
     }
   }
 
-  /// The plugin's single `initialize()` future.
+  /// The plugin client, built once and reused.
   ///
-  /// The contract is one initialize whose future completes before any other
-  /// call, so every Google link awaits the same run. Deliberately not started
-  /// from the constructor: this service is built during `bootstrap()`, before
-  /// the first frame, and initialize crosses the platform channel — launch
-  /// must not pay for a flow the user may never invoke.
-  Future<void>? _googleInit;
+  /// Constructing it crosses no channel and starts no flow, so unlike the
+  /// service itself it costs nothing to hold. No `clientId`: on Android the
+  /// plugin reads both the app client and the server client from
+  /// `google-services.json`, and passing one would override that.
+  GoogleSignIn? _googleClient;
 
-  /// No arguments: on Android the plugin reads both the app client and the
-  /// server client from `google-services.json`.
-  Future<void> _googleInitialize() =>
-      _googleInit ??= GoogleSignIn.instance.initialize();
+  GoogleSignIn _googleSignIn() => _googleClient ??= GoogleSignIn();
 
   @override
   Future<void> sendPasswordReset(String email) async {
@@ -430,20 +426,19 @@ class FirebaseAuthService extends AuthService {
 
   /// The Google plugin's error vocabulary mapped onto [AuthFailure].
   ///
-  /// The configuration codes and an unavailable sign-in UI all collapse into
-  /// `providerUnavailable`: none of them has a user remedy, and the screen
-  /// already carries copy for that case. The enum is documented as
-  /// non-exhaustive, so anything new falls through to `unknown` rather than
-  /// leaking a raw [GoogleSignInException].
-  static AuthException _translateGoogle(GoogleSignInException e) {
+  /// In this plugin generation every failure arrives as a [PlatformException]
+  /// whose `code` is one of the `GoogleSignIn.kSignIn…Error` constants.
+  /// `sign_in_failed` covers the configuration class — a missing or mismatched
+  /// OAuth client, which has no user remedy — so it collapses into
+  /// `providerUnavailable`, the one case the screen already has copy for.
+  /// Anything unrecognised falls through to `unknown` rather than leaking the
+  /// platform's text to the UI.
+  static AuthException _translateGoogle(PlatformException e) {
     final failure = switch (e.code) {
-      GoogleSignInExceptionCode.canceled => AuthFailure.cancelled,
-      GoogleSignInExceptionCode.clientConfigurationError ||
-      GoogleSignInExceptionCode.providerConfigurationError ||
-      GoogleSignInExceptionCode.uiUnavailable =>
-        AuthFailure.providerUnavailable,
+      GoogleSignIn.kSignInCanceledError => AuthFailure.cancelled,
+      GoogleSignIn.kSignInFailedError => AuthFailure.providerUnavailable,
       _ => AuthFailure.unknown,
     };
-    return AuthException(failure, e.description);
+    return AuthException(failure, e.message);
   }
 }

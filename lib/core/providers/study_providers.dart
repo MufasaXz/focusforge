@@ -349,9 +349,19 @@ class TimerNotifier extends Notifier<TimerState> {
   /// session log has been hydrated — see [_logRecovered].
   FocusSession? _pendingRecovery;
 
+  /// Whether this notifier has been torn down.
+  ///
+  /// Riverpod 3 exposes `ref.mounted`; Riverpod 2 does not, so the flag is
+  /// maintained by hand. [_logRecovered] defers through a microtask, and a
+  /// provider that was invalidated in the meantime would otherwise read a
+  /// store it no longer belongs to.
+  bool _disposed = false;
+
   @override
   TimerState build() {
+    _disposed = false;
     ref.onDispose(() {
+      _disposed = true;
       _ticker?.cancel();
       _completions.close();
     });
@@ -504,7 +514,7 @@ class TimerNotifier extends Notifier<TimerState> {
   /// [_pendingRecovery] for the listener installed in [build].
   void _logRecovered(FocusSession session) {
     Future.microtask(() {
-      if (!ref.mounted) return;
+      if (_disposed) return;
       final store = ref.read(localStoreProvider);
       final logLoaded =
           ref.read(sessionsProvider).isNotEmpty ||
