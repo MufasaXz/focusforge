@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -127,41 +128,35 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
         const Stagger(index: 6, child: SectionHeader(title: 'Timezone')),
         Stagger(
           index: 7,
-          child: GlassPanel(
-            level: 2,
-            radius: Radii.item,
-            padding: const EdgeInsets.all(Gap.md),
-            child: Row(
-              children: [
-                GlassIconBadge(
-                  icon: Icons.public_rounded,
-                  color: cs.tertiary,
-                  size: 36,
-                  radius: Radii.tile,
+          child: Card.outlined(
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.card),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: ListTile(
+              leading: IconBadge(
+                icon: Icons.public_outlined,
+                color: cs.tertiary,
+                size: 36,
+                radius: Radii.tile,
+              ),
+              title: Text(_timezone, style: Theme.of(context).textTheme.titleSmall),
+              subtitle: Text(
+                'Detected from your device',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Detected from your device',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(_timezone, style: Theme.of(context).textTheme.titleSmall),
-                    ],
+              ),
+              trailing: Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text(
+                  'Auto',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.tertiary,
                   ),
                 ),
-                GlassPill(
-                  child: Text(
-                    'Auto',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.tertiary),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -179,40 +174,18 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cs.primary.withValues(alpha: 0.38),
-            cs.secondary.withValues(alpha: 0.18),
-          ],
-        ),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.45)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.22),
-            blurRadius: 26,
-            spreadRadius: -4,
-          ),
-        ],
-      ),
-      child: Center(
-        child: initials.isEmpty
-            ? Icon(
-                Icons.person_rounded,
-                size: 38,
-                color: cs.primary.withValues(alpha: 0.9),
-              )
-            : Text(
-                initials,
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(fontSize: 32),
+    return CircleAvatar(
+      radius: 48,
+      backgroundColor: cs.primaryContainer,
+      child: initials.isEmpty
+          ? Icon(Icons.person_rounded, size: 38, color: cs.onPrimaryContainer)
+          : Text(
+              initials,
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                fontSize: 32,
+                color: cs.onPrimaryContainer,
               ),
-      ),
+            ),
     );
   }
 }

@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 ///
 /// The `confetti` package is available, but its defaults — long rainbow ribbons
 /// that keep falling — fight the rest of the interface. The particles here are
-/// short ticks in the app's own accent palette, which reads as a quiet "well
-/// done" rather than a party popper. Positions are closed-form functions of
+/// short ticks in the theme's own primary/secondary/tertiary, which reads as a
+/// quiet "well done" rather than a party popper. Positions are closed-form functions of
 /// time, so nothing is integrated frame to frame and the burst looks the same
 /// on a janky frame as on a smooth one.
 class ConfettiBurst extends StatefulWidget {
@@ -136,7 +136,7 @@ class _BurstSurfaceState extends State<_BurstSurface>
             painter: _BurstPainter(
               burst: _burst,
               progress: _c.value,
-              palette: [cs.primary, cs.secondary, cs.tertiary, cs.tertiary],
+              palette: [cs.primary, cs.secondary, cs.tertiary],
             ),
             size: Size.infinite,
           ),
@@ -173,9 +173,9 @@ class _Particle {
     required this.round,
   });
 
-  /// Weighted towards the accent pair so the burst stays in the app's palette;
-  /// success and gold are seasoning, not the base.
-  static const _weights = [0, 0, 0, 1, 1, 2, 3];
+  /// Weighted towards the primary pair so the burst stays in the app's
+  /// palette; tertiary is seasoning, not the base.
+  static const _weights = [0, 0, 0, 1, 1, 2];
 
   factory _Particle.random(math.Random rnd) {
     final direction = rnd.nextDouble() * 2 * math.pi;

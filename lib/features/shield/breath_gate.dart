@@ -1,5 +1,6 @@
 import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +10,6 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/mesh_background.dart';
 
 /// The 4-7-8 protocol, in one place.
 class _Protocol {
@@ -191,7 +190,9 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -205,85 +206,101 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
               ? Brightness.light
               : Brightness.dark,
         ),
-        child: MeshBackground(
-          child: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // The orb is sized against the worst case — the completion
-                    // panel — so it does not jump when the buttons appear. The
-                    // scroll view is the safety net: a short or landscape
-                    // viewport scrolls rather than overflowing.
-                    final orbSize = (constraints.maxHeight * 0.34).clamp(
-                      150.0,
-                      300.0,
-                    );
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            Gap.xl,
-                            Gap.xl,
-                            Gap.xl,
-                            Gap.lg,
-                          ),
-                          child: AnimatedBuilder(
-                            animation: _controller,
-                            builder: (context, _) {
-                              final elapsed = Duration(
-                                milliseconds:
-                                    (_controller.value *
-                                            _Protocol.total.inMilliseconds)
-                                        .round(),
-                              );
-                              final frame = _Frame.at(elapsed);
-                              return Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _GateHeader(appName: widget.appName),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: Gap.xxl,
-                                    ),
-                                    child: _BreathOrb(
-                                      frame: frame,
-                                      size: orbSize,
-                                    ),
-                                  ),
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 320),
-                                    switchInCurve: Curves.easeOutCubic,
-                                    child: frame.phase == _Phase.complete
-                                        ? _CompletionPanel(
-                                            key: const ValueKey('complete'),
-                                            onWalkAway: () =>
-                                                _finish(walkedAway: true),
-                                            onContinue: () =>
-                                                _finish(walkedAway: false),
-                                          )
-                                        : _Countdown(
-                                            key: const ValueKey('running'),
-                                            frame: frame,
-                                          ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // One of the three places the design allows a real backdrop blur:
+            // σ30 under a 60% scrim, so the app the user was pulled away from
+            // stays visible but out of focus. Nothing else here glows.
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: ColoredBox(
+                  color: cs.surface.withValues(alpha: 0.6),
                 ),
               ),
             ),
-          ),
+            SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // The orb is sized against the worst case — the completion
+                      // panel — so it does not jump when the buttons appear. The
+                      // scroll view is the safety net: a short or landscape
+                      // viewport scrolls rather than overflowing.
+                      final orbSize = (constraints.maxHeight * 0.34).clamp(
+                        150.0,
+                        300.0,
+                      );
+                      return SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              Gap.xl,
+                              Gap.xl,
+                              Gap.xl,
+                              Gap.lg,
+                            ),
+                            child: AnimatedBuilder(
+                              animation: _controller,
+                              builder: (context, _) {
+                                final elapsed = Duration(
+                                  milliseconds:
+                                      (_controller.value *
+                                              _Protocol.total.inMilliseconds)
+                                          .round(),
+                                );
+                                final frame = _Frame.at(elapsed);
+                                return Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _GateHeader(appName: widget.appName),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: Gap.xxl,
+                                      ),
+                                      child: _BreathOrb(
+                                        frame: frame,
+                                        size: orbSize,
+                                      ),
+                                    ),
+                                    AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 320,
+                                      ),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      child: frame.phase == _Phase.complete
+                                          ? _CompletionPanel(
+                                              key: const ValueKey('complete'),
+                                              onWalkAway: () =>
+                                                  _finish(walkedAway: true),
+                                              onContinue: () =>
+                                                  _finish(walkedAway: false),
+                                            )
+                                          : _Countdown(
+                                              key: const ValueKey('running'),
+                                              frame: frame,
+                                            ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -300,12 +317,12 @@ class _GateHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
-        GlassPill(
+        Chip(
           padding: const EdgeInsets.symmetric(
             horizontal: Gap.md,
             vertical: Gap.sm,
           ),
-          child: Row(
+          label: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.shield_rounded, size: 14, color: cs.primary),
@@ -362,25 +379,6 @@ class _BreathOrb extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // The halo follows the orb at a damped ratio, so the two layers move
-          // against each other and the whole thing reads as depth rather than
-          // one flat disc being resized.
-          Transform.scale(
-            scale: 1 + (frame.scale - _Protocol.restScale) * 0.22,
-            child: Container(
-              width: size * 0.92,
-              height: size * 0.92,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    color.withValues(alpha: 0.12),
-                    color.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
           CustomPaint(
             size: Size.square(size),
             painter: _ProgressRingPainter(
@@ -389,6 +387,9 @@ class _BreathOrb extends StatelessWidget {
               track: cs.surfaceContainerHighest,
             ),
           ),
+          // A flat tonal disc rather than a glowing sphere: the phase colour
+          // already carries the state, and a bloom behind it would be the only
+          // decoration on an otherwise quiet screen.
           ExcludeSemantics(
             child: Transform.scale(
               scale: frame.scale,
@@ -397,25 +398,11 @@ class _BreathOrb extends StatelessWidget {
                 height: orb,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.35, -0.35),
-                    radius: 0.95,
-                    colors: [
-                      color.withValues(alpha: 0.30),
-                      color.withValues(alpha: 0.07),
-                    ],
-                  ),
+                  color: color.withValues(alpha: 0.16),
                   border: Border.all(
                     color: color.withValues(alpha: 0.55),
                     width: 1.4,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.26),
-                      blurRadius: 60,
-                      spreadRadius: 4,
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -573,7 +560,7 @@ class _CompletionPanel extends StatelessWidget {
   }
 }
 
-/// Primary and ghost variants of the gate's action. The "continue" option is
+/// Primary and quiet variants of the gate's action. The "continue" option is
 /// deliberately quieter — it should be reachable without being inviting.
 class _GateButton extends StatelessWidget {
   const _GateButton({
@@ -590,50 +577,17 @@ class _GateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: label,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          child: GlassPanel(
-            radius: Radii.pill,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.xl,
-              vertical: Gap.lg,
-            ),
-            accent: primary ? cs.primary : null,
-            glowStrength: primary ? 0.8 : 0,
-            gradient: primary
-                ? LinearGradient(
-                    colors: [
-                      cs.primary.withValues(alpha: 0.30),
-                      cs.secondary.withValues(alpha: 0.18),
-                    ],
-                  )
-                : null,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: primary ? cs.onSurface : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: Gap.sm),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: primary ? cs.onSurface : cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    if (primary) {
+      return FilledButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon),
+        label: Text(label),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon),
+      label: Text(label),
     );
   }
 }

@@ -1,9 +1,9 @@
-import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/glass_surface.dart';
+import '../../app/theme/app_theme.dart';
+import '../../shared/widgets/icon_badge.dart';
 
 /// Screen 0 — the splash.
 ///
@@ -32,11 +32,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
     duration: const Duration(milliseconds: 1400),
   )..forward();
 
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat(reverse: true);
-
   late final AnimationController _dots = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),
@@ -53,7 +48,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   @override
   void dispose() {
     _intro.dispose();
-    _pulse.dispose();
     _dots.dispose();
     super.dispose();
   }
@@ -81,15 +75,11 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0, 0.55),
             child: ScaleTransition(
               scale: logoScale,
-              child: AnimatedBuilder(
-                animation: _pulse,
-                builder: (context, _) => GlassIconBadge(
-                  icon: Icons.local_fire_department_rounded,
-                  color: cs.primary,
-                  size: 108,
-                  radius: 32,
-                  glow: 0.45 + 0.55 * _pulse.value,
-                ),
+              child: IconBadge(
+                icon: Icons.local_fire_department_rounded,
+                color: cs.primary,
+                size: 108,
+                radius: 32,
               ),
             ),
           ),

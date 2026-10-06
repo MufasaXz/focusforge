@@ -1,13 +1,13 @@
-import '../../app/theme/app_theme.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show lerpDouble;
+import 'dart:ui' show clampDouble, lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 
 /// First-run spotlight sequence for the dashboard.
 ///
@@ -155,6 +155,15 @@ class _CoachMarksState extends State<CoachMarks>
                       builder: (context, _) {
                         final spot = _current;
                         final center = spot.alignment.alongSize(size);
+                        final padding = MediaQuery.paddingOf(context);
+                        // Keep the bubble clear of both the screen edge and
+                        // the system insets.
+                        final insets = EdgeInsets.fromLTRB(
+                          math.max(Gap.xl, padding.left + Gap.sm),
+                          math.max(Gap.lg, padding.top + Gap.sm),
+                          math.max(Gap.xl, padding.right + Gap.sm),
+                          math.max(Gap.lg, padding.bottom + Gap.sm),
+                        );
                         return Stack(
                           children: [
                             Positioned.fill(
@@ -172,24 +181,21 @@ class _CoachMarksState extends State<CoachMarks>
                                 ),
                               ),
                             ),
-                            Positioned(
-                              left: Gap.xl,
-                              right: Gap.xl,
-                              top: center.dy < size.height / 2
-                                  ? center.dy + spot.radius + Gap.lg
-                                  : null,
-                              bottom: center.dy < size.height / 2
-                                  ? null
-                                  : size.height -
-                                        center.dy +
-                                        spot.radius +
-                                        Gap.lg,
-                              child: _Bubble(
-                                spot: spot,
-                                index: _index,
-                                total: _spots.length,
-                                onNext: () => _go(ref, _index + 1),
-                                onDismiss: () => _dismiss(ref),
+                            Positioned.fill(
+                              child: CustomSingleChildLayout(
+                                delegate: _BubbleLayout(
+                                  center: center,
+                                  radius: spot.radius,
+                                  gap: Gap.lg,
+                                  insets: insets,
+                                ),
+                                child: _Bubble(
+                                  spot: spot,
+                                  index: _index,
+                                  total: _spots.length,
+                                  onNext: () => _go(ref, _index + 1),
+                                  onDismiss: () => _dismiss(ref),
+                                ),
                               ),
                             ),
                           ],
@@ -224,6 +230,74 @@ class _Spot {
   final String body;
 }
 
+/// Places the bubble on the far side of the spotlight hole and keeps it inside
+/// the safe area.
+///
+/// The bubble's height is only known at layout time, so the position cannot be
+/// expressed as a [Positioned] offset: a hole near the middle of the screen
+/// would push a tall bubble past the bottom edge, and one near an edge would
+/// push it off the opposite side. [CustomSingleChildLayout] measures the
+/// bubble first and clamps it into the safe area; when the preferred side has
+/// no room, the bubble flips to the other side before the clamp is applied.
+class _BubbleLayout extends SingleChildLayoutDelegate {
+  const _BubbleLayout({
+    required this.center,
+    required this.radius,
+    required this.gap,
+    required this.insets,
+  });
+
+  final Offset center;
+  final double radius;
+  final double gap;
+  final EdgeInsets insets;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    return BoxConstraints(
+      maxWidth: math.max(0.0, constraints.maxWidth - insets.horizontal),
+      maxHeight: math.max(0.0, constraints.maxHeight - insets.vertical),
+    );
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final safe = Rect.fromLTRB(
+      insets.left,
+      insets.top,
+      size.width - insets.right,
+      size.height - insets.bottom,
+    );
+
+    final preferBelow = center.dy < size.height / 2;
+    final below = center.dy + radius + gap;
+    final above = center.dy - radius - gap - childSize.height;
+
+    double y;
+    if (preferBelow) {
+      y = below + childSize.height <= safe.bottom ? below : above;
+    } else {
+      y = above >= safe.top ? above : below;
+    }
+    y = clampDouble(y, safe.top, math.max(safe.top, safe.bottom - childSize.height));
+
+    final x = clampDouble(
+      (size.width - childSize.width) / 2,
+      safe.left,
+      math.max(safe.left, safe.right - childSize.width),
+    );
+
+    return Offset(x, y);
+  }
+
+  @override
+  bool shouldRelayout(_BubbleLayout old) =>
+      old.center != center ||
+      old.radius != radius ||
+      old.gap != gap ||
+      old.insets != insets;
+}
+
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.spot,
@@ -244,87 +318,75 @@ class _Bubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final last = index == total - 1;
 
-    return GlassPanel(
-      level: 2,
-      radius: Radii.card,
-      blur: 20.0,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              GlassIconBadge(
-                icon: spot.icon,
-                color: cs.primary,
-                size: 34,
-                radius: Radii.tile,
-                glow: 0.5,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text(spot.title, style: Theme.of(context).textTheme.titleMedium),
-              ),
-              Pressable(
-                onTap: onDismiss,
-                child: Semantics(
-                  button: true,
-                  label: 'Dismiss tips',
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: cs.onSurfaceVariant,
-                  ),
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: spot.icon,
+                  color: cs.primary,
+                  size: 34,
+                  radius: Radii.tile,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.md),
-          Text(
-            spot.body,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: Gap.lg),
-          Row(
-            children: [
-              for (var i = 0; i < total; i++)
-                Padding(
-                  padding: const EdgeInsets.only(right: 5),
-                  child: Container(
-                    width: i == index ? 16 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: i == index ? cs.primary : cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(Radii.pill),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(spot.title, style: Theme.of(context).textTheme.titleMedium),
+                ),
+                IconButton(
+                  onPressed: onDismiss,
+                  tooltip: 'Dismiss tips',
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              spot.body,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.lg),
+            Row(
+              children: [
+                for (var i = 0; i < total; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 5),
+                    child: Container(
+                      width: i == index ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: i == index ? cs.primary : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                      ),
                     ),
                   ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: onNext,
+                  child: Text(last ? 'Got it' : 'Next'),
                 ),
-              const Spacer(),
-              GlassPill(
-                accent: cs.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gap.lg,
-                  vertical: Gap.sm,
-                ),
-                onTap: onNext,
-                child: Text(
-                  last ? 'Got it' : 'Next',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 /// Darkens the screen except for a circular hole, then draws the progress
-/// ring around it.
+/// ring around it. The scrim is a plain translucent black — the spotlight is
+/// the focus, so no blur is layered behind it.
 class _SpotlightPainter extends CustomPainter {
   const _SpotlightPainter({
     required this.center,

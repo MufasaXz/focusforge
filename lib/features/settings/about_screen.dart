@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
 import 'settings_support.dart';
 
 /// About FocusForge.
@@ -26,124 +26,110 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return GlassPage(
+    return AppPage(
       title: 'About',
       subtitle: 'FocusForge v$_version',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GlassPanel(
-            radius: Radii.hero,
-            blur: 18,
-            padding: const EdgeInsets.all(Gap.xl),
-            child: Column(
-              children: [
-                GlassIconBadge(
-                  icon: Icons.local_fire_department_rounded,
-                  color: cs.primary,
-                  size: 72,
-                  radius: 24,
-                  glow: 0.6,
-                ),
-                const SizedBox(height: Gap.lg),
-                Text('FocusForge', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: Gap.xs),
-                Text('Version $_version', style: Theme.of(context).textTheme.labelSmall),
-                const SizedBox(height: Gap.lg),
-                GlassPill(
-                  selected: true,
-                  accent: cs.tertiary,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.verified_user_rounded,
-                        size: 13,
-                        color: cs.tertiary,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Free and open source',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
+          Card.filled(
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.xl),
+              child: Column(
+                children: [
+                  IconBadge(
+                    icon: Icons.local_fire_department_rounded,
+                    color: cs.primary,
+                    size: 72,
+                    radius: 24,
                   ),
-                ),
-                const SizedBox(height: Gap.md),
-                Text(
-                  'MIT licensed. The whole app lives on GitHub — the shield '
-                  'rules, the Pomodoro engine and the glass you are looking at.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+                  const SizedBox(height: Gap.lg),
+                  Text('FocusForge', style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: Gap.xs),
+                  Text('Version $_version', style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: Gap.lg),
+                  Chip(
+                    avatar: Icon(
+                      Icons.verified_user_rounded,
+                      size: 18,
+                      color: cs.tertiary,
+                    ),
+                    label: const Text('Free and open source'),
                   ),
-                ),
-              ],
+                  const SizedBox(height: Gap.md),
+                  Text(
+                    'MIT licensed. The whole app lives on GitHub — the shield '
+                    'rules, the Pomodoro engine and the interface you are '
+                    'looking at.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: Gap.xl),
-          GlassSection(
+          AppSection(
             title: 'Links',
             footnote:
                 'Links are copied to the clipboard — paste them into a '
                 'browser.',
             children: [
-              GlassRow(
-                title: 'Star on GitHub',
-                subtitle: 'github.com/MufasaXz/focusforge',
-                icon: Icons.code_rounded,
+              ListTile(
+                title: const Text('Star on GitHub'),
+                subtitle: const Text('github.com/MufasaXz/focusforge'),
+                leading: const Icon(Icons.code),
                 trailing: const _CopyGlyph(),
                 onTap: () => _copy(context, _repoUrl, 'Repository link'),
               ),
-              GlassRow(
-                title: 'Report a bug',
-                subtitle: 'Open an issue on GitHub',
-                icon: Icons.bug_report_rounded,
+              ListTile(
+                title: const Text('Report a bug'),
+                subtitle: const Text('Open an issue on GitHub'),
+                leading: const Icon(Icons.bug_report_outlined),
                 trailing: const _CopyGlyph(),
-                showDivider: false,
                 onTap: () => _copy(context, _issuesUrl, 'Bug report link'),
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Credits',
             children: [
-              const GlassRow(
-                title: 'Built with Flutter',
-                subtitle: 'Interface, engine and glass design system',
-                icon: Icons.flutter_dash,
+              const ListTile(
+                title: Text('Built with Flutter'),
+                subtitle: Text('Interface, engine and Material 3 design system'),
+                leading: Icon(Icons.flutter_dash),
               ),
-              GlassRow(
-                title: 'Ambient audio',
-                subtitle: 'Six CC0 loops from freesound.org',
-                icon: Icons.graphic_eq_rounded,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('Ambient audio'),
+                subtitle: const Text('Six CC0 loops from freesound.org'),
+                leading: const Icon(Icons.graphic_eq),
+                trailing: const AppChevron(),
                 onTap: () => _showAudioCredits(context),
               ),
-              const GlassRow(
-                title: 'Typeface',
-                subtitle: 'Inter and Inter Display, SIL Open Font License',
-                icon: Icons.text_fields_rounded,
-                showDivider: false,
+              const ListTile(
+                title: Text('Typeface'),
+                subtitle: Text('Inter and Inter Display, SIL Open Font License'),
+                leading: Icon(Icons.text_fields),
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Legal',
             children: [
-              GlassRow(
-                title: 'MIT licence',
-                subtitle: 'Use, modify and redistribute freely',
-                icon: Icons.balance_rounded,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('MIT licence'),
+                subtitle: const Text('Use, modify and redistribute freely'),
+                leading: const Icon(Icons.balance_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _showMit(context),
               ),
-              GlassRow(
-                title: 'Open source licences',
-                subtitle: 'Every bundled package and asset',
-                icon: Icons.article_rounded,
-                trailing: const GlassChevron(),
-                showDivider: false,
+              ListTile(
+                title: const Text('Open source licences'),
+                subtitle: const Text('Every bundled package and asset'),
+                leading: const Icon(Icons.article_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _showLicences(context),
               ),
             ],
@@ -211,7 +197,7 @@ class _CopyGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Icon(Icons.copy_rounded, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant);
+      Icon(Icons.copy_outlined, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant);
 }
 
 class _AudioCreditsBody extends StatelessWidget {
@@ -235,12 +221,11 @@ class _AudioCreditsBody extends StatelessWidget {
       children: [
         Row(
           children: [
-            GlassIconBadge(
+            IconBadge(
               icon: Icons.graphic_eq_rounded,
               color: cs.secondary,
               size: 40,
               radius: 12,
-              glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
@@ -307,12 +292,11 @@ class _TextBody extends StatelessWidget {
       children: [
         Row(
           children: [
-            GlassIconBadge(
+            IconBadge(
               icon: Icons.balance_rounded,
               color: cs.primary,
               size: 40,
               radius: 12,
-              glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
@@ -324,7 +308,7 @@ class _TextBody extends StatelessWidget {
             height: 260,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.item),
-              color: cs.surfaceContainer.withValues(alpha: 0.45),
+              color: cs.surfaceContainerHigh,
               border: Border.all(color: cs.outlineVariant),
             ),
             child: SingleChildScrollView(

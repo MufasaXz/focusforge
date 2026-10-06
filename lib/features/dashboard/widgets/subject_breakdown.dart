@@ -84,15 +84,6 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 color: widget.subjects[i].color,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: widget.subjects[i].color.withValues(
-                                      alpha: 0.45,
-                                    ),
-                                    blurRadius: 10,
-                                    spreadRadius: -3,
-                                  ),
-                                ],
                               ),
                             ),
                           ),

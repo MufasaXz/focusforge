@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,8 +7,6 @@ import '../../../app/shell/app_shell.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/glass_surface.dart';
-import 'glass_button.dart';
 
 /// Opens the sheet that edits the display name and persona.
 ///
@@ -68,90 +68,96 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
         // the same way the scroll views do.
         kNavBarClearance + MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: GlassPanel(
-        radius: Radii.hero,
-        blur: 24,
-        padding: const EdgeInsets.all(Gap.lg),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _SheetHandle(),
-              const SizedBox(height: Gap.lg),
-              Text('Edit profile', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: Gap.lg),
-              _FieldLabel(text: 'Display name'),
-              const SizedBox(height: Gap.sm),
-              TextField(
-                controller: _name,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.done,
-                style: Theme.of(context).textTheme.bodyLarge,
-                cursorColor: cs.primary,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) {
-                  if (_valid) _save();
-                },
-                decoration: InputDecoration(
-                  hintText: 'Your name',
-                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                  filled: true,
-                  fillColor: cs.surfaceContainer.withValues(alpha: 0.5),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: Gap.md,
-                    vertical: Gap.md,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Radii.item),
-                    borderSide: BorderSide(color: cs.outlineVariant),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(Radii.item),
-                    borderSide: BorderSide(color: cs.primary, width: 1.4),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.lg),
-              _FieldLabel(text: 'Persona'),
-              const SizedBox(height: Gap.sm),
-              Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Radii.hero),
+        // One of the three sanctioned blur sites: a modal sheet floats over
+        // the page it was opened from.
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.all(Gap.lg),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerLow.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(Radii.hero),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final p in Persona.values)
-                    GlassPill(
-                      selected: p == _persona,
-                      accent: p.color,
-                      padding: const EdgeInsets.symmetric(
+                  const _SheetHandle(),
+                  const SizedBox(height: Gap.lg),
+                  Text(
+                    'Edit profile',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  _FieldLabel(text: 'Display name'),
+                  const SizedBox(height: Gap.sm),
+                  TextField(
+                    controller: _name,
+                    textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.done,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    cursorColor: cs.primary,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) {
+                      if (_valid) _save();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Your name',
+                      hintStyle: Theme.of(context).textTheme.bodyLarge
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                      filled: true,
+                      fillColor: cs.surfaceContainerHighest,
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: Gap.md,
-                        vertical: Gap.sm,
+                        vertical: Gap.md,
                       ),
-                      onTap: () => setState(() => _persona = p),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            p.icon,
-                            size: 15,
-                            color: p == _persona ? p.color : cs.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(p.label),
-                        ],
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(Radii.item),
+                        borderSide: BorderSide(color: cs.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(Radii.item),
+                        borderSide: BorderSide(color: cs.primary, width: 1.4),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  _FieldLabel(text: 'Persona'),
+                  const SizedBox(height: Gap.sm),
+                  Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: Gap.sm,
+                    children: [
+                      for (final p in Persona.values)
+                        FilterChip(
+                          selected: p == _persona,
+                          onSelected: (_) => setState(() => _persona = p),
+                          // The persona icon is the leading glyph; a checkmark
+                          // would replace it when the chip is selected.
+                          showCheckmark: false,
+                          avatar: Icon(
+                            p.icon,
+                            size: 15,
+                            color: p == _persona
+                                ? p.color
+                                : cs.onSurfaceVariant,
+                          ),
+                          label: Text(p.label),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.xl),
+                  FilledButton.icon(
+                    onPressed: _valid ? _save : null,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Save changes'),
+                  ),
                 ],
               ),
-              const SizedBox(height: Gap.xl),
-              GlassButton(
-                label: 'Save changes',
-                icon: Icons.check_rounded,
-                onTap: _valid ? _save : null,
-              ),
-            ],
+            ),
           ),
         ),
       ),

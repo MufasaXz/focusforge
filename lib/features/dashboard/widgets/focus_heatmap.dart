@@ -11,9 +11,9 @@ import '../../../core/data/seed.dart';
 ///
 /// Every cell carries its own date, so a long press reports a real value
 /// ("Tuesday 14 Oct - 2.5 hours focused") instead of leaving the reader to
-/// guess what a shade of blue means. The popover is styled from the glass
-/// tokens rather than the stock Material tooltip so it belongs to the surface
-/// it grows out of.
+/// guess what a shade of blue means. The popover is tinted from the theme's
+/// primary rather than the stock Material tooltip so it belongs to the
+/// surface it grows out of.
 ///
 /// The entrance is one [AnimationController] for the whole grid. Every cell
 /// derives its own opacity/scale from a staggered [Interval] computed from its
@@ -279,7 +279,7 @@ class _Cell extends StatelessWidget {
         decoration: BoxDecoration(
           color: Color.alphaBlend(
             t.primary.withValues(alpha: 0.14),
-            [t.surface, t.surface].last,
+            t.surface,
           ),
           borderRadius: BorderRadius.circular(Radii.tile),
           border: Border.all(color: t.primary.withValues(alpha: 0.55)),
@@ -334,7 +334,7 @@ class _Swatch extends StatelessWidget {
   final ColorScheme t;
 
   Color get _color => switch (level) {
-    0 => t.surfaceContainerHighest.withValues(alpha: t.surfaceContainerHighest.a * 0.55),
+    0 => t.surfaceContainerHighest,
     1 => t.primary.withValues(alpha: 0.24),
     2 => t.primary.withValues(alpha: 0.46),
     3 => t.primary.withValues(alpha: 0.74),
@@ -356,15 +356,6 @@ class _Swatch extends StatelessWidget {
                   ? t.secondary.withValues(alpha: 0.7)
                   : t.outlineVariant,
             ),
-            boxShadow: level >= 4
-                ? [
-                    BoxShadow(
-                      color: t.secondary.withValues(alpha: 0.40),
-                      blurRadius: 12,
-                      spreadRadius: -3,
-                    ),
-                  ]
-                : null,
           ),
         ),
       ),

@@ -1,12 +1,13 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
+import '../../shared/widgets/app_page.dart';
 import 'settings_support.dart';
 
 /// Notification preferences.
@@ -20,57 +21,50 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final prefs = ref.watch(notificationsProvider);
 
-    return GlassPage(
+    return AppPage(
       title: 'Notifications',
       subtitle: '${_activeCount(prefs)} of 8 reminders on',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GlassSection(
+          AppSection(
             title: 'Focus reminders',
             children: [
               _SwitchRow(
                 title: 'Session reminders',
                 subtitle: '“Time to study Physics!”',
                 value: prefs.sessionReminders,
-                accent: cs.primary,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(sessionReminders: v)),
-                showDivider: false,
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Progress',
             children: [
               _SwitchRow(
                 title: 'Daily summary',
                 subtitle: 'Your focus total at the end of the day',
                 value: prefs.dailySummary,
-                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(dailySummary: v)),
               ),
               _SwitchRow(
                 title: 'Weekly report',
                 subtitle: 'A Sunday recap of the week',
                 value: prefs.weeklyReport,
-                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(weeklyReport: v)),
               ),
               _SwitchRow(
                 title: 'Streak risk alerts',
                 subtitle: 'A nudge before a streak breaks',
                 value: prefs.streakAlerts,
-                accent: cs.tertiary,
                 onChanged: (v) => _save(ref, prefs.copyWith(streakAlerts: v)),
-                showDivider: false,
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Blocking',
             footnote:
                 'These fire while a block is active, so they can be '
@@ -80,53 +74,48 @@ class NotificationsScreen extends ConsumerWidget {
                 title: 'Real-time block alerts',
                 subtitle: '“Instagram Reels blocked”',
                 value: prefs.blockingAlerts,
-                accent: cs.error,
                 onChanged: (v) => _save(ref, prefs.copyWith(blockingAlerts: v)),
-                showDivider: false,
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Social',
             children: [
               _SwitchRow(
                 title: 'Study buddy updates',
                 subtitle: 'When a buddy starts or finishes a session',
                 value: prefs.buddyUpdates,
-                accent: cs.secondary,
                 onChanged: (v) => _save(ref, prefs.copyWith(buddyUpdates: v)),
               ),
               _SwitchRow(
                 title: 'Group activity',
                 subtitle: 'Targets met and new members',
                 value: prefs.groupActivity,
-                accent: cs.secondary,
                 onChanged: (v) => _save(ref, prefs.copyWith(groupActivity: v)),
               ),
               _SwitchRow(
                 title: 'Challenge invitations',
                 subtitle: 'Weekly challenges from friends',
                 value: prefs.challengeInvites,
-                accent: cs.secondary,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(challengeInvites: v)),
-                showDivider: false,
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Quiet hours',
             footnote: 'Reminders pause during the window; focus timers do not.',
             children: [
-              GlassRow(
-                title: 'Quiet hours',
-                subtitle: prefs.quietHoursEnabled
-                    ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
-                          '${_clock(context, prefs.quietEndHour)}'
-                    : 'Off — notifications arrive at any hour',
-                icon: Icons.bedtime_rounded,
-                trailing: const GlassChevron(),
-                showDivider: false,
+              ListTile(
+                title: const Text('Quiet hours'),
+                subtitle: Text(
+                  prefs.quietHoursEnabled
+                      ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
+                            '${_clock(context, prefs.quietEndHour)}'
+                      : 'Off — notifications arrive at any hour',
+                ),
+                leading: const Icon(Icons.bedtime_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _editQuietHours(context, ref),
               ),
             ],
@@ -180,72 +169,77 @@ class NotificationsScreen extends ConsumerWidget {
               Gap.lg,
               Gap.lg + MediaQuery.paddingOf(context).bottom,
             ),
-            child: GlassPanel(
-              level: 2,
-              blur: 20.0,
-              radius: Radii.hero,
-              padding: const EdgeInsets.all(Gap.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurfaceVariant,
-                        borderRadius: BorderRadius.circular(Radii.pill),
+            // A modal sheet is one of the few surfaces the design lets blur —
+            // σ24 over the low tonal surface, so the page stays legible behind.
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.hero),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(Radii.hero),
+                  ),
+                  padding: const EdgeInsets.all(Gap.xl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: cs.onSurfaceVariant,
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: Gap.xl),
+                      Text('Quiet hours', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: Gap.xs),
+                      Text(
+                        'Mute every reminder between these times.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: Gap.lg),
+                      _SwitchRow(
+                        title: 'Quiet hours',
+                        subtitle: prefs.quietHoursEnabled
+                            ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
+                                  '${_clock(context, prefs.quietEndHour)}'
+                            : 'Off',
+                        value: prefs.quietHoursEnabled,
+                        onChanged: (v) =>
+                            write(prefs.copyWith(quietHoursEnabled: v)),
+                      ),
+                      ListTile(
+                        title: const Text('Starts'),
+                        leading: const Icon(Icons.schedule_outlined),
+                        trailing: _TimeValue(
+                          value: _clock(context, prefs.quietStartHour),
+                        ),
+                        onTap: () => pick(start: true),
+                      ),
+                      ListTile(
+                        title: const Text('Ends'),
+                        leading: const Icon(Icons.schedule_outlined),
+                        trailing: _TimeValue(
+                          value: _clock(context, prefs.quietEndHour),
+                        ),
+                        onTap: () => pick(start: false),
+                      ),
+                      const SizedBox(height: Gap.xl),
+                      GlassActionButton(
+                        label: 'Done',
+                        icon: Icons.check_rounded,
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: Gap.xl),
-                  Text('Quiet hours', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: Gap.xs),
-                  Text(
-                    'Mute every reminder between these times.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: Gap.lg),
-                  GlassRow(
-                    title: 'Quiet hours',
-                    subtitle: prefs.quietHoursEnabled
-                        ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
-                              '${_clock(context, prefs.quietEndHour)}'
-                        : 'Off',
-                    trailing: GlassToggle(
-                      value: prefs.quietHoursEnabled,
-                      semanticLabel: 'Quiet hours',
-                      onChanged: (v) =>
-                          write(prefs.copyWith(quietHoursEnabled: v)),
-                    ),
-                  ),
-                  GlassRow(
-                    title: 'Starts',
-                    icon: Icons.schedule_rounded,
-                    trailing: _TimeValue(
-                      value: _clock(context, prefs.quietStartHour),
-                    ),
-                    onTap: () => pick(start: true),
-                  ),
-                  GlassRow(
-                    title: 'Ends',
-                    icon: Icons.schedule_rounded,
-                    trailing: _TimeValue(
-                      value: _clock(context, prefs.quietEndHour),
-                    ),
-                    showDivider: false,
-                    onTap: () => pick(start: false),
-                  ),
-                  const SizedBox(height: Gap.xl),
-                  GlassActionButton(
-                    label: 'Done',
-                    icon: Icons.check_rounded,
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -259,30 +253,31 @@ class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
     required this.title,
     required this.value,
-    required this.accent,
     required this.onChanged,
     this.subtitle,
-    this.showDivider = true,
   });
 
   final String title;
   final String? subtitle;
   final bool value;
-  final Color accent;
   final ValueChanged<bool> onChanged;
-  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
-    return GlassRow(
-      title: title,
-      subtitle: subtitle,
-      showDivider: showDivider,
-      trailing: GlassToggle(
-        value: value,
-        accent: accent,
-        semanticLabel: title,
-        onChanged: onChanged,
+    return ListTile(
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: Semantics(
+        label: title,
+        child: Switch.adaptive(
+          value: value,
+          onChanged: (next) {
+            // A flip is a commitment — the tap that made it should be felt,
+            // not just seen.
+            HapticFeedback.lightImpact();
+            onChanged(next);
+          },
+        ),
       ),
     );
   }
@@ -300,7 +295,7 @@ class _TimeValue extends StatelessWidget {
       children: [
         Text(value, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(width: Gap.xs),
-        const GlassChevron(),
+        const AppChevron(),
       ],
     );
   }

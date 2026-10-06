@@ -1,13 +1,14 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../shared/widgets/glass_nav_bar.dart';
-import '../../shared/widgets/mesh_background.dart';
 
-/// Root shell: ambient canvas, the four tab branches, and the floating nav bar.
+/// Root shell: the four tab branches and the frosted navigation bar.
 ///
 /// The branch stack itself is owned by go_router's
 /// [StatefulShellRoute.indexedStack] — each tab keeps its own [Navigator], so
@@ -27,37 +28,11 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  bool _compact = false;
-
   late final AnimationController _fade = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 380),
     value: 1,
   );
-
-  static const _items = <NavItem>[
-    NavItem(
-      icon: Icons.grid_view_rounded,
-      activeIcon: Icons.grid_view_rounded,
-      label: 'Home',
-    ),
-    NavItem(
-      icon: Icons.shield_outlined,
-      activeIcon: Icons.shield_rounded,
-      label: 'Shield',
-      statusDot: true,
-    ),
-    NavItem(
-      icon: Icons.timer_outlined,
-      activeIcon: Icons.timer_rounded,
-      label: 'Focus',
-    ),
-    NavItem(
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'You',
-    ),
-  ];
 
   @override
   void initState() {
@@ -90,26 +65,15 @@ class _AppShellState extends ConsumerState<AppShell>
       i,
       initialLocation: i == widget.navigationShell.currentIndex,
     );
-    setState(() => _compact = false);
     _fade.forward(from: 0);
-  }
-
-  /// Shrink the bar while the user scrolls down, restore it on the way up.
-  bool _onScroll(ScrollNotification n) {
-    if (n is! ScrollUpdateNotification) return false;
-    final delta = n.scrollDelta ?? 0;
-    if (delta > 3 && !_compact && n.metrics.pixels > 48) {
-      setState(() => _compact = true);
-    } else if (delta < -3 && _compact) {
-      setState(() => _compact = false);
-    }
-    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final shielded = ref.watch(activeShieldCountProvider) > 0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // Driven by the live theme rather than set once in main(), so toggling
@@ -118,52 +82,74 @@ class _AppShellState extends ConsumerState<AppShell>
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarColor: cs.surface,
         systemNavigationBarIconBrightness:
             isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: MeshBackground(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppShell.maxContentWidth,
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _onScroll,
-                      child: AnimatedBuilder(
-                        animation: _fade,
-                        builder: (context, child) {
-                          final t = Curves.easeOutCubic.transform(_fade.value);
-                          return Opacity(
-                            opacity: 0.001 + 0.999 * t,
-                            child: Transform.translate(
-                              offset: Offset(0, 14 * (1 - t)),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: widget.navigationShell,
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppShell.maxContentWidth),
+            child: AnimatedBuilder(
+              animation: _fade,
+              builder: (context, child) {
+                final t = Curves.easeOutCubic.transform(_fade.value);
+                return Opacity(
+                  opacity: 0.001 + 0.999 * t,
+                  child: Transform.translate(
+                    offset: Offset(0, 14 * (1 - t)),
+                    child: child,
+                  ),
+                );
+              },
+              child: widget.navigationShell,
+            ),
+          ),
+        ),
+        // One of the three places the design allows a real backdrop blur: the
+        // bar floats over scrolling content, and the blur is what says so.
+        // Everywhere else uses a solid tonal surface.
+        bottomNavigationBar: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppShell.maxContentWidth),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: NavigationBar(
+                  backgroundColor: cs.surface.withValues(alpha: 0.85),
+                  selectedIndex: widget.navigationShell.currentIndex,
+                  onDestinationSelected: _select,
+                  destinations: [
+                    const NavigationDestination(
+                      icon: Icon(Icons.dashboard_outlined),
+                      selectedIcon: Icon(Icons.dashboard),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: _ShieldIcon(
+                        shielded: shielded,
+                        icon: Icons.shield_outlined,
                       ),
+                      selectedIcon: _ShieldIcon(
+                        shielded: shielded,
+                        icon: Icons.shield,
+                      ),
+                      label: 'Shield',
                     ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: GlassNavBar(
-                      index: widget.navigationShell.currentIndex,
-                      items: _items,
-                      compact: _compact,
-                      onChanged: _select,
+                    const NavigationDestination(
+                      icon: Icon(Icons.timer_outlined),
+                      selectedIcon: Icon(Icons.timer),
+                      label: 'Focus',
                     ),
-                  ),
-                ],
+                    const NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'You',
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -173,5 +159,28 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 }
 
-/// Bottom padding every screen should reserve so content clears the nav bar.
-const double kNavBarClearance = 118;
+/// Shield destination glyph with an M3 [Badge] while any shield is armed.
+///
+/// A dot rather than a count: the number belongs on the Shield screen, where
+/// there is room to say what it counts.
+class _ShieldIcon extends StatelessWidget {
+  const _ShieldIcon({required this.shielded, required this.icon});
+
+  final bool shielded;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!shielded) return Icon(icon);
+    return Badge(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      child: Icon(icon),
+    );
+  }
+}
+
+/// Bottom padding a tab's scroll view should leave under its last row.
+///
+/// The navigation bar is docked in the scaffold's own slot now, so the body is
+/// already laid out above it — this is breathing room, not clearance.
+const double kNavBarClearance = 24;

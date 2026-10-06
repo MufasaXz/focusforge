@@ -10,8 +10,8 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
+import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
-import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
@@ -23,9 +23,9 @@ import 'widgets/weekly_chart.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
-/// No app bar: the screen opens on a greeting, and every section is a glass
-/// panel floating over the ambient canvas. Everything below the greeting is
-/// read from the Riverpod stores, so a session finished on the Focus tab is
+/// No app bar: the screen opens on a greeting, and every section sits in a
+/// tonal card on the scaffold surface. Everything below the greeting is read
+/// from the Riverpod stores, so a session finished on the Focus tab is
 /// reflected the moment this screen rebuilds.
 ///
 /// Pull-to-refresh re-reads those stores behind a short skeleton frame: the
@@ -94,7 +94,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: RefreshIndicator(
         onRefresh: _refresh,
         color: cs.primary,
-        backgroundColor: [cs.surface, cs.surface].last,
+        backgroundColor: cs.surface,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
@@ -170,10 +170,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               Stagger(
                 index: 5,
-                child: GlassPanel(
-                  radius: Radii.card,
-                  padding: const EdgeInsets.all(Gap.lg),
-                  child: FocusHeatmap(weeks: heatmapWeeks),
+                child: Card.filled(
+                  child: Padding(
+                    padding: const EdgeInsets.all(Gap.lg),
+                    child: FocusHeatmap(weeks: heatmapWeeks),
+                  ),
                 ),
               ),
               const SizedBox(height: Gap.xl),
@@ -194,10 +195,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const Stagger(
                 index: 7,
-                child: GlassPanel(
-                  radius: Radii.card,
-                  padding: EdgeInsets.all(Gap.lg),
-                  child: AppDistribution(),
+                child: Card.filled(
+                  child: Padding(
+                    padding: EdgeInsets.all(Gap.lg),
+                    child: AppDistribution(),
+                  ),
                 ),
               ),
               const SizedBox(height: Gap.xl),
@@ -212,10 +214,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               Stagger(
                 index: 9,
-                child: GlassPanel(
-                  radius: Radii.card,
-                  padding: const EdgeInsets.all(Gap.lg),
-                  child: SubjectBreakdown(subjects: subjects),
+                child: Card.filled(
+                  child: Padding(
+                    padding: const EdgeInsets.all(Gap.lg),
+                    child: SubjectBreakdown(subjects: subjects),
+                  ),
                 ),
               ),
             ],
@@ -238,7 +241,6 @@ String _spokenMinutes(int minutes) {
   ];
   return parts.isEmpty ? 'no focus logged' : parts.join(' ');
 }
-
 /// Greeting plus the streak pill — the one number worth surfacing in chrome.
 class _Greeting extends StatelessWidget {
   const _Greeting({
@@ -274,33 +276,22 @@ class _Greeting extends StatelessWidget {
         ),
         if (streak > 0) ...[
           const SizedBox(width: Gap.md),
-          GlassPanel(
-            radius: Radii.pill,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.md,
-              vertical: 8,
+          Chip(
+            avatar: Icon(
+              Icons.local_fire_department_rounded,
+              size: 15,
+              color: cs.tertiary,
             ),
-            accent: cs.tertiary,
-            glowStrength: 0.55,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.local_fire_department_rounded,
-                  size: 15,
-                  color: cs.tertiary,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '$streak',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+            label: Text(
+              '$streak',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
             ),
+            labelPadding: EdgeInsets.zero,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ],
@@ -330,90 +321,93 @@ class _DailyOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return GlassPanel(
-      radius: Radii.hero,
-      blur: 18,
-      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.xl, Gap.xl, Gap.lg),
-      child: Column(
-        children: [
-          ProgressRing(
-            value: progress,
-            size: 188,
-            stroke: 11,
-            ticks: 24,
-            semanticLabel:
-                'Daily focus, ${_spokenMinutes(minutesToday)} of '
-                '${_spokenMinutes(goalMinutes)}, '
-                '${(progress * 100).round()} percent of goal',
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formatMinutes(minutesToday),
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontSize: 36,
-                    letterSpacing: -1.4,
+    return Card.filled(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.hero),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.xl, Gap.xl, Gap.lg),
+        child: Column(
+          children: [
+            ProgressRing(
+              value: progress,
+              size: 188,
+              stroke: 11,
+              ticks: 24,
+              semanticLabel:
+                  'Daily focus, ${_spokenMinutes(minutesToday)} of '
+                  '${_spokenMinutes(goalMinutes)}, '
+                  '${(progress * 100).round()} percent of goal',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    formatMinutes(minutesToday),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontSize: 36,
+                      letterSpacing: -1.4,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  'of ${formatMinutes(goalMinutes)} goal',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+                  const SizedBox(height: 1),
+                  Text(
+                    'of ${formatMinutes(goalMinutes)} goal',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: Gap.xl),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final chips = <Widget>[
-                _StatChip(
-                  icon: Icons.task_alt_rounded,
-                  value: '$sessionsToday',
-                  label: 'Sessions',
-                ),
-                _StatChip(
-                  icon: Icons.timelapse_rounded,
-                  value: '${totalHours.round()}h',
-                  label: 'All time',
-                ),
-                _StatChip(
-                  icon: Icons.military_tech_rounded,
-                  value: '$level',
-                  label: 'Level',
-                ),
-              ];
+            const SizedBox(height: Gap.xl),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final chips = <Widget>[
+                  _StatChip(
+                    icon: Icons.task_alt_rounded,
+                    value: '$sessionsToday',
+                    label: 'Sessions',
+                  ),
+                  _StatChip(
+                    icon: Icons.timelapse_rounded,
+                    value: '${totalHours.round()}h',
+                    label: 'All time',
+                  ),
+                  _StatChip(
+                    icon: Icons.military_tech_rounded,
+                    value: '$level',
+                    label: 'Level',
+                  ),
+                ];
 
-              // Three equal columns need ~340dp to keep the labels on one
-              // line; below that the chips keep a third of the row as a
-              // minimum and flow onto a second line instead of clipping.
-              if (constraints.maxWidth < 340) {
-                final minWidth = (constraints.maxWidth - Gap.sm * 2) / 3;
-                return Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: Gap.sm,
+                // Three equal columns need ~340dp to keep the labels on one
+                // line; below that the chips keep a third of the row as a
+                // minimum and flow onto a second line instead of clipping.
+                if (constraints.maxWidth < 340) {
+                  final minWidth = (constraints.maxWidth - Gap.sm * 2) / 3;
+                  return Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: Gap.sm,
+                    children: [
+                      for (final chip in chips)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: minWidth),
+                          child: chip,
+                        ),
+                    ],
+                  );
+                }
+                return Row(
                   children: [
-                    for (final chip in chips)
-                      ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: minWidth),
-                        child: chip,
-                      ),
+                    for (var i = 0; i < chips.length; i++) ...[
+                      if (i > 0) const SizedBox(width: Gap.sm),
+                      Expanded(child: chips[i]),
+                    ],
                   ],
                 );
-              }
-              return Row(
-                children: [
-                  for (var i = 0; i < chips.length; i++) ...[
-                    if (i > 0) const SizedBox(width: Gap.sm),
-                    Expanded(child: chips[i]),
-                  ],
-                ],
-              );
-            },
-          ),
-        ],
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -434,38 +428,42 @@ class _WeeklyPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${total.toStringAsFixed(1)}h',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${total.toStringAsFixed(1)}h',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(width: Gap.sm),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text('focused', style: Theme.of(context).textTheme.bodySmall),
-              ),
-              const Spacer(),
-              _MetaPill(
-                icon: Icons.insights_rounded,
-                label: '${average.toStringAsFixed(1)}h avg',
-                color: cs.secondary,
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          WeeklyChart(days: days),
-        ],
+                const SizedBox(width: Gap.sm),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    'focused',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const Spacer(),
+                _MetaPill(
+                  icon: Icons.insights_rounded,
+                  label: '${average.toStringAsFixed(1)}h avg',
+                  color: cs.secondary,
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            WeeklyChart(days: days),
+          ],
+        ),
       ),
     );
   }
@@ -479,29 +477,20 @@ class _NoSessions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.hero,
-      blur: 18,
-      padding: EdgeInsets.zero,
+    return Card.filled(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.hero),
+      ),
       child: EmptyState(
         icon: Icons.timer_outlined,
         title: 'No sessions yet',
         subtitle:
             'Finish your first focus block and this page fills in — '
             'the daily ring, weekly chart, heatmap and app shields.',
-        action: GlassPill(
-          selected: true,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          onTap: onStart,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.play_arrow_rounded, size: 18, color: cs.primary),
-              const SizedBox(width: 6),
-              const Text('Start focusing'),
-            ],
-          ),
+        action: FilledButton.icon(
+          onPressed: onStart,
+          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+          label: const Text('Start focusing'),
         ),
       ),
     );
@@ -522,36 +511,38 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      level: 2,
-      radius: Radii.item,
-      sheen: false,
-      padding: const EdgeInsets.symmetric(vertical: Gap.md, horizontal: Gap.sm),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: cs.primary),
-          const SizedBox(height: 7),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.4,
+    return Card.outlined(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: Gap.md,
+          horizontal: Gap.sm,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: cs.primary),
+            const SizedBox(height: 7),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontSize: 10,
-              color: cs.onSurfaceVariant,
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                color: cs.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -571,28 +562,19 @@ class _MetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2, vertical: 4),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: c.withValues(alpha: 0.42)),
+    return Chip(
+      avatar: Icon(icon, size: 13, color: color),
+      label: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: c),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: c,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+      labelPadding: EdgeInsets.zero,
+      backgroundColor: color.withValues(alpha: 0.16),
+      side: BorderSide(color: color.withValues(alpha: 0.42)),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }

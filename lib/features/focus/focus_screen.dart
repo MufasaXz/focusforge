@@ -1,11 +1,13 @@
-import '../../app/theme/app_theme.dart';
+import '../../shared/widgets/app_page.dart';
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/shell/app_shell.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/audio_providers.dart';
@@ -13,7 +15,8 @@ import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/animated_digits.dart';
 import '../../shared/widgets/confetti_burst.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
 
@@ -33,17 +36,15 @@ class FocusScreen extends ConsumerStatefulWidget {
 }
 
 class _FocusScreenState extends ConsumerState<FocusScreen> {
-  /// Space the pinned dock occupies, including the bloom around it.
+  /// Space the pinned dock occupies, plus the clearance above it.
   static const double _dockHeight = 96;
 
   StreamSubscription<int>? _completions;
   Timer? _celebrationTimer;
-  Timer? _glowTimer;
 
   /// Bumped per celebration so the banner's switcher key is always fresh.
   int _celebrationId = 0;
   _Completion? _celebration;
-  bool _breakGlow = false;
 
   @override
   void initState() {
@@ -60,7 +61,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   void dispose() {
     _completions?.cancel();
     _celebrationTimer?.cancel();
-    _glowTimer?.cancel();
     super.dispose();
   }
 
@@ -88,16 +88,11 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     });
   }
 
-  /// A finished break gets a soft haptic and a colour wash, never confetti.
-  /// The contrast is the point: quiet recovery, loud achievement.
+  /// A finished break gets a soft haptic, never confetti. The contrast is the
+  /// point: quiet recovery, loud achievement.
   void _onBreakFinished() {
     if (!mounted) return;
     unawaited(HapticFeedback.selectionClick());
-    _glowTimer?.cancel();
-    setState(() => _breakGlow = true);
-    _glowTimer = Timer(const Duration(milliseconds: 1600), () {
-      if (mounted) setState(() => _breakGlow = false);
-    });
   }
 
   void _dismissCelebration() {
@@ -207,25 +202,24 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       label: 'Preset: ${preset.name}. Change preset',
                       excludeSemantics: true,
                       onTap: () => _showPresetSheet(context),
-                      child: GlassPill(
-                        onTap: () => _showPresetSheet(context),
-                        padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
-                        child: SizedBox(
-                          height: 48,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(preset.icon, size: 15, color: accent),
-                              const SizedBox(width: 7),
-                              Text(preset.name),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.expand_more_rounded,
-                                size: 16,
-                                color: t.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
+                      child: FilterChip(
+                        onSelected: (_) => _showPresetSheet(context),
+                        // A menu trigger, not a filter: a selected state and a
+                        // checkmark would misstate what the chip does.
+                        showCheckmark: false,
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(preset.icon, size: 15, color: accent),
+                            const SizedBox(width: 7),
+                            Text(preset.name),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.expand_more_rounded,
+                              size: 16,
+                              color: t.onSurfaceVariant,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -259,41 +253,31 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 '${selected ? 'selected' : 'not selected'}',
                             excludeSemantics: true,
                             onTap: toggle,
-                            child: GlassPill(
+                            child: FilterChip(
                               selected: selected,
-                              accent: s.color,
-                              onTap: toggle,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: Gap.md,
-                              ),
-                              child: SizedBox(
-                                height: 48,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: s.color,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: s.color.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                            blurRadius: 7,
-                                          ),
-                                        ],
-                                      ),
+                              onSelected: (_) => toggle(),
+                              // The subject dot is the leading glyph; a
+                              // checkmark would replace it and drop the
+                              // colour that identifies the subject.
+                              showCheckmark: false,
+                              selectedColor: s.color.withValues(alpha: 0.20),
+                              label: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: s.color,
                                     ),
-                                    const SizedBox(width: 7),
-                                    Text(
-                                      s.name,
-                                      style: const TextStyle(fontSize: 12.5),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    s.name,
+                                    style: const TextStyle(fontSize: 12.5),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -308,100 +292,69 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 Stagger(
                   index: 3,
                   child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Break-ended wash. A colour shift rather than a second
-                        // burst of particles, so recovery never competes with the
-                        // focus celebration for attention.
-                        IgnorePointer(
-                          child: AnimatedOpacity(
-                            opacity: _breakGlow ? 1 : 0,
-                            duration: Duration(
-                              milliseconds: _breakGlow ? 240 : 760,
-                            ),
-                            curve: Curves.easeOutCubic,
-                            child: Container(
-                              width: 252,
-                              height: 252,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    t.tertiary.withValues(alpha: 0.30),
-                                    t.tertiary.withValues(alpha: 0),
-                                  ],
-                                  stops: const [0, 0.82],
+                    child: ProgressRing(
+                      value: timer.progressFor(preset),
+                      size: 208,
+                      stroke: 11,
+                      ticks: 60,
+                      colors: [
+                        accent,
+                        Color.lerp(accent, t.secondary, 0.7)!,
+                      ],
+                      semanticLabel:
+                          '${timer.phase.label}, $clock remaining, '
+                          '${timer.running ? 'running' : 'paused'}',
+                      child: ExcludeSemantics(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // The ring label carries the time for screen
+                            // readers, so the digits themselves are silent.
+                            SizedBox(
+                              width: 168,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: AnimatedDigits(
+                                  text: clock,
+                                  style: Theme.of(context).textTheme.displayLarge!
+                                      .copyWith(
+                                        fontSize: 52,
+                                        height: 1.02,
+                                        letterSpacing: -2.2,
+                                      ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        ProgressRing(
-                          value: timer.progressFor(preset),
-                          size: 208,
-                          stroke: 11,
-                          ticks: 60,
-                          colors: [
-                            accent,
-                            Color.lerp(accent, t.secondary, 0.7)!,
-                          ],
-                          semanticLabel:
-                              '${timer.phase.label}, $clock remaining, '
-                              '${timer.running ? 'running' : 'paused'}',
-                          child: ExcludeSemantics(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                            const SizedBox(height: Gap.xs),
+                            Text(
+                              timer.phase.label,
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: accent,
+                                fontSize: 12.5,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: Gap.md),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                // The ring label carries the time for screen
-                                // readers, so the digits themselves are silent.
-                                SizedBox(
-                                  width: 168,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: AnimatedDigits(
-                                      text: clock,
-                                      style: Theme.of(context).textTheme.displayLarge!
-                                          .copyWith(
-                                            fontSize: 52,
-                                            height: 1.02,
-                                            letterSpacing: -2.2,
-                                          ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: Gap.xs),
-                                Text(
-                                  timer.phase.label,
-                                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                for (
+                                  var i = 0;
+                                  i < preset.segments;
+                                  i++
+                                ) ...[
+                                  if (i > 0) const SizedBox(width: 6),
+                                  _SegmentDot(
+                                    done: i < cycleDone,
+                                    current: i == currentDot,
                                     color: accent,
-                                    fontSize: 12.5,
-                                    letterSpacing: 0.3,
                                   ),
-                                ),
-                                const SizedBox(height: Gap.md),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    for (
-                                      var i = 0;
-                                      i < preset.segments;
-                                      i++
-                                    ) ...[
-                                      if (i > 0) const SizedBox(width: 6),
-                                      _SegmentDot(
-                                        done: i < cycleDone,
-                                        current: i == currentDot,
-                                        color: accent,
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                                ],
                               ],
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -412,7 +365,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   index: 4,
                   child: SectionHeader(
                     title: 'Ambient mix',
-                    icon: Icons.graphic_eq_rounded,
+                    icon: Icons.graphic_eq_outlined,
                     trailing: active.isEmpty
                         ? null
                         : Semantics(
@@ -422,30 +375,19 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             onTap: () => unawaited(
                               ref.read(activeSoundsProvider.notifier).clear(),
                             ),
-                            child: GlassPill(
-                              onTap: () => unawaited(
+                            child: FilterChip(
+                              onSelected: (_) => unawaited(
                                 ref.read(activeSoundsProvider.notifier).clear(),
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: Gap.md,
+                              showCheckmark: false,
+                              avatar: Icon(
+                                Icons.stop_circle_outlined,
+                                size: 15,
+                                color: t.onSurfaceVariant,
                               ),
-                              child: SizedBox(
-                                height: 36,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.stop_circle_outlined,
-                                      size: 15,
-                                      color: t.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    const Text(
-                                      'Stop all',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
+                              label: const Text(
+                                'Stop all',
+                                style: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
@@ -453,50 +395,59 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 ),
                 Stagger(
                   index: 5,
-                  child: GlassPanel(
-                    radius: Radii.card,
-                    padding: const EdgeInsets.all(Gap.md),
-                    child: Column(
-                      children: [
-                        GridView.count(
-                          crossAxisCount: 2,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          mainAxisSpacing: Gap.md,
-                          crossAxisSpacing: Gap.md,
-                          childAspectRatio: 2.5,
-                          children: [
-                            for (final sound in catalogue)
-                              _AmbientTile(
-                                tile: sound,
-                                active: active.contains(sound.id),
-                                onTap: () => unawaited(
+                  child: Card.filled(
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.md),
+                      child: Column(
+                        children: [
+                          GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: Gap.md,
+                            crossAxisSpacing: Gap.md,
+                            childAspectRatio: 2.5,
+                            children: [
+                              for (final sound in catalogue)
+                                _AmbientTile(
+                                  tile: sound,
+                                  active: active.contains(sound.id),
+                                  onTap: () => unawaited(
+                                    ref
+                                        .read(activeSoundsProvider.notifier)
+                                        .toggle(sound),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          // Volume lives on the active tracks only: a slider for
+                          // a silent track would be a control with nothing to
+                          // control.
+                          if (active.isNotEmpty) ...[
+                            const SizedBox(height: Gap.sm),
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: t.outlineVariant,
+                            ),
+                            for (final sound in catalogue.where(
+                              (s) => active.contains(s.id),
+                            ))
+                              _VolumeRow(
+                                sound: sound,
+                                value: (volumes[sound.id] ?? 0.5).clamp(
+                                  0.0,
+                                  1.0,
+                                ),
+                                onChanged: (v) => unawaited(
                                   ref
-                                      .read(activeSoundsProvider.notifier)
-                                      .toggle(sound),
+                                      .read(volumesProvider.notifier)
+                                      .set(sound.id, v),
                                 ),
                               ),
                           ],
-                        ),
-                        // Volume lives on the active tracks only: a slider for a
-                        // silent track would be a control with nothing to control.
-                        if (active.isNotEmpty) ...[
-                          const SizedBox(height: Gap.sm),
-                          Divider(height: 1, thickness: 1, color: t.outlineVariant),
-                          for (final sound in catalogue.where(
-                            (s) => active.contains(s.id),
-                          ))
-                            _VolumeRow(
-                              sound: sound,
-                              value: (volumes[sound.id] ?? 0.5).clamp(0.0, 1.0),
-                              onChanged: (v) => unawaited(
-                                ref
-                                    .read(volumesProvider.notifier)
-                                    .set(sound.id, v),
-                              ),
-                            ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -507,7 +458,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   index: 6,
                   child: SectionHeader(
                     title: 'Today',
-                    icon: Icons.today_rounded,
+                    icon: Icons.today_outlined,
                   ),
                 ),
                 Stagger(
@@ -585,133 +536,82 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           left: Gap.lg + 4,
           right: Gap.lg + 4,
           bottom: dockBottom,
-          child: GlassPanel(
-            radius: Radii.pill,
-            blur: 18,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.lg,
-              vertical: Gap.md,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    label: 'Reset timer',
-                    excludeSemantics: true,
-                    onTap: () => ref.read(timerProvider.notifier).reset(),
-                    child: Pressable(
+          child: Card.filled(
+            color: t.surfaceContainerHigh,
+            shape: const StadiumBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Gap.lg,
+                vertical: Gap.md,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      label: 'Reset timer',
+                      excludeSemantics: true,
                       onTap: () => ref.read(timerProvider.notifier).reset(),
-                      child: SizedBox(
-                        height: 48,
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.refresh_rounded,
-                                size: 16,
-                                color: t.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Reset',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  color: t.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            ref.read(timerProvider.notifier).reset(),
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text('Reset'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: t.onSurfaceVariant,
                         ),
                       ),
                     ),
                   ),
-                ),
-                Semantics(
-                  button: true,
-                  label: timer.running
-                      ? 'Pause $phaseNoun timer'
-                      : 'Start $phaseNoun timer',
-                  excludeSemantics: true,
-                  onTap: toggleTimer,
-                  child: Pressable(
-                    onTap: toggleTimer,
-                    scale: 0.92,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 260),
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            accent,
-                            Color.lerp(accent, t.secondary, 0.7)!,
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.50),
-                            blurRadius: 28,
-                            spreadRadius: -3,
-                          ),
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.22),
-                            blurRadius: 52,
-                            spreadRadius: -6,
-                          ),
-                        ],
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.42),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Icon(
-                        timer.running
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 32,
-                        color: const Color(0xFF08101F),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Semantics(
+                  Semantics(
                     button: true,
-                    label: 'Skip to next phase',
+                    label: timer.running
+                        ? 'Pause $phaseNoun timer'
+                        : 'Start $phaseNoun timer',
                     excludeSemantics: true,
-                    onTap: () => ref.read(timerProvider.notifier).skip(),
+                    onTap: toggleTimer,
                     child: Pressable(
-                      onTap: () => ref.read(timerProvider.notifier).skip(),
-                      child: SizedBox(
-                        height: 48,
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Skip',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  color: t.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.skip_next_rounded,
-                                size: 16,
-                                color: t.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
+                      onTap: toggleTimer,
+                      scale: 0.92,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 260),
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accent,
+                        ),
+                        child: Icon(
+                          timer.running
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 32,
+                          color: _onPhaseColor(t, timer.phase),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      label: 'Skip to next phase',
+                      excludeSemantics: true,
+                      onTap: () => ref.read(timerProvider.notifier).skip(),
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            ref.read(timerProvider.notifier).skip(),
+                        icon: const Icon(Icons.skip_next_rounded, size: 16),
+                        label: const Text('Skip'),
+                        iconAlignment: IconAlignment.end,
+                        style: TextButton.styleFrom(
+                          foregroundColor: t.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -725,89 +625,78 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       container: true,
       liveRegion: true,
       label: 'Focus block complete. ${completion.minutes} XP earned.',
-      child: GlassPanel(
-        radius: Radii.card,
-        blur: 18,
-        accent: t.tertiary,
-        glowStrength: 0.45,
-        padding: const EdgeInsets.all(Gap.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                GlassIconBadge(
-                  icon: Icons.bolt_rounded,
-                  color: t.tertiary,
-                  size: 38,
-                  radius: 11,
-                  glow: 0.55,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Focus block complete',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        subject == null
-                            ? '${completion.minutes} minutes of deep work'
-                            : '${subject.name} · ${completion.minutes} minutes',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: t.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: Gap.sm),
-                Text(
-                  '+${completion.minutes} XP',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+      child: Card.outlined(
+        // Floats over the live screen, so it takes the higher tonal surface.
+        color: t.surfaceContainerHigh,
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  IconBadge(
+                    icon: Icons.bolt_rounded,
                     color: t.tertiary,
-                    fontWeight: FontWeight.w700,
+                    size: 38,
+                    radius: 11,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassPill(
-                    selected: true,
-                    onTap: _dismissCelebration,
-                    padding: EdgeInsets.zero,
-                    child: const SizedBox(
-                      height: 44,
-                      child: Center(child: Text('Take a break')),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Focus block complete',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          subject == null
+                              ? '${completion.minutes} minutes of deep work'
+                              : '${subject.name} · ${completion.minutes} minutes',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: t.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: GlassPill(
-                    onTap: () {
-                      ref.read(timerProvider.notifier).skip();
-                      _dismissCelebration();
-                    },
-                    padding: EdgeInsets.zero,
-                    child: const SizedBox(
-                      height: 44,
-                      child: Center(child: Text('Keep going')),
+                  const SizedBox(width: Gap.sm),
+                  Text(
+                    '+${completion.minutes} XP',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: t.tertiary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _dismissCelebration,
+                      child: const Text('Take a break'),
+                    ),
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        ref.read(timerProvider.notifier).skip();
+                        _dismissCelebration();
+                      },
+                      child: const Text('Keep going'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -829,37 +718,53 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           Gap.lg,
           Gap.lg + MediaQuery.paddingOf(sheetContext).bottom,
         ),
-        child: GlassPanel(
-          radius: Radii.hero,
-          blur: 24,
-          padding: const EdgeInsets.all(Gap.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Radii.hero),
+          // One of the three sanctioned blur sites: a modal sheet floats over
+          // the page it was opened from.
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              padding: const EdgeInsets.all(Gap.lg),
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).colorScheme.surfaceContainerLow
+                    .withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(Radii.hero),
               ),
-              const SizedBox(height: Gap.lg),
-              Text('Pomodoro presets', style: Theme.of(sheetContext).textTheme.titleMedium),
-              const SizedBox(height: Gap.sm),
-              for (var i = 0; i < presets.length; i++)
-                _PresetRow(
-                  preset: presets[i],
-                  selected: i == current,
-                  onTap: () {
-                    ref.read(timerProvider.notifier).setPreset(i);
-                    Navigator.of(sheetContext).pop();
-                  },
-                ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          sheetContext,
+                        ).colorScheme.onSurfaceVariant,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  Text(
+                    'Pomodoro presets',
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  for (var i = 0; i < presets.length; i++)
+                    _PresetRow(
+                      preset: presets[i],
+                      selected: i == current,
+                      onTap: () {
+                        ref.read(timerProvider.notifier).setPreset(i);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -879,6 +784,14 @@ Color _phaseColor(ColorScheme t, TimerPhase phase) => switch (phase) {
   TimerPhase.focus => t.primary,
   TimerPhase.shortBreak => t.tertiary,
   TimerPhase.longBreak => t.secondary,
+};
+
+/// Ink for content sitting on [_phaseColor] — the scheme's own on-colour
+/// pairing, so the start button stays legible in both themes.
+Color _onPhaseColor(ColorScheme t, TimerPhase phase) => switch (phase) {
+  TimerPhase.focus => t.onPrimary,
+  TimerPhase.shortBreak => t.onTertiary,
+  TimerPhase.longBreak => t.onSecondary,
 };
 
 class _SegmentDot extends StatelessWidget {
@@ -902,9 +815,6 @@ class _SegmentDot extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
         color: done || current ? color : t.surfaceContainerHighest,
-        boxShadow: current
-            ? [BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 10)]
-            : null,
       ),
     );
   }
@@ -941,22 +851,13 @@ class _AmbientTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(Radii.tile),
             color: active
                 ? tile.color.withValues(alpha: 0.20)
-                : t.surfaceContainer.withValues(alpha: 0.55),
+                : t.surfaceContainer,
             border: Border.all(
               color: active
                   ? tile.color.withValues(alpha: 0.72)
                   : t.outlineVariant,
               width: active ? 1.3 : 1,
             ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: tile.color.withValues(alpha: 0.34),
-                      blurRadius: 20,
-                      spreadRadius: -4,
-                    ),
-                  ]
-                : null,
           ),
           child: Row(
             children: [
@@ -1065,44 +966,23 @@ class _PresetRow extends StatelessWidget {
           '${preset.shortBreak} minute break, ${preset.segments} segments',
       excludeSemantics: true,
       onTap: onTap,
-      child: Pressable(
+      child: ListTile(
         onTap: onTap,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: [
-              GlassIconBadge(
-                icon: preset.icon,
-                color: t.primary,
-                size: 38,
-                radius: 11,
-                glow: selected ? 0.6 : 0,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(preset.name, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 1),
-                    Text(
-                      '${preset.focus}m focus · ${preset.shortBreak}m break · '
-                      '${preset.segments} segments',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-              ),
-              if (selected)
-                Icon(
-                  Icons.check_circle_rounded,
-                  size: 18,
-                  color: t.primary,
-                ),
-            ],
-          ),
+        selected: selected,
+        leading: IconBadge(
+          icon: preset.icon,
+          color: t.primary,
+          size: 38,
+          radius: 11,
         ),
+        title: Text(preset.name),
+        subtitle: Text(
+          '${preset.focus}m focus · ${preset.shortBreak}m break · '
+          '${preset.segments} segments',
+        ),
+        trailing: selected
+            ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
+            : null,
       ),
     );
   }
@@ -1126,29 +1006,28 @@ class _InfoCapsule extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       excludeSemantics: true,
-      child: GlassPanel(
-        level: 2,
-        radius: Radii.item,
-        sheen: false,
-        padding: const EdgeInsets.symmetric(
-          vertical: Gap.md,
-          horizontal: Gap.sm,
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(height: 5),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+      child: Card.outlined(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: Gap.md,
+            horizontal: Gap.sm,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(height: 5),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

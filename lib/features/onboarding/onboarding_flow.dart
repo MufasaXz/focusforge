@@ -1,13 +1,10 @@
-import '../../app/theme/app_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
-import '../../shared/widgets/mesh_background.dart';
 import 'apps_step.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
@@ -84,42 +81,38 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
         if (!didPop) _back();
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: MeshBackground(
-          child: SafeArea(
-            bottom: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  children: [
-                    if (_index > 0)
-                      _FlowHeader(
-                        index: _index,
-                        total: _stepCount - 1,
-                        onBack: _back,
-                      ),
-                    Expanded(
-                      child: PageView(
-                        controller: _controller,
-                        physics: const NeverScrollableScrollPhysics(),
-                        onPageChanged: (index) =>
-                            setState(() => _index = index),
-                        children: [
-                          SplashStep(onDone: _afterSplash),
-                          AuthScreen(embedded: true, onAuthenticated: _next),
-                          PersonaStep(onNext: _next),
-                          ProfileStep(onNext: _next),
-                          SubjectsStep(onNext: _next),
-                          AppsStep(onNext: _next),
-                          GoalStep(onNext: _next),
-                          PermissionsStep(onNext: _next),
-                          const CompleteStep(),
-                        ],
-                      ),
+        body: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                children: [
+                  if (_index > 0)
+                    _FlowHeader(
+                      index: _index,
+                      total: _stepCount - 1,
+                      onBack: _back,
                     ),
-                  ],
-                ),
+                  Expanded(
+                    child: PageView(
+                      controller: _controller,
+                      physics: const NeverScrollableScrollPhysics(),
+                      onPageChanged: (index) => setState(() => _index = index),
+                      children: [
+                        SplashStep(onDone: _afterSplash),
+                        AuthScreen(embedded: true, onAuthenticated: _next),
+                        PersonaStep(onNext: _next),
+                        ProfileStep(onNext: _next),
+                        SubjectsStep(onNext: _next),
+                        AppsStep(onNext: _next),
+                        GoalStep(onNext: _next),
+                        PermissionsStep(onNext: _next),
+                        const CompleteStep(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -144,39 +137,34 @@ class _FlowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.lg, Gap.sm),
+      padding: const EdgeInsets.fromLTRB(Gap.sm, Gap.sm, Gap.lg, Gap.sm),
       child: Row(
         children: [
-          Semantics(
-            button: true,
-            label: 'Back',
-            child: Pressable(
-              onTap: onBack,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: Icon(
-                  Icons.arrow_back_rounded,
-                  size: 20,
-                  color: cs.onSurface,
-                ),
-              ),
-            ),
+          IconButton(
+            onPressed: onBack,
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back_rounded, size: 20),
           ),
           const SizedBox(width: Gap.sm),
           Expanded(
-            child: GlassProgressBar(
-              value: index / total,
-              color: cs.primary,
-              height: 4,
-              semanticLabel: 'Setup progress',
+            child: Semantics(
+              label: 'Setup progress',
+              value: '${(index / total * 100).round()} percent',
+              child: LinearProgressIndicator(
+                value: index / total,
+                color: cs.primary,
+                backgroundColor: cs.surfaceContainerHighest,
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
             ),
           ),
           const SizedBox(width: Gap.md),
-          Text('$index/$total', style: Theme.of(context).textTheme.labelSmall),
+          Text('$index/$total', style: theme.textTheme.labelSmall),
         ],
       ),
     );

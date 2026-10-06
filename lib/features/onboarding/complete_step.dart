@@ -7,8 +7,9 @@ import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
+import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/confetti_burst.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 import 'onboarding_state.dart';
@@ -70,7 +71,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               Expanded(
                 child: _StatTile(
                   icon: persona.icon,
-                  color: persona.color,
+                  color: harmonize(persona.color, cs.primary),
                   value: persona.label,
                   label: 'Profile',
                 ),
@@ -116,26 +117,28 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         const Stagger(index: 4, child: SectionHeader(title: 'Quick tips')),
         Stagger(
           index: 5,
-          child: GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-            child: const Column(
-              children: [
-                _Tip(
-                  icon: Icons.timer_rounded,
-                  text: 'Tap Focus to start your first session.',
-                ),
-                _Tip(
-                  icon: Icons.insights_rounded,
-                  text: 'The dashboard fills in as you study.',
-                  divider: true,
-                ),
-                _Tip(
-                  icon: Icons.shield_rounded,
-                  text: 'Tune what gets blocked in the Shield tab.',
-                  divider: true,
-                ),
-              ],
+          child: const Card.filled(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: Gap.xs),
+              child: Column(
+                children: [
+                  _Tip(
+                    icon: Icons.timer_outlined,
+                    text: 'Tap Focus to start your first session.',
+                  ),
+                  _Tip(
+                    icon: Icons.insights_outlined,
+                    text: 'The dashboard fills in as you study.',
+                    divider: true,
+                  ),
+                  _Tip(
+                    icon: Icons.shield_outlined,
+                    text: 'Tune what gets blocked in the Shield tab.',
+                    divider: true,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -161,33 +164,36 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return GlassPanel(
-      level: 2,
-      radius: Radii.item,
-      sheen: false,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GlassIconBadge(
-            icon: icon,
-            color: color,
-            size: 34,
-            radius: Radii.tile,
-          ),
-          const SizedBox(height: Gap.md),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(letterSpacing: -0.4),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-        ],
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            IconBadge(
+              icon: icon,
+              color: color,
+              size: 34,
+              radius: Radii.tile,
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(letterSpacing: -0.4),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,21 +214,13 @@ class _Tip extends StatelessWidget {
       children: [
         if (divider)
           Padding(
-            padding: const EdgeInsets.only(left: Gap.md + 19 + Gap.md),
+            // Indented to the title, not the leading icon.
+            padding: const EdgeInsets.only(left: Gap.lg + 24 + Gap.lg),
             child: Divider(height: 1, thickness: 1, color: cs.outlineVariant),
           ),
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.md,
-            vertical: Gap.md,
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 19, color: cs.primary),
-              const SizedBox(width: Gap.md),
-              Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyLarge)),
-            ],
-          ),
+        ListTile(
+          leading: Icon(icon, color: cs.primary),
+          title: Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ),
       ],
     );

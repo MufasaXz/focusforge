@@ -167,12 +167,18 @@ class Gap {
   static const double xxl = 32;
 }
 
-/// Subject colours, pulled toward the seed's hue.
+/// Rotates a categorical colour into the live theme's temperature.
 ///
-/// Hand-picked subject colours read as random next to a generated palette —
-/// six saturated hues that share nothing with the primary. Harmonising keeps
-/// each subject recognisable while rotating it into the theme's temperature,
-/// which is what makes the breakdown chart look designed rather than sampled.
+/// Some colours in the app are *data*, not chrome: a subject's hue, a
+/// whitelist tier's green/amber/red, a persona's tint. Those need to stay
+/// distinguishable from each other, so they cannot simply become scheme roles —
+/// but left raw they are six saturated hues from a palette that no longer
+/// exists, sitting next to a generated ember scheme. Harmonising keeps the
+/// distinction and drops the clash.
+Color harmonize(Color design, Color primary) =>
+    Color(mcu.Blend.harmonize(design.toARGB32(), primary.toARGB32()));
+
+/// Subject colours, pulled toward the seed's hue.
 ///
 /// The raw values are exposed as `const` so they can sit in a constant seed
 /// table; anything that *renders* them should go through [harmonized] so the
@@ -201,9 +207,6 @@ class SubjectPalette {
   /// [primary] is the live scheme's primary, so the set re-harmonises with the
   /// theme rather than being frozen at import time.
   static List<Color> harmonized(Color primary) => [
-    for (final c in all) _harmonize(c, primary),
+    for (final c in all) harmonize(c, primary),
   ];
-
-  static Color _harmonize(Color design, Color primary) =>
-      Color(mcu.Blend.harmonize(design.toARGB32(), primary.toARGB32()));
 }

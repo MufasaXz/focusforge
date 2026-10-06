@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/shield_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -163,102 +163,82 @@ class _PermissionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              GlassIconBadge(
-                icon: permission.icon,
-                color: cs.primary,
-                size: 40,
-                radius: Radii.tile,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text(permission.title, style: Theme.of(context).textTheme.titleMedium),
-              ),
-              GlassPill(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gap.sm + 2,
-                  vertical: 4,
-                ),
-                child: Text(
-                  permission.platform,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.md),
-          Text(
-            permission.why,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: Gap.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.lock_outline_rounded, size: 13, color: cs.tertiary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  permission.privacy,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.tertiary),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.md),
-          if (deferred)
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                Icon(Icons.schedule_rounded, size: 16, color: cs.onSurfaceVariant),
-                const SizedBox(width: Gap.sm),
-                Text(
-                  'Set up later',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurfaceVariant,
+                IconBadge(
+                  icon: permission.icon,
+                  color: cs.primary,
+                  size: 40,
+                  radius: Radii.tile,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(permission.title, style: Theme.of(context).textTheme.titleMedium),
+                ),
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
+                  labelPadding: EdgeInsets.zero,
+                  label: Text(
+                    permission.platform,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
                   ),
                 ),
               ],
-            )
-          else
-            Align(
-              alignment: Alignment.centerRight,
-              child: GlassPill(
-                accent: cs.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gap.lg,
-                  vertical: Gap.sm + 2,
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              permission.why,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 13, color: cs.tertiary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    permission.privacy,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.tertiary),
+                  ),
                 ),
-                onTap: onEnable,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Enable',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.primary,
-                      ),
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            if (deferred)
+              Row(
+                children: [
+                  Icon(Icons.schedule_rounded, size: 16, color: cs.onSurfaceVariant),
+                  const SizedBox(width: Gap.sm),
+                  Text(
+                    'Set up later',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 15,
-                      color: cs.primary,
-                    ),
-                  ],
+                  ),
+                ],
+              )
+            else
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.tonalIcon(
+                  onPressed: onEnable,
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('Enable'),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

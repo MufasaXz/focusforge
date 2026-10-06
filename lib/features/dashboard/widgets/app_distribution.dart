@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/models/shield.dart';
 import '../../../core/providers/shield_providers.dart';
-import '../../../shared/widgets/glass_surface.dart';
-import '../../../shared/widgets/glass_toggle.dart';
+import '../../../shared/widgets/icon_badge.dart';
+import '../../../shared/widgets/pressable.dart';
 
 /// Per-app feed shields, wired to the real shield state.
 ///
@@ -67,11 +67,7 @@ class _ShieldRow extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: Gap.sm),
             child: Row(
               children: [
-                GlassIconBadge(
-                  icon: row.icon,
-                  color: row.color,
-                  glow: row.enabled ? 0.6 : 0,
-                ),
+                IconBadge(icon: row.icon, color: row.color),
                 const SizedBox(width: Gap.md),
                 Expanded(
                   child: Column(
@@ -94,12 +90,6 @@ class _ShieldRow extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: cs.tertiary,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: cs.tertiary.withValues(alpha: 0.7),
-                                    blurRadius: 8,
-                                  ),
-                                ],
                               ),
                             ),
                           ],
@@ -118,11 +108,9 @@ class _ShieldRow extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: Gap.md),
-                GlassToggle(
+                Switch.adaptive(
                   value: row.enabled,
                   onChanged: (_) => toggle(),
-                  accent: row.color,
-                  semanticLabel: row.title,
                 ),
               ],
             ),

@@ -1,4 +1,5 @@
 import '../../app/theme/app_theme.dart';
+import '../../shared/widgets/app_page.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,7 @@ import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -264,35 +265,23 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
             runSpacing: Gap.sm,
             children: [
               for (final template in _templates)
-                GlassPill(
+                FilterChip(
                   selected: _selected.contains(template.name),
-                  accent: template.color,
-                  onTap: () => _toggle(template),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        template.icon,
-                        size: 15,
-                        color: _selected.contains(template.name)
-                            ? cs.onSurface
-                            : template.color,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(template.name),
-                    ],
+                  onSelected: (_) => _toggle(template),
+                  avatar: Icon(
+                    template.icon,
+                    size: 18,
+                    color: _selected.contains(template.name)
+                        ? cs.onSurface
+                        : template.color,
                   ),
+                  label: Text(template.name),
                 ),
-              GlassPill(
-                onTap: _addCustom,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_rounded, size: 15, color: cs.primary),
-                    const SizedBox(width: 6),
-                    const Text('Add custom'),
-                  ],
-                ),
+              FilterChip(
+                selected: false,
+                onSelected: (_) => _addCustom(),
+                avatar: Icon(Icons.add_rounded, size: 18, color: cs.primary),
+                label: const Text('Add custom'),
               ),
             ],
           ),
@@ -364,43 +353,48 @@ class _TargetSlider extends StatelessWidget {
         ? '${value.round()}h'
         : '${value.toStringAsFixed(1)}h';
 
-    return GlassPanel(
-      level: 2,
-      radius: Radii.item,
-      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.sm, Gap.sm),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              GlassIconBadge(
-                icon: template.icon,
-                color: template.color,
-                size: 30,
-                radius: Radii.tile,
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(template.name, style: Theme.of(context).textTheme.bodyLarge),
-              ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+    return Card.outlined(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.sm, Gap.sm),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: template.icon,
                   color: template.color,
+                  size: 30,
+                  radius: Radii.tile,
                 ),
-              ),
-              const SizedBox(width: Gap.sm),
-            ],
-          ),
-          Slider(
-            value: value.clamp(1, 20),
-            min: 1,
-            max: 20,
-            divisions: 38,
-            label: label,
-            onChanged: onChanged,
-            onChangeEnd: onChangeEnd,
-          ),
-        ],
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(template.name, style: Theme.of(context).textTheme.bodyLarge),
+                ),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: template.color,
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+              ],
+            ),
+            Slider(
+              value: value.clamp(1, 20),
+              min: 1,
+              max: 20,
+              divisions: 38,
+              label: label,
+              onChanged: onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -456,10 +450,8 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(Gap.xl),
-      child: GlassPanel(
-        radius: Radii.hero,
+      child: Padding(
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,

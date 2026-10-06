@@ -166,7 +166,6 @@ class _WeeklyChartState extends State<WeeklyChart>
                                     ),
                                   ),
                                   accent: cs.primary,
-                                  accent2: cs.secondary,
                                   muted: cs.onSurface,
                                   hairline: cs.outlineVariant,
                                   label: Theme.of(context).textTheme.labelSmall!,
@@ -235,7 +234,7 @@ String _spokenHours(double hours) {
 String _displayHours(double hours) =>
     hours == hours.roundToDouble() ? '${hours.toInt()}h' : '${hours}h';
 
-/// Small glass bubble pinned above the selected bar.
+/// Small tonal bubble pinned above the selected bar.
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.label, required this.accent});
 
@@ -249,7 +248,7 @@ class _Bubble extends StatelessWidget {
     // the active theme so it never reads as a foreign Material tooltip.
     final fill = Color.alphaBlend(
       accent.withValues(alpha: 0.16),
-      [cs.surface, cs.surface].last,
+      cs.surface,
     );
 
     return Container(
@@ -258,13 +257,6 @@ class _Bubble extends StatelessWidget {
         color: fill,
         borderRadius: BorderRadius.circular(Radii.pill),
         border: Border.all(color: accent.withValues(alpha: 0.72)),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.30),
-            blurRadius: 16,
-            spreadRadius: -3,
-          ),
-        ],
       ),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
@@ -289,7 +281,6 @@ class _Bar extends StatelessWidget {
     required this.highlighted,
     required this.animation,
     required this.accent,
-    required this.accent2,
     required this.muted,
     required this.hairline,
     required this.label,
@@ -303,7 +294,6 @@ class _Bar extends StatelessWidget {
 
   final Animation<double> animation;
   final Color accent;
-  final Color accent2;
   final Color muted;
   final Color hairline;
   final TextStyle label;
@@ -331,35 +321,12 @@ class _Bar extends StatelessWidget {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: highlighted
-                            ? [accent, accent2.withValues(alpha: 0.72)]
-                            : [
-                                muted.withValues(alpha: 0.20),
-                                muted.withValues(alpha: 0.07),
-                              ],
-                      ),
-                      border: Border.all(
-                        color: highlighted
-                            ? accent.withValues(alpha: 0.75)
-                            : hairline,
-                      ),
-                      boxShadow: highlighted
-                          ? [
-                              BoxShadow(
-                                color: accent.withValues(alpha: 0.42),
-                                blurRadius: 20,
-                                spreadRadius: -4,
-                              ),
-                              BoxShadow(
-                                color: accent2.withValues(alpha: 0.22),
-                                blurRadius: 34,
-                                spreadRadius: -6,
-                              ),
-                            ]
-                          : null,
+                      color: highlighted
+                          ? accent
+                          : muted.withValues(alpha: 0.14),
+                      border: highlighted
+                          ? null
+                          : Border.all(color: hairline),
                     ),
                   ),
                 ),

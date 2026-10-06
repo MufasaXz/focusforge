@@ -1,23 +1,26 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../shared/widgets/glass_nav_bar.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 
 /// Shared chrome for the settings sub-screens.
 ///
-/// The seven settings screens all need the same three things — a centred glass
-/// dialog, a full-width action button and a snackbar that matches the surface
-/// it floats over. Keeping them here means the modal on the privacy screen and
-/// the modal on strict mode are the same modal, rather than two that drifted
-/// apart. It deliberately lives beside the screens instead of in
+/// The seven settings screens all need the same three things — a centred
+/// frosted dialog, a full-width action button and a snackbar that matches the
+/// surface it floats over. Keeping them here means the modal on the privacy
+/// screen and the modal on strict mode are the same modal, rather than two
+/// that drifted apart. It deliberately lives beside the screens instead of in
 /// `shared/widgets`, because nothing outside this folder uses it.
 
-/// Opens a centred glass dialog and returns its result.
+/// Opens a centred frosted dialog and returns its result.
 ///
 /// [showDialog] gives its child the full screen with tight constraints, so the
 /// centring, the width cap and the keyboard inset handling all have to be done
-/// here — a bare [GlassPanel] would stretch edge to edge.
+/// here — a bare surface would stretch edge to edge. The backdrop blur is one
+/// of the few the design allows: a modal floats over the page, and the blur is
+/// what says so.
 Future<T?> showGlassDialog<T>({
   required BuildContext context,
   required Widget Function(BuildContext context) builder,
@@ -28,6 +31,7 @@ Future<T?> showGlassDialog<T>({
     barrierDismissible: barrierDismissible,
     barrierColor: Colors.black.withValues(alpha: 0.62),
     builder: (context) {
+      final cs = Theme.of(context).colorScheme;
       final insets = MediaQuery.viewInsetsOf(context);
       return Center(
         child: SingleChildScrollView(
@@ -39,12 +43,19 @@ Future<T?> showGlassDialog<T>({
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 360),
-            child: GlassPanel(
-              level: 2,
-              blur: 20.0,
-              radius: Radii.hero,
-              padding: const EdgeInsets.all(Gap.xl),
-              child: builder(context),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.hero),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(Radii.hero),
+                  ),
+                  padding: const EdgeInsets.all(Gap.xl),
+                  child: builder(context),
+                ),
+              ),
             ),
           ),
         ),
@@ -117,7 +128,8 @@ Future<String?> showGlassInputDialog({
 /// Full-width primary action for a settings page.
 ///
 /// Destructive verbs pass [destructive] rather than a raw colour so that
-/// "delete" and "clear" cannot end up two slightly different reds.
+/// "delete" and "clear" cannot end up two slightly different reds. A caller
+/// that passes [accent] gets the secondary, outlined treatment instead.
 class GlassActionButton extends StatelessWidget {
   const GlassActionButton({
     super.key,
@@ -137,34 +149,38 @@ class GlassActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final a = accent ?? (destructive ? cs.error : cs.primary);
-    final enabled = onTap != null;
+    final a = accent;
 
-    return Pressable(
-      onTap: onTap,
-      child: GlassPanel(
-        level: 2,
-        radius: Radii.card,
-        accent: a,
-        glowStrength: enabled ? 0.55 : 0.12,
-        padding: const EdgeInsets.symmetric(vertical: Gap.lg),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 19, color: enabled ? a : cs.onSurfaceVariant),
-            const SizedBox(width: Gap.sm),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: enabled ? cs.onSurface : cs.onSurfaceVariant,
-              ),
-            ),
-          ],
+    if (a != null) {
+      return OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: a,
+          minimumSize: const Size.fromHeight(48),
         ),
-      ),
+        icon: Icon(icon),
+        label: Text(label),
+      );
+    }
+
+    return FilledButton.icon(
+      onPressed: onTap,
+      style: destructive
+          ? FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+              minimumSize: const Size.fromHeight(48),
+            )
+          : FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      icon: Icon(icon),
+      label: Text(label),
     );
   }
 }
+
+/// Height of the docked navigation bar (`navigationBarTheme` in [AppTheme])
+/// plus the gap that keeps a floating snackbar clear of it.
+const double _snackBarNavClearance = 80 + Gap.sm;
 
 /// Themed snackbar. Floating, and lifted clear of the nav bar — these screens
 /// live inside the tab shell, where a default snackbar would sit behind it.
@@ -175,14 +191,11 @@ void showGlassSnack(BuildContext context, String message) {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(
+        margin: EdgeInsets.fromLTRB(
           Gap.lg,
           Gap.lg,
           Gap.lg,
-          GlassNavBar.height + GlassNavBar.bottomInset + Gap.sm,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.item),
+          _snackBarNavClearance + MediaQuery.paddingOf(context).bottom,
         ),
       ),
     );
@@ -244,13 +257,7 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
       children: [
         Row(
           children: [
-            GlassIconBadge(
-              icon: widget.icon,
-              color: accent,
-              size: 40,
-              radius: 12,
-              glow: 0.3,
-            ),
+            IconBadge(icon: widget.icon, color: accent, size: 40, radius: 12),
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
@@ -285,7 +292,6 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
             Expanded(
               child: _DialogButton(
                 label: widget.cancelLabel,
-                accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(false),
               ),
             ),
@@ -293,7 +299,7 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
             Expanded(
               child: _DialogButton(
                 label: widget.confirmLabel,
-                accent: accent,
+                destructive: widget.destructive,
                 filled: true,
                 onTap: _canConfirm
                     ? () => Navigator.of(context).pop(true)
@@ -350,13 +356,7 @@ class _InputBodyState extends State<_InputBody> {
       children: [
         Row(
           children: [
-            GlassIconBadge(
-              icon: widget.icon,
-              color: cs.primary,
-              size: 40,
-              radius: 12,
-              glow: 0.3,
-            ),
+            IconBadge(icon: widget.icon, color: cs.primary, size: 40, radius: 12),
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
@@ -386,7 +386,6 @@ class _InputBodyState extends State<_InputBody> {
             Expanded(
               child: _DialogButton(
                 label: 'Cancel',
-                accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(),
               ),
             ),
@@ -394,7 +393,6 @@ class _InputBodyState extends State<_InputBody> {
             Expanded(
               child: _DialogButton(
                 label: widget.actionLabel,
-                accent: cs.primary,
                 filled: true,
                 onTap: value.isEmpty
                     ? null
@@ -428,8 +426,8 @@ class _DialogField extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Radii.item),
-        color: cs.surfaceContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(Radii.tile),
+        color: cs.surfaceContainerHighest,
         border: Border.all(color: cs.outlineVariant),
       ),
       child: TextField(
@@ -459,52 +457,40 @@ class _DialogField extends StatelessWidget {
 class _DialogButton extends StatelessWidget {
   const _DialogButton({
     required this.label,
-    required this.accent,
     required this.onTap,
     this.filled = false,
+    this.destructive = false,
   });
 
   final String label;
-  final Color accent;
   final VoidCallback? onTap;
   final bool filled;
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final enabled = onTap != null;
+    final text = Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
 
-    return Pressable(
-      onTap: onTap,
-      scale: 0.96,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 46,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Radii.pill),
-          color: filled
-              ? accent.withValues(alpha: enabled ? 0.22 : 0.08)
-              : cs.surfaceContainer.withValues(alpha: 0.5),
-          border: Border.all(
-            color: filled
-                ? accent.withValues(alpha: enabled ? 0.62 : 0.20)
-                : cs.outlineVariant,
-          ),
+    if (!filled) {
+      return TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+          minimumSize: const Size.fromHeight(48),
         ),
-        child: Center(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontSize: 13.5,
-              color: filled
-                  ? (enabled ? accent : cs.onSurfaceVariant)
-                  : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
+        child: text,
+      );
+    }
+
+    return FilledButton(
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: destructive ? cs.error : cs.primary,
+        foregroundColor: destructive ? cs.onError : cs.onPrimary,
+        minimumSize: const Size.fromHeight(48),
       ),
+      child: text,
     );
   }
 }

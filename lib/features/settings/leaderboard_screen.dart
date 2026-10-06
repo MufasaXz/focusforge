@@ -4,10 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
-import '../../shared/widgets/segmented_control.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
 import 'settings_support.dart';
 
 /// Weekly standings, three scopes deep.
@@ -32,16 +30,22 @@ class LeaderboardScreen extends ConsumerWidget {
     final entries = ref.watch(leaderboardProvider);
     final me = ref.watch(myRankProvider);
 
-    return GlassPage(
+    return AppPage(
       title: 'Leaderboard',
       subtitle: 'This week · ${entries.length} on the board',
       actions: [
-        SegmentedControl(
-          options: [for (final s in LeaderboardScope.values) s.label],
-          index: scope.index,
-          onChanged: (i) => ref
+        SegmentedButton<int>(
+          segments: [
+            for (var i = 0; i < LeaderboardScope.values.length; i++)
+              ButtonSegment(
+                value: i,
+                label: Text(LeaderboardScope.values[i].label),
+              ),
+          ],
+          selected: {scope.index},
+          onSelectionChanged: (selection) => ref
               .read(leaderboardScopeProvider.notifier)
-              .set(LeaderboardScope.values[i]),
+              .set(LeaderboardScope.values[selection.first]),
         ),
       ],
       child: Column(
@@ -84,21 +88,31 @@ class _SampleBoardNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: cs.onSurfaceVariant),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: Text(
-              'Only your row is real. The other standings are sample data '
-              'until the backend ships.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.md,
+          vertical: Gap.md,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              size: 16,
+              color: cs.onSurfaceVariant,
             ),
-          ),
-        ],
+            const SizedBox(width: Gap.sm),
+            Expanded(
+              child: Text(
+                'Only your row is real. The other standings are sample data '
+                'until the backend ships.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -117,40 +131,43 @@ class _Podium extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.hero,
-      blur: 18,
-      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.xl, Gap.md, Gap.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: _PodiumPlace(
-              entry: entries[1],
-              place: 2,
-              height: 64,
-              accent: cs.primary,
+    return Card.filled(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.hero),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.md, Gap.xl, Gap.md, Gap.lg),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: _PodiumPlace(
+                entry: entries[1],
+                place: 2,
+                height: 64,
+                accent: cs.primary,
+              ),
             ),
-          ),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: _PodiumPlace(
-              entry: entries[0],
-              place: 1,
-              height: 92,
-              accent: cs.tertiary,
+            const SizedBox(width: Gap.sm),
+            Expanded(
+              child: _PodiumPlace(
+                entry: entries[0],
+                place: 1,
+                height: 92,
+                accent: cs.tertiary,
+              ),
             ),
-          ),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: _PodiumPlace(
-              entry: entries[2],
-              place: 3,
-              height: 52,
-              accent: cs.secondary,
+            const SizedBox(width: Gap.sm),
+            Expanded(
+              child: _PodiumPlace(
+                entry: entries[2],
+                place: 3,
+                height: 52,
+                accent: cs.secondary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -181,12 +198,11 @@ class _PodiumPlace extends StatelessWidget {
           Icon(Icons.workspace_premium_rounded, size: 18, color: accent),
           const SizedBox(height: 4),
         ],
-        GlassIconBadge(
+        IconBadge(
           glyph: entry.initials,
           color: entry.isMe ? cs.primary : accent,
           size: top ? 54 : 44,
           radius: top ? 18 : 14,
-          glow: top ? 0.6 : 0.25,
           semanticLabel: entry.name,
         ),
         const SizedBox(height: Gap.sm),
@@ -215,14 +231,7 @@ class _PodiumPlace extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(
               top: Radius.circular(Radii.tile),
             ),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                accent.withValues(alpha: 0.34),
-                accent.withValues(alpha: 0.10),
-              ],
-            ),
+            color: accent.withValues(alpha: 0.16),
             border: Border.all(color: accent.withValues(alpha: 0.45)),
           ),
           child: Center(
@@ -248,18 +257,19 @@ class _RankedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-      child: Column(
-        children: [
-          for (var i = 3; i < entries.length; i++)
-            _RankRow(
-              rank: i + 1,
-              entry: entries[i],
-              showDivider: i < entries.length - 1,
-            ),
-        ],
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+        child: Column(
+          children: [
+            for (var i = 3; i < entries.length; i++)
+              _RankRow(
+                rank: i + 1,
+                entry: entries[i],
+                showDivider: i < entries.length - 1,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -284,57 +294,49 @@ class _RankRow extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: Gap.xs, vertical: 2),
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.md,
-            vertical: Gap.md,
-          ),
-          decoration: BoxDecoration(
-            color: isMe ? accent.withValues(alpha: 0.12) : null,
-            borderRadius: BorderRadius.circular(Radii.tile),
-            border: isMe
-                ? Border.all(color: accent.withValues(alpha: 0.35))
-                : null,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 22,
-                child: Text(
-                  '$rank',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: isMe ? accent : cs.onSurfaceVariant,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.xs, vertical: 2),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: Gap.md),
+            leading: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text(
+                    '$rank',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: isMe ? accent : cs.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
-              GlassIconBadge(
-                glyph: entry.initials,
-                color: isMe ? accent : cs.onSurfaceVariant,
-                size: 30,
-                radius: 10,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text(
-                  entry.isMe ? 'You' : entry.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: isMe ? FontWeight.w600 : FontWeight.w400,
-                  ),
+                IconBadge(
+                  glyph: entry.initials,
+                  color: isMe ? accent : cs.onSurfaceVariant,
+                  size: 30,
+                  radius: 10,
                 ),
+              ],
+            ),
+            title: Text(
+              entry.isMe ? 'You' : entry.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: isMe ? FontWeight.w600 : FontWeight.w400,
               ),
-              Text(
-                formatHours(entry.hours),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: isMe ? accent : cs.onSurface,
-                ),
+            ),
+            trailing: Text(
+              formatHours(entry.hours),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: isMe ? accent : cs.onSurface,
               ),
-            ],
+            ),
+            tileColor: isMe ? cs.primaryContainer : null,
           ),
         ),
-        if (showDivider) Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+        if (showDivider)
+          Divider(height: 1, thickness: 1, color: cs.outlineVariant),
       ],
     );
   }
@@ -357,12 +359,15 @@ class _MyRankCard extends StatelessWidget {
     final leader = entries.isEmpty ? null : entries.first;
 
     if (mine == null || leader == null) {
-      return GlassPanel(
-        radius: Radii.card,
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Text(
-          'Not on this board yet — finish a session to appear here.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+      return Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Text(
+            'Not on this board yet — finish a session to appear here.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
         ),
       );
     }
@@ -383,54 +388,67 @@ class _MyRankCard extends StatelessWidget {
       message = '${formatHours(behind)} behind ${leader.name}.';
     }
 
-    return GlassPanel(
-      level: 2,
-      radius: Radii.card,
-      blur: 20.0,
-      accent: cs.primary,
-      glowStrength: 0.5,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              GlassIconBadge(
-                icon: Icons.military_tech_rounded,
-                color: cs.primary,
-                size: 44,
-                radius: 14,
-                glow: 0.45,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('#$rank this week', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${formatHours(mine.hours)} of focused study',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+    // The old glass surface was elevated and accent-tinted; a tonal outline
+    // carries the same "this one is different" cue without a glow.
+    final progress = leader.hours <= 0
+        ? 1.0
+        : (mine.hours / leader.hours).clamp(0.0, 1.0);
+
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: cs.primary),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: Icons.military_tech_rounded,
+                  color: cs.primary,
+                  size: 44,
+                  radius: 14,
                 ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '#$rank this week',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${formatHours(mine.hours)} of focused study',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            Semantics(
+              label: 'Progress toward first place',
+              value: '${(progress * 100).round()} percent',
+              child: LinearProgressIndicator(
+                value: progress,
+                color: cs.primary,
+                backgroundColor: cs.surfaceContainerHighest,
+                minHeight: 6,
               ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          GlassProgressBar(
-            value: leader.hours <= 0 ? 1 : mine.hours / leader.hours,
-            color: cs.primary,
-            height: 6,
-            semanticLabel: 'Progress toward first place',
-          ),
-          const SizedBox(height: Gap.sm),
-          Text(message, style: Theme.of(context).textTheme.labelSmall),
-        ],
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(message, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        ),
       ),
     );
   }

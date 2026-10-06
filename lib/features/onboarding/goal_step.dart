@@ -6,7 +6,7 @@ import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -128,24 +128,35 @@ class _GoalStepState extends ConsumerState<GoalStep> {
               for (var i = 0; i < suggestions.length; i++) ...[
                 if (i > 0) const SizedBox(width: Gap.sm),
                 Expanded(
-                  child: GlassPill(
+                  child: FilterChip(
                     selected: _minutes.round() == suggestions[i],
-                    padding: const EdgeInsets.symmetric(vertical: Gap.md),
-                    onTap: () =>
+                    onSelected: (_) =>
                         setState(() => _minutes = suggestions[i].toDouble()),
-                    child: Column(
-                      children: [
-                        Text(_label(i), textAlign: TextAlign.center),
-                        const SizedBox(height: 2),
-                        Text(
-                          formatMinutes(suggestions[i]),
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: _minutes.round() == suggestions[i]
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
+                    // A two-line label; a checkmark would crowd it out.
+                    showCheckmark: false,
+                    padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+                    // The chip is stretched by its [Expanded] parent; a chip
+                    // lays its label out from the start edge, so the label
+                    // itself has to claim the full width for the two lines to
+                    // stay centred.
+                    label: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_label(i), textAlign: TextAlign.center),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatMinutes(suggestions[i]),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: _minutes.round() == suggestions[i]
+                                  ? cs.onSecondaryContainer
+                                  : cs.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -156,28 +167,32 @@ class _GoalStepState extends ConsumerState<GoalStep> {
         const SizedBox(height: Gap.xl),
         Stagger(
           index: 8,
-          child: GlassPanel(
-            level: 2,
-            radius: Radii.item,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.psychology_alt_rounded,
-                  size: 18,
-                  color: cs.secondary,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(
-                    _insight,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+          child: Card.outlined(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.item),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.lg),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.psychology_alt_rounded,
+                    size: 18,
+                    color: cs.secondary,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Text(
+                      _insight,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

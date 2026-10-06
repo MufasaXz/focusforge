@@ -1,12 +1,14 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/pressable.dart';
 import 'settings_support.dart';
 
 /// The badge cabinet.
@@ -28,16 +30,14 @@ class AchievementsScreen extends ConsumerWidget {
     final earned = badges.where((b) => b.unlocked).toList(growable: false);
     final locked = badges.where((b) => !b.unlocked).toList(growable: false);
 
-    return GlassPage(
+    return AppPage(
       title: 'Achievements',
       subtitle: '$unlocked of ${badges.length} unlocked',
-      trailing: GlassPill(
-        selected: unlocked > 0,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        child: Text(
-          '$unlocked/${badges.length}',
-          style: const TextStyle(fontSize: 12),
-        ),
+      trailing: Chip(
+        label: Text('$unlocked/${badges.length}'),
+        backgroundColor: unlocked > 0
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,7 +54,10 @@ class AchievementsScreen extends ConsumerWidget {
           SectionHeader(
             title: 'Locked',
             icon: Icons.lock_outline_rounded,
-            trailing: Text('${locked.length}', style: Theme.of(context).textTheme.labelMedium),
+            trailing: Text(
+              '${locked.length}',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
           ),
           _BadgeGrid(badges: locked),
         ],
@@ -77,46 +80,54 @@ class _ClosestBadge extends StatelessWidget {
 
     final closest = locked.reduce((a, b) => a.ratio >= b.ratio ? a : b);
 
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Row(
-        children: [
-          GlassIconBadge(
-            icon: closest.icon,
-            color: Color.lerp(closest.color, cs.onSurfaceVariant, 0.7)!,
-            size: 44,
-            radius: 13,
-          ),
-          const SizedBox(width: Gap.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Nothing unlocked yet', style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  closest.ratio >= 1
-                      ? '${closest.name} has reached its target.'
-                      : 'Closest: ${closest.name} — '
-                            '${(closest.ratio * 100).round()}% of the way '
-                            'there.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: Gap.sm),
-                GlassProgressBar(
-                  value: closest.ratio,
-                  color: closest.color,
-                  height: 5,
-                  semanticLabel: '${closest.name} progress',
-                ),
-              ],
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Row(
+          children: [
+            IconBadge(
+              icon: closest.icon,
+              color: Color.lerp(closest.color, cs.onSurfaceVariant, 0.7)!,
+              size: 44,
+              radius: 13,
             ),
-          ),
-        ],
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Nothing unlocked yet',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    closest.ratio >= 1
+                        ? '${closest.name} has reached its target.'
+                        : 'Closest: ${closest.name} — '
+                              '${(closest.ratio * 100).round()}% of the way '
+                              'there.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  Semantics(
+                    label: '${closest.name} progress',
+                    value: '${(closest.ratio * 100).round()} percent',
+                    child: LinearProgressIndicator(
+                      value: closest.ratio,
+                      color: closest.color,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      minHeight: 5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -163,65 +174,72 @@ class _BadgeTile extends StatelessWidget {
     return Pressable(
       onTap: () => _openDetail(context, badge),
       scale: 0.94,
-      child: GlassPanel(
-        radius: Radii.card,
-        accent: unlocked ? badge.color : null,
-        glowStrength: unlocked ? 0.4 : 0,
-        padding: const EdgeInsets.symmetric(
-          horizontal: Gap.sm,
-          vertical: Gap.md,
+      child: Card.outlined(
+        // An unlocked tile keeps its badge's colour on the outline; a locked
+        // one falls back to the neutral border.
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.card),
+          side: BorderSide(
+            color: unlocked
+                ? badge.color.withValues(alpha: 0.55)
+                : cs.outlineVariant,
+          ),
         ),
-        child: Column(
-          children: [
-            GlassIconBadge(
-              icon: badge.icon,
-              color: color,
-              size: 46,
-              radius: 14,
-              glow: unlocked ? 0.5 : 0,
-            ),
-            const SizedBox(height: Gap.sm),
-            Text(
-              badge.name,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontSize: 11.5,
-                color: unlocked ? cs.onSurface : cs.onSurfaceVariant,
-              ),
-            ),
-            const Spacer(),
-            if (unlocked)
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.sm,
+            vertical: Gap.md,
+          ),
+          child: Column(
+            children: [
+              IconBadge(icon: badge.icon, color: color, size: 46, radius: 14),
+              const SizedBox(height: Gap.sm),
               Text(
-                _earnedOn(badge.unlockedAt),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  color: cs.onSurfaceVariant,
-                ),
-              )
-            else ...[
-              GlassProgressBar(
-                value: badge.ratio,
-                color: color,
-                height: 4,
-                semanticLabel: '${badge.name} progress',
-              ),
-              const SizedBox(height: 5),
-              Text(
-                // The provider unlocks every met target, so a locked badge
-                // should never sit at 100%; the guard keeps a mid-refresh
-                // rebuild from rendering a full bar as a bare percentage.
-                badge.ratio >= 1
-                    ? 'Complete'
-                    : '${(badge.ratio * 100).round()}%',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  color: cs.onSurfaceVariant,
+                badge.name,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: 11.5,
+                  color: unlocked ? cs.onSurface : cs.onSurfaceVariant,
                 ),
               ),
+              const Spacer(),
+              if (unlocked)
+                Text(
+                  _earnedOn(badge.unlockedAt),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10,
+                    color: cs.onSurfaceVariant,
+                  ),
+                )
+              else ...[
+                Semantics(
+                  label: '${badge.name} progress',
+                  value: '${(badge.ratio * 100).round()} percent',
+                  child: LinearProgressIndicator(
+                    value: badge.ratio,
+                    color: color,
+                    backgroundColor: cs.surfaceContainerHighest,
+                    minHeight: 4,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  // The provider unlocks every met target, so a locked badge
+                  // should never sit at 100%; the guard keeps a mid-refresh
+                  // rebuild from rendering a full bar as a bare percentage.
+                  badge.ratio >= 1
+                      ? 'Complete'
+                      : '${(badge.ratio * 100).round()}%',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -249,12 +267,16 @@ void _openDetail(BuildContext context, Achievement badge) {
         Gap.lg,
         Gap.lg + MediaQuery.paddingOf(context).bottom,
       ),
-      child: GlassPanel(
-        level: 2,
-        blur: 20.0,
-        radius: Radii.hero,
-        padding: const EdgeInsets.all(Gap.xl),
-        child: Column(
+      // A modal sheet is one of the three places the redesign allows a real
+      // frosted blur: σ24 over a near-opaque tonal fill.
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Radii.hero),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            color: cs.surfaceContainerLow.withValues(alpha: 0.9),
+            padding: const EdgeInsets.all(Gap.xl),
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -270,12 +292,11 @@ void _openDetail(BuildContext context, Achievement badge) {
             ),
             const SizedBox(height: Gap.xl),
             Center(
-              child: GlassIconBadge(
+              child: IconBadge(
                 icon: badge.icon,
                 color: color,
                 size: 64,
                 radius: 20,
-                glow: unlocked ? 0.6 : 0,
                 semanticLabel: badge.name,
               ),
             ),
@@ -307,11 +328,15 @@ void _openDetail(BuildContext context, Achievement badge) {
                 ],
               )
             else ...[
-              GlassProgressBar(
-                value: badge.ratio,
-                color: color,
-                height: 7,
-                semanticLabel: '${badge.name} progress',
+              Semantics(
+                label: '${badge.name} progress',
+                value: '${(badge.ratio * 100).round()} percent',
+                child: LinearProgressIndicator(
+                  value: badge.ratio,
+                  color: color,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  minHeight: 7,
+                ),
               ),
               const SizedBox(height: Gap.md),
               Row(
@@ -337,6 +362,8 @@ void _openDetail(BuildContext context, Achievement badge) {
               onTap: () => Navigator.of(context).pop(),
             ),
           ],
+            ),
+          ),
         ),
       ),
     ),

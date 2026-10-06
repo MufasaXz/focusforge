@@ -22,7 +22,6 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/onboarding/subjects_step.dart';
-import 'package:focusforge/shared/widgets/glass_surface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -181,7 +180,7 @@ void main() {
         expect(stored.every((s) => s.id.isNotEmpty), isTrue);
 
         // With a shared id, removing one would silently remove both.
-        await tester.tap(find.widgetWithText(GlassPill, '!!!'));
+        await tester.tap(find.widgetWithText(FilterChip, '!!!'));
         await settle(tester);
         final remaining = container.read(subjectsProvider);
         expect(remaining.any((s) => s.name == '!!!'), isFalse);
@@ -248,7 +247,7 @@ void main() {
           reason: 'a seeded subject matching a template starts selected',
         );
 
-        await tester.tap(find.widgetWithText(GlassPill, 'Physics'));
+        await tester.tap(find.widgetWithText(FilterChip, 'Physics'));
         await settle(tester);
         expect(
           container.read(subjectsProvider).where((s) => s.id == 'physics'),
@@ -256,7 +255,7 @@ void main() {
           reason: 'deselecting a subject removes it from the store',
         );
 
-        await tester.tap(find.widgetWithText(GlassPill, 'Physics'));
+        await tester.tap(find.widgetWithText(FilterChip, 'Physics'));
         await settle(tester);
         expect(
           container.read(subjectsProvider).where((s) => s.id == 'physics'),

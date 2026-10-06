@@ -1,24 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/stagger.dart';
 
 /// Furniture shared by every onboarding step.
 ///
 /// The flow is the app's first impression, so the steps must not each invent
 /// their own button, field or snackbar — one set of primitives is what keeps
-/// seven screens looking like one product. Everything here is built from the
-/// glass system rather than Material defaults, because a stock `ElevatedButton`
-/// or a white `TextField` would read as a different app.
-
-/// Text colour that stays legible on the accent gradient. The dark theme's
-/// accents are pastels (dark text) and the light theme's are saturated (white
-/// text), so this cannot be a constant.
-Color onAccentColor(ColorScheme t) =>
-    ThemeData.estimateBrightnessForColor(t.primary) == Brightness.dark
-    ? Colors.white
-    : const Color(0xFF0C1226);
+/// seven screens looking like one product. Everything here is stock Material 3
+/// built from the scheme's own roles, so the flow sits on the same tonal
+/// surfaces as the rest of the app.
 
 /// The standard step layout: scrollable body, pinned primary action, optional
 /// secondary action and footnote.
@@ -118,7 +109,7 @@ class StepScaffold extends StatelessWidget {
   }
 }
 
-/// The flow's primary call to action — a full-width accent-gradient capsule.
+/// The flow's primary call to action — a full-width [FilledButton].
 class PrimaryAction extends StatelessWidget {
   const PrimaryAction({
     super.key,
@@ -137,51 +128,40 @@ class PrimaryAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final on = onAccentColor(t);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final active = enabled && !busy;
 
-    return Pressable(
-      onTap: active ? onTap : null,
-      child: AnimatedOpacity(
-        opacity: active ? 1 : 0.45,
-        duration: const Duration(milliseconds: 200),
-        child: GlassPanel(
-          radius: Radii.pill,
-          accent: t.primary,
-          glowStrength: active ? 0.9 : 0,
-          padding: const EdgeInsets.symmetric(vertical: Gap.lg),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [t.primary, t.secondary],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (busy)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: on),
-                )
-              else ...[
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: on,
-                    fontSize: 15,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-                if (icon != null) ...[
-                  const SizedBox(width: Gap.sm),
-                  Icon(icon, size: 18, color: on),
-                ],
-              ],
-            ],
-          ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        // Disabled and busy both read as a non-interactive button, so the
+        // spinner never competes with a live tap target.
+        onPressed: active ? onTap : null,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          textStyle: theme.textTheme.labelLarge?.copyWith(fontSize: 15),
         ),
+        child: busy
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.onSurfaceVariant,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(label),
+                  if (icon != null) ...[
+                    const SizedBox(width: Gap.sm),
+                    Icon(icon, size: 18),
+                  ],
+                ],
+              ),
       ),
     );
   }
@@ -197,21 +177,23 @@ class GhostAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    return Pressable(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Gap.md),
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+          minimumSize: const Size.fromHeight(48),
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: t.onSurfaceVariant),
-            ),
+            Text(label),
             if (icon != null) ...[
               const SizedBox(width: Gap.xs),
-              Icon(icon, size: 16, color: t.onSurfaceVariant),
+              Icon(icon, size: 16),
             ],
           ],
         ),
@@ -219,10 +201,10 @@ class GhostAction extends StatelessWidget {
     );
   }
 }
-
-/// Glass text field. Deliberately not a Material [TextField] with a themed
-/// decoration: the panel supplies the surface, so the input has no border, no
-/// fill and no elevation of its own.
+/// The flow's text field, a filled Material [TextField].
+///
+/// The tonal fill marks the input area and the primary-coloured focus border
+/// is the M3 focus tell; the field carries no elevation of its own.
 class GlassTextField extends StatelessWidget {
   const GlassTextField({
     super.key,
@@ -247,56 +229,58 @@ class GlassTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final radius = BorderRadius.circular(Radii.item);
 
-    return GlassPanel(
-      level: 2,
-      radius: Radii.item,
-      sheen: false,
-      padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
-      child: SizedBox(
-        height: 54,
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: t.onSurfaceVariant),
-              const SizedBox(width: Gap.md),
-            ],
-            Expanded(
-              child: TextField(
-                controller: controller,
-                obscureText: obscure,
-                keyboardType: keyboardType,
-                textInputAction: textInputAction,
-                onSubmitted: onSubmitted,
-                autofocus: autofocus,
-                style: Theme.of(context).textTheme.bodyLarge,
-                cursorColor: t.primary,
-                cursorRadius: const Radius.circular(Radii.pill),
-                decoration: InputDecoration.collapsed(
-                  hintText: hint,
-                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: t.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
-          ],
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
+      autofocus: autofocus,
+      style: theme.textTheme.bodyLarge,
+      cursorColor: cs.primary,
+      cursorRadius: const Radius.circular(Radii.pill),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+          color: cs.onSurfaceVariant,
+        ),
+        prefixIcon: icon == null
+            ? null
+            : Icon(icon, size: 20, color: cs.onSurfaceVariant),
+        filled: true,
+        fillColor: cs.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.lg,
+        ),
+        border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.primary, width: 1.5),
         ),
       ),
     );
   }
 }
 
-/// Floating glass snackbar. Errors from the auth service surface here with
-/// [danger] set so a failure never looks like a success.
+/// Floating snackbar. Errors from the auth service surface here with [danger]
+/// set so a failure never looks like a success.
 void showGlassSnack(
   BuildContext context,
   String message, {
   IconData icon = Icons.info_outline_rounded,
   bool danger = false,
 }) {
-  final t = Theme.of(context).colorScheme;
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
 
@@ -304,32 +288,28 @@ void showGlassSnack(
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: GlassPanel(
-          level: 2,
-          radius: Radii.item,
-          sheen: false,
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.lg,
-            vertical: Gap.md,
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: danger ? t.error : t.primary),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: t.onSurface,
-                  ),
+        content: Row(
+          children: [
+            Icon(icon, size: 18, color: danger ? cs.error : cs.primary),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        backgroundColor: Colors.transparent,
+        // A tonal surface, not the inverse one: it keeps the error and primary
+        // accents legible in both brightnesses and matches the cards below.
+        backgroundColor: cs.surfaceContainerHigh,
         elevation: 0,
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(Gap.lg),
         duration: const Duration(seconds: 4),

@@ -1,13 +1,14 @@
-import '../../app/theme/app_theme.dart';
+import '../../shared/widgets/app_page.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/shield_providers.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 import 'onboarding_state.dart';
@@ -133,30 +134,32 @@ class _AppsStepState extends ConsumerState<AppsStep> {
             index: 3 + tier,
             child: Padding(
               padding: const EdgeInsets.only(bottom: Gap.lg),
-              child: GlassPanel(
-                radius: Radii.card,
-                padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-                child: Column(
-                  children: [
-                    for (final app in SeedData.detectableApps.where(
-                      (a) => a.tier == tier,
-                    ))
-                      _AppRow(
-                        app: app,
-                        subtitle: _tierSubtitle[tier] ?? '',
-                        selected: blocked.contains(app.packageId),
-                        // Productive apps are never blocked; everything else
-                        // without a feed-shield row has nothing to arm yet.
-                        onChanged:
-                            tier == 0 &&
-                                _feedShieldFor.containsKey(app.packageId)
-                            ? (value) => unawaited(_set(app, value))
-                            : null,
-                        unsupported:
-                            tier != 2 &&
-                            !_feedShieldFor.containsKey(app.packageId),
-                      ),
-                  ],
+              child: Card.filled(
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+                  child: Column(
+                    children: [
+                      for (final app in SeedData.detectableApps.where(
+                        (a) => a.tier == tier,
+                      ))
+                        _AppRow(
+                          app: app,
+                          subtitle: _tierSubtitle[tier] ?? '',
+                          selected: blocked.contains(app.packageId),
+                          // Productive apps are never blocked; everything else
+                          // without a feed-shield row has nothing to arm yet.
+                          onChanged:
+                              tier == 0 &&
+                                  _feedShieldFor.containsKey(app.packageId)
+                              ? (value) => unawaited(_set(app, value))
+                              : null,
+                          unsupported:
+                              tier != 2 &&
+                              !_feedShieldFor.containsKey(app.packageId),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -211,61 +214,59 @@ class _AppRow extends StatelessWidget {
   /// must not read as something the user can turn on today.
   final bool unsupported;
 
+  void _toggle() {
+    final onChanged = this.onChanged;
+    if (onChanged == null) return;
+    // A flip is a commitment — the tap that made it should be felt, not just
+    // seen.
+    HapticFeedback.lightImpact();
+    onChanged(!selected);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Gap.md,
-        vertical: Gap.sm + 2,
+    return ListTile(
+      leading: IconBadge(
+        icon: app.icon,
+        color: unsupported ? t.onSurfaceVariant : app.color,
+        size: 36,
+        radius: Radii.tile,
       ),
-      child: Row(
-        children: [
-          GlassIconBadge(
-            icon: app.icon,
-            color: unsupported ? t.onSurfaceVariant : app.color,
-            size: 36,
-            radius: Radii.tile,
-          ),
-          const SizedBox(width: Gap.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  app.name,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: unsupported ? t.onSurfaceVariant : null,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: t.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: Gap.sm),
-          if (onChanged != null)
-            GlassToggle(
-              value: selected,
-              onChanged: onChanged,
-              accent: app.color,
-              semanticLabel: 'Block ${app.name} during focus',
+      title: Text(
+        app.name,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: unsupported ? t.onSurfaceVariant : null,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: t.onSurfaceVariant,
+        ),
+      ),
+      trailing: onChanged != null
+          // The switch's own semantics are excluded so a screen reader hears
+          // one labelled switch, not a bare "switch, on" in a list of twenty.
+          ? Semantics(
+              toggled: selected,
+              enabled: true,
+              label: 'Block ${app.name} during focus',
+              onTap: _toggle,
+              excludeSemantics: true,
+              child: Switch.adaptive(
+                value: selected,
+                onChanged: (_) => _toggle(),
+              ),
             )
-          else
-            _StatusNote(
+          : _StatusNote(
               icon: unsupported
                   ? Icons.construction_rounded
                   : Icons.check_circle_rounded,
               label: unsupported ? 'Not yet supported' : 'Allowed',
               color: unsupported ? t.onSurfaceVariant : t.tertiary,
             ),
-        ],
-      ),
     );
   }
 }

@@ -3,13 +3,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
 import 'settings_support.dart';
 
 /// Strict Mode — the commitment device.
@@ -35,16 +35,15 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
     final config = ref.watch(strictModeProvider);
     final hours = _draggingHours ?? config.durationMinutes / 60;
 
-    return GlassPage(
+    return AppPage(
       title: 'Strict Mode',
       subtitle: config.enabled ? 'Locked in' : 'Not active',
-      trailing: GlassPill(
-        selected: config.enabled,
-        accent: config.enabled ? cs.error : null,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        child: Text(
-          config.enabled ? 'Active' : 'Off',
-          style: const TextStyle(fontSize: 12),
+      trailing: Chip(
+        label: Text(config.enabled ? 'Active' : 'Off'),
+        backgroundColor: config.enabled ? cs.errorContainer : null,
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: config.enabled ? cs.onErrorContainer : cs.onSurfaceVariant,
         ),
       ),
       child: Column(
@@ -52,7 +51,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
         children: [
           const _WarningPanel(),
           const SizedBox(height: Gap.xl),
-          GlassSection(
+          AppSection(
             title: 'Duration',
             footnote: 'The lock holds for the whole window once it starts.',
             children: [
@@ -110,7 +109,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Emergency unlock',
             footnote: 'The window is the commitment; this is the way out.',
             children: [
@@ -146,28 +145,28 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Always allowed',
             footnote: 'These stay reachable even while Strict Mode is on.',
             children: [
               _AllowRow(
                 title: 'Phone calls',
                 subtitle: 'Incoming and outgoing',
-                icon: Icons.call_rounded,
+                icon: Icons.call_outlined,
                 value: config.allowCalls,
                 onChanged: (v) => _write(config.copyWith(allowCalls: v)),
               ),
               _AllowRow(
                 title: 'Emergency services',
                 subtitle: 'Always reachable, whatever the mode',
-                icon: Icons.health_and_safety_rounded,
+                icon: Icons.health_and_safety_outlined,
                 value: config.allowEmergency,
                 onChanged: (v) => _write(config.copyWith(allowEmergency: v)),
               ),
               _AllowRow(
                 title: 'Maps and navigation',
                 subtitle: 'Directions while you are out',
-                icon: Icons.map_rounded,
+                icon: Icons.map_outlined,
                 value: config.allowMaps,
                 onChanged: (v) => _write(config.copyWith(allowMaps: v)),
                 showDivider: false,
@@ -326,14 +325,13 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
       children: [
         Row(
           children: [
-            GlassIconBadge(
+            IconBadge(
               icon: widget.activating
                   ? Icons.lock_rounded
                   : Icons.lock_open_rounded,
               color: accent,
               size: 40,
               radius: 12,
-              glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
@@ -521,12 +519,11 @@ class _ReadyStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GlassIconBadge(
+        IconBadge(
           icon: Icons.check_rounded,
           color: accent,
           size: 48,
           radius: 14,
-          glow: 0.3,
         ),
         const SizedBox(height: Gap.md),
         Text(
@@ -634,14 +631,6 @@ class _CooldownRingPainter extends CustomPainter {
     if (fraction <= 0) return;
 
     final sweep = math.pi * 2 * fraction;
-    // A blurred copy under the arc gives the ring the same bloom the rest of
-    // the glass system uses for accents.
-    final bloom = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..color = color.withValues(alpha: 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     final arc = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
@@ -652,7 +641,6 @@ class _CooldownRingPainter extends CustomPainter {
         colors: [color, color.withValues(alpha: 0.55)],
       ).createShader(arcRect);
 
-    canvas.drawArc(arcRect, -math.pi / 2, sweep, false, bloom);
     canvas.drawArc(arcRect, -math.pi / 2, sweep, false, arc);
   }
 
@@ -661,8 +649,8 @@ class _CooldownRingPainter extends CustomPainter {
       old.fraction != fraction || old.track != track || old.color != color;
 }
 
-/// Dialog-sized action button. Mirrors the shared dialog button in
-/// `settings_support.dart`, which is private to that file.
+/// Dialog-sized action button. Mirrors the shared dialog buttons in
+/// `settings_support.dart`, which are private to that file.
 class _SheetButton extends StatelessWidget {
   const _SheetButton({
     required this.label,
@@ -679,39 +667,30 @@ class _SheetButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final enabled = onTap != null;
+    final text = Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
 
-    return Pressable(
-      onTap: onTap,
-      scale: 0.96,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 46,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Radii.pill),
-          color: filled
-              ? accent.withValues(alpha: enabled ? 0.22 : 0.08)
-              : cs.surfaceContainer.withValues(alpha: 0.5),
-          border: Border.all(
-            color: filled
-                ? accent.withValues(alpha: enabled ? 0.62 : 0.20)
-                : cs.outlineVariant,
-          ),
+    if (!filled) {
+      return TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+          minimumSize: const Size.fromHeight(48),
         ),
-        child: Center(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontSize: 13.5,
-              color: filled
-                  ? (enabled ? accent : cs.onSurfaceVariant)
-                  : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
+        child: text,
+      );
+    }
+
+    // Ending early is the destructive direction — the commitment being broken
+    // — so the fill swaps with the verb, matching the page button.
+    final destructive = accent == cs.error;
+    return FilledButton(
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: destructive ? cs.error : cs.primary,
+        foregroundColor: destructive ? cs.onError : cs.onPrimary,
+        minimumSize: const Size.fromHeight(48),
       ),
+      child: text,
     );
   }
 }
@@ -722,43 +701,45 @@ class _WarningPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.card,
-      accent: cs.error,
-      glowStrength: 0.35,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GlassIconBadge(
-            icon: Icons.warning_amber_rounded,
-            color: cs.error,
-            size: 42,
-            radius: 12,
-            glow: 0.35,
-          ),
-          const SizedBox(width: Gap.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Strict Mode locks your phone during focus.',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'You can’t change blocks or uninstall FocusForge until the '
-                  'timer expires.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            IconBadge(
+              icon: Icons.warning_amber_rounded,
+              color: cs.error,
+              size: 42,
+              radius: 12,
             ),
-          ),
-        ],
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Strict Mode locks your phone during focus.',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'You can’t change blocks or uninstall FocusForge until the '
+                    'timer expires.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -820,20 +801,32 @@ class _AllowRow extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final bool showDivider;
 
+  void _toggle(bool next) {
+    // A flip is a commitment — the tap that made it should be felt, not just
+    // seen.
+    HapticFeedback.lightImpact();
+    onChanged(next);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GlassRow(
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      showDivider: showDivider,
-      trailing: GlassToggle(
-        value: value,
-        accent: cs.tertiary,
-        semanticLabel: title,
-        onChanged: onChanged,
-      ),
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(icon),
+          title: Text(title),
+          subtitle: Text(subtitle),
+          trailing: Semantics(
+            toggled: value,
+            enabled: true,
+            label: title,
+            excludeSemantics: true,
+            onTap: () => _toggle(!value),
+            child: Switch.adaptive(value: value, onChanged: _toggle),
+          ),
+        ),
+        if (showDivider) const Divider(height: 1, indent: 56),
+      ],
     );
   }
 }

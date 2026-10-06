@@ -1,4 +1,3 @@
-import '../../app/theme/app_theme.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -9,14 +8,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/bootstrap.dart';
 import '../../app/router.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
-import '../../shared/widgets/glass_page.dart';
-import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
 import 'settings_support.dart';
 
 /// Data & Privacy — the screen that has to tell the truth about storage.
@@ -33,120 +33,102 @@ class PrivacyScreen extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final user = ref.watch(userProvider);
 
-    return GlassPage(
+    return AppPage(
       title: 'Data & Privacy',
       subtitle: 'Local-first by default',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeader(title: 'Your data', icon: Icons.lock_rounded),
-          GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GlassIconBadge(
-                  icon: Icons.smartphone_rounded,
+          AppSection(
+            title: 'Your data',
+            children: [
+              ListTile(
+                leading: IconBadge(
+                  icon: Icons.smartphone_outlined,
                   color: cs.tertiary,
                   size: 42,
                   radius: 12,
-                  glow: 0.25,
                 ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Everything stays on this device',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Focus sessions, shield events, badges and settings '
-                        'are stored locally. Usage patterns are never uploaded '
-                        'to any server.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                title: const Text('Everything stays on this device'),
+                subtitle: const Text(
+                  'Focus sessions, shield events, badges and settings '
+                  'are stored locally. Usage patterns are never uploaded '
+                  'to any server.',
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: Gap.xl),
-          GlassSection(
+          AppSection(
             title: 'What’s in the cloud',
             footnote: user.isAnonymous
                 ? 'You are signed in anonymously, so nothing is synced yet. '
                       'Linking an account is what turns these on.'
                 : 'Synced with your linked account.',
             children: const [
-              GlassRow(
-                title: 'Your profile',
-                subtitle: 'Display name and avatar',
-                icon: Icons.person_rounded,
+              ListTile(
+                title: Text('Your profile'),
+                subtitle: Text('Display name and avatar'),
+                leading: Icon(Icons.person_outline),
               ),
-              GlassRow(
-                title: 'Study group membership',
-                subtitle: 'Which groups you belong to',
-                icon: Icons.groups_rounded,
+              ListTile(
+                title: Text('Study group membership'),
+                subtitle: Text('Which groups you belong to'),
+                leading: Icon(Icons.groups_outlined),
               ),
-              GlassRow(
-                title: 'Leaderboard scores',
-                subtitle: 'Weekly focus hours only',
-                icon: Icons.leaderboard_rounded,
+              ListTile(
+                title: Text('Leaderboard scores'),
+                subtitle: Text('Weekly focus hours only'),
+                leading: Icon(Icons.leaderboard_outlined),
               ),
-              GlassRow(
-                title: 'Shield preferences',
-                subtitle: 'So your blocks follow you between devices',
-                icon: Icons.shield_rounded,
-                showDivider: false,
+              ListTile(
+                title: Text('Shield preferences'),
+                subtitle: Text('So your blocks follow you between devices'),
+                leading: Icon(Icons.shield_outlined),
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Actions',
             children: [
-              GlassRow(
-                title: 'Export all data (JSON)',
-                subtitle: kIsWeb
-                    ? 'Copies every stored key to the clipboard'
-                    : 'Preview and copy every stored key',
-                icon: Icons.ios_share_rounded,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('Export all data (JSON)'),
+                subtitle: Text(
+                  kIsWeb
+                      ? 'Copies every stored key to the clipboard'
+                      : 'Preview and copy every stored key',
+                ),
+                leading: const Icon(Icons.ios_share),
+                trailing: const AppChevron(),
                 onTap: () => _export(context, ref),
               ),
-              GlassRow(
-                title: 'Clear local analytics',
-                subtitle: 'Removes focus history, totals and subject progress',
-                icon: Icons.cleaning_services_rounded,
-                iconColor: cs.error,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('Clear local analytics'),
+                subtitle: const Text(
+                  'Removes focus history, totals and subject progress',
+                ),
+                leading: Icon(
+                  Icons.cleaning_services_outlined,
+                  color: cs.error,
+                ),
+                trailing: const AppChevron(),
                 onTap: () => _clearAnalytics(context, ref),
               ),
-              GlassRow(
-                title: 'Delete account',
-                subtitle: 'Erases every local record',
-                icon: Icons.delete_outline_rounded,
-                iconColor: cs.error,
-                trailing: const GlassChevron(),
-                showDivider: false,
+              ListTile(
+                title: const Text('Delete account'),
+                subtitle: const Text('Erases every local record'),
+                leading: Icon(Icons.delete_outline, color: cs.error),
+                trailing: const AppChevron(),
                 onTap: () => _deleteAccount(context, ref),
               ),
             ],
           ),
-          GlassSection(
+          AppSection(
             title: 'Legal',
             children: [
-              GlassRow(
-                title: 'Privacy policy',
-                icon: Icons.privacy_tip_rounded,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('Privacy policy'),
+                leading: const Icon(Icons.privacy_tip_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _showInfo(
                   context,
                   title: 'Privacy policy',
@@ -160,10 +142,10 @@ class PrivacyScreen extends ConsumerWidget {
                       'everything from this screen at any time.',
                 ),
               ),
-              GlassRow(
-                title: 'Terms of service',
-                icon: Icons.gavel_rounded,
-                trailing: const GlassChevron(),
+              ListTile(
+                title: const Text('Terms of service'),
+                leading: const Icon(Icons.gavel_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _showInfo(
                   context,
                   title: 'Terms of service',
@@ -175,12 +157,11 @@ class PrivacyScreen extends ConsumerWidget {
                       'your data; the app claims no licence over it.',
                 ),
               ),
-              GlassRow(
-                title: 'Open source licences',
-                subtitle: 'Flutter, Riverpod and bundled assets',
-                icon: Icons.article_rounded,
-                trailing: const GlassChevron(),
-                showDivider: false,
+              ListTile(
+                title: const Text('Open source licences'),
+                subtitle: const Text('Flutter, Riverpod and bundled assets'),
+                leading: const Icon(Icons.article_outlined),
+                trailing: const AppChevron(),
                 onTap: () => _showLicences(context),
               ),
             ],
@@ -342,12 +323,11 @@ class _ExportBody extends StatelessWidget {
       children: [
         Row(
           children: [
-            GlassIconBadge(
+            IconBadge(
               icon: Icons.description_rounded,
               color: cs.primary,
               size: 40,
               radius: 12,
-              glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(
@@ -365,7 +345,7 @@ class _ExportBody extends StatelessWidget {
           height: 220,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.item),
-            color: cs.surfaceContainer.withValues(alpha: 0.45),
+            color: cs.surfaceContainerHigh,
             border: Border.all(color: cs.outlineVariant),
           ),
           child: SingleChildScrollView(
@@ -426,12 +406,11 @@ class _InfoBody extends StatelessWidget {
       children: [
         Row(
           children: [
-            GlassIconBadge(
+            IconBadge(
               icon: Icons.article_rounded,
               color: cs.primary,
               size: 40,
               radius: 12,
-              glow: 0.3,
             ),
             const SizedBox(width: Gap.md),
             Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),

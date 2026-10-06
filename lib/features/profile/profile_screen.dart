@@ -12,13 +12,12 @@ import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/auth_service.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/glass_toggle.dart';
+import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
-import '../../shared/widgets/segmented_control.dart';
 import '../../shared/widgets/stagger.dart';
 import 'widgets/edit_profile_sheet.dart';
-import 'widgets/glass_button.dart';
 import 'widgets/subject_target_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
@@ -54,44 +53,44 @@ class ProfileScreen extends ConsumerWidget {
     // from the data the destination screens show.
     final settings = <_SettingSpec>[
       _SettingSpec(
-        icon: Icons.groups_rounded,
+        icon: Icons.groups_outlined,
         label: 'Study Groups',
         routeName: AppRoutes.groups,
         trailing: '${groups.length} active',
         locked: user.isAnonymous,
       ),
       _SettingSpec(
-        icon: Icons.emoji_events_rounded,
+        icon: Icons.emoji_events_outlined,
         label: 'Achievements',
         routeName: AppRoutes.achievements,
         trailing: '$unlocked / ${achievements.length}',
       ),
       _SettingSpec(
-        icon: Icons.leaderboard_rounded,
+        icon: Icons.leaderboard_outlined,
         label: 'Leaderboard',
         routeName: AppRoutes.leaderboard,
         trailing: rank == null ? null : '#$rank',
         locked: user.isAnonymous,
       ),
       _SettingSpec(
-        icon: Icons.lock_rounded,
+        icon: Icons.lock_outlined,
         label: 'Strict Mode',
         routeName: AppRoutes.strictMode,
         trailing: strict.enabled ? 'On' : 'Off',
         trailingColor: strict.enabled ? t.error : null,
       ),
       _SettingSpec(
-        icon: Icons.notifications_active_rounded,
+        icon: Icons.notifications_active_outlined,
         label: 'Notifications',
         routeName: AppRoutes.notifications,
       ),
       _SettingSpec(
-        icon: Icons.shield_rounded,
+        icon: Icons.shield_outlined,
         label: 'Data & Privacy',
         routeName: AppRoutes.privacy,
       ),
       _SettingSpec(
-        icon: Icons.info_rounded,
+        icon: Icons.info_outlined,
         label: 'About FocusForge',
         routeName: AppRoutes.about,
         trailing: 'v$_appVersion',
@@ -133,7 +132,7 @@ class ProfileScreen extends ConsumerWidget {
             index: 2,
             child: SectionHeader(
               title: 'Weekly study goals',
-              icon: Icons.flag_rounded,
+              icon: Icons.flag_outlined,
               trailing: Text(
                 'Tap to edit',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.onSurfaceVariant),
@@ -165,7 +164,7 @@ class ProfileScreen extends ConsumerWidget {
             index: 4,
             child: SectionHeader(
               title: 'Appearance',
-              icon: Icons.palette_rounded,
+              icon: Icons.palette_outlined,
             ),
           ),
           const Stagger(index: 5, child: _AppearanceCard()),
@@ -176,17 +175,15 @@ class ProfileScreen extends ConsumerWidget {
             index: 6,
             child: SectionHeader(
               title: 'Settings',
-              icon: Icons.settings_rounded,
+              icon: Icons.settings_outlined,
             ),
           ),
           Stagger(
             index: 7,
-            child: GlassPanel(
-              radius: Radii.card,
-              padding: const EdgeInsets.symmetric(
-                horizontal: Gap.lg,
-                vertical: Gap.xs,
-              ),
+            child: Card.filled(
+              // Without this the tile ripples paint square corners over the
+              // card's rounded ones.
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   for (var i = 0; i < settings.length; i++) ...[
@@ -205,19 +202,18 @@ class ProfileScreen extends ConsumerWidget {
           // Developer ------------------------------------------------------------
           const Stagger(
             index: 8,
-            child: SectionHeader(title: 'Developer', icon: Icons.build_rounded),
+            child: SectionHeader(
+              title: 'Developer',
+              icon: Icons.build_outlined,
+            ),
           ),
           Stagger(
             index: 9,
-            child: GlassPanel(
-              radius: Radii.card,
-              padding: const EdgeInsets.symmetric(
-                horizontal: Gap.lg,
-                vertical: Gap.xs,
-              ),
+            child: Card.filled(
+              clipBehavior: Clip.antiAlias,
               child: _SettingTile(
                 spec: const _SettingSpec(
-                  icon: Icons.restart_alt_rounded,
+                  icon: Icons.restart_alt_outlined,
                   label: 'Replay onboarding',
                   subtitle: 'Run the first-launch flow again',
                 ),
@@ -264,113 +260,122 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.hero,
-      blur: 18,
-      padding: const EdgeInsets.all(Gap.xl),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Avatar(user: user),
-              const SizedBox(width: Gap.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.displayName.trim().isEmpty
-                          ? 'Your profile'
-                          : user.displayName,
-                      style: Theme.of(context).textTheme.titleLarge,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: Gap.sm),
-                    GlassPill(
-                      selected: true,
-                      accent: user.persona.color,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Gap.md,
-                        vertical: 5,
+    return Card.filled(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.hero),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.xl),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Avatar(user: user),
+                const SizedBox(width: Gap.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.displayName.trim().isEmpty
+                            ? 'Your profile'
+                            : user.displayName,
+                        style: Theme.of(context).textTheme.titleLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            user.persona.icon,
-                            size: 12,
-                            color: user.persona.color,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            user.persona.label,
-                            style: const TextStyle(fontSize: 11.5),
-                          ),
-                        ],
+                      const SizedBox(height: Gap.sm),
+                      // Tonal container built from the persona colour, the
+                      // same pairing [IconBadge] uses.
+                      Chip(
+                        backgroundColor: harmonize(user.persona.color, t.primary).withValues(
+                          alpha: 0.16,
+                        ),
+                        avatar: Icon(
+                          user.persona.icon,
+                          size: 13,
+                          color: harmonize(user.persona.color, t.primary),
+                        ),
+                        label: Text(
+                          user.persona.label,
+                          style: const TextStyle(fontSize: 11.5),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                const _EditProfileButton(),
+              ],
+            ),
+            const SizedBox(height: Gap.xl),
+            Row(
+              children: [
+                Expanded(
+                  child: _HeroStat(
+                    value: '${stats.totalFocusHours.round()}h',
+                    label: 'Total focus',
+                  ),
+                ),
+                _Divider(t: t),
+                Expanded(
+                  child: _HeroStat(
+                    value: '${stats.currentStreak}',
+                    label: 'Day streak',
+                    accent: t.tertiary,
+                  ),
+                ),
+                _Divider(t: t),
+                Expanded(
+                  child: _HeroStat(
+                    value: '$unlocked/$totalBadges',
+                    label: 'Badges',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.xl),
+            Row(
+              children: [
+                Text(
+                  'Level ${stats.level}',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const Spacer(),
+                Text(
+                  '${stats.xp} / ${stats.xpForNext} XP',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.sm),
+            Semantics(
+              label:
+                  'Level ${stats.level}, ${stats.xp} of ${stats.xpForNext} XP',
+              value: '${(stats.levelProgress * 100).round()} percent',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.pill),
+                child: LinearProgressIndicator(
+                  value: stats.levelProgress,
+                  color: t.secondary,
+                  backgroundColor: t.surfaceContainerHighest,
+                  minHeight: 7,
                 ),
               ),
-              const SizedBox(width: Gap.sm),
-              const _EditProfileButton(),
-            ],
-          ),
-          const SizedBox(height: Gap.xl),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroStat(
-                  value: '${stats.totalFocusHours.round()}h',
-                  label: 'Total focus',
-                ),
-              ),
-              _Divider(t: t),
-              Expanded(
-                child: _HeroStat(
-                  value: '${stats.currentStreak}',
-                  label: 'Day streak',
-                  accent: t.tertiary,
-                ),
-              ),
-              _Divider(t: t),
-              Expanded(
-                child: _HeroStat(
-                  value: '$unlocked/$totalBadges',
-                  label: 'Badges',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.xl),
-          Row(
-            children: [
-              Text('Level ${stats.level}', style: Theme.of(context).textTheme.titleSmall),
-              const Spacer(),
-              Text(
-                '${stats.xp} / ${stats.xpForNext} XP',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.sm),
-          GlassProgressBar(
-            value: stats.levelProgress,
-            color: t.secondary,
-            height: 7,
-            semanticLabel:
-                'Level ${stats.level}, ${stats.xp} of ${stats.xpForNext} XP',
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Persona-coloured initials disc. The initials are decoration; the spoken
-/// label carries the identity.
+/// Initials disc on the primary tonal container. The initials are decoration;
+/// the spoken label carries the identity.
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.user});
 
@@ -379,9 +384,6 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    final ink = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF0A1020)
-        : Colors.white;
     final label = user.displayName.trim().isEmpty
         ? 'Profile avatar'
         : 'Avatar for ${user.displayName}';
@@ -390,33 +392,14 @@ class _Avatar extends StatelessWidget {
       image: true,
       label: label,
       excludeSemantics: true,
-      child: Container(
-        width: 74,
-        height: 74,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              t.primary.withValues(alpha: 0.85),
-              t.secondary.withValues(alpha: 0.85),
-            ],
-          ),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: t.primary.withValues(alpha: 0.35),
-              blurRadius: 22,
-              spreadRadius: -4,
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
+      child: CircleAvatar(
+        radius: 37,
+        backgroundColor: t.primaryContainer,
+        foregroundColor: t.onPrimaryContainer,
         child: Text(
           user.initials,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ink,
+            color: t.onPrimaryContainer,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -440,7 +423,7 @@ class _EditProfileButton extends StatelessWidget {
       onTap: open,
       child: Pressable(
         onTap: open,
-        child: GlassIconBadge(
+        child: IconBadge(
           icon: Icons.edit_rounded,
           color: t.primary,
           size: 36,
@@ -495,66 +478,90 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.all(Gap.lg),
-      accent: t.primary,
-      glowStrength: 0.2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GlassIconBadge(
-                icon: Icons.smartphone_rounded,
-                color: t.primary,
-                size: 40,
-                radius: 12,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Local account', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      'You are using a local account. Everything you log stays '
-                      'on this device and is never uploaded.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: t.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+    return Card.outlined(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconBadge(
+                  icon: Icons.smartphone_rounded,
+                  color: t.primary,
+                  size: 40,
+                  radius: 12,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.lock_rounded, size: 14, color: t.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Study groups and the leaderboard need a linked account.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: t.onSurfaceVariant,
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Local account',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'You are using a local account. Everything you log '
+                        'stays on this device and is never uploaded.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: t.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outlined, size: 14, color: t.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Study groups and the leaderboard need a linked account.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: t.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            Semantics(
+              button: true,
+              enabled: !_busy,
+              label: 'Link an account',
+              // The visible label already says it; without this the row is
+              // announced twice.
+              excludeSemantics: true,
+              child: FilledButton(
+                onPressed: _busy ? null : _link,
+                child: _busy
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: t.onSurfaceVariant,
+                        ),
+                      )
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.link_rounded, size: 18),
+                          SizedBox(width: Gap.sm),
+                          Text('Link an account'),
+                        ],
+                      ),
               ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          GlassButton(
-            label: 'Link an account',
-            icon: Icons.link_rounded,
-            busy: _busy,
-            onTap: _link,
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -570,38 +577,47 @@ class _AppearanceCard extends ConsumerWidget {
     final t = Theme.of(context).colorScheme;
     final pref = ref.watch(themeProvider);
 
-    return GlassPanel(
-      radius: Radii.card,
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              GlassIconBadge(
-                icon: pref.icon,
-                color: t.secondary,
-                size: 36,
-                radius: 10,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text('Appearance', style: Theme.of(context).textTheme.bodyLarge),
-              ),
-              Text(
-                pref.label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.onSurfaceVariant),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          SegmentedControl(
-            options: [for (final p in ThemePreference.values) p.label],
-            index: pref.index,
-            accent: t.secondary,
-            onChanged: (i) =>
-                ref.read(themeProvider.notifier).set(ThemePreference.values[i]),
-          ),
-        ],
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: pref.icon,
+                  color: t.secondary,
+                  size: 36,
+                  radius: 10,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(
+                    'Appearance',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+                Text(
+                  pref.label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: t.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            SegmentedButton<int>(
+              segments: [
+                for (final p in ThemePreference.values)
+                  ButtonSegment(value: p.index, label: Text(p.label)),
+              ],
+              selected: {pref.index},
+              onSelectionChanged: (selection) => ref
+                  .read(themeProvider.notifier)
+                  .set(ThemePreference.values[selection.first]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -630,46 +646,54 @@ class _SubjectGoalCard extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.97,
-        child: GlassPanel(
-          radius: Radii.card,
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.lg,
-            vertical: Gap.md,
-          ),
-          child: Row(
-            children: [
-              MiniRing(
-                value: s.weekProgress,
-                color: s.color,
-                size: 54,
-                label: '${(s.weekProgress * 100).round()}%',
-              ),
-              const SizedBox(width: Gap.md),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(s.icon, size: 13, color: s.color),
-                      const SizedBox(width: 6),
-                      Text(s.name, style: Theme.of(context).textTheme.titleSmall),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Text(
-                        '${_hours(s.weekDone)} / ${_hours(s.weekTarget)}',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(Icons.tune_rounded, size: 12, color: t.onSurfaceVariant),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+        child: Card.filled(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.lg,
+              vertical: Gap.md,
+            ),
+            child: Row(
+              children: [
+                MiniRing(
+                  value: s.weekProgress,
+                  color: s.color,
+                  size: 54,
+                  label: '${(s.weekProgress * 100).round()}%',
+                ),
+                const SizedBox(width: Gap.md),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(s.icon, size: 13, color: s.color),
+                        const SizedBox(width: 6),
+                        Text(
+                          s.name,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text(
+                          '${_hours(s.weekDone)} / ${_hours(s.weekTarget)}',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 12,
+                          color: t.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -709,64 +733,34 @@ class _SettingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    return Pressable(
+    return ListTile(
       onTap: onTap,
-      scale: 0.985,
-      child: ConstrainedBox(
-        // Material's minimum target. The icon badge already carries the row
-        // past 48dp; the constraint keeps that true if the badge shrinks.
-        constraints: const BoxConstraints(minHeight: 48),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: Gap.md),
-          child: Row(
-            children: [
-              GlassIconBadge(
-                icon: spec.icon,
-                color: t.primary,
-                size: 36,
-                radius: 10,
+      leading: IconBadge(
+        icon: spec.icon,
+        color: t.primary,
+        size: 36,
+        radius: 10,
+      ),
+      title: Text(spec.label),
+      subtitle: spec.subtitle == null ? null : Text(spec.subtitle!),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (spec.locked) ...[
+            Icon(Icons.lock_outlined, size: 14, color: t.onSurfaceVariant),
+            const SizedBox(width: 6),
+          ],
+          if (spec.trailing != null) ...[
+            Text(
+              spec.trailing!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: spec.trailingColor ?? t.onSurfaceVariant,
               ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(spec.label, style: Theme.of(context).textTheme.bodyLarge),
-                    if (spec.subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1),
-                        child: Text(
-                          spec.subtitle!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: t.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (spec.locked) ...[
-                Icon(Icons.lock_rounded, size: 14, color: t.onSurfaceVariant),
-                const SizedBox(width: 6),
-              ],
-              if (spec.trailing != null) ...[
-                Text(
-                  spec.trailing!,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: spec.trailingColor ?? t.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: t.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
+            ),
+            const SizedBox(width: 6),
+          ],
+          const AppChevron(),
+        ],
       ),
     );
   }

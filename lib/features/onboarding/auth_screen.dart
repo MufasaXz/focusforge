@@ -7,8 +7,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/services/auth_service.dart';
-import '../../shared/widgets/glass_surface.dart';
-import '../../shared/widgets/mesh_background.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -22,7 +21,7 @@ import 'onboarding_chrome.dart';
 ///
 /// It is also routed at `/auth` on its own, so it must stand up without the
 /// onboarding flow around it — hence [embedded], which suppresses the scaffold
-/// and canvas the flow already provides.
+/// the flow already provides.
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key, this.embedded = false, this.onAuthenticated});
 
@@ -123,8 +122,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final profile = await showModalBottomSheet<UserProfile>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      showDragHandle: true,
       builder: (_) => _EmailSheet(service: _auth),
     );
     if (profile == null || !mounted) return;
@@ -138,14 +136,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (widget.embedded) return content;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: MeshBackground(
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: content,
-            ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: content,
           ),
         ),
       ),
@@ -170,12 +165,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           const Spacer(flex: 2),
           Stagger(
             index: 0,
-            child: GlassIconBadge(
+            child: IconBadge(
               icon: Icons.local_fire_department_rounded,
               color: cs.primary,
               size: 64,
               radius: Radii.card,
-              glow: 0.7,
             ),
           ),
           const SizedBox(height: Gap.xl),
@@ -277,8 +271,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 }
 
-/// One provider row. A glass panel rather than a filled Material button, so
-/// the three options read as choices on the same surface as everything else.
+/// One provider row. A tonal card row rather than a filled button, so the
+/// three options read as choices on the same surface as everything else.
 class _AuthButton extends StatelessWidget {
   const _AuthButton({
     required this.label,
@@ -297,47 +291,41 @@ class _AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-    return Opacity(
-      opacity: onTap == null ? 0.45 : 1,
-      child: Pressable(
+    return Card.outlined(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: ListTile(
         onTap: busy ? null : onTap,
-        child: GlassPanel(
-          level: 2,
-          radius: Radii.item,
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.lg,
-            vertical: Gap.md,
-          ),
-          child: Row(
-            children: [
-              GlassIconBadge(
-                icon: icon,
-                color: cs.primary,
-                size: 34,
-                radius: Radii.tile,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
-              if (busy)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: cs.primary,
-                  ),
-                )
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: cs.onSurfaceVariant,
-                ),
-            ],
-          ),
+        // Null makes the row informational: the provider is explained rather
+        // than hidden, and the disabled palette says so.
+        enabled: onTap != null,
+        leading: IconBadge(
+          icon: icon,
+          color: cs.primary,
+          size: 34,
+          radius: Radii.tile,
         ),
+        title: Text(label, style: theme.textTheme.titleSmall),
+        trailing: busy
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.primary,
+                ),
+              )
+            : Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: cs.onSurfaceVariant,
+              ),
       ),
     );
   }
@@ -430,71 +418,54 @@ class _EmailSheetState extends State<_EmailSheet> {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, Gap.md + keyboard),
-      child: GlassPanel(
-        level: 2,
-        radius: Radii.hero,
-        blur: 20.0,
-        padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.xl),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-              Text(
-                _signUp ? 'Create your account' : 'Sign in with email',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: Gap.xs),
-              Text(
-                'Stored on this device for now — nothing is sent to a server.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: Gap.xl),
-              GlassTextField(
-                controller: _email,
-                hint: 'you@example.com',
-                icon: Icons.alternate_email_rounded,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autofocus: true,
-              ),
-              const SizedBox(height: Gap.md),
-              GlassTextField(
-                controller: _password,
-                hint: 'Password',
-                icon: Icons.lock_outline_rounded,
-                obscure: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-              ),
-              const SizedBox(height: Gap.xl),
-              PrimaryAction(
-                label: _signUp ? 'Create account' : 'Sign in',
-                busy: _busy,
-                onTap: _submit,
-              ),
-              const SizedBox(height: Gap.xs),
-              GhostAction(
-                label: _signUp
-                    ? 'I already have an account'
-                    : 'Create an account instead',
-                onTap: () => setState(() => _signUp = !_signUp),
-              ),
-              GhostAction(label: 'Forgot password?', onTap: _reset),
-            ],
-          ),
+      padding: EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.xl + keyboard),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _signUp ? 'Create your account' : 'Sign in with email',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: Gap.xs),
+            Text(
+              'Stored on this device for now — nothing is sent to a server.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.xl),
+            GlassTextField(
+              controller: _email,
+              hint: 'you@example.com',
+              icon: Icons.alternate_email_rounded,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofocus: true,
+            ),
+            const SizedBox(height: Gap.md),
+            GlassTextField(
+              controller: _password,
+              hint: 'Password',
+              icon: Icons.lock_outline_rounded,
+              obscure: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: Gap.xl),
+            PrimaryAction(
+              label: _signUp ? 'Create account' : 'Sign in',
+              busy: _busy,
+              onTap: _submit,
+            ),
+            const SizedBox(height: Gap.xs),
+            GhostAction(
+              label: _signUp
+                  ? 'I already have an account'
+                  : 'Create an account instead',
+              onTap: () => setState(() => _signUp = !_signUp),
+            ),
+            GhostAction(label: 'Forgot password?', onTap: _reset),
+          ],
         ),
       ),
     );
