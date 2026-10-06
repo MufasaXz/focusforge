@@ -146,6 +146,10 @@ class ShieldBridge(
                 }
             }
 
+            "protectedPackages" -> result.success(
+                FocusAccessibilityService.protectedPackages(context).toList(),
+            )
+
             "blockedApp" -> result.success(takeLaunch())
 
             else -> result.notImplemented()

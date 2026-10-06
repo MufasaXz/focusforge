@@ -46,11 +46,25 @@ class FocusAccessibilityService : AccessibilityService() {
         /** How long a passing window gets before the block screen comes down. */
         private const val DISMISS_CONFIRM_MS = 400L
 
+        /**
+         * How often a live block screen re-checks itself.
+         *
+         * Nothing in the framework promises an overlay stays up: the system can
+         * take one away when a window it belongs to changes, and a service that
+         * only re-decides on window events would never notice. Half a second is
+         * short enough that a dropped block is invisible and long enough that
+         * the check costs nothing.
+         */
+        private const val WATCHDOG_MS = 500L
+
         /** Bound on the YouTube window walk, so a deep tree cannot stall the
          *  launch path it is running on. */
         private const val MAX_NODES = 400
 
         private const val YOUTUBE = "com.google.android.youtube"
+
+        /** The status bar, the shade and the volume panel. */
+        private const val SYSTEM_UI = "com.android.systemui"
 
         /**
          * View ids that only exist while the Shorts player is on screen.
@@ -76,6 +90,43 @@ class FocusAccessibilityService : AccessibilityService() {
         @Volatile
         var instance: FocusAccessibilityService? = null
             private set
+
+        /**
+         * The packages the shield will never cover, whatever the rules say.
+         *
+         * Exposed so the app can say so on the row instead of offering a switch
+         * that silently does nothing. Built from the same three lookups the
+         * running service uses — this is deliberately the *only* definition, so
+         * the list the user sees and the list the engine enforces cannot drift
+         * apart.
+         */
+        fun protectedPackages(context: Context): Set<String> = setOfNotNull(
+            context.packageName,
+            SYSTEM_UI,
+            "com.android.settings",
+            homePackageOf(context),
+            inputMethodPackageOf(context),
+        )
+
+        /** Where Home goes — the launcher, or whatever the user replaced it with. */
+        fun homePackageOf(context: Context): String? = try {
+            Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .resolveActivity(context.packageManager)
+                ?.packageName
+        } catch (_: Exception) {
+            null
+        }
+
+        /** The keyboard. Covering it would make every text field unusable. */
+        fun inputMethodPackageOf(context: Context): String? = try {
+            Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.DEFAULT_INPUT_METHOD,
+            )?.substringBefore('/')?.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
 
         /**
          * True when the user has enabled this service in Android's settings.
@@ -170,9 +221,54 @@ class FocusAccessibilityService : AccessibilityService() {
      */
     private val exempt = linkedSetOf<String>()
 
+    /**
+     * Where Home goes. The one exempt package that means "the user left":
+     * everything else in the set can raise a window event while the covered app
+     * is still the one being looked at.
+     */
+    private var homePackage: String? = null
+
+    /** The keyboard, which is never a destination either. */
+    private var imePackage: String? = null
+
     /** The package the current block screen is covering, if any. */
     private var blockedPackage: String? = null
+
+    /** Why it is covered, so the watchdog can put the screen back unchanged. */
+    private var blockedReason: String? = null
     private var overlay: View? = null
+
+    /**
+     * Keeps a live block screen up.
+     *
+     * Started when the screen goes up and cancelled when it comes down, so it
+     * costs nothing while the user is not being blocked. It exists because a
+     * block that has quietly stopped working is worse than no block at all: the
+     * user believes the app is closed and it is not.
+     */
+    private val watchdog = object : Runnable {
+        override fun run() {
+            val covered = blockedPackage ?: return
+            val front = foregroundPackage()
+
+            if (front != null && front != covered && front !in transient()) {
+                // The user really did move on.
+                dismissOverlay()
+                decide(front)
+                return
+            }
+
+            val view = overlay
+            if (view == null || !view.isAttachedToWindow) {
+                // Taken away under us. Put it back with the reason it had.
+                val reason = blockedReason ?: return
+                showOverlay(covered, reason)
+                return
+            }
+
+            handler.postDelayed(this, WATCHDOG_MS)
+        }
+    }
 
     /** In-memory, so a kill or a restart clears it. That is the right lifetime
      *  for "you asked for five minutes of access". */
@@ -234,8 +330,8 @@ class FocusAccessibilityService : AccessibilityService() {
      * unrestricted.
      */
     fun recheckForeground() {
-        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
-        if (front.isEmpty() || front in exempt) return
+        val front = foregroundPackage() ?: return
+        if (front in exempt) return
         lastPackage = null
         lastCheckAt = 0L
         decide(front)
@@ -261,24 +357,42 @@ class FocusAccessibilityService : AccessibilityService() {
         // Some OEM builds hand over a windows-changed event with no package on
         // it. There is nothing to decide without one, and guessing would mean
         // covering whatever happened to be in front.
-        val packageName = event.packageName?.toString().orEmpty()
-        if (packageName.isEmpty()) return
+        //
+        // Named `foreground` rather than `packageName` on purpose: the service
+        // has a `packageName` of its own, and shadowing it is how "is this the
+        // block screen?" turns into a comparison against the wrong thing.
+        val foreground = event.packageName?.toString().orEmpty()
+        if (foreground.isEmpty()) return
 
-        if (packageName in exempt) {
-            // Moving into a window we never cover means a screen that is up is
-            // now stale.
-            if (blockedPackage != null) dismissOverlay()
+        // The block screen is one of our own windows, and adding or removing it
+        // raises window events of its own. Reading those as "the user moved on"
+        // is how the shield used to dismiss itself a moment after appearing, so
+        // our own package is not news: there is nothing to decide about it.
+        if (foreground == packageName) return
+
+        if (foreground in exempt) {
+            if (blockedPackage != null) {
+                // Home is the one exempt package that means the user left; the
+                // rest — the keyboard, the status bar — can raise an event while
+                // the covered app is still the one in front, so they get the
+                // deferred check rather than an immediate teardown.
+                if (foreground == homePackage) {
+                    dismissOverlay()
+                } else {
+                    confirmDismissal()
+                }
+            }
             return
         }
 
         // One launch produces a burst of window events. Re-deciding the same
         // package within a few frames is pure cost.
         val now = SystemClock.uptimeMillis()
-        if (packageName == lastPackage && now - lastCheckAt < DEBOUNCE_MS) return
-        lastPackage = packageName
+        if (foreground == lastPackage && now - lastCheckAt < DEBOUNCE_MS) return
+        lastPackage = foreground
         lastCheckAt = now
 
-        if (blockedPackage == packageName) return
+        if (blockedPackage == foreground) return
 
         // Something other than the covered app is in front. That is *not* on
         // its own a reason to take the block screen down: system dialogs, the
@@ -289,15 +403,19 @@ class FocusAccessibilityService : AccessibilityService() {
         // glitching and restarting. So the dismissal is deferred and confirmed
         // against what is actually in front by then.
         if (blockedPackage != null) {
-            confirmDismissal(packageName)
+            confirmDismissal()
             return
         }
 
-        decide(packageName)
+        decide(foreground)
     }
 
     /** Decides whether [packageName] should be covered, and covers it. */
     private fun decide(packageName: String) {
+        // Already covered by this exact screen. Re-showing it would take it
+        // down and put it back for no reason, which is a visible flash.
+        if (blockedPackage == packageName) return
+
         val now = SystemClock.uptimeMillis()
         if (now < (graceUntil[packageName] ?: 0L)) return
 
@@ -330,21 +448,26 @@ class FocusAccessibilityService : AccessibilityService() {
      *
      * Re-checks a moment later instead of trusting the event that triggered it,
      * because most of the packages that raise a window event while an app is
-     * covered are passing through rather than replacing it.
+     * covered are passing through rather than replacing it — and because the
+     * window that is active while the block screen is up may well be the block
+     * screen itself.
      */
-    private fun confirmDismissal(candidate: String) {
-        if (candidate in exempt) {
-            dismissOverlay()
-            return
-        }
+    private fun confirmDismissal() {
         handler.postDelayed({
-            val front = rootInActiveWindow?.packageName?.toString().orEmpty()
-            if (front == blockedPackage) return@postDelayed
+            val covered = blockedPackage ?: return@postDelayed
+            val front = foregroundPackage()
+
+            // No evidence either way, or evidence that the covered app is still
+            // there: leave the block alone.
+            if (front == null || front == covered || front in transient()) {
+                return@postDelayed
+            }
+
             dismissOverlay()
             // Whatever the user moved to is a decision of its own. Without this
             // the first switch away from a covered app lands on an app that is
             // never asked about, and a blocked one opens unblocked.
-            if (front.isNotEmpty() && front !in exempt) decide(front)
+            decide(front)
         }, DISMISS_CONFIRM_MS)
     }
 
@@ -487,8 +610,8 @@ class FocusAccessibilityService : AccessibilityService() {
         // A decision can be made a frame or two after the event that started
         // it, and by then the user may have moved on. Covering whatever is in
         // front now would be covering an app that was never asked about.
-        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
-        if (front.isNotEmpty() && front != packageName) return
+        val front = foregroundPackage()
+        if (front != null && front != packageName) return
 
         val view = inflater.inflate(R.layout.ff_block_overlay, null)
         val label = labelFor(packageName)
@@ -514,7 +637,14 @@ class FocusAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            // Not focusable on purpose. A focusable overlay takes window focus
+            // from the app underneath, and an app that loses focus can pause
+            // its video, drop its state or redraw — which is part of what reads
+            // as the blocked app glitching. Touch is unaffected: a
+            // non-focusable window still receives every tap inside it, which is
+            // how floating widgets have always worked.
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -524,21 +654,27 @@ class FocusAccessibilityService : AccessibilityService() {
             windowManager.addView(view, params)
             overlay = view
             blockedPackage = packageName
+            blockedReason = reason
+            handler.removeCallbacks(watchdog)
+            handler.postDelayed(watchdog, WATCHDOG_MS)
         } catch (_: Exception) {
             // A window we cannot add is a block we cannot draw. Getting the
             // user out of the app is the next best thing, and it is much better
             // than leaving them in it with no signal at all.
             overlay = null
             blockedPackage = null
+            blockedReason = null
             performGlobalAction(GLOBAL_ACTION_BACK)
             ShieldEvents.emit(packageName, label, ShieldEvents.WALKED_AWAY)
         }
     }
 
     private fun dismissOverlay() {
+        handler.removeCallbacks(watchdog)
         val view = overlay ?: return
         overlay = null
         blockedPackage = null
+        blockedReason = null
         try {
             windowManager.removeView(view)
         } catch (_: Exception) {
@@ -557,8 +693,9 @@ class FocusAccessibilityService : AccessibilityService() {
         // which is exactly where a launcher icon drops you. If it did not take,
         // Home always will.
         handler.postDelayed({
-            val front = rootInActiveWindow?.packageName?.toString()
-            if (front == packageName) performGlobalAction(GLOBAL_ACTION_HOME)
+            if (foregroundPackage() == packageName) {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
         }, FALLBACK_HOME_DELAY_MS)
     }
 
@@ -604,26 +741,44 @@ class FocusAccessibilityService : AccessibilityService() {
     // -- Lookups -------------------------------------------------------------
 
     private fun buildExemptSet(): Set<String> {
-        val set = linkedSetOf(
-            packageName,
-            "com.android.systemui",
-            "com.android.settings",
-        )
+        homePackage = homePackageOf(this)
+        imePackage = inputMethodPackageOf(this)
+        return protectedPackages(this)
+    }
 
-        // The launcher. Without this, "Take me back" lands on a screen we then
-        // cover, and there is no way out at all.
-        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        home.resolveActivity(packageManager)?.packageName?.let { set += it }
+    /**
+     * The packages that can hold the active window while the covered app is
+     * still the one in front.
+     *
+     * A keyboard rising, the status bar redrawing, our own block screen being
+     * added — all of these raise window events without the user having gone
+     * anywhere. None of them is a destination, so none of them ends a block.
+     */
+    private fun transient(): Set<String> =
+        setOfNotNull(packageName, imePackage, SYSTEM_UI)
 
-        // The keyboard. It shows as a window-state change of its own, and
-        // covering it would make every text field on the device unusable.
-        val ime = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.DEFAULT_INPUT_METHOD,
-        )
-        ime?.substringBefore('/')?.takeIf { it.isNotEmpty() }?.let { set += it }
-
-        return set
+    /**
+     * The package the user is actually looking at.
+     *
+     * `rootInActiveWindow` is not that on its own, and reading it as if it were
+     * is what made the shield take itself down: the block screen is a window of
+     * *this* app, so while it is up the active window can be ours. The service
+     * concluded the covered app had been left, removed its own screen, and let
+     * the app through — the restriction appeared for a second and then the app
+     * worked.
+     *
+     * So our own package is never an answer. If the block screen is up, the app
+     * underneath is still the one in front; if the app's own UI is up — the
+     * pause screen, the settings — there is nothing to decide.
+     *
+     * Returns null when the foreground cannot be established, which callers
+     * treat as "no evidence" rather than "gone".
+     */
+    private fun foregroundPackage(): String? {
+        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
+        if (front.isEmpty()) return null
+        if (front != packageName) return front
+        return if (overlay != null) blockedPackage else null
     }
 
     private fun labelFor(packageName: String): String = try {

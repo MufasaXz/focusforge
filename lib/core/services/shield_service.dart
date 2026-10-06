@@ -39,6 +39,15 @@ abstract class ShieldPlatformService {
   /// on its own; something has to put the app back, and the engine is the only
   /// side that can resolve a package to a launchable activity.
   Future<void> openApp(String packageId);
+
+  /// The packages the engine will never cover, whatever the rules say.
+  ///
+  /// The launcher, the keyboard, the status bar, the settings app and this app
+  /// itself. The engine owns this list because it is the side that has to
+  /// honour it, and the screen asks for it rather than keeping a copy: a second
+  /// list would eventually disagree with the first, and the row would offer a
+  /// switch that does nothing.
+  Future<Set<String>> protectedPackages();
 }
 
 /// A launch the block screen sent us.
@@ -178,6 +187,12 @@ class RecordingShieldService implements ShieldPlatformService {
     // There is no launcher to ask and no app to bring forward.
     calls.add('open:$packageId');
   }
+
+  /// Settable, so a test can pin the protected set a screen is rendered with.
+  Set<String> protectedSet = const {};
+
+  @override
+  Future<Set<String>> protectedPackages() async => protectedSet;
 
   @override
   Stream<ShieldInterception> get interceptions => _interceptions.stream;

@@ -135,6 +135,25 @@ class NativeShieldService implements ShieldPlatformService {
   }
 
   @override
+  Future<Set<String>> protectedPackages() async {
+    try {
+      final raw = await _methods.invokeMethod<List<dynamic>>(
+        'protectedPackages',
+      );
+      return {
+        for (final entry in raw ?? const <dynamic>[])
+          if (entry is String && entry.isNotEmpty) entry,
+      };
+    } on PlatformException {
+      return const {};
+    } on MissingPluginException {
+      // Not an Android build. An empty set is the honest answer: on a platform
+      // with no engine, nothing is protected because nothing is blocked.
+      return const {};
+    }
+  }
+
+  @override
   Stream<ShieldInterception> get interceptions {
     _subscribe();
     return _interceptions.stream;
