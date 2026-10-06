@@ -17,6 +17,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import '../focus/widgets/clock_faces.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/subject_target_sheet.dart';
 
@@ -172,16 +173,27 @@ class ProfileScreen extends ConsumerWidget {
           const Stagger(index: 5, child: _AppearanceCard()),
           const SizedBox(height: Gap.xl),
 
-          // Settings -------------------------------------------------------------
+          // Focus clock ----------------------------------------------------------
           const Stagger(
             index: 6,
+            child: SectionHeader(
+              title: 'Focus clock',
+              icon: Icons.timer_outlined,
+            ),
+          ),
+          const Stagger(index: 7, child: _ClockFaceCard()),
+          const SizedBox(height: Gap.xl),
+
+          // Settings -------------------------------------------------------------
+          const Stagger(
+            index: 8,
             child: SectionHeader(
               title: 'Settings',
               icon: Icons.settings_outlined,
             ),
           ),
           Stagger(
-            index: 7,
+            index: 9,
             child: Card.filled(
               // Without this the tile ripples paint square corners over the
               // card's rounded ones.
@@ -203,14 +215,14 @@ class ProfileScreen extends ConsumerWidget {
 
           // Developer ------------------------------------------------------------
           const Stagger(
-            index: 8,
+            index: 10,
             child: SectionHeader(
               title: 'Developer',
               icon: Icons.build_outlined,
             ),
           ),
           Stagger(
-            index: 9,
+            index: 11,
             child: Card.filled(
               clipBehavior: Clip.antiAlias,
               child: _SettingTile(
@@ -229,7 +241,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           Stagger(
-            index: 10,
+            index: 12,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(6, Gap.sm, 6, 0),
               child: Text(
@@ -687,6 +699,184 @@ class _AppearanceCard extends ConsumerWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The clock the focus timer wears, with a live preview of each face.
+///
+/// The preview is the face itself, drawn small, rather than a name beside a
+/// swatch: the four differ in a way words are bad at describing, and a picker
+/// that has to explain itself has already failed.
+class _ClockFaceCard extends ConsumerWidget {
+  const _ClockFaceCard();
+
+  /// A fixed time for every preview. Four previews ticking out of step would
+  /// be four clocks to read instead of one choice to make.
+  static const _sample = Duration(minutes: 24, seconds: 51);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = Theme.of(context).colorScheme;
+    final face = ref.watch(clockFaceProvider);
+
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconBadge(
+                  icon: face.icon,
+                  color: t.primary,
+                  size: 36,
+                  radius: 10,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(
+                    'Focus clock',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+                Text(
+                  face.label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: t.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Two up where there is room for two legible previews, one up
+                // on a phone. The preview needs the width more than the copy
+                // does — a flip card scaled to 40dp is a grey smudge.
+                final twoUp = constraints.maxWidth >= 420;
+                final width = twoUp
+                    ? (constraints.maxWidth - Gap.md) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: Gap.md,
+                  runSpacing: Gap.md,
+                  children: [
+                    for (final option in ClockFace.values)
+                      SizedBox(
+                        width: width,
+                        child: _ClockFaceOption(
+                          face: option,
+                          sample: _sample,
+                          selected: option == face,
+                          onTap: () => ref
+                              .read(clockFaceProvider.notifier)
+                              .set(option),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClockFaceOption extends StatelessWidget {
+  const _ClockFaceOption({
+    required this.face,
+    required this.sample,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ClockFace face;
+  final Duration sample;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).colorScheme;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${face.label} clock, ${face.blurb}',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(Gap.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Radii.item),
+            color: selected
+                ? t.primary.withValues(alpha: 0.12)
+                : t.surfaceContainerHighest,
+            border: Border.all(
+              color: selected ? t.primary : t.outlineVariant,
+              width: selected ? 1.4 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 42,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: ClockDisplay(
+                      remaining: sample,
+                      face: face,
+                      accent: t.primary,
+                      height: 30,
+                      // Two thirds through, so the minimal face's rule shows
+                      // what it does rather than sitting empty.
+                      progress: 0.66,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Gap.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      face.label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: selected ? t.primary : t.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (selected)
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 16,
+                      color: t.primary,
+                    ),
+                ],
+              ),
+              Text(
+                face.blurb,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: t.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

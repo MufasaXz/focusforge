@@ -1,4 +1,3 @@
-import '../../shared/widgets/app_page.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
@@ -9,16 +8,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/providers/audio_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
-import '../../shared/widgets/animated_digits.dart';
+import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import 'fullscreen_clock.dart';
 import 'subject_picker.dart';
+import 'widgets/clock_faces.dart';
 
 /// Tab 3 — the focus engine: Pomodoro, subject tagging, an ambient mixer and a
 /// live session dock pinned above the navigation bar.
@@ -104,6 +106,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
     final timer = ref.watch(timerProvider);
+    final face = ref.watch(clockFaceProvider);
     final presets = ref.watch(presetsProvider);
     final preset = presets[timer.presetIndex];
     final catalogue = ref.watch(ambientCatalogueProvider);
@@ -179,13 +182,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Focus Engine', style: Theme.of(context).textTheme.headlineMedium),
+                      Text(
+                        'Focus Engine',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
                       const SizedBox(height: 3),
                       Text(
                         'Deep work, measured',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: t.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: t.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -227,89 +232,113 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(height: Gap.lg),
 
                 // Subject tags ------------------------------------------------
-                Stagger(
-                  index: 2,
-                  child: SubjectPicker(accent: accent),
-                ),
+                Stagger(index: 2, child: SubjectPicker(accent: accent)),
                 const SizedBox(height: Gap.xl),
 
                 // Timer -------------------------------------------------------
                 Stagger(
                   index: 3,
-                  child: Center(
-                    child: ProgressRing(
-                      value: timer.progressFor(preset),
-                      size: 208,
-                      stroke: 11,
-                      ticks: 60,
-                      // The second horizon: how far through the set of focus
-                      // blocks this session is. The inner arc answers "how
-                      // much longer", which is a different question from "how
-                      // many more", and a timer that shows only one of them
-                      // makes the other a mental sum.
-                      outer: preset.segments <= 0
-                          ? null
-                          : (timer.completedFocusSegments % preset.segments) /
-                                preset.segments,
-                      colors: [
-                        accent,
-                        Color.lerp(accent, t.secondary, 0.7)!,
-                      ],
-                      semanticLabel:
-                          '${timer.phase.label}, $clock remaining, '
-                          '${timer.running ? 'running' : 'paused'}',
-                      child: ExcludeSemantics(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // The ring label carries the time for screen
-                            // readers, so the digits themselves are silent.
-                            SizedBox(
-                              width: 168,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: AnimatedDigits(
-                                  text: clock,
-                                  style: Theme.of(context).textTheme.displayLarge!
-                                      .copyWith(
-                                        fontSize: 52,
-                                        height: 1.02,
-                                        letterSpacing: -2.2,
+                  child: Column(
+                    children: [
+                      Center(
+                        // The ring is the clock's own frame, so the gesture
+                        // that opens it full screen belongs on the ring rather
+                        // than on a button beside it. A single tap is left
+                        // alone: nothing else on this screen wants it, and
+                        // swallowing it would make the ring feel like a
+                        // control the user has to be careful with.
+                        child: GestureDetector(
+                          onDoubleTap: () => showFullscreenClock(context),
+                          child: ProgressRing(
+                            value: timer.progressFor(preset),
+                            size: 208,
+                            stroke: 11,
+                            ticks: 60,
+                            // The second horizon: how far through the set of focus
+                            // blocks this session is. The inner arc answers "how
+                            // much longer", which is a different question from "how
+                            // many more", and a timer that shows only one of them
+                            // makes the other a mental sum.
+                            outer: preset.segments <= 0
+                                ? null
+                                : (timer.completedFocusSegments %
+                                          preset.segments) /
+                                      preset.segments,
+                            colors: [
+                              accent,
+                              Color.lerp(accent, t.secondary, 0.7)!,
+                            ],
+                            semanticLabel:
+                                '${timer.phase.label}, $clock remaining, '
+                                '${timer.running ? 'running' : 'paused'}',
+                            child: ExcludeSemantics(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // The ring label carries the time for screen
+                                  // readers, so the figures themselves are silent.
+                                  SizedBox(
+                                    width: 168,
+                                    height: 58,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: ClockDisplay(
+                                        remaining: timer.remaining,
+                                        face: face,
+                                        accent: accent,
+                                        height: 52,
+                                        progress: timer.progressFor(preset),
                                       ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: Gap.xs),
-                            Text(
-                              timer.phase.label,
-                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                color: accent,
-                                fontSize: 12.5,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                            const SizedBox(height: Gap.md),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                for (
-                                  var i = 0;
-                                  i < preset.segments;
-                                  i++
-                                ) ...[
-                                  if (i > 0) const SizedBox(width: 6),
-                                  _SegmentDot(
-                                    done: i < cycleDone,
-                                    current: i == currentDot,
-                                    color: accent,
+                                    ),
+                                  ),
+                                  const SizedBox(height: Gap.xs),
+                                  Text(
+                                    timer.phase.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: accent,
+                                          fontSize: 12.5,
+                                          letterSpacing: 0.3,
+                                        ),
+                                  ),
+                                  const SizedBox(height: Gap.md),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      for (
+                                        var i = 0;
+                                        i < preset.segments;
+                                        i++
+                                      ) ...[
+                                        if (i > 0) const SizedBox(width: 6),
+                                        _SegmentDot(
+                                          done: i < cycleDone,
+                                          current: i == currentDot,
+                                          color: accent,
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      // The gesture is not visible, so it is said out loud
+                      // once. It sits under the ring rather than inside it:
+                      // the ring's own content is the clock, and a caption in
+                      // there would have to shrink the figures to fit.
+                      Text(
+                        'Double-tap the clock for full screen',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 10.5,
+                          color: t.onSurfaceVariant.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: Gap.xl),
@@ -694,9 +723,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          sheetContext,
-                        ).colorScheme.onSurfaceVariant,
+                        color: Theme.of(sheetContext)
+                            .colorScheme
+                            .onSurfaceVariant,
                         borderRadius: BorderRadius.circular(Radii.pill),
                       ),
                     ),
@@ -884,9 +913,8 @@ class _VolumeRow extends StatelessWidget {
                   child: Text(
                     '$percent%',
                     textAlign: TextAlign.right,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: t.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: t.onSurfaceVariant),
                   ),
                 ),
               ),

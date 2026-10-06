@@ -181,4 +181,5 @@ class StoreKeys {
   static const dailyGoal = 'goal.daily';
   static const presets = 'focus.presets';
   static const coachSeen = 'coachmarks.seen';
+  static const clockFace = 'focus.clock';
 }

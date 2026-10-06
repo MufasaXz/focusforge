@@ -66,6 +66,10 @@ Future<ProviderContainer> bootstrap() async {
       .read(dailyGoalProvider.notifier)
       .hydrate(store.getInt(StoreKeys.dailyGoal));
 
+  container
+      .read(clockFaceProvider.notifier)
+      .hydrate(store.getString(StoreKeys.clockFace));
+
   // -- Study -----------------------------------------------------------------
   //
   // `getList` returns the same empty list for a missing key as for a stored
@@ -209,6 +213,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // every nullable hydrate no-ops on null, so "hydrating with nothing" would
   // silently leave most of these populated.
   container.invalidate(themeSettingsProvider);
+  container.invalidate(clockFaceProvider);
   container.invalidate(sessionsProvider);
   container.invalidate(dailyGoalProvider);
   container.invalidate(whitelistProvider);

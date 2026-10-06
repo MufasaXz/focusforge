@@ -110,6 +110,33 @@ final themeSettingsProvider =
   ThemeSettingsNotifier.new,
 );
 
+// -- Focus clock -------------------------------------------------------------
+
+/// Which face the focus timer wears.
+///
+/// Its own notifier rather than a fourth field on [ThemeSettings]: the clock
+/// is drawn on one screen and read by nothing else, so folding it in would
+/// make every palette swatch rebuild the focus tab.
+class ClockFaceNotifier extends Notifier<ClockFace> {
+  @override
+  ClockFace build() => ClockFace.digits;
+
+  LocalStore get _store => ref.read(localStoreProvider);
+
+  /// Called during bootstrap with whatever was persisted. Null — a first run —
+  /// keeps the shipped face.
+  void hydrate(String? stored) => state = ClockFace.fromName(stored);
+
+  Future<void> set(ClockFace face) async {
+    state = face;
+    await _store.setString(StoreKeys.clockFace, face.name);
+  }
+}
+
+final clockFaceProvider = NotifierProvider<ClockFaceNotifier, ClockFace>(
+  ClockFaceNotifier.new,
+);
+
 // -- Gamification ------------------------------------------------------------
 
 class StatsNotifier extends Notifier<GamificationStats> {

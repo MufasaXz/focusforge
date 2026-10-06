@@ -64,6 +64,30 @@ enum AppPalette {
       );
 }
 
+/// How the focus timer draws the time that is left.
+///
+/// A display preference, not a theme: it changes one widget on one screen, and
+/// it is stored by name for the same reason the palette is — the value has to
+/// survive reordering of this enum. `digits` is the face the app shipped with,
+/// so it is also the fallback for an unreadable stored value.
+enum ClockFace {
+  digits('Digits', 'Rolling figures', Icons.timer_outlined),
+  flip('Flip', 'Split-flap cards', Icons.view_agenda_rounded),
+  segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
+  minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded);
+
+  const ClockFace(this.label, this.blurb, this.icon);
+
+  final String label;
+  final String blurb;
+  final IconData icon;
+
+  static ClockFace fromName(String? name) => values.firstWhere(
+    (v) => v.name == name,
+    orElse: () => ClockFace.digits,
+  );
+}
+
 /// Everything the appearance section can change, in one value.
 ///
 /// The three settings travel together — the root widget needs all of them to
