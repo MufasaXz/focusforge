@@ -7,11 +7,14 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification.">
-  <meta name="theme-color" content="#EDF1F9">
+  <!-- Two theme colours, one per scheme. The browser picks by
+       prefers-color-scheme, which is the same signal the app follows. -->
+  <meta name="theme-color" content="#FFF8F6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#181210" media="(prefers-color-scheme: dark)">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FocusForge">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -22,13 +25,17 @@
   <link rel="manifest" href="manifest.json">
   <style>
     /* Match the app canvas so there is no flash of the wrong theme while the
-       engine boots. Day mode is the default. */
+       engine boots. The colours are the theme's own surface roles, and the
+       scheme follows the device the same way the app does. */
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: linear-gradient(180deg, #E8EEFB 0%, #F4F6FB 100%);
+      background: #FFF8F6;
       overscroll-behavior: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #181210; }
     }
   </style>
 </head>

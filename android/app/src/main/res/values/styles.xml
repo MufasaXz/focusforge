@@ -13,6 +13,10 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- The app's own surface, not `?android:colorBackground`. This window
+             sits behind the Flutter UI, and screens such as the Deep Breath
+             Gate are deliberately translucent — a platform-default background
+             would show through them as a different colour. -->
+        <item name="android:windowBackground">@color/ff_launch_background</item>
     </style>
 </resources>

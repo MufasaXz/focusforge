@@ -66,7 +66,12 @@ final userProvider = NotifierProvider<UserNotifier, UserProfile>(
 
 class ThemeNotifier extends Notifier<ThemePreference> {
   @override
-  ThemePreference build() => ThemePreference.light;
+  ThemePreference build() {
+    // Follow the device on a cold install. Most people have already set a
+    // system-wide light/dark preference, and opening on the opposite one reads
+    // as the app ignoring a choice they made somewhere else.
+    return ThemePreference.system;
+  }
 
   void hydrate(String? stored) => state = ThemePreference.fromName(stored);
 

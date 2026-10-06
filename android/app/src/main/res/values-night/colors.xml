@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode counterpart of values/colors.xml. Android picks this
+         automatically from the system setting, which is the same signal the
+         app follows now that its default theme is `system`. -->
+    <color name="ff_launch_background">#181210</color>
+</resources>

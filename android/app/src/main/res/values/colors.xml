@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind the splash. This is the theme's own `surface` role,
+         so the hand-off from the Android window to the Flutter splash has no
+         visible seam. values-night/ carries the dark one. -->
+    <color name="ff_launch_background">#FFF8F6</color>
+</resources>

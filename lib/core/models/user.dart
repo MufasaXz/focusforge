@@ -15,9 +15,14 @@ enum ThemePreference {
   final IconData icon;
   final ThemeMode mode;
 
+  /// The stored preference, or [ThemePreference.system] when there is none.
+  ///
+  /// The fallback is the same one [ThemeNotifier.build] uses, so a first launch
+  /// and an unreadable stored value land in the same place — the device
+  /// setting — rather than one of them snapping to light.
   static ThemePreference fromName(String? name) => values.firstWhere(
         (v) => v.name == name,
-        orElse: () => ThemePreference.light,
+        orElse: () => ThemePreference.system,
       );
 }
 
