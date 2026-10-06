@@ -8,7 +8,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
-import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -17,11 +16,11 @@ import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
-import 'widgets/app_distribution.dart';
 import 'widgets/focus_heatmap.dart';
+import 'widgets/day_summary_sheet.dart';
 import 'widgets/screen_time_card.dart';
+import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
-import 'widgets/weekly_chart.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
@@ -42,6 +41,11 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _refreshing = false;
+
+  /// Which window the tracker is showing. Local state rather than a provider:
+  /// it is a way of looking at the log, not a fact about the user, and it
+  /// should start on the week every time the app opens.
+  StudyRange _range = StudyRange.week;
 
   Future<void> _refresh() async {
     if (_refreshing) return;
@@ -79,7 +83,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final progress = ref.watch(goalProgressProvider);
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
-    final activeShields = ref.watch(activeShieldCountProvider);
     // Derived from the session log, not read from the stats aggregate: a
     // streak is a fact about dates and the aggregate carries none.
     final streak = ref.watch(currentStreakProvider);
@@ -90,10 +93,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Every number on this screen is derived from the session log, so the
     // chart, the heatmap and the ring above them can never disagree.
-    final week = ref.watch(weeklyBarsProvider);
-    final weekTotal = ref.watch(weekTotalHoursProvider);
-    final weekAverage = ref.watch(weekAverageHoursProvider);
+    final days = ref.watch(rangeBarsProvider(_range));
+    final total = ref.watch(rangeTotalHoursProvider(_range));
+    final average = ref.watch(rangeAverageHoursProvider(_range));
     final heatmapWeeks = ref.watch(heatmapWeeksProvider);
+
+    // A tablet has room for two columns; a phone does not, and two narrow
+    // columns are worse than one. Measured rather than taken from the window,
+    // because the rail already took its width off the top.
+    final wide = MediaQuery.sizeOf(context).width >= 900;
 
     // The first-run tips, built from what is actually on screen. A tip whose
     // subject is not rendered — the ring before the first session, the streak
@@ -135,179 +143,165 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     ];
 
+    final greeting = _Greeting(
+      name: user.firstName,
+      streak: streak,
+      now: now,
+      streakKey: targets.streak,
+    );
+
+    // The two columns, in reading order: what today looks like, then what the
+    // log says. Only used when there is width for them.
+    final left = <Widget>[
+      if (sessions.isEmpty)
+        _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta)
+      else ...[
+        _DailyOverview(
+          progress: progress,
+          minutesToday: minutesToday,
+          goalMinutes: goalMinutes,
+          sessionsToday: sessionsToday,
+          totalHours: stats.totalFocusHours,
+          level: stats.level,
+          ringKey: targets.ring,
+        ),
+        const SizedBox(height: Gap.xl),
+        SectionHeader(
+          title: _range == StudyRange.week ? 'This week' : 'This month',
+          icon: Icons.bar_chart_rounded,
+        ),
+        const SizedBox(height: Gap.md),
+        _TrackerPanel(
+          range: _range,
+          onRangeChanged: (r) => setState(() => _range = r),
+          total: total,
+          average: average,
+          days: days,
+          onDayTap: (day) => _openDay(day),
+        ),
+        const SizedBox(height: Gap.xl),
+        const SectionHeader(
+          title: 'Focus heatmap',
+          icon: Icons.calendar_month_rounded,
+        ),
+        const SizedBox(height: Gap.md),
+        Card.filled(
+          child: Padding(
+            padding: const EdgeInsets.all(Gap.lg),
+            child: FocusHeatmap(weeks: heatmapWeeks),
+          ),
+        ),
+      ],
+    ];
+
+    final right = <Widget>[
+      const SectionHeader(
+        title: 'Screen time today',
+        icon: Icons.hourglass_bottom_rounded,
+      ),
+      const SizedBox(height: Gap.md),
+      const Card.filled(
+        child: Padding(
+          padding: EdgeInsets.all(Gap.lg),
+          child: ScreenTimeCard(),
+        ),
+      ),
+      if (sessions.isNotEmpty) ...[
+        const SizedBox(height: Gap.xl),
+        const SectionHeader(
+          title: 'Subject breakdown',
+          icon: Icons.donut_large_rounded,
+        ),
+        const SizedBox(height: Gap.md),
+        Card.filled(
+          child: Padding(
+            padding: const EdgeInsets.all(Gap.lg),
+            child: SubjectBreakdown(subjects: subjects),
+          ),
+        ),
+      ],
+    ];
+
     return CoachMarks(
       spots: spots,
       child: RefreshIndicator(
         onRefresh: _refresh,
         color: cs.primary,
         backgroundColor: cs.surface,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(
-            Gap.lg + 4,
-            MediaQuery.paddingOf(context).top + Gap.lg,
-            Gap.lg + 4,
-            kNavBarClearance,
-          ),
-          children: [
-            // Greeting -------------------------------------------------------
-            Stagger(
-              index: 0,
-              child: _Greeting(
-                name: user.firstName,
-                streak: streak,
-                now: now,
-                streakKey: targets.streak,
-              ),
-            ),
-            const SizedBox(height: Gap.xl),
-
-            if (_refreshing) ...const [
-              SkeletonCard(height: 330, radius: Radii.hero),
-              SizedBox(height: Gap.xl),
-              SkeletonCard(height: 230),
-              SizedBox(height: Gap.xl),
-              SkeletonCard(height: 310),
-              SizedBox(height: Gap.xl),
-              SkeletonList(count: 3, itemHeight: 72),
-            ] else ...[
-              if (sessions.isEmpty)
-                // A brand-new user gets one designed state instead of a page
-                // of zeroed charts — the empty state explains what will fill
-                // in. The cards below it are about today rather than about the
-                // log, so they are worth showing even before the first
-                // session.
-                Stagger(
-                  index: 1,
-                  child: _NoSessions(
-                    onStart: _startFocusing,
-                    ctaKey: targets.emptyCta,
-                  ),
-                )
-              else ...[
-                // Daily overview ----------------------------------------------
-                Stagger(
-                  index: 1,
-                  child: _DailyOverview(
-                    progress: progress,
-                    minutesToday: minutesToday,
-                    goalMinutes: goalMinutes,
-                    sessionsToday: sessionsToday,
-                    totalHours: stats.totalFocusHours,
-                    level: stats.level,
-                    ringKey: targets.ring,
-                  ),
-                ),
-                const SizedBox(height: Gap.xl),
-
-                // Weekly ------------------------------------------------------
-                const Stagger(
-                  index: 2,
-                  child: SectionHeader(
-                    title: 'This week',
-                    icon: Icons.bar_chart_rounded,
-                  ),
-                ),
-                Stagger(
-                  index: 3,
-                  child: _WeeklyPanel(
-                    total: weekTotal,
-                    average: weekAverage,
-                    days: week,
-                  ),
-                ),
-                const SizedBox(height: Gap.xl),
-
-                // Heatmap -----------------------------------------------------
-                const Stagger(
-                  index: 4,
-                  child: SectionHeader(
-                    title: 'Focus heatmap',
-                    icon: Icons.calendar_month_rounded,
-                  ),
-                ),
-                Stagger(
-                  index: 5,
-                  child: Card.filled(
-                    child: Padding(
-                      padding: const EdgeInsets.all(Gap.lg),
-                      child: FocusHeatmap(weeks: heatmapWeeks),
+        child: _refreshing
+            ? ListView(
+                padding: _padding(context),
+                children: const [
+                  SkeletonCard(height: 330, radius: Radii.hero),
+                  SizedBox(height: Gap.xl),
+                  SkeletonCard(height: 230),
+                  SizedBox(height: Gap.xl),
+                  SkeletonCard(height: 310),
+                  SizedBox(height: Gap.xl),
+                  SkeletonList(count: 3, itemHeight: 72),
+                ],
+              )
+            : wide
+            ? SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: _padding(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Stagger(index: 0, child: greeting),
+                    const SizedBox(height: Gap.xl),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _staggered(left, from: 1),
+                          ),
+                        ),
+                        const SizedBox(width: Gap.xl),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _staggered(right, from: 1 + left.length),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: Gap.xl),
-              ],
-
-              // Screen time --------------------------------------------------
-              const Stagger(
-                index: 6,
-                child: SectionHeader(
-                  title: 'Screen time today',
-                  icon: Icons.hourglass_bottom_rounded,
-                ),
+              )
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: _padding(context),
+                children: [
+                  Stagger(index: 0, child: greeting),
+                  const SizedBox(height: Gap.xl),
+                  ..._staggered([...left, ...right]),
+                ],
               ),
-              const Stagger(
-                index: 7,
-                child: Card.filled(
-                  child: Padding(
-                    padding: EdgeInsets.all(Gap.lg),
-                    child: ScreenTimeCard(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-
-              // App shields --------------------------------------------------
-              Stagger(
-                index: 8,
-                child: SectionHeader(
-                  title: 'App shields',
-                  icon: Icons.shield_rounded,
-                  trailing: Text(
-                    activeShields == 0
-                        ? 'None armed'
-                        : '$activeShields active',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-              const Stagger(
-                index: 9,
-                child: Card.filled(
-                  child: Padding(
-                    padding: EdgeInsets.all(Gap.lg),
-                    child: AppDistribution(),
-                  ),
-                ),
-              ),
-
-              if (sessions.isNotEmpty) ...[
-                const SizedBox(height: Gap.xl),
-                // Subjects ----------------------------------------------------
-                const Stagger(
-                  index: 10,
-                  child: SectionHeader(
-                    title: 'Subject breakdown',
-                    icon: Icons.donut_large_rounded,
-                  ),
-                ),
-                Stagger(
-                  index: 11,
-                  child: Card.filled(
-                    child: Padding(
-                      padding: const EdgeInsets.all(Gap.lg),
-                      child: SubjectBreakdown(subjects: subjects),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ],
-        ),
       ),
     );
+  }
+
+  /// The screen's own padding, so both scroll shapes agree.
+  EdgeInsets _padding(BuildContext context) => EdgeInsets.fromLTRB(
+    Gap.lg + 4,
+    MediaQuery.paddingOf(context).top + Gap.lg,
+    Gap.lg + 4,
+    kNavBarClearance,
+  );
+
+  List<Widget> _staggered(List<Widget> children, {int from = 0}) => [
+    for (var i = 0; i < children.length; i++)
+      Stagger(index: from + i, child: children[i]),
+  ];
+
+  /// Opens the tapped day's summary.
+  void _openDay(DayBar day) {
+    final date = day.date;
+    if (date == null) return;
+    showDaySummarySheet(context, date);
   }
 }
 
@@ -512,20 +506,28 @@ class _DailyOverview extends StatelessWidget {
 }
 
 /// The weekly panel: headline total, average pill and the tappable chart.
-class _WeeklyPanel extends StatelessWidget {
-  const _WeeklyPanel({
+class _TrackerPanel extends StatelessWidget {
+  const _TrackerPanel({
+    required this.range,
+    required this.onRangeChanged,
     required this.total,
     required this.average,
     required this.days,
+    required this.onDayTap,
   });
 
+  final StudyRange range;
+  final ValueChanged<StudyRange> onRangeChanged;
   final double total;
   final double average;
   final List<DayBar> days;
+  final ValueChanged<DayBar> onDayTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Card.filled(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
@@ -533,33 +535,50 @@ class _WeeklyPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${total.toStringAsFixed(1)}h',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formatHoursShort(total),
+                        style: tt.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        total <= 0
+                            ? 'Nothing logged yet'
+                            : '${formatHoursShort(average)} on an average day',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: Gap.sm),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Text(
-                    'focused',
-                    style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(width: Gap.md),
+                SegmentedButton<StudyRange>(
+                  segments: [
+                    for (final r in StudyRange.values)
+                      ButtonSegment(value: r, label: Text(r.label)),
+                  ],
+                  selected: {range},
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: WidgetStatePropertyAll(tt.labelSmall),
                   ),
-                ),
-                const Spacer(),
-                _MetaPill(
-                  icon: Icons.insights_rounded,
-                  label: '${formatHoursShort(average)} avg',
-                  color: cs.secondary,
+                  onSelectionChanged: (selection) =>
+                      onRangeChanged(selection.first),
                 ),
               ],
             ),
             const SizedBox(height: Gap.lg),
-            WeeklyChart(days: days),
+            StudyTracker(days: days, onDayTap: onDayTap),
           ],
         ),
       ),
@@ -587,7 +606,7 @@ class _NoSessions extends StatelessWidget {
         title: 'No sessions yet',
         subtitle:
             'Finish your first focus block and this page fills in — '
-            'the daily ring, weekly chart, heatmap and app shields.',
+            'the daily ring, the study tracker and the heatmap.',
         action: FilledButton.icon(
           key: ctaKey,
           onPressed: onStart,
@@ -650,33 +669,3 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-/// Small delta badge used next to headline metrics.
-class _MetaPill extends StatelessWidget {
-  const _MetaPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(icon, size: 13, color: color),
-      label: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      labelPadding: EdgeInsets.zero,
-      backgroundColor: color.withValues(alpha: 0.16),
-      side: BorderSide(color: color.withValues(alpha: 0.42)),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-}

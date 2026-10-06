@@ -171,11 +171,18 @@ class AmbientSound {
 /// One day in the weekly bar chart.
 @immutable
 class DayBar {
-  const DayBar(this.label, this.hours, {this.isToday = false});
+  const DayBar(this.label, this.hours, {this.isToday = false, this.date});
 
   final String label;
   final double hours;
   final bool isToday;
+
+  /// The calendar day this bar describes, when it stands for a real one.
+  ///
+  /// The chart needs it to open the right day's summary, and it is carried
+  /// here rather than recomputed from the index so a bar can never describe a
+  /// different day than the one it is drawn for.
+  final DateTime? date;
 }
 
 // -- Persisted-JSON readers --------------------------------------------------

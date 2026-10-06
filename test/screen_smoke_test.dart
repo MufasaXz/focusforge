@@ -28,11 +28,14 @@ import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/coach_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
+import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
+import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
+import 'package:focusforge/features/dashboard/widgets/study_tracker.dart';
 import 'package:focusforge/features/onboarding/coach_marks.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
 
@@ -115,6 +118,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
   }
+
+  /// Marks the first-run tips as already seen.
+  ///
+  /// The tips draw a full-screen scrim over the dashboard, so a test that
+  /// taps anything on the page has to get them out of the way first — without
+  /// this the tap lands on the spotlight rather than on the widget under test.
+  /// The tips themselves are covered by their own group below, which wants
+  /// them *not* seen.
+  Future<void> tipsSeen() => store.setBool(StoreKeys.coachSeen, true);
 
   /// Runs [body] with the platform pinned to Android.
   Future<void> onAndroid(WidgetTester tester, Future<void> Function() body) async {
@@ -363,6 +375,7 @@ void main() {
       tester,
     ) async {
       useTallPhone(tester);
+      await tipsSeen();
       await tester.pumpWidget(wrap(freshContainer(), const DashboardScreen()));
       await settle(tester);
 
@@ -375,46 +388,59 @@ void main() {
         reason: 'screen time is about the phone, not the session log, so it '
             'is worth showing before the first session',
       );
-      expect(find.text('APP SHIELDS'), findsOneWidget);
-      expect(
-        find.text('No apps shielded yet'),
-        findsOneWidget,
-        reason: 'the summary has to say what to do, not just show nothing',
-      );
+      // The shield summary used to live here too. It answers a question about
+      // the phone that the Shield tab already answers with the rules behind
+      // it, so it is not on the dashboard at all any more.
+      expect(find.text('APP SHIELDS'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('real usage and a real rule both reach the page', (
-      tester,
-    ) async {
+    testWidgets('a logged session reaches the tracker, and a bar opens its '
+        'day', (tester) async {
       useTallPhone(tester);
-      final container = freshContainer(
-        apps: const [
-          InstalledApp(
-            packageId: 'com.example.scroll',
-            name: 'Endless Scroll',
-            isSystem: false,
-          ),
-        ],
-        usage: const {'com.example.scroll': 96},
-        usageAccess: true,
-      );
-      await container.read(whitelistProvider.notifier).addInstalledApp(
-        packageId: 'com.example.scroll',
-        name: 'Endless Scroll',
-        tier: WhitelistTier.blocked,
+      final container = freshContainer();
+      final now = DateTime.now();
+
+      await tipsSeen();
+      await container.read(sessionsProvider.notifier).record(
+        FocusSession(
+          id: 's-test',
+          subjectId: 'math',
+          startedAt: DateTime(now.year, now.month, now.day, 9),
+          minutes: 50,
+        ),
       );
 
       await tester.pumpWidget(wrap(container, const DashboardScreen()));
       await settle(tester);
 
-      expect(find.text('Endless Scroll'), findsNWidgets(2));
       expect(
-        find.text('1h 36m'),
+        find.text('50m'),
         findsWidgets,
-        reason: '96 minutes of real usage is the headline',
+        reason: 'the ring, the breakdown and the day all agree',
       );
-      expect(find.text('Closes when opened'), findsOneWidget);
+      expect(find.text('THIS WEEK'), findsOneWidget);
+
+      // The tracker opens on the week; the month is the other window onto the
+      // same log.
+      await tester.tap(find.text('Month'));
+      await settle(tester);
+      expect(find.text('THIS MONTH'), findsOneWidget);
+      await tester.tap(find.text('Week'));
+      await settle(tester);
+
+      // Tapping a bar opens that day's breakdown. Today is the last bar, so
+      // the tap goes to the right-hand end of the tracker rather than to a
+      // label that appears in three other places on the page.
+      final tracker = tester.getRect(find.byType(StudyTracker));
+      await tester.tapAt(Offset(tracker.right - 12, tracker.center.dy));
+      await settle(tester);
+      expect(
+        find.text('Today'),
+        findsWidgets,
+        reason: 'the tracker labels the bar and the sheet names the day',
+      );
+      expect(find.text('Math'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
@@ -422,6 +448,7 @@ void main() {
       tester,
     ) async {
       useTallPhone(tester);
+      await tipsSeen();
       await tester.pumpWidget(wrap(freshContainer(), const DashboardScreen()));
       await settle(tester);
 

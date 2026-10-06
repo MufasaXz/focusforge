@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed.dart';
@@ -168,27 +169,183 @@ int _minutesOn(List<FocusSession> sessions, DateTime day) => sessions
     .where((s) => s.completed && _sameDay(s.startedAt, day))
     .fold(0, (sum, s) => sum + s.minutes);
 
-/// The last seven days as bar-chart data, oldest first with today last.
+/// The span the study tracker is showing.
+///
+/// Two windows rather than a date picker: a week answers "how am I doing" and
+/// a month answers "how has this month gone", and those are the only two
+/// questions the chart is asked.
+enum StudyRange {
+  week('Week'),
+  month('Month');
+
+  const StudyRange(this.label);
+
+  final String label;
+}
+
+/// Minutes of completed focus on each day of [range], oldest first.
 ///
 /// Derived from the session log rather than stored, so the chart can never
 /// disagree with the ring above it — both read the same source of truth.
-final weeklyBarsProvider = Provider<List<DayBar>>((ref) {
+final rangeBarsProvider = Provider.family<List<DayBar>, StudyRange>((
+  ref,
+  range,
+) {
   final sessions = ref.watch(sessionsProvider);
   final today = _dateOnly(DateTime.now());
-  return List.generate(7, (i) {
-    final day = DateTime(today.year, today.month, today.day - (6 - i));
-    return DayBar(
-      _weekdayLetter(day.weekday),
-      _minutesOn(sessions, day) / 60,
-      isToday: i == 6,
-    );
-  });
+
+  return switch (range) {
+    StudyRange.week => List.generate(7, (i) {
+      final day = DateTime(today.year, today.month, today.day - (6 - i));
+      return DayBar(
+        _weekdayLetter(day.weekday),
+        _minutesOn(sessions, day) / 60,
+        isToday: i == 6,
+        date: day,
+      );
+    }),
+    // Every day of the current month so far, not the whole calendar: a chart
+    // that draws empty bars for days that have not happened yet reads as a
+    // month of failure.
+    StudyRange.month => List.generate(today.day, (i) {
+      final day = DateTime(today.year, today.month, i + 1);
+      // A label on every day would collide at this width, so only the first,
+      // today, and every seventh day carry one — enough to place any bar.
+      final labelled = i == 0 || (i + 1) % 7 == 0 || day == today;
+      return DayBar(
+        labelled ? '${day.day}' : '',
+        _minutesOn(sessions, day) / 60,
+        isToday: day == today,
+        date: day,
+      );
+    }),
+  };
 });
 
-/// Total hours across [weeklyBarsProvider], for the "N h focused" headline.
-final weekTotalHoursProvider = Provider<double>(
-  (ref) => ref.watch(weeklyBarsProvider).fold(0.0, (sum, d) => sum + d.hours),
+/// The last seven days as bar-chart data. The tracker's default window.
+final weeklyBarsProvider = Provider<List<DayBar>>(
+  (ref) => ref.watch(rangeBarsProvider(StudyRange.week)),
 );
+
+/// Total hours across the days in [range], for the headline.
+final rangeTotalHoursProvider = Provider.family<double, StudyRange>(
+  (ref, range) =>
+      ref.watch(rangeBarsProvider(range)).fold(0.0, (sum, d) => sum + d.hours),
+);
+
+/// Average hours across the days in [range] that actually have time on them.
+///
+/// Dividing by the number of days in the window would make a strong week look
+/// weak just because the user rests at weekends; the average is meant to
+/// describe a *working* day.
+final rangeAverageHoursProvider = Provider.family<double, StudyRange>((
+  ref,
+  range,
+) {
+  final bars = ref.watch(rangeBarsProvider(range));
+  final active = bars.where((d) => d.hours > 0).length;
+  if (active == 0) return 0;
+  return bars.fold<double>(0, (sum, d) => sum + d.hours) / active;
+});
+
+/// Colour for a session whose subject has been deleted.
+///
+/// Deliberately a neutral rather than a theme role: it is *data* standing in
+/// for data that is missing, and it must not be mistaken for a real subject's
+/// colour.
+const _unassignedSubjectColor = Color(0xFFB0BEC5);
+
+/// One subject's share of a single day.
+@immutable
+class DaySubjectSlice {
+  const DaySubjectSlice({
+    required this.name,
+    required this.color,
+    required this.minutes,
+  });
+
+  final String name;
+  final Color color;
+  final int minutes;
+}
+
+/// What one calendar day actually consisted of.
+@immutable
+class DaySummary {
+  const DaySummary({
+    required this.day,
+    required this.slices,
+    required this.totalMinutes,
+    required this.sessions,
+  });
+
+  const DaySummary.empty(this.day)
+      : slices = const [],
+        totalMinutes = 0,
+        sessions = 0;
+
+  final DateTime day;
+
+  /// Busiest subject first.
+  final List<DaySubjectSlice> slices;
+
+  final int totalMinutes;
+
+  /// How many finished blocks went into it.
+  final int sessions;
+
+  bool get isEmpty => slices.isEmpty;
+}
+
+/// The subjects studied on one day, and for how long.
+///
+/// Keyed on the date rather than on an index into the chart, so the sheet that
+/// shows it is describing a day rather than a bar — the bars are a window onto
+/// the log and the window can change under it.
+final daySummaryProvider = Provider.family<DaySummary, DateTime>((ref, day) {
+  final sessions = ref
+      .watch(sessionsProvider)
+      .where((s) => s.completed && _sameDay(s.startedAt, day))
+      .toList(growable: false);
+
+  if (sessions.isEmpty) return DaySummary.empty(_dateOnly(day));
+
+  // Subjects are looked up live so a rename or a recolour shows here too; a
+  // session whose subject has since been deleted keeps its recorded name and
+  // gets the fallback colour rather than vanishing from the day it was part of.
+  final subjects = {
+    for (final subject in ref.watch(subjectsProvider)) subject.id: subject,
+  };
+
+  final minutes = <String, int>{};
+  final names = <String, String>{};
+  final colors = <String, Color>{};
+
+  for (final session in sessions) {
+    final id = session.subjectId;
+    final subject = subjects[id];
+    minutes[id] = (minutes[id] ?? 0) + session.minutes;
+    names[id] = subject?.name ?? (session.label.isEmpty ? 'Unassigned' : session.label);
+    colors[id] = subject?.color ?? _unassignedSubjectColor;
+  }
+
+  final slices =
+      [
+        for (final entry in minutes.entries)
+          DaySubjectSlice(
+            name: names[entry.key] ?? 'Unassigned',
+            color: colors[entry.key] ?? _unassignedSubjectColor,
+            minutes: entry.value,
+          ),
+      ]..sort((a, b) => b.minutes.compareTo(a.minutes));
+
+  return DaySummary(
+    day: _dateOnly(day),
+    slices: slices,
+    totalMinutes: minutes.values.fold(0, (a, b) => a + b),
+    sessions: sessions.length,
+  );
+});
 
 /// The run of consecutive days, ending today, that carry a finished session.
 ///
@@ -227,13 +384,6 @@ final currentStreakProvider = Provider<int>((ref) {
 ///
 /// Dividing by seven would make a strong week look weak just because the user
 /// rests at weekends; the average is meant to describe a *working* day.
-final weekAverageHoursProvider = Provider<double>((ref) {
-  final bars = ref.watch(weeklyBarsProvider);
-  final active = bars.where((d) => d.hours > 0).length;
-  if (active == 0) return 0;
-  return bars.fold<double>(0, (sum, d) => sum + d.hours) / active;
-});
-
 /// Five weeks of dated cells ending with the current week, Monday-first.
 ///
 /// The grid is aligned to real weeks so the weekday columns mean something,
