@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +20,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/sheet_chrome.dart';
 import 'breath_gate.dart';
 
 /// Tab 2 — the shielding engine.
@@ -134,9 +133,8 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                         children: [
                           Text(
                             'Shield',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineMedium?.copyWith(fontSize: 24),
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(fontSize: 24),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -147,10 +145,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                       ),
                     ),
                     const SizedBox(width: Gap.md),
-                    _ShieldStatusPill(
-                      armed: armed,
-                      onTap: _showStatusSheet,
-                    ),
+                    _ShieldStatusPill(armed: armed, onTap: _showStatusSheet),
                   ],
                 ),
                 const SizedBox(height: Gap.lg),
@@ -293,7 +288,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
     final inert = budgeted > 0 && !usageAccess;
 
-    return _SheetSurface(
+    return SheetSurface(
       padding: const EdgeInsets.all(Gap.xl),
       child: SafeArea(
         top: false,
@@ -302,7 +297,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _SheetHandle(),
+              const SheetHandle(),
               const SizedBox(height: Gap.lg),
               Row(
                 children: [
@@ -317,14 +312,13 @@ class _ShieldStatusSheet extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           'Live state of the shield engine',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                       ],
                     ),
                   ),
-                  _SheetCloseButton(
+                  SheetCloseButton(
                     label: 'Close status',
                     onTap: () => Navigator.of(context).pop(),
                   ),
@@ -410,9 +404,8 @@ class _ShieldStatusSheet extends ConsumerWidget {
                                 : 'Time budgets need usage access before they '
                                       'can count anything. Grant it from the '
                                       'Apps tab.',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.labelSmall?.copyWith(height: 1.4),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(height: 1.4),
                           ),
                         ),
                       ],
@@ -468,9 +461,8 @@ class _StatusLine extends StatelessWidget {
             const SizedBox(width: Gap.sm),
             Text(
               value,
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -480,89 +472,6 @@ class _StatusLine extends StatelessWidget {
 }
 
 /// 48dp close affordance shared by the sheets on this screen.
-class _SheetCloseButton extends StatelessWidget {
-  const _SheetCloseButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: label,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          scale: 0.85,
-          onTap: onTap,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: Icon(
-                Icons.close_rounded,
-                size: 20,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The grabber at the top of every sheet on this screen.
-class _SheetHandle extends StatelessWidget {
-  const _SheetHandle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          borderRadius: BorderRadius.circular(Radii.pill),
-        ),
-      ),
-    );
-  }
-}
-
-/// Frosted bottom-sheet surface.
-///
-/// A sheet genuinely floats over the page, so its backdrop filter is one of
-/// the three the design allows — σ24, per the redesign guide. The top corners
-/// are the sheet's own; the bottom edge sits flush with the screen.
-class _SheetSurface extends StatelessWidget {
-  const _SheetSurface({required this.child, this.padding = EdgeInsets.zero});
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(Radii.hero),
-      ),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          color: cs.surfaceContainerLow.withValues(alpha: 0.9),
-          padding: padding,
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Apps
 // ---------------------------------------------------------------------------
@@ -579,14 +488,14 @@ class _SegmentScroll extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: EdgeInsets.fromLTRB(
-          Gap.lg + 4,
-          topPadding,
-          Gap.lg + 4,
-          kNavBarClearance,
-        ),
-        children: [child],
-      );
+    padding: EdgeInsets.fromLTRB(
+      Gap.lg + 4,
+      topPadding,
+      Gap.lg + 4,
+      kNavBarClearance,
+    ),
+    children: [child],
+  );
 }
 
 /// Every app on the device, with a switch on each row.
@@ -682,10 +591,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                   icon: Icons.local_fire_department_rounded,
                 ),
                 const SizedBox(height: Gap.sm),
-                _SuggestionRow(
-                  rows: mostUsed,
-                  onTap: (row) => _openRule(row),
-                ),
+                _SuggestionRow(rows: mostUsed, onTap: (row) => _openRule(row)),
                 const SizedBox(height: Gap.xl),
               ],
               _ListHeading(
@@ -740,9 +646,8 @@ class _AppsViewState extends ConsumerState<_AppsView> {
               'A rule applies the moment you switch it on — there is nothing '
               'to enable afterwards.',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -768,11 +673,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
 
 /// A section heading inside the app list.
 class _ListHeading extends StatelessWidget {
-  const _ListHeading({
-    required this.title,
-    required this.icon,
-    this.note,
-  });
+  const _ListHeading({required this.title, required this.icon, this.note});
 
   final String title;
   final IconData icon;
@@ -802,9 +703,8 @@ class _ListHeading extends StatelessWidget {
           Flexible(
             child: Text(
               note!,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
@@ -921,9 +821,8 @@ class _SearchField extends StatelessWidget {
         filled: true,
         fillColor: cs.surfaceContainerHigh,
         hintText: 'Search every app…',
-        hintStyle: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+        hintStyle: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: cs.onSurfaceVariant),
         prefixIcon: Icon(
           Icons.search_rounded,
           size: 18,
@@ -931,7 +830,7 @@ class _SearchField extends StatelessWidget {
         ),
         suffixIcon: !hasText
             ? null
-            : _SheetCloseButton(
+            : SheetCloseButton(
                 label: 'Clear search',
                 onTap: () {
                   controller.clear();
@@ -989,9 +888,8 @@ class _NoApps extends StatelessWidget {
               'platform problem rather than a settings one — nothing here can '
               'be switched on until it answers.',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -1023,9 +921,8 @@ class _NoMatches extends StatelessWidget {
               const SizedBox(height: Gap.md),
               Text(
                 'No app matches “$query”',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1094,9 +991,7 @@ class _AppRuleRow extends ConsumerWidget {
                     Text(
                       _meta,
                       style: tt.labelSmall?.copyWith(
-                        color: row.isRestricted
-                            ? accent
-                            : cs.onSurfaceVariant,
+                        color: row.isRestricted ? accent : cs.onSurfaceVariant,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1152,7 +1047,8 @@ class _AppRuleRow extends ConsumerWidget {
         '${formatMinutes(row.usedMinutes)} of '
             '${formatMinutes(row.rule?.budgetMinutes ?? 0)} used today',
       WhitelistTier.alwaysAllowed => 'Never closed',
-      null when row.usedMinutes > 0 => '${formatMinutes(row.usedMinutes)} today',
+      null when row.usedMinutes > 0 =>
+        '${formatMinutes(row.usedMinutes)} today',
       null => row.isSystem ? 'System app' : 'Open — not restricted',
     };
   }
@@ -1370,9 +1266,7 @@ class _SuggestionRow extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     formatMinutes(row.usedMinutes),
-                    style: tt.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -1466,7 +1360,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
     final accent = harmonize(_tier.color, cs.primary);
     final used = widget.usedMinutes;
 
-    return _SheetSurface(
+    return SheetSurface(
       padding: const EdgeInsets.all(Gap.xl),
       child: SafeArea(
         top: false,
@@ -1475,7 +1369,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _SheetHandle(),
+              const SheetHandle(),
               const SizedBox(height: Gap.lg),
               Row(
                 children: [
@@ -1508,7 +1402,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                       ],
                     ),
                   ),
-                  _SheetCloseButton(
+                  SheetCloseButton(
                     label: 'Close',
                     onTap: () => Navigator.of(context).pop(),
                   ),
@@ -1565,9 +1459,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                                 child: Text(
                                   formatMinutes(_budget),
                                   textAlign: TextAlign.center,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleSmall,
+                                  style: Theme.of(context).textTheme.titleSmall,
                                 ),
                               ),
                             ),
@@ -1660,7 +1552,6 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
     );
   }
 }
-
 
 class _TierOption extends StatelessWidget {
   const _TierOption({
@@ -1858,10 +1749,7 @@ class _YoutubeView extends ConsumerWidget {
         const SizedBox(height: Gap.xl),
         Stagger(
           index: 1,
-          child: SectionHeader(
-            title: 'Surfaces',
-            icon: Icons.tune_rounded,
-          ),
+          child: SectionHeader(title: 'Surfaces', icon: Icons.tune_rounded),
         ),
         Stagger(
           index: 2,
@@ -1919,9 +1807,8 @@ class _YoutubeView extends ConsumerWidget {
                       'own screens, not by reading what is on them. A future '
                       'YouTube update can rename them, and the block would '
                       'stop firing until FocusForge is updated to match.',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(height: 1.4),
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(height: 1.4),
                     ),
                   ),
                 ],
@@ -1950,7 +1837,9 @@ class _YoutubeView extends ConsumerWidget {
                   color: cs.onSurfaceVariant,
                 ),
                 title: Text(
-                  fullyBlocked ? 'Stop blocking YouTube' : 'Block all of YouTube',
+                  fullyBlocked
+                      ? 'Stop blocking YouTube'
+                      : 'Block all of YouTube',
                 ),
                 subtitle: Text(
                   fullyBlocked
@@ -2003,18 +1892,14 @@ class _SurfaceSwitch extends StatelessWidget {
         HapticFeedback.selectionClick();
         onChanged(v);
       },
-      secondary: Icon(
-        icon,
-        color: value ? cs.tertiary : cs.onSurfaceVariant,
-      ),
+      secondary: Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
       title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),
         child: Text(
           body,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
         ),
       ),
     );
@@ -2092,8 +1977,7 @@ class _ActivityView extends ConsumerWidget {
                   child: Column(
                     children: [
                       for (var i = 0; i < recent.length; i++) ...[
-                        if (i > 0)
-                          Divider(color: cs.outlineVariant, height: 1),
+                        if (i > 0) Divider(color: cs.outlineVariant, height: 1),
                         _EventRow(event: recent[i]),
                       ],
                     ],
@@ -2177,9 +2061,8 @@ class _StatTile extends StatelessWidget {
               const SizedBox(height: Gap.md),
               Text(
                 value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 2),
               Text(
@@ -2235,9 +2118,8 @@ class _EventRow extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     formatRelativeTime(event.at),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -2272,10 +2154,7 @@ class _OutcomePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Gap.sm + 2,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(Radii.pill),
@@ -2283,10 +2162,8 @@ class _OutcomePill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -2386,9 +2263,8 @@ class _UsageNotice extends StatelessWidget {
             Expanded(
               child: Text(
                 body,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(height: 1.4),
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(height: 1.4),
               ),
             ),
           ],
@@ -2425,9 +2301,8 @@ class _EmptyLog extends StatelessWidget {
               'Every time a rule fires it is logged here — and whether you '
               'went in anyway or walked away.',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
