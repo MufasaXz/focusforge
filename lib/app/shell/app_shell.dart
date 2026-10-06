@@ -24,8 +24,25 @@ class AppShell extends ConsumerStatefulWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  /// The app is phone-shaped; on wide viewports it is centred at this width.
+  /// How wide the content column is allowed to get on a phone-shaped viewport.
+  ///
+  /// Below [railBreakpoint] the app is one column and this is what keeps a
+  /// tablet in portrait from stretching a phone layout across it.
   static const double maxContentWidth = 460;
+
+  /// How wide the content is allowed to get beside the rail.
+  ///
+  /// Wider than the phone column because the screens have somewhere to put it —
+  /// the dashboard goes to two columns — but still capped, because a line of
+  /// body text that runs the full width of a tablet is unreadable.
+  static const double maxWideContentWidth = 1100;
+
+  /// The width at which the bottom bar becomes a rail.
+  ///
+  /// Material's own window-size breakpoint between "compact" and "medium".
+  /// Below it the bar is the right control; above it a bar stretched across a
+  /// tablet is a phone control on a desk.
+  static const double railBreakpoint = 720;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -108,6 +125,53 @@ class _AppShellState extends ConsumerState<AppShell>
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final shielded = ref.watch(activeShieldCountProvider) > 0;
+    final wide =
+        MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
+
+    final destinations = [
+      const NavigationDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: 'Home',
+      ),
+      NavigationDestination(
+        icon: _ShieldIcon(shielded: shielded, icon: Icons.shield_outlined),
+        selectedIcon: _ShieldIcon(shielded: shielded, icon: Icons.shield),
+        label: 'Shield',
+      ),
+      NavigationDestination(
+        // The first-run tips point at this icon from the root overlay, so the
+        // key has to be attached where the icon is really built rather than at
+        // the destination.
+        icon: _CoachAnchor(
+          anchorKey: ref.watch(coachTargetsProvider).focusTab,
+          child: const Icon(Icons.timer_outlined),
+        ),
+        selectedIcon: const Icon(Icons.timer),
+        label: 'Focus',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.person_outline),
+        selectedIcon: Icon(Icons.person),
+        label: 'You',
+      ),
+    ];
+
+    // The branch fade, shared by both shapes.
+    final body = AnimatedBuilder(
+      animation: _fade,
+      builder: (context, child) {
+        final t = Curves.easeOutCubic.transform(_fade.value);
+        return Opacity(
+          opacity: 0.001 + 0.999 * t,
+          child: Transform.translate(
+            offset: Offset(0, 14 * (1 - t)),
+            child: child,
+          ),
+        );
+      },
+      child: widget.navigationShell,
+    );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // Driven by the live theme rather than set once in main(), so toggling
@@ -121,80 +185,79 @@ class _AppShellState extends ConsumerState<AppShell>
             isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
-      child: Scaffold(
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppShell.maxContentWidth),
-            child: AnimatedBuilder(
-              animation: _fade,
-              builder: (context, child) {
-                final t = Curves.easeOutCubic.transform(_fade.value);
-                return Opacity(
-                  opacity: 0.001 + 0.999 * t,
-                  child: Transform.translate(
-                    offset: Offset(0, 14 * (1 - t)),
-                    child: child,
+      child: wide
+          // A tablet gets the rail. The bar is not stretched across it: a
+          // four-item bar spanning 1200dp puts Home and You a hand apart, and
+          // it costs a strip of height the content could use.
+          ? Scaffold(
+              body: Row(
+                children: [
+                  SafeArea(
+                    right: false,
+                    child: NavigationRail(
+                      selectedIndex: widget.navigationShell.currentIndex,
+                      onDestinationSelected: _select,
+                      labelType: NavigationRailLabelType.all,
+                      backgroundColor: cs.surfaceContainerLow,
+                      // Compact: icons and their labels, no extended drawer.
+                      // The rail is navigation, not a place to put things.
+                      minWidth: 76,
+                      groupAlignment: -0.6,
+                      destinations: [
+                        for (final d in destinations)
+                          NavigationRailDestination(
+                            icon: d.icon,
+                            selectedIcon: d.selectedIcon,
+                            label: Text(d.label),
+                          ),
+                      ],
+                    ),
                   ),
-                );
-              },
-              child: widget.navigationShell,
-            ),
-          ),
-        ),
-        // One of the three places the design allows a real backdrop blur: the
-        // bar floats over scrolling content, and the blur is what says so.
-        // Everywhere else uses a solid tonal surface.
-        bottomNavigationBar: Center(
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppShell.maxContentWidth),
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: NavigationBar(
-                  backgroundColor: cs.surface.withValues(alpha: 0.85),
-                  selectedIndex: widget.navigationShell.currentIndex,
-                  onDestinationSelected: _select,
-                  destinations: [
-                    const NavigationDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: 'Home',
-                    ),
-                    NavigationDestination(
-                      icon: _ShieldIcon(
-                        shielded: shielded,
-                        icon: Icons.shield_outlined,
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: AppShell.maxWideContentWidth,
+                        ),
+                        child: body,
                       ),
-                      selectedIcon: _ShieldIcon(
-                        shielded: shielded,
-                        icon: Icons.shield,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Scaffold(
+              body: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppShell.maxContentWidth,
+                  ),
+                  child: body,
+                ),
+              ),
+              // One of the three places the design allows a real backdrop blur:
+              // the bar floats over scrolling content, and the blur is what
+              // says so. Everywhere else uses a solid tonal surface.
+              bottomNavigationBar: Center(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppShell.maxContentWidth,
+                  ),
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: NavigationBar(
+                        backgroundColor: cs.surface.withValues(alpha: 0.85),
+                        selectedIndex: widget.navigationShell.currentIndex,
+                        onDestinationSelected: _select,
+                        destinations: destinations,
                       ),
-                      label: 'Shield',
                     ),
-                    NavigationDestination(
-                      // The first-run tips point at this icon from the root
-                      // overlay, so the key has to be attached where the icon
-                      // is really built rather than at the destination.
-                      icon: _CoachAnchor(
-                        anchorKey: ref.watch(coachTargetsProvider).focusTab,
-                        child: const Icon(Icons.timer_outlined),
-                      ),
-                      selectedIcon: const Icon(Icons.timer),
-                      label: 'Focus',
-                    ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
-                      label: 'You',
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
