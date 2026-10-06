@@ -71,11 +71,8 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                       .createShader(rect),
               child: Text(
                 formatMinutes(_minutes.round()),
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  fontSize: 68,
-                  height: 1.05,
-                  letterSpacing: -2,
-                ),
+                style: Theme.of(context).textTheme.displayLarge
+                    ?.copyWith(fontSize: 68, height: 1.05, letterSpacing: -2),
               ),
             ),
           ),
@@ -85,7 +82,8 @@ class _GoalStepState extends ConsumerState<GoalStep> {
           child: Center(
             child: Text(
               'of focus per day',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -149,11 +147,12 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                           Text(
                             formatMinutes(suggestions[i]),
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: _minutes.round() == suggestions[i]
-                                  ? cs.onSecondaryContainer
-                                  : cs.onSurfaceVariant,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: _minutes.round() == suggestions[i]
+                                      ? cs.onSecondaryContainer
+                                      : cs.onSurfaceVariant,
+                                ),
                           ),
                         ],
                       ),
@@ -186,9 +185,8 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                   Expanded(
                     child: Text(
                       _insight,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                 ],

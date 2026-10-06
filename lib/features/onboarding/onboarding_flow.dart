@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import 'apps_step.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
 import 'goal_step.dart';
@@ -35,7 +34,7 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 }
 
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
-  static const _stepCount = 9;
+  static const _stepCount = 8;
   static const _authIndex = 1;
 
   final _controller = PageController();
@@ -105,7 +104,6 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                         PersonaStep(onNext: _next),
                         ProfileStep(onNext: _next),
                         SubjectsStep(onNext: _next),
-                        AppsStep(onNext: _next),
                         GoalStep(onNext: _next),
                         PermissionsStep(onNext: _next),
                         const CompleteStep(),

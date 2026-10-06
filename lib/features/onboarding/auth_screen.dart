@@ -198,7 +198,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               'Your focus starts here',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyLarge
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 3),
@@ -249,7 +250,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         'or skip — you can link a real account later without '
                         'losing anything.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: Gap.md),
@@ -258,7 +260,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               'By continuing you agree to our Terms & Privacy Policy.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 1),
@@ -438,8 +441,7 @@ class _EmailSheetState extends State<_EmailSheet>
   bool get _passwordValid =>
       _signUp ? _password.text.length >= 8 : _password.text.isNotEmpty;
 
-  bool get _canSubmit =>
-      !_busy && !_succeeded && _emailValid && _passwordValid;
+  bool get _canSubmit => !_busy && !_succeeded && _emailValid && _passwordValid;
 
   String? get _emailError {
     if (!_emailTouched || _emailValue.isEmpty) return null;
@@ -587,7 +589,8 @@ class _EmailSheetState extends State<_EmailSheet>
               const SizedBox(height: Gap.xs),
               Text(
                 'Stored on this device for now — nothing is sent to a server.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.xl),
               AppTextField(
@@ -631,7 +634,9 @@ class _EmailSheetState extends State<_EmailSheet>
                   ),
                 ),
                 onChanged: (_) {
-                  if (!_passwordTouched) setState(() => _passwordTouched = true);
+                  if (!_passwordTouched) {
+                    setState(() => _passwordTouched = true);
+                  }
                 },
               ),
               if (_signUp && _password.text.isNotEmpty) ...[
@@ -706,7 +711,8 @@ class _StrengthBar extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.end,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: color),
           ),
         ),
       ],

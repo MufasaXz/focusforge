@@ -70,7 +70,9 @@ class _PersonaCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.card),
         side: BorderSide(
-          color: selected ? harmonize(persona.color, cs.primary) : cs.outlineVariant,
+          color: selected
+              ? harmonize(persona.color, cs.primary)
+              : cs.outlineVariant,
           width: selected ? 1.5 : 1,
         ),
       ),
@@ -91,13 +93,15 @@ class _PersonaCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(persona.label, style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      persona.label,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       persona.blurb,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                 ),

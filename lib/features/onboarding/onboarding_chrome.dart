@@ -50,7 +50,10 @@ class StepScaffold extends StatelessWidget {
             children: [
               Stagger(
                 index: 0,
-                child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
               ),
               if (subtitle != null)
                 Stagger(
@@ -59,9 +62,8 @@ class StepScaffold extends StatelessWidget {
                     padding: const EdgeInsets.only(top: Gap.sm),
                     child: Text(
                       subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: t.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: t.onSurfaceVariant),
                     ),
                   ),
                 ),
@@ -96,9 +98,8 @@ class StepScaffold extends StatelessWidget {
                   child: Text(
                     footnote!,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: t.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: t.onSurfaceVariant),
                   ),
                 ),
             ],
@@ -201,6 +202,7 @@ class GhostAction extends StatelessWidget {
     );
   }
 }
+
 /// The flow's text field, a filled Material [TextField].
 ///
 /// The tonal fill marks the input area and the primary-coloured focus border
@@ -286,7 +288,10 @@ class AppTextField extends StatelessWidget {
           color: cs.onSurfaceVariant,
         ),
         errorStyle: theme.textTheme.bodySmall?.copyWith(color: cs.error),
-        border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide.none,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
           borderSide: BorderSide.none,

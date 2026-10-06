@@ -459,9 +459,8 @@ class _Bubble extends StatelessWidget {
               const SizedBox(height: Gap.md),
               Text(
                 spot.body,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.lg),
               Row(

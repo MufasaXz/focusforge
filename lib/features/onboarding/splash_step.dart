@@ -77,10 +77,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
               scale: logoScale,
               // The app's own mark, not a stock glyph — the first thing the
               // user sees should be the thing they tapped to get here.
-              child: const AppMark(
-                size: 108,
-                semanticLabel: 'FocusForge',
-              ),
+              child: const AppMark(size: 108, semanticLabel: 'FocusForge'),
             ),
           ),
           const SizedBox(height: Gap.xl),
@@ -88,7 +85,10 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0.15, 0.7),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('FocusForge', style: Theme.of(context).textTheme.displayLarge),
+              child: Text(
+                'FocusForge',
+                style: Theme.of(context).textTheme.displayLarge,
+              ),
             ),
           ),
           const SizedBox(height: Gap.sm),
@@ -96,7 +96,8 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
             opacity: _fade(0.4, 1),
             child: Text(
               'Forge your focus',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyLarge
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           const Spacer(flex: 2),

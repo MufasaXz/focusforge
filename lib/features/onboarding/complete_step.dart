@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -34,9 +33,11 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   @override
   void initState() {
     super.initState();
-    // A beat after the page settles — firing during the page transition makes
-    // the burst look like it belongs to the previous screen.
-    Future<void>.delayed(const Duration(milliseconds: 450), () {
+    // Timed to the last tile landing rather than to the page transition: the
+    // staggered entrance runs to about 735ms (a 275ms delay for the last item
+    // plus its 460ms travel), and a burst that arrives before the page has
+    // finished composing reads as an interruption.
+    Future<void>.delayed(const Duration(milliseconds: 620), () {
       if (mounted) ConfettiBurst.fire(context);
     });
   }
@@ -54,8 +55,13 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final cs = Theme.of(context).colorScheme;
     final persona = ref.watch(userProvider).persona;
     final subjectCount = ref.watch(subjectsProvider).length;
-    final blockedCount = ref.watch(blockedAppsProvider).length;
     final goal = ref.watch(dailyGoalProvider);
+    // The preset the timer will actually start with, not a claim about the
+    // shield: apps are chosen in the Shield tab now, so a count here would be
+    // a zero dressed up as a fact.
+    final preset = ref.watch(
+      presetsProvider,
+    )[ref.watch(timerProvider).presetIndex];
 
     return StepScaffold(
       title: "You're all set",
@@ -95,10 +101,10 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
             children: [
               Expanded(
                 child: _StatTile(
-                  icon: Icons.shield_rounded,
-                  color: cs.tertiary,
-                  value: '$blockedCount',
-                  label: 'Apps blocked',
+                  icon: Icons.timer_outlined,
+                  color: cs.secondary,
+                  value: formatMinutes(preset.focus),
+                  label: 'Focus block',
                 ),
               ),
               const SizedBox(width: Gap.sm),
@@ -174,23 +180,20 @@ class _StatTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            IconBadge(
-              icon: icon,
-              color: color,
-              size: 34,
-              radius: Radii.tile,
-            ),
+            IconBadge(icon: icon, color: color, size: 34, radius: Radii.tile),
             const SizedBox(height: Gap.md),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(letterSpacing: -0.4),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(letterSpacing: -0.4),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 1),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),

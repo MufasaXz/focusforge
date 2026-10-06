@@ -120,7 +120,8 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               'Leave it blank to stay nameless — everything still works.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -141,20 +142,21 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
                 size: 36,
                 radius: Radii.tile,
               ),
-              title: Text(_timezone, style: Theme.of(context).textTheme.titleSmall),
+              title: Text(
+                _timezone,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               subtitle: Text(
                 'Detected from your device',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
               trailing: Chip(
                 visualDensity: VisualDensity.compact,
                 label: Text(
                   'Auto',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.tertiary,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: cs.tertiary),
                 ),
               ),
             ),
@@ -181,10 +183,8 @@ class _Avatar extends StatelessWidget {
           ? Icon(Icons.person_rounded, size: 38, color: cs.onPrimaryContainer)
           : Text(
               initials,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontSize: 32,
-                color: cs.onPrimaryContainer,
-              ),
+              style: Theme.of(context).textTheme.displayMedium
+                  ?.copyWith(fontSize: 32, color: cs.onPrimaryContainer),
             ),
     );
   }

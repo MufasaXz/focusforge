@@ -119,9 +119,8 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
                 child: Text(
                   'Your data stays on this device. FocusForge does not upload '
                   'usage history, messages or personal data — ever.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
             ],
