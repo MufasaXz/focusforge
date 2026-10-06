@@ -414,10 +414,14 @@ class FocusAccessibilityService : AccessibilityService() {
      * it before the user ever reached the app — and they would be covered
      * again the moment they opened it. The app grants the grace when the pause
      * is actually over.
+     *
+     * Nothing is reported here either. The impulse log carries one row per
+     * interception, and for this exit the app is the side that knows the
+     * outcome: it is the side that shows the pause, and a row written here as
+     * well would count the same reach-for-it twice.
      */
     private fun openAnyway(packageName: String, label: String) {
         dismissOverlay()
-        ShieldEvents.emit(packageName, label, ShieldEvents.OPENED_ANYWAY)
 
         try {
             startActivity(
@@ -431,9 +435,11 @@ class FocusAccessibilityService : AccessibilityService() {
                     .putExtra(EXTRA_GRACE_SECONDS, rules.graceSeconds),
             )
         } catch (_: Exception) {
-            // No UI to hand over to, so nothing will grant the grace later.
-            // Granting it here is the only way out that is not a loop of block
-            // screens.
+            // No UI to hand over to, so nothing will grant the grace later and
+            // nothing will report the decision either. Both happen here: the
+            // grant is the only way out that is not a loop of block screens,
+            // and the report is the only record this interception will get.
+            ShieldEvents.emit(packageName, label, ShieldEvents.OPENED_ANYWAY)
             grantGrace(packageName, rules.graceSeconds)
         }
     }

@@ -157,6 +157,10 @@ class _Frame {
 /// — "how often did the pause actually change your mind" is the only number
 /// that can tell whether this feature works.
 ///
+/// This screen is the *only* side that reports this exit. The impulse log
+/// carries one row per interception, and the native service stays quiet when
+/// it hands over to us, precisely so that a reach-for-it is not counted twice.
+///
 /// The second exit also hands the app back: the grace is granted and the app
 /// is launched, so choosing to go in anyway ends with the app the user asked
 /// for rather than with the dashboard.
