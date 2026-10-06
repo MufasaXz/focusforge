@@ -33,19 +33,37 @@ class NativeShieldService implements ShieldPlatformService {
   static bool get isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// The package the user chose to open from a block screen, if the app was
-  /// launched that way. Read once, then cleared natively.
-  Future<Map<String, dynamic>?> takeBlockedApp() async {
+  /// The app the block screen was covering, if this launch came from one.
+  ///
+  /// Read once, then cleared natively, so a later resume cannot replay the
+  /// pause. Null covers both "this was an ordinary launch" and "the payload
+  /// was unusable" — either way there is no interception to act on.
+  Future<BlockedLaunch?> takeBlockedApp() async {
+    final Map<dynamic, dynamic>? raw;
     try {
-      final raw = await _methods.invokeMethod<Map<dynamic, dynamic>>(
-        'blockedApp',
-      );
-      return raw?.cast<String, dynamic>();
+      raw = await _methods.invokeMethod<Map<dynamic, dynamic>>('blockedApp');
     } on PlatformException {
       return null;
     } on MissingPluginException {
       return null;
     }
+    if (raw == null) return null;
+
+    final packageId = raw['package'];
+    if (packageId is! String || packageId.isEmpty) return null;
+
+    final label = raw['label'];
+    final grace = raw['graceSeconds'];
+
+    return BlockedLaunch(
+      packageId: packageId,
+      label: label is String && label.isNotEmpty ? label : packageId,
+      // Zero would mean the pause buys nothing at all, which is the one answer
+      // the user could not have intended by choosing to go in anyway.
+      graceSeconds: grace is int && grace > 0
+          ? grace
+          : ShieldConfig.defaultGraceSeconds,
+    );
   }
 
   @override
@@ -99,6 +117,18 @@ class NativeShieldService implements ShieldPlatformService {
     } on PlatformException {
       // The grace is a convenience; failing to grant it must not throw into a
       // caller that is mid-navigation.
+    } on MissingPluginException {
+      // Not an Android build.
+    }
+  }
+
+  @override
+  Future<void> openApp(String packageId) async {
+    try {
+      await _methods.invokeMethod<bool>('openApp', {'package': packageId});
+    } on PlatformException {
+      // The app stays where it is. A hand-off that did not happen is a far
+      // better outcome than an exception thrown into a screen that is leaving.
     } on MissingPluginException {
       // Not an Android build.
     }

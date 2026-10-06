@@ -14,7 +14,6 @@ import '../../core/providers/usage_providers.dart';
 import '../../core/services/app_catalog.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
-import '../../core/services/shield_service.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
@@ -22,6 +21,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/stagger.dart';
 import 'app_picker_sheet.dart';
+import 'breath_gate.dart';
 
 /// Tab 2 — the shielding engine.
 ///
@@ -195,14 +195,14 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
               .read(whitelistProvider)
               .where((e) => e.tier == WhitelistTier.blocked)
               .firstOrNull;
-          final app = blocked?.name ?? 'YouTube';
-          // On a device without the native engine there is nothing to
-          // intercept, so the preview emits the event the real service would
-          // have emitted. With the engine present this is a no-op.
-          final service = ref.read(shieldServiceProvider);
-          if (service is RecordingShieldService) service.simulate(app);
           Navigator.of(sheetContext).pop();
-          context.push(AppRoutes.paths[AppRoutes.breathGate]!, extra: app);
+          // No package: a preview is not an interception. The gate leaves the
+          // impulse log and the hand-back alone when there is nothing real
+          // behind it.
+          context.push(
+            AppRoutes.paths[AppRoutes.breathGate]!,
+            extra: BreathGateArgs(appName: blocked?.name ?? 'YouTube'),
+          );
         },
       ),
     );

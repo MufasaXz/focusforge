@@ -10,6 +10,26 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
+import '../../core/services/shield_service.dart';
+
+/// What the gate needs to know about the launch that opened it.
+///
+/// [packageId] is null when the gate is being previewed rather than reached
+/// through a real interception. There is nothing to hand back in that case,
+/// and nothing worth logging either: a decision the user did not make has no
+/// place in the numbers the Shield screen reports.
+@immutable
+class BreathGateArgs {
+  const BreathGateArgs({
+    required this.appName,
+    this.packageId,
+    this.graceSeconds = ShieldConfig.defaultGraceSeconds,
+  });
+
+  final String appName;
+  final String? packageId;
+  final int graceSeconds;
+}
 
 /// The 4-7-8 protocol, in one place.
 class _Protocol {
@@ -136,10 +156,14 @@ class _Frame {
 /// Both exits record a [BreathEvent] before leaving. The decision is the data
 /// — "how often did the pause actually change your mind" is the only number
 /// that can tell whether this feature works.
+///
+/// The second exit also hands the app back: the grace is granted and the app
+/// is launched, so choosing to go in anyway ends with the app the user asked
+/// for rather than with the dashboard.
 class BreathGateScreen extends ConsumerStatefulWidget {
-  const BreathGateScreen({super.key, required this.appName});
+  const BreathGateScreen({super.key, required this.args});
 
-  final String appName;
+  final BreathGateArgs args;
 
   @override
   ConsumerState<BreathGateScreen> createState() => _BreathGateScreenState();
@@ -170,15 +194,21 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
   Future<void> _finish({required bool walkedAway}) async {
     if (_leaving) return;
     setState(() => _leaving = true);
-    await ref
-        .read(breathEventsProvider.notifier)
-        .record(
-          BreathEvent(
-            appName: widget.appName,
-            at: DateTime.now(),
-            walkedAway: walkedAway,
-          ),
-        );
+
+    final packageId = widget.args.packageId;
+    if (packageId != null) {
+      await ref
+          .read(breathEventsProvider.notifier)
+          .record(
+            BreathEvent(
+              appName: widget.args.appName,
+              at: DateTime.now(),
+              walkedAway: walkedAway,
+            ),
+          );
+      if (!walkedAway) await _handBack(packageId);
+    }
+
     if (!mounted) return;
     if (context.canPop()) {
       context.pop();
@@ -186,6 +216,22 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
       // Reached by deep link, so there is nothing to pop back to.
       context.go(AppRoutes.paths[AppRoutes.dashboard]!);
     }
+  }
+
+  /// The second exit: the pause is over, and the app the user asked for is the
+  /// app they get.
+  ///
+  /// The order is load-bearing. The grace is granted before the launch, not
+  /// after: the accessibility service sees the launch the instant it happens,
+  /// and a grant still in flight at that moment would leave the user looking
+  /// at the very block screen they just sat through.
+  Future<void> _handBack(String packageId) async {
+    final service = ref.read(shieldServiceProvider);
+    await service.grantTemporaryAccess(
+      packageId,
+      seconds: widget.args.graceSeconds,
+    );
+    await service.openApp(packageId);
   }
 
   @override
@@ -260,7 +306,7 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    _GateHeader(appName: widget.appName),
+                                    _GateHeader(appName: widget.args.appName),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: Gap.xxl,

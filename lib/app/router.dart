@@ -108,7 +108,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final args = state.extra;
           return BreathGateScreen(
-            appName: args is String ? args : 'That app',
+            // The gate is also reachable from the Shield screen's preview, and
+            // a deep link carries nothing at all. Both fall back to a plain
+            // name with no package behind it.
+            args: args is BreathGateArgs
+                ? args
+                : const BreathGateArgs(appName: 'That app'),
           );
         },
       ),

@@ -10,6 +10,7 @@ import '../../core/providers/coach_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/native_shield_service.dart';
+import '../../features/shield/breath_gate.dart';
 import '../router.dart';
 
 /// Root shell: the four tab branches and the frosted navigation bar.
@@ -72,15 +73,21 @@ class _AppShellState extends ConsumerState<AppShell>
   /// return to the dashboard would turn "open it anyway" into a plain escape
   /// hatch with no cost at all. The extras are read once and cleared natively,
   /// so a later resume cannot replay the same pause.
+  ///
+  /// The package travels with the gate rather than being dropped here — it is
+  /// what the gate hands back when the pause is over.
   Future<void> _checkBlockedLaunch() async {
     final service = ref.read(shieldServiceProvider);
     if (service is! NativeShieldService) return;
     final blocked = await service.takeBlockedApp();
     if (blocked == null || !mounted) return;
-    final label = blocked['label'];
     context.push(
       AppRoutes.paths[AppRoutes.breathGate]!,
-      extra: label is String && label.isNotEmpty ? label : 'That app',
+      extra: BreathGateArgs(
+        appName: blocked.label,
+        packageId: blocked.packageId,
+        graceSeconds: blocked.graceSeconds,
+      ),
     );
   }
 
