@@ -9,7 +9,6 @@ import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/providers/audio_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -18,6 +17,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import 'ambient_mixer.dart';
 import 'fullscreen_clock.dart';
 import 'subject_picker.dart';
 import 'widgets/clock_faces.dart';
@@ -109,9 +109,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final face = ref.watch(clockFaceProvider);
     final presets = ref.watch(presetsProvider);
     final preset = presets[timer.presetIndex];
-    final catalogue = ref.watch(ambientCatalogueProvider);
-    final active = ref.watch(activeSoundsProvider);
-    final volumes = ref.watch(volumesProvider);
     final streak = ref.watch(currentStreakProvider);
     final minutesToday = ref.watch(focusMinutesTodayProvider);
     final sessionsToday = ref
@@ -344,96 +341,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(height: Gap.xl),
 
                 // Ambient mixer ------------------------------------------------
-                Stagger(
-                  index: 4,
-                  child: SectionHeader(
-                    title: 'Ambient mix',
-                    icon: Icons.graphic_eq_outlined,
-                    trailing: active.isEmpty
-                        ? null
-                        : Semantics(
-                            button: true,
-                            label: 'Stop all ambient sounds',
-                            excludeSemantics: true,
-                            onTap: () => unawaited(
-                              ref.read(activeSoundsProvider.notifier).clear(),
-                            ),
-                            child: FilterChip(
-                              onSelected: (_) => unawaited(
-                                ref.read(activeSoundsProvider.notifier).clear(),
-                              ),
-                              showCheckmark: false,
-                              avatar: Icon(
-                                Icons.stop_circle_outlined,
-                                size: 15,
-                                color: t.onSurfaceVariant,
-                              ),
-                              label: const Text(
-                                'Stop all',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-                Stagger(
-                  index: 5,
-                  child: Card.filled(
-                    child: Padding(
-                      padding: const EdgeInsets.all(Gap.md),
-                      child: Column(
-                        children: [
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: Gap.md,
-                            crossAxisSpacing: Gap.md,
-                            childAspectRatio: 2.5,
-                            children: [
-                              for (final sound in catalogue)
-                                _AmbientTile(
-                                  tile: sound,
-                                  active: active.contains(sound.id),
-                                  onTap: () => unawaited(
-                                    ref
-                                        .read(activeSoundsProvider.notifier)
-                                        .toggle(sound),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          // Volume lives on the active tracks only: a slider for
-                          // a silent track would be a control with nothing to
-                          // control.
-                          if (active.isNotEmpty) ...[
-                            const SizedBox(height: Gap.sm),
-                            Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: t.outlineVariant,
-                            ),
-                            for (final sound in catalogue.where(
-                              (s) => active.contains(s.id),
-                            ))
-                              _VolumeRow(
-                                sound: sound,
-                                value: (volumes[sound.id] ?? 0.5).clamp(
-                                  0.0,
-                                  1.0,
-                                ),
-                                onChanged: (v) => unawaited(
-                                  ref
-                                      .read(volumesProvider.notifier)
-                                      .set(sound.id, v),
-                                ),
-                              ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                const Stagger(index: 4, child: AmbientMixerSection()),
                 const SizedBox(height: Gap.xl),
 
                 // Today --------------------------------------------------------
@@ -798,129 +706,6 @@ class _SegmentDot extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
         color: done || current ? color : t.surfaceContainerHighest,
-      ),
-    );
-  }
-}
-
-class _AmbientTile extends StatelessWidget {
-  const _AmbientTile({
-    required this.tile,
-    required this.active,
-    required this.onTap,
-  });
-
-  final AmbientSound tile;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-
-    return Semantics(
-      button: true,
-      selected: active,
-      label: '${tile.name} ambience, ${active ? 'on' : 'off'}',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: Pressable(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.tile),
-            color: active
-                ? tile.color.withValues(alpha: 0.20)
-                : t.surfaceContainer,
-            border: Border.all(
-              color: active
-                  ? tile.color.withValues(alpha: 0.72)
-                  : t.outlineVariant,
-              width: active ? 1.3 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                tile.icon,
-                size: 17,
-                color: active ? tile.color : t.onSurfaceVariant,
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(
-                  tile.name,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: active ? t.onSurface : t.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (active)
-                Icon(Icons.graphic_eq_rounded, size: 14, color: tile.color),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Volume for one live track. Only rendered for sounds that are playing.
-class _VolumeRow extends StatelessWidget {
-  const _VolumeRow({
-    required this.sound,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final AmbientSound sound;
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final percent = (value * 100).round();
-
-    return MergeSemantics(
-      child: Semantics(
-        label: '${sound.name} volume',
-        child: SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              Icon(sound.icon, size: 16, color: sound.color),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Slider(
-                  value: value,
-                  onChanged: onChanged,
-                  // The name is on the node's label; the formatter only has to
-                  // describe the value, or it is announced twice.
-                  semanticFormatterCallback: (v) =>
-                      '${(v * 100).round()} percent',
-                ),
-              ),
-              // The percentage is a visual echo of the slider's own value.
-              ExcludeSemantics(
-                child: SizedBox(
-                  width: 36,
-                  child: Text(
-                    '$percent%',
-                    textAlign: TextAlign.right,
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: t.onSurfaceVariant),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

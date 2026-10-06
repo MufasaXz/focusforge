@@ -15,6 +15,13 @@ import '../models/study.dart';
 /// browser blocks autoplay until the first gesture, the timer must keep
 /// running and the UI must not throw.
 class AmbientMixer {
+  /// Where a track starts before anyone has moved its slider.
+  ///
+  /// Public because the mixer screen draws the same value: a slider that
+  /// showed 50% while the player was at some other default would be the one
+  /// control in the app that lies.
+  static const double defaultVolume = 0.5;
+
   final Map<String, AudioPlayer> _players = {};
   final Map<String, double> _volumes = {};
   final Map<String, String> _assets = {};
@@ -28,11 +35,14 @@ class AmbientMixer {
   Set<String> get active => Set.unmodifiable(_active);
   bool get isPlaying => _active.isNotEmpty;
 
-  double volumeOf(String id) => _volumes[id] ?? 0.5;
+  double volumeOf(String id) => _volumes[id] ?? defaultVolume;
 
   /// Restores a previously persisted selection without starting playback —
   /// used on launch so the tiles come back lit.
-  void restore({required Set<String> active, required Map<String, double> volumes}) {
+  void restore({
+    required Set<String> active,
+    required Map<String, double> volumes,
+  }) {
     _active
       ..clear()
       ..addAll(active);
