@@ -7,6 +7,7 @@ import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/coach_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -18,6 +19,7 @@ import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
 import 'widgets/app_distribution.dart';
 import 'widgets/focus_heatmap.dart';
+import 'widgets/screen_time_card.dart';
 import 'widgets/subject_breakdown.dart';
 import 'widgets/weekly_chart.dart';
 
@@ -78,6 +80,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
     final activeShields = ref.watch(activeShieldCountProvider);
+    // Derived from the session log, not read from the stats aggregate: a
+    // streak is a fact about dates and the aggregate carries none.
+    final streak = ref.watch(currentStreakProvider);
 
     final sessionsToday = sessions
         .where((s) => s.completed && _sameDay(s.startedAt, now))
@@ -90,7 +95,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final weekAverage = ref.watch(weekAverageHoursProvider);
     final heatmapWeeks = ref.watch(heatmapWeeksProvider);
 
+    // The first-run tips, built from what is actually on screen. A tip whose
+    // subject is not rendered — the ring before the first session, the streak
+    // chip at zero — is left out rather than pointed at nothing.
+    final targets = ref.watch(coachTargetsProvider);
+    final spots = <CoachSpot>[
+      if (sessions.isEmpty)
+        CoachSpot(
+          target: targets.emptyCta,
+          icon: Icons.play_arrow_rounded,
+          title: 'Start your first session',
+          body:
+              'Your study log, charts and heatmap all grow from finished '
+              'sessions. This button starts one.',
+        )
+      else
+        CoachSpot(
+          target: targets.ring,
+          icon: Icons.donut_large_rounded,
+          title: 'Your daily progress',
+          body:
+              'This ring fills as you focus. Finish a session and it starts '
+              'moving.',
+        ),
+      if (streak > 0)
+        CoachSpot(
+          target: targets.streak,
+          icon: Icons.local_fire_department_rounded,
+          title: 'Build your streak',
+          body: 'Study every day and the flame keeps growing.',
+        ),
+      CoachSpot(
+        target: targets.focusTab,
+        icon: Icons.timer_rounded,
+        title: 'Your timer lives here',
+        body:
+            'The Focus tab starts a Pomodoro and runs the shield while it '
+            'counts down.',
+      ),
+    ];
+
     return CoachMarks(
+      spots: spots,
       child: RefreshIndicator(
         onRefresh: _refresh,
         color: cs.primary,
@@ -109,8 +155,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               index: 0,
               child: _Greeting(
                 name: user.firstName,
-                streak: stats.currentStreak,
+                streak: streak,
                 now: now,
+                streakKey: targets.streak,
               ),
             ),
             const SizedBox(height: Gap.xl),
@@ -123,74 +170,80 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               SkeletonCard(height: 310),
               SizedBox(height: Gap.xl),
               SkeletonList(count: 3, itemHeight: 72),
-            ] else if (sessions.isEmpty)
-              // A brand-new user gets one designed state instead of a page of
-              // zeroed charts — the empty state explains what will fill in.
-              Stagger(index: 1, child: _NoSessions(onStart: _startFocusing))
-            else ...[
-              // Daily overview ------------------------------------------------
-              Stagger(
-                index: 1,
-                child: _DailyOverview(
-                  progress: progress,
-                  minutesToday: minutesToday,
-                  goalMinutes: goalMinutes,
-                  sessionsToday: sessionsToday,
-                  totalHours: stats.totalFocusHours,
-                  level: stats.level,
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-
-              // Weekly --------------------------------------------------------
-              const Stagger(
-                index: 2,
-                child: SectionHeader(
-                  title: 'This week',
-                  icon: Icons.bar_chart_rounded,
-                ),
-              ),
-              Stagger(
-                index: 3,
-                child: _WeeklyPanel(
-                  total: weekTotal,
-                  average: weekAverage,
-                  days: week,
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-
-              // Heatmap -------------------------------------------------------
-              const Stagger(
-                index: 4,
-                child: SectionHeader(
-                  title: 'Focus heatmap',
-                  icon: Icons.calendar_month_rounded,
-                ),
-              ),
-              Stagger(
-                index: 5,
-                child: Card.filled(
-                  child: Padding(
-                    padding: const EdgeInsets.all(Gap.lg),
-                    child: FocusHeatmap(weeks: heatmapWeeks),
+            ] else ...[
+              if (sessions.isEmpty)
+                // A brand-new user gets one designed state instead of a page
+                // of zeroed charts — the empty state explains what will fill
+                // in. The cards below it are about today rather than about the
+                // log, so they are worth showing even before the first
+                // session.
+                Stagger(
+                  index: 1,
+                  child: _NoSessions(
+                    onStart: _startFocusing,
+                    ctaKey: targets.emptyCta,
+                  ),
+                )
+              else ...[
+                // Daily overview ----------------------------------------------
+                Stagger(
+                  index: 1,
+                  child: _DailyOverview(
+                    progress: progress,
+                    minutesToday: minutesToday,
+                    goalMinutes: goalMinutes,
+                    sessionsToday: sessionsToday,
+                    totalHours: stats.totalFocusHours,
+                    level: stats.level,
+                    ringKey: targets.ring,
                   ),
                 ),
-              ),
-              const SizedBox(height: Gap.xl),
+                const SizedBox(height: Gap.xl),
 
-              // App shields ---------------------------------------------------
-              Stagger(
-                index: 6,
-                child: SectionHeader(
-                  title: 'App shields',
-                  icon: Icons.shield_rounded,
-                  trailing: Text(
-                    '$activeShields active',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                // Weekly ------------------------------------------------------
+                const Stagger(
+                  index: 2,
+                  child: SectionHeader(
+                    title: 'This week',
+                    icon: Icons.bar_chart_rounded,
+                  ),
+                ),
+                Stagger(
+                  index: 3,
+                  child: _WeeklyPanel(
+                    total: weekTotal,
+                    average: weekAverage,
+                    days: week,
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+
+                // Heatmap -----------------------------------------------------
+                const Stagger(
+                  index: 4,
+                  child: SectionHeader(
+                    title: 'Focus heatmap',
+                    icon: Icons.calendar_month_rounded,
+                  ),
+                ),
+                Stagger(
+                  index: 5,
+                  child: Card.filled(
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.lg),
+                      child: FocusHeatmap(weeks: heatmapWeeks),
                     ),
                   ),
+                ),
+                const SizedBox(height: Gap.xl),
+              ],
+
+              // Screen time --------------------------------------------------
+              const Stagger(
+                index: 6,
+                child: SectionHeader(
+                  title: 'Screen time today',
+                  icon: Icons.hourglass_bottom_rounded,
                 ),
               ),
               const Stagger(
@@ -198,29 +251,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Card.filled(
                   child: Padding(
                     padding: EdgeInsets.all(Gap.lg),
-                    child: AppDistribution(),
+                    child: ScreenTimeCard(),
                   ),
                 ),
               ),
               const SizedBox(height: Gap.xl),
 
-              // Subjects ------------------------------------------------------
-              const Stagger(
+              // App shields --------------------------------------------------
+              Stagger(
                 index: 8,
                 child: SectionHeader(
-                  title: 'Subject breakdown',
-                  icon: Icons.donut_large_rounded,
-                ),
-              ),
-              Stagger(
-                index: 9,
-                child: Card.filled(
-                  child: Padding(
-                    padding: const EdgeInsets.all(Gap.lg),
-                    child: SubjectBreakdown(subjects: subjects),
+                  title: 'App shields',
+                  icon: Icons.shield_rounded,
+                  trailing: Text(
+                    activeShields == 0
+                        ? 'None armed'
+                        : '$activeShields active',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
+              const Stagger(
+                index: 9,
+                child: Card.filled(
+                  child: Padding(
+                    padding: EdgeInsets.all(Gap.lg),
+                    child: AppDistribution(),
+                  ),
+                ),
+              ),
+
+              if (sessions.isNotEmpty) ...[
+                const SizedBox(height: Gap.xl),
+                // Subjects ----------------------------------------------------
+                const Stagger(
+                  index: 10,
+                  child: SectionHeader(
+                    title: 'Subject breakdown',
+                    icon: Icons.donut_large_rounded,
+                  ),
+                ),
+                Stagger(
+                  index: 11,
+                  child: Card.filled(
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.lg),
+                      child: SubjectBreakdown(subjects: subjects),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -247,11 +329,16 @@ class _Greeting extends StatelessWidget {
     required this.name,
     required this.streak,
     required this.now,
+    this.streakKey,
   });
 
   final String name;
   final int streak;
   final DateTime now;
+
+  /// Anchor for the first-run tip about the streak. Null when the tips are
+  /// not running.
+  final Key? streakKey;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +366,7 @@ class _Greeting extends StatelessWidget {
         if (streak > 0) ...[
           const SizedBox(width: Gap.md),
           Chip(
+            key: streakKey,
             avatar: Icon(
               Icons.local_fire_department_rounded,
               size: 15,
@@ -310,6 +398,7 @@ class _DailyOverview extends StatelessWidget {
     required this.sessionsToday,
     required this.totalHours,
     required this.level,
+    this.ringKey,
   });
 
   final double progress;
@@ -318,6 +407,9 @@ class _DailyOverview extends StatelessWidget {
   final int sessionsToday;
   final double totalHours;
   final int level;
+
+  /// Anchor for the first-run tip about the daily ring.
+  final Key? ringKey;
 
   @override
   Widget build(BuildContext context) {
@@ -332,6 +424,7 @@ class _DailyOverview extends StatelessWidget {
         child: Column(
           children: [
             ProgressRing(
+              key: ringKey,
               value: progress,
               size: 188,
               stroke: 11,
@@ -476,9 +569,12 @@ class _WeeklyPanel extends StatelessWidget {
 
 /// Designed first-run state — shown whenever there is nothing to chart.
 class _NoSessions extends StatelessWidget {
-  const _NoSessions({required this.onStart});
+  const _NoSessions({required this.onStart, this.ctaKey});
 
   final VoidCallback onStart;
+
+  /// Anchor for the first-run tip about starting a session.
+  final Key? ctaKey;
 
   @override
   Widget build(BuildContext context) {
@@ -493,6 +589,7 @@ class _NoSessions extends StatelessWidget {
             'Finish your first focus block and this page fills in — '
             'the daily ring, weekly chart, heatmap and app shields.',
         action: FilledButton.icon(
+          key: ctaKey,
           onPressed: onStart,
           icon: const Icon(Icons.play_arrow_rounded, size: 18),
           label: const Text('Start focusing'),

@@ -38,6 +38,7 @@ class ProfileScreen extends ConsumerWidget {
 
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
+    final streak = ref.watch(currentStreakProvider);
     final subjects = ref.watch(subjectsProvider);
     final groups = ref.watch(groupsProvider);
     final achievements = ref.watch(achievementsProvider);
@@ -116,6 +117,7 @@ class ProfileScreen extends ConsumerWidget {
             child: _HeroCard(
               user: user,
               stats: stats,
+              streak: streak,
               unlocked: unlocked,
               totalBadges: achievements.length,
             ),
@@ -248,12 +250,18 @@ class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.user,
     required this.stats,
+    required this.streak,
     required this.unlocked,
     required this.totalBadges,
   });
 
   final UserProfile user;
   final GamificationStats stats;
+
+  /// Derived from the session log by `currentStreakProvider` — the stats
+  /// aggregate carries no dates, so it cannot answer this.
+  final int streak;
+
   final int unlocked;
   final int totalBadges;
 
@@ -324,7 +332,7 @@ class _HeroCard extends StatelessWidget {
                 _Divider(t: t),
                 Expanded(
                   child: _HeroStat(
-                    value: '${stats.currentStreak}',
+                    value: '$streak',
                     label: 'Day streak',
                     accent: t.tertiary,
                   ),

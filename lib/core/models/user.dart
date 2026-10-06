@@ -165,14 +165,17 @@ class UserProfile {
       );
 }
 
-/// Longest streak, totals and level — everything the Profile hero card needs.
+/// Totals and level — everything the Profile hero card needs.
+///
+/// There is no streak field here on purpose. A streak is a fact about dates,
+/// and this aggregate carries none; it is derived from the session log by
+/// `currentStreakProvider` instead. The fields that used to sit here had no
+/// writer in the session path, so they read as a permanent zero.
 @immutable
 class GamificationStats {
   const GamificationStats({
     this.xp = 0,
     this.level = 1,
-    this.currentStreak = 0,
-    this.longestStreak = 0,
     this.totalFocusHours = 0,
     this.totalSessions = 0,
     this.badges = const <String>[],
@@ -180,8 +183,6 @@ class GamificationStats {
 
   final int xp;
   final int level;
-  final int currentStreak;
-  final int longestStreak;
   final double totalFocusHours;
   final int totalSessions;
   final List<String> badges;
@@ -194,8 +195,6 @@ class GamificationStats {
   GamificationStats copyWith({
     int? xp,
     int? level,
-    int? currentStreak,
-    int? longestStreak,
     double? totalFocusHours,
     int? totalSessions,
     List<String>? badges,
@@ -203,8 +202,6 @@ class GamificationStats {
       GamificationStats(
         xp: xp ?? this.xp,
         level: level ?? this.level,
-        currentStreak: currentStreak ?? this.currentStreak,
-        longestStreak: longestStreak ?? this.longestStreak,
         totalFocusHours: totalFocusHours ?? this.totalFocusHours,
         totalSessions: totalSessions ?? this.totalSessions,
         badges: badges ?? this.badges,
@@ -225,8 +222,6 @@ class GamificationStats {
   Map<String, dynamic> toJson() => {
         'xp': xp,
         'level': level,
-        'currentStreak': currentStreak,
-        'longestStreak': longestStreak,
         'totalFocusHours': totalFocusHours,
         'totalSessions': totalSessions,
         'badges': badges,
@@ -235,8 +230,6 @@ class GamificationStats {
   factory GamificationStats.fromJson(Map<String, dynamic> j) => GamificationStats(
         xp: j['xp'] as int? ?? 0,
         level: j['level'] as int? ?? 1,
-        currentStreak: j['currentStreak'] as int? ?? 0,
-        longestStreak: j['longestStreak'] as int? ?? 0,
         totalFocusHours: (j['totalFocusHours'] as num?)?.toDouble() ?? 0,
         totalSessions: j['totalSessions'] as int? ?? 0,
         badges: (j['badges'] as List?)?.cast<String>() ?? const [],

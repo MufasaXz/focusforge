@@ -130,14 +130,6 @@ class StatsNotifier extends Notifier<GamificationStats> {
     if (completed) await award(minutes);
     await _persist();
   }
-
-  Future<void> setStreak(int days) async {
-    state = state.copyWith(
-      currentStreak: days,
-      longestStreak: days > state.longestStreak ? days : state.longestStreak,
-    );
-    await _persist();
-  }
 }
 
 final statsProvider = NotifierProvider<StatsNotifier, GamificationStats>(

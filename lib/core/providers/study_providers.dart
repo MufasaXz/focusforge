@@ -190,6 +190,39 @@ final weekTotalHoursProvider = Provider<double>(
   (ref) => ref.watch(weeklyBarsProvider).fold(0.0, (sum, d) => sum + d.hours),
 );
 
+/// The run of consecutive days, ending today, that carry a finished session.
+///
+/// Derived from the log rather than stored. The stats aggregate used to carry
+/// a `currentStreak` field that nothing in the session path ever wrote, so the
+/// dashboard showed a permanent zero next to a flame — a number that looked
+/// measured and was not.
+///
+/// A day with nothing on it yet does not break the run: the streak counts
+/// backwards from yesterday until the day is actually over, which is the only
+/// reading that does not punish the user at 9 a.m.
+final currentStreakProvider = Provider<int>((ref) {
+  final days = <DateTime>{
+    for (final session in ref.watch(sessionsProvider))
+      if (session.completed) _dateOnly(session.startedAt),
+  };
+  if (days.isEmpty) return 0;
+
+  var cursor = _dateOnly(DateTime.now());
+  if (!days.contains(cursor)) {
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
+    if (!days.contains(cursor)) return 0;
+  }
+
+  var streak = 0;
+  // Stepped as a calendar date, not as a 24-hour span: a 23-hour DST day
+  // would make a duration-based step skip or repeat a date.
+  while (days.contains(cursor)) {
+    streak++;
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
+  }
+  return streak;
+});
+
 /// Average hours across the days that actually have time on them.
 ///
 /// Dividing by seven would make a strong week look weak just because the user

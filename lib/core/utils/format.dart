@@ -36,6 +36,21 @@ String formatHoursShort(double hours) => hours == hours.roundToDouble()
     ? '${hours.toInt()}h'
     : '${hours.toStringAsFixed(1)}h';
 
+/// "just now", "12 min ago", "3 h ago", "Yesterday", "4 days ago".
+///
+/// Coarse on purpose: the impulse log answers "how recently", and a timestamp
+/// to the second reads as precision the user has no use for. A future
+/// timestamp — the device clock moved, or a row was written while it was
+/// wrong — reads as "just now" rather than a negative age.
+String formatRelativeTime(DateTime at, {DateTime? now}) {
+  final delta = (now ?? DateTime.now()).difference(at);
+  if (delta.inMinutes < 1) return 'just now';
+  if (delta.inMinutes < 60) return '${delta.inMinutes} min ago';
+  if (delta.inHours < 24) return '${delta.inHours} h ago';
+  if (delta.inDays == 1) return 'Yesterday';
+  return '${delta.inDays} days ago';
+}
+
 /// The spoken form of [formatHoursShort], for semantics labels and tooltips:
 /// "2 hours", "1 hour", "0.4 hours".
 String spokenHours(double hours) {

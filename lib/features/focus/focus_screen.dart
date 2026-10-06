@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/audio_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -110,7 +109,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final catalogue = ref.watch(ambientCatalogueProvider);
     final active = ref.watch(activeSoundsProvider);
     final volumes = ref.watch(volumesProvider);
-    final stats = ref.watch(statsProvider);
+    final streak = ref.watch(currentStreakProvider);
     final minutesToday = ref.watch(focusMinutesTodayProvider);
     final sessionsToday = ref
         .watch(sessionsProvider.notifier)
@@ -469,8 +468,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         child: _InfoCapsule(
                           icon: Icons.local_fire_department_rounded,
                           color: t.tertiary,
-                          value: 'Day ${stats.currentStreak}',
-                          semanticLabel: 'Streak: ${stats.currentStreak} days',
+                          value: 'Day $streak',
+                          semanticLabel: 'Streak: $streak days',
                         ),
                       ),
                       const SizedBox(width: Gap.sm),
