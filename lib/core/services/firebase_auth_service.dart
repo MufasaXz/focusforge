@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/user.dart';
 import 'auth_service.dart';
@@ -103,11 +105,24 @@ class FirebaseAuthService extends AuthService {
     return _persist(_profileFor(credential.user!, email: email));
   }
 
-  /// Google and Apple need an OAuth client the Firebase project does not have
-  /// registered yet; email and the device-local upgrade are what this backend
-  /// can actually honour today.
+  /// Google is live on Android: `google-services.json` carries the Android
+  /// OAuth client and the web client its ID tokens are minted against.
+  ///
+  /// The platform check is what keeps this honest elsewhere. The plugin needs
+  /// a client id from each platform's own configuration, and only Android has
+  /// one — on iOS the button would be live and fail on tap, which is the exact
+  /// defect the capability surface exists to prevent. A Dart-level check is
+  /// deliberate: asking the plugin would cross a platform channel from a
+  /// getter the sign-in screen reads during build.
+  ///
+  /// Apple stays out everywhere — there is no Apple developer configuration,
+  /// and an id listed here renders a button that can only fail.
   @override
-  Set<String> get supportedProviders => const {'email', 'local'};
+  Set<String> get supportedProviders => {
+    'email',
+    'local',
+    if (defaultTargetPlatform == TargetPlatform.android) 'google',
+  };
 
   /// Upgrades the current session in place, preserving the uid the stored
   /// profile is keyed on.
@@ -122,7 +137,8 @@ class FirebaseAuthService extends AuthService {
   ///
   /// Providers outside [supportedProviders] have no credential this backend
   /// could mint — the contract carries no OAuth token — so they are refused
-  /// rather than silently upgraded on the device.
+  /// rather than silently upgraded on the device. Google is the exception: it
+  /// takes the interactive path below, and its ID token is the credential.
   @override
   Future<UserProfile> linkAccount({
     required String provider,
@@ -132,6 +148,9 @@ class FirebaseAuthService extends AuthService {
     if (!supportedProviders.contains(provider)) {
       throw const AuthException(AuthFailure.providerUnavailable);
     }
+    if (provider == 'google') {
+      return _linkWithGoogle();
+    }
     final user =
         _auth.currentUser ??
         (await _guard(() => _auth.signInAnonymously())).user!;
@@ -140,6 +159,91 @@ class FirebaseAuthService extends AuthService {
           .copyWith(isAnonymous: false),
     );
   }
+
+  /// Runs the interactive Google round-trip and applies the credential it
+  /// yields to the current session.
+  ///
+  /// `linkWithCredential` is the default path because it keeps the uid the
+  /// profile record and the study-groups gate are keyed on. When Firebase
+  /// refuses because the Google account already belongs to a different user,
+  /// signing into that user is the honest recovery — the caller has just
+  /// proved ownership of it — and [_profileFor] re-keys the stored record onto
+  /// the resulting uid either way, so nothing the user built is orphaned.
+  Future<UserProfile> _linkWithGoogle() async {
+    final google = GoogleSignIn.instance;
+    final GoogleSignInAccount account;
+    try {
+      await _googleInitialize();
+      if (!google.supportsAuthenticate()) {
+        throw const AuthException(AuthFailure.providerUnavailable);
+      }
+      account = await google.authenticate();
+    } on GoogleSignInException catch (e) {
+      throw _translateGoogle(e);
+    }
+
+    final idToken = account.authentication.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      // A completed round-trip with no ID token is the client configuration
+      // failing to mint one, not the user backing out — cancellation arrives
+      // as a GoogleSignInException above.
+      throw const AuthException(
+        AuthFailure.providerUnavailable,
+        'Google returned no ID token',
+      );
+    }
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+
+    Future<UserProfile> apply(User user) => _persist(
+      _profileFor(
+        user,
+        providerName: account.displayName,
+        email: account.email,
+      ),
+    );
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      final result = await _guard(
+        () => _auth.signInWithCredential(credential),
+      );
+      return apply(result.user!);
+    }
+
+    try {
+      final result = await user.linkWithCredential(credential);
+      return await apply(result.user!);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        // Already attached to this user: the requested end state is reached.
+        case 'provider-already-linked':
+          return apply(user);
+        // The Google account belongs to a different Firebase user. Ownership
+        // was just proven, so signing into it is what the user asked for; the
+        // stored record follows the uid through _profileFor.
+        case 'credential-already-in-use' || 'email-already-in-use':
+          final result = await _guard(
+            () => _auth.signInWithCredential(credential),
+          );
+          return apply(result.user!);
+      }
+      throw _translate(e);
+    }
+  }
+
+  /// The plugin's single `initialize()` future.
+  ///
+  /// The contract is one initialize whose future completes before any other
+  /// call, so every Google link awaits the same run. Deliberately not started
+  /// from the constructor: this service is built during `bootstrap()`, before
+  /// the first frame, and initialize crosses the platform channel — launch
+  /// must not pay for a flow the user may never invoke.
+  Future<void>? _googleInit;
+
+  /// No arguments: on Android the plugin reads both the app client and the
+  /// server client from `google-services.json`.
+  Future<void> _googleInitialize() =>
+      _googleInit ??= GoogleSignIn.instance.initialize();
 
   @override
   Future<void> sendPasswordReset(String email) async {
@@ -221,6 +325,7 @@ class FirebaseAuthService extends AuthService {
     User user, {
     String? displayName,
     String? email,
+    String? providerName,
   }) {
     final stored = _store.getMap(StoreKeys.user);
     final base = stored == null
@@ -234,23 +339,28 @@ class FirebaseAuthService extends AuthService {
         user,
         displayName: displayName,
         email: email,
+        providerName: providerName,
       ),
     );
   }
 
   /// Fills the display name from the first source that has one: the explicit
-  /// argument (a link caller), then the stored record, then Firebase, then the
-  /// email local-part. The stored record outranks Firebase so a name the user
-  /// typed is never overwritten by a provider default.
+  /// argument (a link caller), then the stored record, then the provider's own
+  /// account name, then Firebase, then the email local-part. The stored record
+  /// outranks both remote sources so a name the user typed is never
+  /// overwritten by a provider default.
   static String _displayNameFor(
     UserProfile base,
     User user, {
     String? displayName,
     String? email,
+    String? providerName,
   }) {
     final explicit = displayName?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
     if (base.displayName.isNotEmpty) return base.displayName;
+    final provider = providerName?.trim();
+    if (provider != null && provider.isNotEmpty) return provider;
     final remote = user.displayName?.trim();
     if (remote != null && remote.isNotEmpty) return remote;
     return email == null ? '' : _nameFromEmail(email);
@@ -293,11 +403,15 @@ class FirebaseAuthService extends AuthService {
 
   /// The Firebase error vocabulary mapped onto [AuthFailure].
   ///
-  /// `user-disabled` and `operation-not-allowed` share the generic case: a
-  /// disabled account and a provider the console never enabled have no user
-  /// remedy, so the plugin's text is no more useful than fixed copy. The raw
+  /// `operation-not-allowed` is the provider being switched off in the Firebase
+  /// console, which is a configuration state a developer hits constantly and a
+  /// user can act on by using another method — so it maps to
+  /// [AuthFailure.providerUnavailable] rather than the generic case. The raw
   /// [FirebaseAuthException.message] still rides along on the [AuthException]
   /// for diagnostics; [AuthException.friendly] is all the UI renders.
+  ///
+  /// `user-disabled` stays generic: only an administrator can undo it, so
+  /// there is no action to name.
   static AuthException _translate(FirebaseAuthException e) {
     final failure = switch (e.code) {
       'invalid-email' => AuthFailure.invalidEmail,
@@ -308,9 +422,28 @@ class FirebaseAuthService extends AuthService {
       'network-request-failed' => AuthFailure.network,
       'too-many-requests' => AuthFailure.tooManyRequests,
       'requires-recent-login' => AuthFailure.requiresRecentLogin,
-      'user-disabled' || 'operation-not-allowed' => AuthFailure.unknown,
+      'operation-not-allowed' => AuthFailure.providerUnavailable,
       _ => AuthFailure.unknown,
     };
     return AuthException(failure, e.message);
+  }
+
+  /// The Google plugin's error vocabulary mapped onto [AuthFailure].
+  ///
+  /// The configuration codes and an unavailable sign-in UI all collapse into
+  /// `providerUnavailable`: none of them has a user remedy, and the screen
+  /// already carries copy for that case. The enum is documented as
+  /// non-exhaustive, so anything new falls through to `unknown` rather than
+  /// leaking a raw [GoogleSignInException].
+  static AuthException _translateGoogle(GoogleSignInException e) {
+    final failure = switch (e.code) {
+      GoogleSignInExceptionCode.canceled => AuthFailure.cancelled,
+      GoogleSignInExceptionCode.clientConfigurationError ||
+      GoogleSignInExceptionCode.providerConfigurationError ||
+      GoogleSignInExceptionCode.uiUnavailable =>
+        AuthFailure.providerUnavailable,
+      _ => AuthFailure.unknown,
+    };
+    return AuthException(failure, e.description);
   }
 }

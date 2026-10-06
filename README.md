@@ -104,9 +104,9 @@ variants, which is where the glass treatment reads best — toggle it from
 ## Screens
 
 **Onboarding** — a nine-step flow that ends with a profile the rest of the app
-can actually use: a splash, an optional account (a real Firebase credential on
-Android, an on-device record everywhere else — skip it and the app works
-anonymously), a persona that seeds the subject list, name and timezone, subject
+can actually use: a splash, an optional account (Google or email on Android,
+an on-device record everywhere else — skip it and the app works anonymously),
+a persona that seeds the subject list, name and timezone, subject
 picking, app blocking, a daily goal, the permission walkthrough, and a summary.
 Back is intercepted so the flow cannot be reversed into a half-built state, and
 the coach marks on the dashboard pick up from where it left off.
@@ -158,6 +158,7 @@ short and audited — every entry earns its place:
 |---|---|
 | `firebase_core` | Initialises the account backend — and is optional: a failure falls back to the on-device store |
 | `firebase_auth` | Real credentials, so an account survives a reinstall instead of living only in `shared_preferences` |
+| `google_sign_in` | The native account picker — `firebase_auth` cannot mint a Google credential without the idToken this returns |
 | `flutter_riverpod` | State, dependency injection and the drift-free timer engine |
 | `go_router` | The route graph, including the per-tab navigator stacks |
 | `just_audio` | The ambient mixer needs real cross-platform playback |
@@ -172,8 +173,15 @@ Firebase holds **only the credential**. `AuthService` is an interface with two
 implementations, and `bootstrap()` picks one before the first frame:
 `FirebaseAuthService` when `Firebase.initializeApp()` succeeds, and
 `LocalAuthService` when it does not — offline, on web, or in a build with no
-`google-services.json`. The app is fully usable either way; the profile record
-stays in `shared_preferences` regardless. See [Privacy](#privacy).
+`google-services.json`. Google sign-in works on Android. Apple sign-in is
+deliberately not offered on the Firebase backend — there is no Apple developer
+configuration behind it — and neither is Google on a platform with no Google
+client id. The sign-in screen renders from a capability surface,
+`supportedProviders` on `AuthService`, so a provider the active backend cannot
+mint is dimmed rather than failing on tap. With the on-device backend every
+button works, because there is no provider to configure — they all simply name
+the local account. The app is fully usable either way; the profile record stays
+in `shared_preferences` regardless. See [Privacy](#privacy).
 
 `cupertino_icons` is deliberately **not** a dependency — nothing in the app uses
 a Cupertino icon. The release build still prints one warning about it, because
@@ -242,13 +250,16 @@ go through `AppIcons` by name.
 
 Screen-time analytics and usage data stay **on-device**. The only remote
 service is Firebase Authentication, and it holds nothing but a credential —
-an opaque uid, an email if you gave one, and the provider you used. Persona,
-daily goal, subjects, session log, shield rules and every statistic stay in
-`shared_preferences` and are never uploaded. Study-group membership, opt-in
-leaderboard scores and synced settings are the planned additions, and they
-will be opt-in and separable. You can export or delete everything at any time —
-deleting an account removes the Firebase credential *and* wipes the local
-store.
+an opaque uid, an email if you gave one, and the provider you used. Signing in
+with Google adds its own account name to the local profile record when you have
+not already set one — still in `shared_preferences`, still never uploaded, and
+the Google email address is used only to derive that fallback and is never
+stored. Persona, daily goal, subjects, session log, shield rules and every
+statistic stay in `shared_preferences` and are never uploaded. Study-group
+membership, opt-in leaderboard scores and synced settings are the planned
+additions, and they will be opt-in and separable. You can export or delete
+everything at any time — deleting an account removes the Firebase credential
+*and* wipes the local store.
 
 ## Assets
 
