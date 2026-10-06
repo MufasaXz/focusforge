@@ -1,11 +1,11 @@
 {
-    "name": "focusforge",
-    "short_name": "focusforge",
+    "name": "FocusForge",
+    "short_name": "FocusForge",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#EDF1F9",
+    "theme_color": "#EDF1F9",
+    "description": "Open-source, privacy-first study companion — app shielding, Pomodoro engine, analytics and gamification.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

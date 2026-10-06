@@ -23,8 +23,7 @@ open-source package with no ads and no account required.
 
 This repository currently contains the **complete UI shell**: every screen,
 component and motion pattern of the design system, running against mock data.
-The native shielding services and Firebase backend land in later phases (see
-[Roadmap](#roadmap)).
+Native shielding services and the Firebase backend land next.
 
 ## Screenshots
 
@@ -34,9 +33,9 @@ The native shielding services and Firebase backend land in later phases (see
 |:---:|:---:|:---:|:---:|
 | ![Dashboard](docs/screenshots/01-dashboard.webp) | ![Shield](docs/screenshots/02-shield-feed.webp) | ![Focus](docs/screenshots/05-focus.webp) | ![Profile](docs/screenshots/07-profile.webp) |
 
-| Whitelist | Profiles | Timer running | Light mode |
+| Whitelist | Profiles | Timer running | Settings |
 |:---:|:---:|:---:|:---:|
-| ![Whitelist](docs/screenshots/03-shield-whitelist.webp) | ![Profiles](docs/screenshots/04-shield-profiles.webp) | ![Focus running](docs/screenshots/06-focus-running.webp) | ![Light](docs/screenshots/10-dashboard-light.webp) |
+| ![Whitelist](docs/screenshots/03-shield-whitelist.webp) | ![Profiles](docs/screenshots/04-shield-profiles.webp) | ![Focus running](docs/screenshots/06-focus-running.webp) | ![Settings](docs/screenshots/08-profile-settings.webp) |
 
 </div>
 
@@ -84,8 +83,8 @@ Radii: hero `28` · card `22` · list item `16` · tile `12` · pill `999`.
 Spacing is a strict 8 dp grid. Type is Inter, with Inter Display for the largest
 sizes; every numeric style uses tabular figures so digits never jitter.
 
-Light mode shifts the accents darker — the pastel neons that sing on the dark
-canvas do not carry enough contrast against a pale background. Toggle it from
+Day mode is the default. Dark mode shifts the accents to their pastel neon
+variants, which is where the glass treatment reads best — toggle it from
 **Profile → Dark appearance**.
 
 ## Screens
@@ -162,17 +161,6 @@ lib/
     ├── focus/
     └── profile/
 ```
-
-## Roadmap
-
-- [x] **Phase 1a** — Glass design system, navigation shell, all four screens
-- [ ] **Phase 1b** — Firebase Auth, persona onboarding, Hive persistence
-- [ ] **Phase 2** — Android `AccessibilityService` + iOS ScreenTime shielding,
-      feed-level blocking, the Deep Breath Gate intervention
-- [ ] **Phase 3** — Ambient sound streaming, Strict Mode with emergency unlock,
-      grayscale shield, push notifications
-- [ ] **Phase 4** — XP and levels, achievements, study groups, co-focus sessions,
-      leaderboards, study planner with spaced repetition
 
 ## Privacy
 

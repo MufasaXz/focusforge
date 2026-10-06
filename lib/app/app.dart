@@ -5,7 +5,9 @@ import 'theme/glass_theme.dart';
 
 /// Theme selection lives in a tiny value notifier so the Profile screen can
 /// flip it without pulling in a state-management package.
-final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.dark);
+///
+/// Day mode is the default; dark is one toggle away on the Profile tab.
+final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.light);
 
 class FocusForgeApp extends StatelessWidget {
   const FocusForgeApp({super.key});

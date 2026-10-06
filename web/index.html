@@ -7,11 +7,11 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification.">
-  <meta name="theme-color" content="#06070B">
+  <meta name="theme-color" content="#EDF1F9">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="FocusForge">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -21,12 +21,13 @@
   <title>FocusForge</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    /* Match the app canvas so there is no white flash while the engine boots. */
+    /* Match the app canvas so there is no flash of the wrong theme while the
+       engine boots. Day mode is the default. */
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: radial-gradient(circle at top right, #111528 0%, #06070B 100%);
+      background: linear-gradient(180deg, #E8EEFB 0%, #F4F6FB 100%);
       overscroll-behavior: none;
     }
   </style>
