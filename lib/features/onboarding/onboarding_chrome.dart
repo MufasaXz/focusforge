@@ -216,6 +216,10 @@ class AppTextField extends StatelessWidget {
     this.textInputAction,
     this.onSubmitted,
     this.autofocus = false,
+    this.errorText,
+    this.helperText,
+    this.suffix,
+    this.onChanged,
   });
 
   final TextEditingController controller;
@@ -227,11 +231,24 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final bool autofocus;
 
+  /// Set only when the field is wrong, never while it is merely empty — an
+  /// error on an untouched field tells the user off for nothing.
+  final String? errorText;
+
+  /// A hint that is always true, such as what a password has to contain.
+  final String? helperText;
+
+  /// Trailing affordance inside the field — the password visibility toggle.
+  final Widget? suffix;
+
+  final ValueChanged<String>? onChanged;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final radius = BorderRadius.circular(Radii.item);
+    final wrong = errorText != null;
 
     return TextField(
       controller: controller,
@@ -239,6 +256,7 @@ class AppTextField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
+      onChanged: onChanged,
       autofocus: autofocus,
       style: theme.textTheme.bodyLarge,
       cursorColor: cs.primary,
@@ -250,13 +268,24 @@ class AppTextField extends StatelessWidget {
         ),
         prefixIcon: icon == null
             ? null
-            : Icon(icon, size: 20, color: cs.onSurfaceVariant),
+            : Icon(
+                icon,
+                size: 20,
+                color: wrong ? cs.error : cs.onSurfaceVariant,
+              ),
+        suffixIcon: suffix,
         filled: true,
         fillColor: cs.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: Gap.lg,
           vertical: Gap.lg,
         ),
+        errorText: errorText,
+        helperText: helperText,
+        helperStyle: theme.textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        ),
+        errorStyle: theme.textTheme.bodySmall?.copyWith(color: cs.error),
         border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
@@ -264,7 +293,18 @@ class AppTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
+          borderSide: BorderSide(
+            color: wrong ? cs.error : cs.primary,
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: cs.error, width: 1.5),
         ),
       ),
     );

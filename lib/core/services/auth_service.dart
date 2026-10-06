@@ -143,9 +143,12 @@ class LocalAuthService extends AuthService {
 
   /// Every id the UI knows. The local backend mints a record for all of them,
   /// so no sign-in option is ever disabled.
+  ///
+  /// Apple is deliberately absent: the app no longer offers it, and a provider
+  /// listed here but not on any screen is a row waiting to be re-added by
+  /// accident.
   @override
-  Set<String> get supportedProviders =>
-      const {'google', 'apple', 'email', 'local'};
+  Set<String> get supportedProviders => const {'google', 'email', 'local'};
 
   /// Reads the persisted session. Called once during bootstrap.
   @override
