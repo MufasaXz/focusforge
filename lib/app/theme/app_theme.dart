@@ -1,27 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:material_color_utilities/material_color_utilities.dart' as mcu;
 
+import '../../core/models/user.dart';
 import 'typography.dart';
 
 /// The app's Material 3 theme.
 ///
-/// One warm seed generates the entire palette, light and dark. Nothing here
+/// One seed per brightness generates the entire palette. Nothing here
 /// hardcodes a surface colour: a literal would survive a theme switch and go
 /// unreadable, which is exactly what the previous hand-tuned token set kept
 /// doing. Reach for a role — `colorScheme.primary`, `surfaceContainerLow` —
-/// rather than a hex value.
+/// rather than a hex value. The one exception is [amoled], which is a
+/// deliberate, documented override of the surface family and nothing else.
 class AppTheme {
   const AppTheme._();
 
-  /// Warm Ember. The single input the whole palette derives from.
-  static const seed = Color(0xFFE8672A);
+  static ThemeData light({AppPalette palette = AppPalette.ember}) =>
+      _build(Brightness.light, palette, false);
 
-  static ThemeData light() => _build(Brightness.light);
+  static ThemeData dark({
+    AppPalette palette = AppPalette.ember,
+    bool amoled = false,
+  }) =>
+      _build(Brightness.dark, palette, amoled);
 
-  static ThemeData dark() => _build(Brightness.dark);
-
-  static ThemeData _build(Brightness brightness) {
-    final cs = ColorScheme.fromSeed(seedColor: seed, brightness: brightness);
+  static ThemeData _build(
+    Brightness brightness,
+    AppPalette palette,
+    bool amoled,
+  ) {
+    var cs = ColorScheme.fromSeed(
+      seedColor: palette.seedFor(brightness),
+      brightness: brightness,
+    );
+    if (amoled && brightness == Brightness.dark) cs = _trueBlack(cs);
 
     return ThemeData(
       useMaterial3: true,
@@ -148,6 +160,24 @@ class AppTheme {
       ),
     );
   }
+
+  /// True black for OLED panels.
+  ///
+  /// A dark M3 scheme is a very dark *grey* — `surface` lands near #141218 —
+  /// so on an OLED panel the whole display stays lit and the battery win of
+  /// black pixels never arrives. The override is deliberately limited to the
+  /// surface family: every accent, container and on-colour keeps the value
+  /// the generator chose, so contrast is preserved and only the background
+  /// moves. The tonal ladder is kept, compressed into 0–#1A1A1A, so a card
+  /// still separates from the page it sits on.
+  static ColorScheme _trueBlack(ColorScheme cs) => cs.copyWith(
+        surface: const Color(0xFF000000),
+        surfaceContainerLowest: const Color(0xFF000000),
+        surfaceContainerLow: const Color(0xFF060606),
+        surfaceContainer: const Color(0xFF0C0C0C),
+        surfaceContainerHigh: const Color(0xFF131313),
+        surfaceContainerHighest: const Color(0xFF1A1A1A),
+      );
 }
 
 /// Corner radii. Named by role rather than by size, so a card and a hero can

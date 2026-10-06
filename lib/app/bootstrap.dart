@@ -42,9 +42,11 @@ Future<ProviderContainer> bootstrap() async {
   );
 
   // -- Account & preferences -------------------------------------------------
-  container
-      .read(themeProvider.notifier)
-      .hydrate(store.getString(StoreKeys.theme));
+  container.read(themeSettingsProvider.notifier).hydrate(
+        store.getString(StoreKeys.theme),
+        store.getString(StoreKeys.palette),
+        store.getBool(StoreKeys.amoled),
+      );
 
   final userJson = store.getMap(StoreKeys.user);
   if (userJson != null) {
@@ -206,7 +208,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // same value a cold install starts from. Invalidate rather than hydrate:
   // every nullable hydrate no-ops on null, so "hydrating with nothing" would
   // silently leave most of these populated.
-  container.invalidate(themeProvider);
+  container.invalidate(themeSettingsProvider);
   container.invalidate(sessionsProvider);
   container.invalidate(dailyGoalProvider);
   container.invalidate(whitelistProvider);

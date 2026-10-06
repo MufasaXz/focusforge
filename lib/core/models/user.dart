@@ -26,6 +26,75 @@ enum ThemePreference {
       );
 }
 
+/// A named seed pair the whole palette derives from.
+///
+/// One seed generates the palette — but not the *same* seed in both
+/// brightnesses. A colour that reads as a confident brand hue on white turns
+/// muddy on a near-black surface, because M3 has to desaturate it to keep
+/// contrast; a second, brighter seed for dark is the fix, rather than a second
+/// hand-tuned palette. The reference apps that ship theme pickers all landed
+/// on a per-theme light/dark pair.
+///
+/// The values live here rather than in the theme file because a palette is a
+/// *preference* — it is stored by name and rebuilt on launch — and the theme
+/// file should stay a pure function of what it is handed.
+enum AppPalette {
+  ember('Ember', Color(0xFFE8672A), Color(0xFFFF8A50)),
+  tide('Tide', Color(0xFF1B6FD6), Color(0xFF6FA8FF)),
+  grove('Grove', Color(0xFF2E7D4F), Color(0xFF6FD39A)),
+  iris('Iris', Color(0xFF6A4BC7), Color(0xFFB49BFF)),
+  rose('Rose', Color(0xFFC2185B), Color(0xFFFF8FB1)),
+  slate('Slate', Color(0xFF4A5568), Color(0xFF9AA7BD));
+
+  const AppPalette(this.label, this.lightSeed, this.darkSeed);
+
+  final String label;
+  final Color lightSeed;
+  final Color darkSeed;
+
+  Color seedFor(Brightness brightness) =>
+      brightness == Brightness.dark ? darkSeed : lightSeed;
+
+  /// The stored palette, or [AppPalette.ember] when there is none — the same
+  /// fallback a cold install gets, so an unreadable value cannot land the app
+  /// on a colour the user never chose.
+  static AppPalette fromName(String? name) => values.firstWhere(
+        (v) => v.name == name,
+        orElse: () => AppPalette.ember,
+      );
+}
+
+/// Everything the appearance section can change, in one value.
+///
+/// The three settings travel together — the root widget needs all of them to
+/// build a theme, and the appearance card edits all of them — so they are one
+/// notifier rather than three that would each have to be read at the root.
+class ThemeSettings {
+  const ThemeSettings({
+    this.mode = ThemePreference.system,
+    this.palette = AppPalette.ember,
+    this.amoled = false,
+  });
+
+  final ThemePreference mode;
+  final AppPalette palette;
+
+  /// True black in dark mode. No effect while the app is light: it is a
+  /// property of the dark scheme, not a third theme.
+  final bool amoled;
+
+  ThemeSettings copyWith({
+    ThemePreference? mode,
+    AppPalette? palette,
+    bool? amoled,
+  }) =>
+      ThemeSettings(
+        mode: mode ?? this.mode,
+        palette: palette ?? this.palette,
+        amoled: amoled ?? this.amoled,
+      );
+}
+
 /// Who is using the app. Persona drives the defaults offered during onboarding
 /// and the copy used across the app — see the master plan's persona matrix.
 enum Persona {

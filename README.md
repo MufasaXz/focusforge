@@ -108,8 +108,11 @@ For when you need the decision made in advance.
 ### ⚙️ Settings
 
 Study Groups, Achievements, Leaderboard, Strict Mode, Notifications, Data &
-Privacy, and About. Light and dark themes both ship, and both are built from
-the same warm ember accent.
+Privacy, and About. Appearance follows the system by default, and can be pinned
+to light or dark. Six palettes ship — each one a seed pair, so dark mode is a
+brighter mix of the same hue rather than a desaturated version of the light
+one — plus a true-black mode for OLED panels that moves the surface family and
+leaves every accent alone.
 
 ## Privacy
 

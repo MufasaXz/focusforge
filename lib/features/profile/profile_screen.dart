@@ -575,25 +575,36 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
   }
 }
 
-/// Three-way theme control. The badge and the trailing label both read from
-/// the live enum, so the row states the current choice without a second tap.
+/// Everything about how the app looks: light/dark/system, the seed palette,
+/// and true black for OLED panels.
+///
+/// The badge and the trailing label both read from the live settings, so the
+/// row states the current choice without a second tap.
 class _AppearanceCard extends ConsumerWidget {
   const _AppearanceCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
-    final pref = ref.watch(themeProvider);
+    final settings = ref.watch(themeSettingsProvider);
+    final notifier = ref.read(themeSettingsProvider.notifier);
+
+    // The *resolved* brightness, not the preference: with `system` selected,
+    // the AMOLED switch has to follow what the device is actually doing, and
+    // by this point the theme has already resolved it. Showing the switch in
+    // light mode would offer a control that cannot do anything.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card.filled(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 IconBadge(
-                  icon: pref.icon,
+                  icon: settings.mode.icon,
                   color: t.secondary,
                   size: 36,
                   radius: 10,
@@ -606,7 +617,7 @@ class _AppearanceCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  pref.label,
+                  settings.mode.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: t.onSurfaceVariant,
                   ),
@@ -619,12 +630,127 @@ class _AppearanceCard extends ConsumerWidget {
                 for (final p in ThemePreference.values)
                   ButtonSegment(value: p.index, label: Text(p.label)),
               ],
-              selected: {pref.index},
-              onSelectionChanged: (selection) => ref
-                  .read(themeProvider.notifier)
-                  .set(ThemePreference.values[selection.first]),
+              selected: {settings.mode.index},
+              onSelectionChanged: (selection) =>
+                  notifier.setMode(ThemePreference.values[selection.first]),
             ),
+            const SizedBox(height: Gap.xl),
+            Text(
+              'Palette',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: t.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: Gap.md),
+            // Wrap rather than Row: six swatches fit on the tablet this app
+            // is built for, but a 320dp phone would clip the last one, and a
+            // picker that hides a choice is worse than one that uses two
+            // lines.
+            Wrap(
+              spacing: Gap.md,
+              runSpacing: Gap.md,
+              children: [
+                for (final p in AppPalette.values)
+                  _PaletteSwatch(
+                    palette: p,
+                    selected: p == settings.palette,
+                    onTap: () => notifier.setPalette(p),
+                  ),
+              ],
+            ),
+            if (isDark) ...[
+              const SizedBox(height: Gap.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'True black',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Text(
+                          'Turns dark surfaces fully off, for OLED panels.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: t.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Switch(
+                    value: settings.amoled,
+                    onChanged: notifier.setAmoled,
+                  ),
+                ],
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One palette in the picker — the seed every colour in the app derives from.
+///
+/// Drawn as the *light* seed: the two seeds are the same hue, so showing both
+/// would be two circles pretending to be one choice. The dark seed still shows
+/// up, on the switch above, the moment the app goes dark.
+class _PaletteSwatch extends StatelessWidget {
+  const _PaletteSwatch({
+    required this.palette,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppPalette palette;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).colorScheme;
+    final color = palette.lightSeed;
+
+    return Semantics(
+      label: palette.label,
+      button: true,
+      selected: selected,
+      child: Tooltip(
+        message: palette.label,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: AnimatedContainer(
+            duration: Motion.quick,
+            curve: Motion.standard,
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected
+                    ? t.onSurface
+                    : t.outlineVariant.withValues(alpha: 0.5),
+                width: selected ? 3 : 1,
+              ),
+            ),
+            // The tick is picked against the swatch, not against the theme:
+            // a dark palette needs a light tick on any surface.
+            child: selected
+                ? Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: ThemeData.estimateBrightnessForColor(color) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  )
+                : null,
+          ),
         ),
       ),
     );

@@ -168,6 +168,8 @@ class StoreKeys {
   static const subjects = 'subjects';
   static const sessions = 'sessions';
   static const theme = 'theme';
+  static const palette = 'theme.palette';
+  static const amoled = 'theme.amoled';
   static const whitelistTiers = 'shield.whitelist';
   static const youtubeRules = 'shield.youtube';
   static const strictMode = 'shield.strict';

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
@@ -64,31 +63,51 @@ final userProvider = NotifierProvider<UserNotifier, UserProfile>(
 
 // -- Theme -------------------------------------------------------------------
 
-class ThemeNotifier extends Notifier<ThemePreference> {
+class ThemeSettingsNotifier extends Notifier<ThemeSettings> {
   @override
-  ThemePreference build() {
+  ThemeSettings build() {
     // Follow the device on a cold install. Most people have already set a
     // system-wide light/dark preference, and opening on the opposite one reads
-    // as the app ignoring a choice they made somewhere else.
-    return ThemePreference.system;
+    // as the app ignoring a choice they made somewhere else. The palette and
+    // AMOLED defaults are the ones the app shipped with, so an untouched
+    // install looks exactly as it did before the picker existed.
+    return const ThemeSettings();
   }
 
-  void hydrate(String? stored) => state = ThemePreference.fromName(stored);
+  LocalStore get _store => ref.read(localStoreProvider);
 
-  Future<void> set(ThemePreference pref) async {
-    state = pref;
-    await ref.read(localStoreProvider).setString(StoreKeys.theme, pref.name);
+  /// Called during bootstrap with whatever was persisted.
+  ///
+  /// The three keys are read separately because they were written separately —
+  /// the mode predates the other two, and an install that has only ever set
+  /// the mode must keep it rather than be reset to the defaults.
+  void hydrate(String? mode, String? palette, bool? amoled) {
+    state = ThemeSettings(
+      mode: ThemePreference.fromName(mode),
+      palette: AppPalette.fromName(palette),
+      amoled: amoled ?? false,
+    );
+  }
+
+  Future<void> setMode(ThemePreference mode) async {
+    state = state.copyWith(mode: mode);
+    await _store.setString(StoreKeys.theme, mode.name);
+  }
+
+  Future<void> setPalette(AppPalette palette) async {
+    state = state.copyWith(palette: palette);
+    await _store.setString(StoreKeys.palette, palette.name);
+  }
+
+  Future<void> setAmoled(bool amoled) async {
+    state = state.copyWith(amoled: amoled);
+    await _store.setBool(StoreKeys.amoled, amoled);
   }
 }
 
-final themeProvider = NotifierProvider<ThemeNotifier, ThemePreference>(
-  ThemeNotifier.new,
-);
-
-/// The [ThemeMode] the MaterialApp should use. A tiny derived provider so the
-/// root widget rebuilds on theme changes and nothing else does.
-final themeModeProvider = Provider<ThemeMode>(
-  (ref) => ref.watch(themeProvider).mode,
+final themeSettingsProvider =
+    NotifierProvider<ThemeSettingsNotifier, ThemeSettings>(
+  ThemeSettingsNotifier.new,
 );
 
 // -- Gamification ------------------------------------------------------------

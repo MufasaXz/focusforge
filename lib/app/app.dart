@@ -16,14 +16,17 @@ class FocusForgeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final mode = ref.watch(themeModeProvider);
+    final settings = ref.watch(themeSettingsProvider);
 
     return MaterialApp.router(
       title: 'FocusForge',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: mode,
+      theme: AppTheme.light(palette: settings.palette),
+      darkTheme: AppTheme.dark(
+        palette: settings.palette,
+        amoled: settings.amoled,
+      ),
+      themeMode: settings.mode.mode,
       routerConfig: router,
       scrollBehavior: const _NoGlowScrollBehavior(),
     );
