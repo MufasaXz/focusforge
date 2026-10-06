@@ -88,9 +88,13 @@ class UserProfile {
   final int dailyGoalMinutes;
   final DateTime? createdAt;
 
+  /// The name to greet the user by, or `''` when they never set one.
+  ///
+  /// Empty rather than a stand-in like "there": the caller decides whether to
+  /// drop the name or substitute something, and only it knows the sentence.
   String get firstName {
     final n = displayName.trim();
-    if (n.isEmpty) return 'there';
+    if (n.isEmpty) return '';
     final space = n.indexOf(' ');
     return space > 0 ? n.substring(0, space) : n;
   }

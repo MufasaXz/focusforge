@@ -263,7 +263,9 @@ class _Greeting extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${greetingFor(now)}, $name',
+                // A nameless user gets "Good morning", not "Good morning, " —
+                // the comma only belongs there when something follows it.
+                [greetingFor(now), if (name.isNotEmpty) name].join(', '),
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 3),
@@ -369,7 +371,10 @@ class _DailyOverview extends StatelessWidget {
                   ),
                   _StatChip(
                     icon: Icons.timelapse_rounded,
-                    value: '${totalHours.round()}h',
+                    // `formatHoursShort`, not `.round()`: a first session of 25
+                    // minutes is 0.4h, and rounding it to "0h" reads as though
+                    // nothing was logged.
+                    value: formatHoursShort(totalHours),
                     label: 'All time',
                   ),
                   _StatChip(
@@ -455,7 +460,7 @@ class _WeeklyPanel extends StatelessWidget {
                 const Spacer(),
                 _MetaPill(
                   icon: Icons.insights_rounded,
-                  label: '${average.toStringAsFixed(1)}h avg',
+                  label: '${formatHoursShort(average)} avg',
                   color: cs.secondary,
                 ),
               ],
