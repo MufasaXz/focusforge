@@ -1,132 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// How hard a feed is restricted. The index is persisted, so keep the order.
-enum ShieldMode {
-  feedOnly('Block Feed Only'),
-  timeLimit('Time Limit'),
-  fullBlock('Full App Block');
-
-  const ShieldMode(this.label);
-
-  final String label;
-
-  static ShieldMode fromIndex(int? i) =>
-      (i == null || i < 0 || i >= values.length)
-      ? ShieldMode.feedOnly
-      : values[i];
-}
-
-/// An app the user has asked us to watch.
-@immutable
-class TrackedApp {
-  const TrackedApp({
-    required this.name,
-    required this.icon,
-    required this.color,
-    required this.minutes,
-    required this.limit,
-    required this.shielded,
-  });
-
-  final String name;
-  final IconData icon;
-  final Color color;
-  final int minutes;
-  final int limit;
-  final bool shielded;
-
-  double get ratio => limit <= 0 ? 0 : (minutes / limit).clamp(0.0, 1.0);
-
-  bool get overLimit => limit > 0 && minutes > limit;
-
-  TrackedApp copyWith({bool? shielded, int? minutes}) => TrackedApp(
-    name: name,
-    icon: icon,
-    color: color,
-    minutes: minutes ?? this.minutes,
-    limit: limit,
-    shielded: shielded ?? this.shielded,
-  );
-}
-
-/// One feed-level block (Reels, Shorts, Watch…) inside an app.
-@immutable
-class FeedRow {
-  const FeedRow({
-    required this.id,
-    required this.appName,
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.description,
-    required this.enabled,
-    this.modes,
-    this.mode = ShieldMode.feedOnly,
-  });
-
-  final String id;
-  final String appName;
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String description;
-  final bool enabled;
-
-  /// Non-null when this row offers the exclusive [ShieldMode] radio chips.
-  final List<ShieldMode>? modes;
-  final ShieldMode mode;
-
-  /// Legacy accessor — the chip row indexes modes positionally.
-  int get modeIndex => mode.index;
-
-  FeedRow copyWith({bool? enabled, ShieldMode? mode}) => FeedRow(
-    id: id,
-    appName: appName,
-    icon: icon,
-    color: color,
-    title: title,
-    description: description,
-    enabled: enabled ?? this.enabled,
-    modes: modes,
-    mode: mode ?? this.mode,
-  );
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'enabled': enabled,
-    'mode': mode.index,
-  };
-
-  /// Rehydrates only the mutable fields; the rest come from seed data so that
-  /// copy and artwork can change between releases without a migration.
-  ///
-  /// Both fields are type-tested rather than cast: `as bool?` guards against a
-  /// null but still throws on a wrong-typed value, and this runs during
-  /// bootstrap where one bad row must not abort the launch.
-  FeedRow withJson(Map<String, dynamic> j) => copyWith(
-    enabled: j['enabled'] is bool ? j['enabled'] as bool : enabled,
-    mode: ShieldMode.fromIndex(_intOrNull(j['mode'])),
-  );
-}
-
-/// Groups the feed rows for display.
-@immutable
-class FeedGroup {
-  const FeedGroup({
-    required this.title,
-    required this.icon,
-    required this.rows,
-  });
-
-  final String title;
-  final IconData icon;
-  final List<FeedRow> rows;
-
-  FeedGroup copyWith({List<FeedRow>? rows}) =>
-      FeedGroup(title: title, icon: icon, rows: rows ?? this.rows);
-}
-
 /// Which tier a whitelist entry sits in.
+///
+/// The three tiers are also the shield's rule set: `blocked` closes the app,
+/// `budgeted` closes it once a daily allowance is spent, and `alwaysAllowed`
+/// leaves it alone. Keeping one list rather than a separate rule list is what
+/// stops the screen and the engine from disagreeing about what is armed.
 enum WhitelistTier {
   alwaysAllowed('Always allowed', Color(0xFF8FE39B)),
   budgeted('Time budgeted', Color(0xFF7FA9FF)),
@@ -136,8 +15,18 @@ enum WhitelistTier {
 
   final String label;
   final Color color;
+
+  /// True when this tier produces a rule the engine enforces.
+  bool get isEnforced => this != WhitelistTier.alwaysAllowed;
 }
 
+/// One app the user has placed in a tier.
+///
+/// [packageId] is what the engine actually matches on. It is null only for
+/// entries that predate the field or that the user typed by hand, and such an
+/// entry is shown but never enforced — a rule with nothing to match cannot be
+/// honoured, and pretending otherwise is the failure mode this model exists to
+/// avoid.
 @immutable
 class WhitelistEntry {
   const WhitelistEntry({
@@ -146,34 +35,95 @@ class WhitelistEntry {
     required this.icon,
     required this.color,
     required this.tier,
+    this.packageId,
     this.budgetMinutes,
     this.usedMinutes = 0,
   });
 
   final String id;
   final String name;
+
+  /// The fallback glyph, used when the real launcher icon cannot be read —
+  /// on web, or after the app has been uninstalled.
   final IconData icon;
   final Color color;
+
   final WhitelistTier tier;
+
+  /// The Android package this entry blocks, e.g. `com.instagram.android`.
+  final String? packageId;
+
+  /// The daily allowance, for [WhitelistTier.budgeted]. Null means none.
   final int? budgetMinutes;
+
+  /// Today's foreground time, filled in from the platform rather than stored.
   final int usedMinutes;
 
-  bool get budgeted => budgetMinutes != null;
+  bool get budgeted => budgetMinutes != null && budgetMinutes! > 0;
 
   double get usage => budgetMinutes == null || budgetMinutes == 0
       ? 0
       : (usedMinutes / budgetMinutes!).clamp(0.0, 1.0);
 
-  WhitelistEntry copyWith({WhitelistTier? tier, int? usedMinutes}) =>
-      WhitelistEntry(
-        id: id,
-        name: name,
-        icon: icon,
-        color: color,
-        tier: tier ?? this.tier,
-        budgetMinutes: budgetMinutes,
-        usedMinutes: usedMinutes ?? this.usedMinutes,
-      );
+  bool get overBudget => budgeted && usedMinutes >= budgetMinutes!;
+
+  /// Whether this entry can actually be enforced by the engine.
+  bool get enforceable => packageId != null && tier.isEnforced;
+
+  WhitelistEntry copyWith({
+    String? name,
+    IconData? icon,
+    Color? color,
+    WhitelistTier? tier,
+    String? packageId,
+    int? budgetMinutes,
+    int? usedMinutes,
+    bool clearBudget = false,
+  }) => WhitelistEntry(
+    id: id,
+    name: name ?? this.name,
+    icon: icon ?? this.icon,
+    color: color ?? this.color,
+    tier: tier ?? this.tier,
+    packageId: packageId ?? this.packageId,
+    budgetMinutes: clearBudget ? null : (budgetMinutes ?? this.budgetMinutes),
+    usedMinutes: usedMinutes ?? this.usedMinutes,
+  );
+}
+
+/// The YouTube surface rules.
+///
+/// YouTube is the one app where a package-level decision cannot express what
+/// the user wants: the same package holds a lecture and an endless Shorts
+/// feed. These two switches pick surfaces to close and leave everything else
+/// working, which is the difference between "I can still study from YouTube"
+/// and "YouTube is gone".
+@immutable
+class YoutubeRules {
+  const YoutubeRules({this.shorts = false, this.feed = false});
+
+  /// Close the Shorts player.
+  final bool shorts;
+
+  /// Close the home feed and search results, so a lecture has to be opened
+  /// from a direct link.
+  final bool feed;
+
+  bool get any => shorts || feed;
+
+  static const off = YoutubeRules();
+
+  YoutubeRules copyWith({bool? shorts, bool? feed}) =>
+      YoutubeRules(shorts: shorts ?? this.shorts, feed: feed ?? this.feed);
+
+  Map<String, dynamic> toJson() => {'shorts': shorts, 'feed': feed};
+
+  /// Type-tested rather than cast: this is read during bootstrap, where a
+  /// wrong-typed value must degrade to "off" instead of aborting the launch.
+  factory YoutubeRules.fromJson(Map<String, dynamic> j) => YoutubeRules(
+    shorts: j['shorts'] is bool ? j['shorts'] as bool : false,
+    feed: j['feed'] is bool ? j['feed'] as bool : false,
+  );
 }
 
 /// A named bundle of blocks — "Exam Week", "Weekend Relax".
@@ -183,37 +133,27 @@ class RestrictionProfile {
     required this.id,
     required this.name,
     required this.icon,
-    required this.blockedApps,
     required this.dailyTargetHours,
     this.active = false,
-    this.schedules = const <String>[],
   });
 
   final String id;
   final String name;
   final IconData icon;
-  final int blockedApps;
   final double dailyTargetHours;
   final bool active;
-
-  /// Human-readable windows, e.g. `Mon–Fri 09:00–17:00`.
-  final List<String> schedules;
 
   RestrictionProfile copyWith({
     String? name,
     IconData? icon,
-    int? blockedApps,
     double? dailyTargetHours,
     bool? active,
-    List<String>? schedules,
   }) => RestrictionProfile(
     id: id,
     name: name ?? this.name,
     icon: icon ?? this.icon,
-    blockedApps: blockedApps ?? this.blockedApps,
     dailyTargetHours: dailyTargetHours ?? this.dailyTargetHours,
     active: active ?? this.active,
-    schedules: schedules ?? this.schedules,
   );
 }
 
@@ -222,6 +162,7 @@ class RestrictionProfile {
 class StrictModeConfig {
   const StrictModeConfig({
     this.enabled = false,
+    this.enabledAtMillis,
     this.durationMinutes = 120,
     this.allowCalls = true,
     this.allowEmergency = true,
@@ -231,6 +172,14 @@ class StrictModeConfig {
   });
 
   final bool enabled;
+
+  /// When the current window opened, as epoch milliseconds.
+  ///
+  /// The duration needs something to count from, and "when the user flipped
+  /// the switch" is not recoverable from the stored config alone — so it is
+  /// recorded rather than derived.
+  final int? enabledAtMillis;
+
   final int durationMinutes;
   final bool allowCalls;
   final bool allowEmergency;
@@ -242,8 +191,19 @@ class StrictModeConfig {
   static const double minHours = 0.25;
   static const double maxHours = 8;
 
+  /// When the current window closes, or null when none is open.
+  DateTime? get endsAt {
+    final started = enabledAtMillis;
+    if (!enabled || started == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(
+      started + durationMinutes * 60000,
+    );
+  }
+
   StrictModeConfig copyWith({
     bool? enabled,
+    int? enabledAtMillis,
+    bool clearEnabledAt = false,
     int? durationMinutes,
     bool? allowCalls,
     bool? allowEmergency,
@@ -252,6 +212,9 @@ class StrictModeConfig {
     int? cooldownSeconds,
   }) => StrictModeConfig(
     enabled: enabled ?? this.enabled,
+    enabledAtMillis: clearEnabledAt
+        ? null
+        : (enabledAtMillis ?? this.enabledAtMillis),
     durationMinutes: durationMinutes ?? this.durationMinutes,
     allowCalls: allowCalls ?? this.allowCalls,
     allowEmergency: allowEmergency ?? this.allowEmergency,
@@ -262,6 +225,7 @@ class StrictModeConfig {
 
   Map<String, dynamic> toJson() => {
     'enabled': enabled,
+    'enabledAtMillis': ?enabledAtMillis,
     'durationMinutes': durationMinutes,
     'allowCalls': allowCalls,
     'allowEmergency': allowEmergency,
@@ -275,6 +239,7 @@ class StrictModeConfig {
   /// infinity rather than throwing, and `toInt` rejects it.
   factory StrictModeConfig.fromJson(Map<String, dynamic> j) => StrictModeConfig(
     enabled: j['enabled'] is bool ? j['enabled'] as bool : false,
+    enabledAtMillis: _intOrNull(j['enabledAtMillis']),
     durationMinutes: _intOrNull(j['durationMinutes']) ?? 120,
     allowCalls: j['allowCalls'] is bool ? j['allowCalls'] as bool : true,
     allowEmergency: j['allowEmergency'] is bool

@@ -68,6 +68,9 @@ class AppIcons {
     'school': Icons.school_rounded,
     'groups': Icons.groups_rounded,
     'book': Icons.menu_book_rounded,
+    // Shield
+    'apps': Icons.apps_rounded,
+    'shield': Icons.shield_rounded,
     // Ambient
     'rain': Icons.water_drop_rounded,
     'forest': Icons.forest_rounded,

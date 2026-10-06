@@ -168,10 +168,8 @@ class StoreKeys {
   static const subjects = 'subjects';
   static const sessions = 'sessions';
   static const theme = 'theme';
-  static const feedShields = 'shield.feeds';
   static const whitelistTiers = 'shield.whitelist';
-  static const activeProfile = 'shield.activeProfile';
-  static const customProfiles = 'shield.profiles';
+  static const youtubeRules = 'shield.youtube';
   static const strictMode = 'shield.strict';
   static const breathEvents = 'shield.breathEvents';
   static const notifications = 'notifications';

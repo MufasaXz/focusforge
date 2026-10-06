@@ -86,14 +86,11 @@ Future<ProviderContainer> bootstrap() async {
 
   // -- Shield ----------------------------------------------------------------
   container
-      .read(feedGroupsProvider.notifier)
-      .hydrate(store.getList(StoreKeys.feedShields));
-  container
       .read(whitelistProvider.notifier)
       .hydrate(store.getList(StoreKeys.whitelistTiers));
   container
-      .read(profilesProvider.notifier)
-      .hydrate(store.getList(StoreKeys.customProfiles));
+      .read(youtubeRulesProvider.notifier)
+      .hydrate(store.getMap(StoreKeys.youtubeRules));
   container
       .read(strictModeProvider.notifier)
       .hydrate(store.getMap(StoreKeys.strictMode));
@@ -212,20 +209,18 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(themeProvider);
   container.invalidate(sessionsProvider);
   container.invalidate(dailyGoalProvider);
-  container.invalidate(feedGroupsProvider);
   container.invalidate(whitelistProvider);
-  container.invalidate(profilesProvider);
+  container.invalidate(youtubeRulesProvider);
   container.invalidate(strictModeProvider);
   container.invalidate(breathEventsProvider);
   container.invalidate(achievementsProvider);
   container.invalidate(notificationsProvider);
   container.invalidate(volumesProvider);
-  container.invalidate(leaderboardScopeProvider);
 
   // Every shield mutation funnels through `syncShield`, so invalidation alone
   // would leave the platform layer holding the deleted configuration. Writing
   // the default strict-mode value is the one public path that triggers a full
-  // re-sync — it reads the freshly rebuilt feed, whitelist and profile state.
+  // re-sync — it reads the freshly rebuilt app rules and YouTube switches.
   await container
       .read(strictModeProvider.notifier)
       .update(const StrictModeConfig());
