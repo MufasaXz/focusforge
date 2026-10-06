@@ -158,67 +158,42 @@ void main() {
     });
   });
 
-  group('FeedRow.withJson', () {
-    final row = SeedData.feedGroups.first.rows.first;
-
-    test('a valid override still applies', () {
-      final updated = row.withJson(const {'enabled': false, 'mode': 2});
-      expect(updated.enabled, isFalse);
-      expect(updated.mode, ShieldMode.fullBlock);
+  group('YoutubeRules.fromJson', () {
+    test('an empty map turns every surface off', () {
+      final rules = YoutubeRules.fromJson(const {});
+      expect(rules.shorts, isFalse);
+      expect(rules.feed, isFalse);
+      expect(rules.any, isFalse);
     });
 
-    test('a non-bool enabled leaves the seeded value untouched', () {
-      for (final value in <Object?>[null, 'yes', 1, <int>[]]) {
-        expect(
-          row.withJson({'enabled': value}).enabled,
-          row.enabled,
-          reason: 'enabled=$value must not be cast',
-        );
+    test('a wrong-typed switch is ignored, not cast', () {
+      // Same failure mode the BreathEvent regression covers: `as bool?` would
+      // pass a null through and throw on the string, aborting bootstrap.
+      final rules = YoutubeRules.fromJson(const {
+        'shorts': 'yes',
+        'feed': 1,
+      });
+      expect(rules.shorts, isFalse);
+      expect(rules.feed, isFalse);
+    });
+
+    test('every field survives null, wrong-typed and container values', () {
+      for (final field in const ['shorts', 'feed']) {
+        for (final value in _malformed) {
+          expect(
+            () => YoutubeRules.fromJson({field: value}),
+            returnsNormally,
+            reason: 'YoutubeRules.fromJson({$field: $value})',
+          );
+        }
       }
     });
 
-    test('a non-num mode leaves the seeded value untouched', () {
-      for (final value in <Object?>[null, 'block', true, <String, dynamic>{}]) {
-        expect(
-          row.withJson({'mode': value}).mode,
-          row.mode,
-          reason: 'mode=$value must not be cast',
-        );
-      }
-    });
-
-    test('a non-finite mode degrades to feedOnly, not a truncation', () {
-      for (final value in <double>[
-        double.infinity,
-        double.negativeInfinity,
-        double.nan,
-      ]) {
-        expect(
-          row.withJson({'mode': value}).mode,
-          ShieldMode.feedOnly,
-          reason: 'mode=$value must not be truncated',
-        );
-      }
-    });
-  });
-
-  group('ShieldMode.fromIndex', () {
-    test('null and out-of-range indexes clamp to feedOnly', () {
-      for (final index in <int?>[null, -1, 3, 999]) {
-        expect(
-          ShieldMode.fromIndex(index),
-          ShieldMode.feedOnly,
-          reason: '$index',
-        );
-      }
-    });
-
-    test('in-range indexes keep their persisted order', () {
-      // The index is written to the store, so this order is a wire format:
-      // reordering the enum would silently remap every stored shield.
-      expect(ShieldMode.fromIndex(0), ShieldMode.feedOnly);
-      expect(ShieldMode.fromIndex(1), ShieldMode.timeLimit);
-      expect(ShieldMode.fromIndex(2), ShieldMode.fullBlock);
+    test('a written value decodes back to the same rules', () {
+      const rules = YoutubeRules(shorts: true, feed: false);
+      final restored = YoutubeRules.fromJson(rules.toJson());
+      expect(restored.shorts, isTrue);
+      expect(restored.feed, isFalse);
     });
   });
 
@@ -344,42 +319,35 @@ void main() {
       return container;
     }
 
-    /// Applies a mutation through the notifier and tolerates the known
-    /// Riverpod assertion it raises *after* the state change and store write
-    /// have landed.
+    /// Applies a mutation through the notifier.
     ///
-    /// `syncShield` re-reads the calling notifier's own provider
-    /// (lib/core/providers/shield_providers.dart:23-30, called from :222),
-    /// which Riverpod 3 rejects with "A provider cannot depend on itself".
-    /// That is a real debug-only defect in lib/ — reported separately, not
-    /// fixed here. Every assertion about the persisted result still runs
-    /// unchanged; anything other than that exact assertion is rethrown.
+    /// The notifier persists and then pushes the new state to the platform
+    /// service. `syncShield` reads the providers the caller is *not* inside —
+    /// the calling notifier passes its own value in — so no self-dependency
+    /// assertion is reachable from here.
     Future<void> applyMutation(Future<void> Function() mutation) async {
-      try {
-        await mutation();
-      } on AssertionError catch (error) {
-        expect('$error', contains('A provider cannot depend on itself'));
-      }
+      await mutation();
     }
 
-    test('a user-added entry survives a relaunch with its data intact', () async {
-      var container = newContainer();
+    test('a fresh install starts with no rules at all', () {
+      final container = newContainer();
       expect(
         container.read(whitelistProvider),
-        hasLength(10),
-        reason: 'a fresh install gets every seed entry',
+        isEmpty,
+        reason: 'a catalogue the user never chose is a list of apps that '
+            'close without being asked to',
       );
+    });
 
-      final custom = WhitelistEntry(
-        id: 'roundtrip.new.app',
-        name: 'Round Trip',
-        icon: AppIcons.resolve('code'),
-        color: const Color(0xFF123456),
-        tier: WhitelistTier.budgeted,
-        budgetMinutes: 17,
-      );
+    test('an added app survives a relaunch with its package id', () async {
+      var container = newContainer();
       await applyMutation(
-        () => container.read(whitelistProvider.notifier).add(custom),
+        () => container.read(whitelistProvider.notifier).addInstalledApp(
+          packageId: 'com.example.roundtrip',
+          name: 'Round Trip',
+          tier: WhitelistTier.budgeted,
+          budgetMinutes: 17,
+        ),
       );
 
       // Relaunch: a fresh container hydrates from what was written.
@@ -387,57 +355,149 @@ void main() {
       container
           .read(whitelistProvider.notifier)
           .hydrate(store.getList(StoreKeys.whitelistTiers));
-      final restored = container
-          .read(whitelistProvider)
-          .singleWhere((e) => e.id == 'roundtrip.new.app');
+      final restored = container.read(whitelistProvider).single;
+
       expect(restored.name, 'Round Trip');
+      expect(
+        restored.packageId,
+        'com.example.roundtrip',
+        reason: 'the package is what the engine matches on — an entry that '
+            'loses it is a rule that can never fire',
+      );
       expect(restored.tier, WhitelistTier.budgeted);
       expect(restored.budgetMinutes, 17);
-      expect(restored.icon, Icons.code_rounded);
-      expect(restored.color.toARGB32(), 0xFF123456);
+      expect(restored.enforceable, isTrue);
     });
 
-    test('a removed seed entry stays removed across a relaunch', () async {
+    test('adding the same package twice moves it instead of duplicating', () async {
       final container = newContainer();
+      final notifier = container.read(whitelistProvider.notifier);
+
       await applyMutation(
-        () => container.read(whitelistProvider.notifier).remove('tiktok'),
+        () => notifier.addInstalledApp(
+          packageId: 'com.example.twice',
+          name: 'Twice',
+          tier: WhitelistTier.blocked,
+        ),
       );
-      expect(
-        container.read(whitelistProvider).any((e) => e.id == 'tiktok'),
-        isFalse,
+      await applyMutation(
+        () => notifier.addInstalledApp(
+          packageId: 'com.example.twice',
+          name: 'Twice',
+          tier: WhitelistTier.alwaysAllowed,
+        ),
       );
+
+      final entries = container.read(whitelistProvider);
+      expect(entries, hasLength(1));
+      expect(entries.single.tier, WhitelistTier.alwaysAllowed);
+    });
+
+    test('a removed app stays removed across a relaunch', () async {
+      final container = newContainer();
+      final notifier = container.read(whitelistProvider.notifier);
+      await applyMutation(
+        () => notifier.addInstalledApp(
+          packageId: 'com.example.gone',
+          name: 'Gone',
+        ),
+      );
+      await applyMutation(() => notifier.remove('pkg:com.example.gone'));
+      expect(container.read(whitelistProvider), isEmpty);
 
       final relaunched = newContainer();
       relaunched
           .read(whitelistProvider.notifier)
           .hydrate(store.getList(StoreKeys.whitelistTiers));
-      final entries = relaunched.read(whitelistProvider);
       expect(
-        entries.any((e) => e.id == 'tiktok'),
-        isFalse,
-        reason: 'the tombstone must keep the seed from coming back',
+        relaunched.read(whitelistProvider),
+        isEmpty,
+        reason: 'a removed entry must not come back on the next launch',
       );
-      expect(entries, hasLength(9));
     });
 
-    test('clearing the store restores the seed catalogue', () async {
+    test('moving into the budget tier gives it an allowance', () async {
       final container = newContainer();
+      final notifier = container.read(whitelistProvider.notifier);
       await applyMutation(
-        () => container.read(whitelistProvider.notifier).remove('tiktok'),
+        () => notifier.addInstalledApp(
+          packageId: 'com.example.budget',
+          name: 'Budget',
+        ),
       );
-      await store.clearAll();
 
-      final relaunched = newContainer();
-      relaunched
-          .read(whitelistProvider.notifier)
-          .hydrate(store.getList(StoreKeys.whitelistTiers));
-      final entries = relaunched.read(whitelistProvider);
-      expect(
-        entries,
-        hasLength(10),
-        reason: 'a wiped store is a fresh install',
+      await applyMutation(
+        () => notifier.setTier('pkg:com.example.budget', WhitelistTier.budgeted),
       );
-      expect(entries.any((e) => e.id == 'tiktok'), isTrue);
+      expect(
+        container.read(whitelistProvider).single.budgetMinutes,
+        WhitelistNotifier.defaultBudgetMinutes,
+        reason: 'a budget with no allowance is a rule that can never fire',
+      );
+
+      await applyMutation(
+        () => notifier.setTier(
+          'pkg:com.example.budget',
+          WhitelistTier.alwaysAllowed,
+        ),
+      );
+      expect(
+        container.read(whitelistProvider).single.budgetMinutes,
+        isNull,
+        reason: 'leaving the tier clears the allowance with it',
+      );
+    });
+
+    test('a budget is clamped to a usable range', () async {
+      final container = newContainer();
+      final notifier = container.read(whitelistProvider.notifier);
+      await applyMutation(
+        () => notifier.addInstalledApp(
+          packageId: 'com.example.clamp',
+          name: 'Clamp',
+          tier: WhitelistTier.budgeted,
+        ),
+      );
+
+      await applyMutation(() => notifier.setBudget('pkg:com.example.clamp', 0));
+      expect(container.read(whitelistProvider).single.budgetMinutes, 5);
+
+      await applyMutation(
+        () => notifier.setBudget('pkg:com.example.clamp', 100000),
+      );
+      expect(
+        container.read(whitelistProvider).single.budgetMinutes,
+        24 * 60,
+      );
+    });
+
+    test('a stored row with no readable package is kept but not enforced', () {
+      final container = newContainer();
+      container.read(whitelistProvider.notifier).hydrate([
+        {'id': 'legacy.row', 'name': 'Legacy', 'tier': 2},
+      ]);
+
+      final entry = container.read(whitelistProvider).single;
+      expect(entry.name, 'Legacy');
+      expect(entry.tier, WhitelistTier.blocked);
+      expect(
+        entry.enforceable,
+        isFalse,
+        reason: 'the user can still see and remove it, but a rule with '
+            'nothing to match must not be counted as armed',
+      );
+      expect(container.read(blockedAppsProvider), isEmpty);
+    });
+
+    test('a corrupt row degrades instead of aborting hydration', () {
+      final container = newContainer();
+      container.read(whitelistProvider.notifier).hydrate([
+        {'id': 'corrupt.row', 'tier': 'blocked', 'budgetMinutes': double.nan},
+      ]);
+
+      final entry = container.read(whitelistProvider).single;
+      expect(entry.tier, WhitelistTier.alwaysAllowed);
+      expect(entry.budgetMinutes, isNull);
     });
   });
 }
