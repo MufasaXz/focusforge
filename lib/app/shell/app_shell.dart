@@ -110,6 +110,10 @@ class _AppShellState extends ConsumerState<AppShell>
 
   void _select(int i) {
     if (i == widget.navigationShell.currentIndex) return;
+    // A tab change is the one navigation this app has, and it is silent
+    // otherwise: the bar is at the far edge of the screen from where the
+    // content lands. The lightest haptic is enough to say it registered.
+    unawaited(HapticFeedback.selectionClick());
     // `initialLocation: true` when re-tapping a tab pops it back to its root,
     // which is the behaviour every bottom-nav app is expected to have.
     widget.navigationShell.goBranch(

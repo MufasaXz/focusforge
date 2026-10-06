@@ -27,10 +27,15 @@ class FocusHeatmap extends StatefulWidget {
     super.key,
     required this.weeks,
     this.weekdayLabels = const ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+    this.onDayTap,
   });
 
   final List<List<HeatCell>> weeks;
   final List<String> weekdayLabels;
+
+  /// Called with the tapped cell's date. Null leaves the grid read-only, which
+  /// is what a heatmap with nowhere to send the tap should be.
+  final ValueChanged<DateTime>? onDayTap;
 
   @override
   State<FocusHeatmap> createState() => _FocusHeatmapState();
@@ -150,6 +155,11 @@ class _FocusHeatmapState extends State<FocusHeatmap>
                               cell: widget.weeks[w][d],
                               isToday: _sameDay(widget.weeks[w][d].date, today),
                               reveal: _revealAt(w, d),
+                              onTap: widget.onDayTap == null
+                                  ? null
+                                  : () => widget.onDayTap!(
+                                      widget.weeks[w][d].date,
+                                    ),
                             ),
                           ),
                         ),
@@ -165,10 +175,8 @@ class _FocusHeatmapState extends State<FocusHeatmap>
               children: [
                 Text(
                   'Less',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    color: t.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontSize: 10, color: t.onSurfaceVariant),
                 ),
                 const SizedBox(width: Gap.sm),
                 for (var level = 0; level < 5; level++) ...[
@@ -183,10 +191,8 @@ class _FocusHeatmapState extends State<FocusHeatmap>
                 const SizedBox(width: Gap.sm),
                 Text(
                   'More',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    color: t.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontSize: 10, color: t.onSurfaceVariant),
                 ),
               ],
             ),
@@ -238,6 +244,7 @@ class _Cell extends StatelessWidget {
     required this.cell,
     required this.isToday,
     required this.reveal,
+    this.onTap,
   });
 
   final HeatCell cell;
@@ -246,66 +253,77 @@ class _Cell extends StatelessWidget {
   /// Eased 0..1 progress of this cell's slice of the grid reveal.
   final double reveal;
 
+  /// Opens the day this cell stands for. Null leaves the cell inert.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
     final label = _spokenValue(cell);
 
-    return Semantics(
-      label: label,
-      child: Tooltip(
-        message: label,
-        // The custom Semantics node above is the single source of truth for
-        // screen readers; the tooltip is the visual channel only.
-        excludeFromSemantics: true,
-        triggerMode: TooltipTriggerMode.longPress,
-        waitDuration: const Duration(milliseconds: 300),
-        showDuration: const Duration(seconds: 2),
-        preferBelow: false,
-        verticalOffset: 8,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: t.onSurface,
-          fontWeight: FontWeight.w600,
-          fontSize: 11.5,
-        ),
-        decoration: BoxDecoration(
-          color: Color.alphaBlend(
-            t.primary.withValues(alpha: 0.14),
-            t.surface,
-          ),
-          borderRadius: BorderRadius.circular(Radii.tile),
-          border: Border.all(color: t.primary.withValues(alpha: 0.55)),
-          boxShadow: [BoxShadow(color: t.shadow, blurRadius: 18)],
-        ),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: _Swatch(
-                  level: _levelFor(cell.intensity),
-                  reveal: reveal,
-                  radius: 6,
-                  t: t,
-                ),
+    final surface = Tooltip(
+      message: label,
+      // The custom Semantics node above is the single source of truth for
+      // screen readers; the tooltip is the visual channel only.
+      excludeFromSemantics: true,
+      triggerMode: TooltipTriggerMode.longPress,
+      waitDuration: const Duration(milliseconds: 300),
+      showDuration: const Duration(seconds: 2),
+      preferBelow: false,
+      verticalOffset: 8,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: t.onSurface,
+        fontWeight: FontWeight.w600,
+        fontSize: 11.5,
+      ),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(t.primary.withValues(alpha: 0.14), t.surface),
+        borderRadius: BorderRadius.circular(Radii.tile),
+        border: Border.all(color: t.primary.withValues(alpha: 0.55)),
+        boxShadow: [BoxShadow(color: t.shadow, blurRadius: 18)],
+      ),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _Swatch(
+                level: _levelFor(cell.intensity),
+                reveal: reveal,
+                radius: 6,
+                t: t,
               ),
-              if (isToday)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: t.onSurface.withValues(alpha: 0.75),
-                        width: 1.4,
-                      ),
+            ),
+            if (isToday)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: t.onSurface.withValues(alpha: 0.75),
+                      width: 1.4,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
+    );
+
+    return Semantics(
+      button: onTap != null,
+      label: onTap == null ? label : '$label. Tap for the day\'s breakdown',
+      child: onTap == null
+          ? surface
+          : GestureDetector(
+              // The long press still belongs to the tooltip, so the tap is
+              // left to the day sheet rather than fighting it for the cell.
+              onTap: onTap,
+              behavior: HitTestBehavior.opaque,
+              child: surface,
+            ),
     );
   }
 }

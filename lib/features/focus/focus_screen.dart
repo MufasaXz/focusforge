@@ -41,6 +41,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   /// Space the pinned dock occupies, plus the clearance above it.
   static const double _dockHeight = 96;
 
+  /// How wide the dock and the completion banner are allowed to get.
+  ///
+  /// Both are pinned over the whole tab, and the tab is the width of a tablet
+  /// once the rail is beside it — a stadium-shaped control a thousand pixels
+  /// wide puts Reset and Skip a hand apart, and the banner reads as a bar
+  /// rather than as a card. Centred, so the pair stays under the timer.
+  static const double _dockWidth = 520;
+
   StreamSubscription<int>? _completions;
   Timer? _celebrationTimer;
 
@@ -396,28 +404,33 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           left: Gap.lg + 4,
           right: Gap.lg + 4,
           bottom: dockBottom + _dockHeight + Gap.sm,
-          child: IgnorePointer(
-            ignoring: _celebration == null,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 340),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.25),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _dockWidth),
+              child: IgnorePointer(
+                ignoring: _celebration == null,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 340),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.25),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: _celebration == null
+                      ? const SizedBox.shrink(key: ValueKey('no-celebration'))
+                      : KeyedSubtree(
+                          key: ValueKey('celebration-$_celebrationId'),
+                          child: _buildBanner(t, _celebration!),
+                        ),
                 ),
               ),
-              child: _celebration == null
-                  ? const SizedBox.shrink(key: ValueKey('no-celebration'))
-                  : KeyedSubtree(
-                      key: ValueKey('celebration-$_celebrationId'),
-                      child: _buildBanner(t, _celebration!),
-                    ),
             ),
           ),
         ),
@@ -427,81 +440,86 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           left: Gap.lg + 4,
           right: Gap.lg + 4,
           bottom: dockBottom,
-          child: Card.filled(
-            color: t.surfaceContainerHigh,
-            shape: const StadiumBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Gap.lg,
-                vertical: Gap.md,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      button: true,
-                      label: 'Reset timer',
-                      excludeSemantics: true,
-                      onTap: () => ref.read(timerProvider.notifier).reset(),
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            ref.read(timerProvider.notifier).reset(),
-                        icon: const Icon(Icons.refresh_rounded, size: 16),
-                        label: const Text('Reset'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: t.onSurfaceVariant,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _dockWidth),
+              child: Card.filled(
+                color: t.surfaceContainerHigh,
+                shape: const StadiumBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gap.lg,
+                    vertical: Gap.md,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Semantics(
+                          button: true,
+                          label: 'Reset timer',
+                          excludeSemantics: true,
+                          onTap: () => ref.read(timerProvider.notifier).reset(),
+                          child: TextButton.icon(
+                            onPressed: () =>
+                                ref.read(timerProvider.notifier).reset(),
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text('Reset'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: t.onSurfaceVariant,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  Semantics(
-                    button: true,
-                    label: timer.running
-                        ? 'Pause $phaseNoun timer'
-                        : 'Start $phaseNoun timer',
-                    excludeSemantics: true,
-                    onTap: toggleTimer,
-                    child: Pressable(
-                      onTap: toggleTimer,
-                      scale: 0.92,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 260),
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: accent,
-                        ),
-                        child: Icon(
-                          timer.running
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 32,
-                          color: _onPhaseColor(t, timer.phase),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Semantics(
-                      button: true,
-                      label: 'Skip to next phase',
-                      excludeSemantics: true,
-                      onTap: () => ref.read(timerProvider.notifier).skip(),
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            ref.read(timerProvider.notifier).skip(),
-                        icon: const Icon(Icons.skip_next_rounded, size: 16),
-                        label: const Text('Skip'),
-                        iconAlignment: IconAlignment.end,
-                        style: TextButton.styleFrom(
-                          foregroundColor: t.onSurfaceVariant,
+                      Semantics(
+                        button: true,
+                        label: timer.running
+                            ? 'Pause $phaseNoun timer'
+                            : 'Start $phaseNoun timer',
+                        excludeSemantics: true,
+                        onTap: toggleTimer,
+                        child: Pressable(
+                          onTap: toggleTimer,
+                          scale: 0.92,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 260),
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent,
+                            ),
+                            child: Icon(
+                              timer.running
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              size: 32,
+                              color: _onPhaseColor(t, timer.phase),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      Expanded(
+                        child: Semantics(
+                          button: true,
+                          label: 'Skip to next phase',
+                          excludeSemantics: true,
+                          onTap: () => ref.read(timerProvider.notifier).skip(),
+                          child: TextButton.icon(
+                            onPressed: () =>
+                                ref.read(timerProvider.notifier).skip(),
+                            icon: const Icon(Icons.skip_next_rounded, size: 16),
+                            label: const Text('Skip'),
+                            iconAlignment: IconAlignment.end,
+                            style: TextButton.styleFrom(
+                              foregroundColor: t.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

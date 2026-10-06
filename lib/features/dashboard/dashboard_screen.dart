@@ -188,7 +188,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Card.filled(
           child: Padding(
             padding: const EdgeInsets.all(Gap.lg),
-            child: FocusHeatmap(weeks: heatmapWeeks),
+            child: FocusHeatmap(
+              weeks: heatmapWeeks,
+              // The same sheet the tracker's bars open: a day is a day, and
+              // which of the two views it was reached from is not a fact
+              // about the day.
+              onDayTap: (date) => showDaySummarySheet(context, date),
+            ),
           ),
         ),
       ],
@@ -317,6 +323,7 @@ String _spokenMinutes(int minutes) {
   ];
   return parts.isEmpty ? 'no focus logged' : parts.join(' ');
 }
+
 /// Greeting plus the streak pill — the one number worth surfacing in chrome.
 class _Greeting extends StatelessWidget {
   const _Greeting({
@@ -352,30 +359,43 @@ class _Greeting extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 formatDate(now),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
         ),
         if (streak > 0) ...[
           const SizedBox(width: Gap.md),
-          Chip(
-            key: streakKey,
-            avatar: Icon(
-              Icons.local_fire_department_rounded,
-              size: 15,
-              color: cs.tertiary,
-            ),
-            label: Text(
-              '$streak',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+          // The flame lands rather than appearing: a streak is the one number
+          // on this screen that is worth noticing, and it arrives with the
+          // overshoot of something being put down. Keyed on the value, so a
+          // streak that grows replays it — and one that does not sits still.
+          TweenAnimationBuilder<double>(
+            key: ValueKey<int>(streak),
+            tween: Tween<double>(begin: 0.72, end: 1),
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeOutBack,
+            builder: (context, scale, child) =>
+                Transform.scale(scale: scale, child: child),
+            child: Chip(
+              key: streakKey,
+              avatar: Icon(
+                Icons.local_fire_department_rounded,
+                size: 15,
+                color: cs.tertiary,
               ),
+              label: Text(
+                '$streak',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              labelPadding: EdgeInsets.zero,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            labelPadding: EdgeInsets.zero,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ],
@@ -432,17 +452,14 @@ class _DailyOverview extends StatelessWidget {
                 children: [
                   Text(
                     formatMinutes(minutesToday),
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontSize: 36,
-                      letterSpacing: -1.4,
-                    ),
+                    style: Theme.of(context).textTheme.displayMedium
+                        ?.copyWith(fontSize: 36, letterSpacing: -1.4),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     'of ${formatMinutes(goalMinutes)} goal',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -645,20 +662,16 @@ class _StatChip extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 1),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -668,4 +681,3 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
-
