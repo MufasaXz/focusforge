@@ -82,6 +82,34 @@ class AppIcons {
   static IconData resolve(String? name) =>
       _byName[name] ?? Icons.circle_outlined;
 
+  /// The glyphs the app offers where the user is choosing one — a subject's
+  /// mark, an avatar. A curated slice of the table rather than all of it: the
+  /// rest are tied to a particular app or a particular screen, and offering
+  /// `tiktok` as a way to sign your name would be nonsense.
+  ///
+  /// Every name here is in [_byName], which is what makes it survive a
+  /// round-trip through storage.
+  static const curated = <String>[
+    'book',
+    'math',
+    'physics',
+    'chemistry',
+    'biology',
+    'english',
+    'history',
+    'code',
+    'art',
+    'writing',
+    'deepwork',
+    'planning',
+    'school',
+    'star',
+    'heart',
+    'work',
+    'fire',
+    'clock',
+  ];
+
   /// Reverse lookup for persistence. Returns `null` for an icon that is not in
   /// the table, so callers can decide whether that is a bug or a fallback.
   static String? nameOf(IconData icon) =>

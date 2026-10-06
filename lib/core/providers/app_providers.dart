@@ -49,6 +49,16 @@ class UserNotifier extends Notifier<UserProfile> {
   Future<void> setDailyGoal(int minutes) =>
       save(state.copyWith(dailyGoalMinutes: minutes));
 
+  /// Sets the avatar. A null [icon] is the "use my initials" choice rather
+  /// than a missing value, so it is passed through as a deliberate clear.
+  Future<void> setAvatar({String? icon, int? color}) => save(
+    state.copyWith(
+      avatarIcon: icon,
+      avatarColor: color,
+      clearAvatar: icon == null,
+    ),
+  );
+
   Future<void> completeOnboarding() =>
       save(state.copyWith(onboardingComplete: true));
 

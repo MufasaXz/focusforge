@@ -40,8 +40,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
 
   /// A weekly target that scales with the persona's recommended daily goal,
   /// so a professional's subjects start hungrier than a parent's.
-  double get _defaultWeekly =>
-      (SeedData.goalSuggestions(_persona)[1] / 30).clamp(3, 8).toDouble();
+  double get _defaultWeekly => SeedData.defaultWeeklyTarget(_persona);
 
   List<SubjectTemplate> get _templates => [
     ...SeedData.templatesFor(_persona),

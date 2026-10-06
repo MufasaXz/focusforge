@@ -236,6 +236,57 @@ void main() {
     });
   });
 
+  group('UserProfile avatar round-trip', () {
+    test('a chosen mark and colour survive being stored', () {
+      const profile = UserProfile(
+        displayName: 'Sam',
+        avatarIcon: 'star',
+        avatarColor: 0xFF4285F4,
+      );
+      final restored = UserProfile.fromJson(
+        jsonDecode(jsonEncode(profile.toJson())) as Map<String, dynamic>,
+      );
+      expect(restored.avatarIcon, 'star');
+      expect(restored.avatarColor, 0xFF4285F4);
+    });
+
+    test('initials are a choice, so clearing the mark sticks', () {
+      const profile = UserProfile(avatarIcon: 'star', avatarColor: 0xFF4285F4);
+      final cleared = profile.copyWith(clearAvatar: true);
+      expect(
+        cleared.avatarIcon,
+        isNull,
+        reason: 'a null icon means "use my initials", not "unchanged"',
+      );
+      expect(
+        cleared.avatarColor,
+        0xFF4285F4,
+        reason: 'the colour outlives the mark it was chosen with',
+      );
+    });
+
+    test('a malformed avatar degrades instead of throwing', () {
+      for (final value in _malformed) {
+        expect(
+          () => UserProfile.fromJson({'avatarIcon': value}),
+          returnsNormally,
+          reason: 'avatarIcon: $value',
+        );
+        expect(
+          () => UserProfile.fromJson({'avatarColor': value}),
+          returnsNormally,
+          reason: 'avatarColor: $value',
+        );
+      }
+      final profile = UserProfile.fromJson(const {
+        'avatarIcon': 7,
+        'avatarColor': 'blue',
+      });
+      expect(profile.avatarIcon, isNull);
+      expect(profile.avatarColor, isNull);
+    });
+  });
+
   group('FocusSession.fromJson', () {
     test('an empty map degrades to an epoch session', () {
       final session = FocusSession.fromJson(const {});

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../core/models/icon_registry.dart';
-import '../../core/models/study.dart';
+import '../../core/data/seed.dart';
 import '../../core/models/subject_naming.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/sheet_chrome.dart';
@@ -39,29 +39,10 @@ class SubjectSheet extends ConsumerStatefulWidget {
 }
 
 class _SubjectSheetState extends ConsumerState<SubjectSheet> {
-  /// The glyphs on offer, as [AppIcons] names rather than code points: the
-  /// stored icon crosses the storage boundary as a name, and a name that is
-  /// not in the table would come back as a neutral circle.
-  static const _iconNames = <String>[
-    'book',
-    'math',
-    'physics',
-    'chemistry',
-    'biology',
-    'english',
-    'history',
-    'code',
-    'art',
-    'writing',
-    'deepwork',
-    'planning',
-    'school',
-    'star',
-    'heart',
-    'work',
-    'fire',
-    'clock',
-  ];
+  /// The glyphs on offer, as names rather than code points: the stored icon
+  /// crosses the storage boundary as a name, and a name that is not in the
+  /// table would come back as a neutral circle.
+  static const _iconNames = AppIcons.curated;
 
   final _name = TextEditingController();
   int _icon = 0;
@@ -108,8 +89,9 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
       icon: AppIcons.resolve(_iconNames[_icon]),
       color: _colors[_color % _colors.length],
       // The same starting target the onboarding picker uses, so a subject
-      // added later is not the only one without a goal.
-      weekTarget: 5,
+      // added later is not the only one without a goal — and derived from
+      // the persona rather than made up here.
+      weekTarget: SeedData.defaultWeeklyTarget(ref.read(userProvider).persona),
     );
     await ref.read(subjectsProvider.notifier).add(subject);
     if (mounted) Navigator.of(context).pop(subject);

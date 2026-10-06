@@ -18,6 +18,7 @@ import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
 import '../focus/widgets/clock_faces.dart';
+import 'widgets/avatar_sheet.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/subject_target_sheet.dart';
 
@@ -138,7 +139,8 @@ class ProfileScreen extends ConsumerWidget {
               icon: Icons.flag_outlined,
               trailing: Text(
                 'Tap to edit',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.onSurfaceVariant),
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(color: t.onSurfaceVariant),
               ),
             ),
           ),
@@ -247,7 +249,8 @@ class ProfileScreen extends ConsumerWidget {
               child: Text(
                 'Onboarding starts over from the first screen. Nothing already '
                 'logged is deleted.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: t.onSurfaceVariant),
               ),
             ),
           ),
@@ -309,9 +312,10 @@ class _HeroCard extends StatelessWidget {
                       // Tonal container built from the persona colour, the
                       // same pairing [IconBadge] uses.
                       Chip(
-                        backgroundColor: harmonize(user.persona.color, t.primary).withValues(
-                          alpha: 0.16,
-                        ),
+                        backgroundColor: harmonize(
+                          user.persona.color,
+                          t.primary,
+                        ).withValues(alpha: 0.16),
                         avatar: Icon(
                           user.persona.icon,
                           size: 13,
@@ -322,8 +326,7 @@ class _HeroCard extends StatelessWidget {
                           style: const TextStyle(fontSize: 11.5),
                         ),
                         visualDensity: VisualDensity.compact,
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ],
                   ),
@@ -394,38 +397,28 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-/// Initials disc on the primary tonal container. The initials are decoration;
-/// the spoken label carries the identity.
+/// The avatar, and the way to change it.
+///
+/// The tap target is the disc itself rather than a row in a menu: it is the
+/// one thing on this page that is obviously about the user, and a pencil in
+/// its corner is the standard way of saying so.
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.user});
 
   final UserProfile user;
 
   @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final label = user.displayName.trim().isEmpty
-        ? 'Profile avatar'
-        : 'Avatar for ${user.displayName}';
-
-    return Semantics(
-      image: true,
-      label: label,
-      excludeSemantics: true,
-      child: CircleAvatar(
-        radius: 37,
-        backgroundColor: t.primaryContainer,
-        foregroundColor: t.onPrimaryContainer,
-        child: Text(
-          user.initials,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: t.onPrimaryContainer,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Change your avatar',
+    child: ExcludeSemantics(
+      child: Pressable(
+        onTap: () => showAvatarSheet(context),
+        scale: 0.94,
+        child: AvatarDisc(user: user, size: 74, editable: true),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _EditProfileButton extends StatelessWidget {
@@ -487,9 +480,8 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
       );
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.friendly)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.friendly)));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -526,9 +518,8 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
                       Text(
                         'You are using a local account. Everything you log '
                         'stays on this device and is never uploaded.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: t.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: t.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -544,9 +535,8 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
                 Expanded(
                   child: Text(
                     'Study groups and the leaderboard need a linked account.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: t.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: t.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -630,9 +620,8 @@ class _AppearanceCard extends ConsumerWidget {
                 ),
                 Text(
                   settings.mode.label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: t.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: t.onSurfaceVariant),
                 ),
               ],
             ),
@@ -649,9 +638,8 @@ class _AppearanceCard extends ConsumerWidget {
             const SizedBox(height: Gap.xl),
             Text(
               'Palette',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: t.onSurfaceVariant,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: t.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.md),
             // Wrap rather than Row: six swatches fit on the tablet this app
@@ -691,10 +679,7 @@ class _AppearanceCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: Gap.md),
-                  Switch(
-                    value: settings.amoled,
-                    onChanged: notifier.setAmoled,
-                  ),
+                  Switch(value: settings.amoled, onChanged: notifier.setAmoled),
                 ],
               ),
             ],
@@ -713,8 +698,9 @@ class _AppearanceCard extends ConsumerWidget {
 class _ClockFaceCard extends ConsumerWidget {
   const _ClockFaceCard();
 
-  /// A fixed time for every preview. Four previews ticking out of step would
-  /// be four clocks to read instead of one choice to make.
+  /// A sample for every preview — not a reading from anywhere. Four previews
+  /// ticking out of step would be four clocks to read instead of one choice
+  /// to make, and a live one would suggest the timer is running on this page.
   static const _sample = Duration(minutes: 24, seconds: 51);
 
   @override
@@ -745,9 +731,8 @@ class _ClockFaceCard extends ConsumerWidget {
                 ),
                 Text(
                   face.label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: t.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: t.onSurfaceVariant),
                 ),
               ],
             ),
@@ -772,9 +757,8 @@ class _ClockFaceCard extends ConsumerWidget {
                           face: option,
                           sample: _sample,
                           selected: option == face,
-                          onTap: () => ref
-                              .read(clockFaceProvider.notifier)
-                              .set(option),
+                          onTap: () =>
+                              ref.read(clockFaceProvider.notifier).set(option),
                         ),
                       ),
                   ],
@@ -854,9 +838,8 @@ class _ClockFaceOption extends StatelessWidget {
                   Expanded(
                     child: Text(
                       face.label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: selected ? t.primary : t.onSurface,
-                      ),
+                      style: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(color: selected ? t.primary : t.onSurface),
                     ),
                   ),
                   if (selected)
@@ -869,9 +852,8 @@ class _ClockFaceOption extends StatelessWidget {
               ),
               Text(
                 face.blurb,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: t.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: t.onSurfaceVariant),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -934,7 +916,8 @@ class _PaletteSwatch extends StatelessWidget {
                 ? Icon(
                     Icons.check_rounded,
                     size: 18,
-                    color: ThemeData.estimateBrightnessForColor(color) ==
+                    color:
+                        ThemeData.estimateBrightnessForColor(color) ==
                             Brightness.dark
                         ? Colors.white
                         : Colors.black,
@@ -1077,9 +1060,8 @@ class _SettingTile extends StatelessWidget {
           if (spec.trailing != null) ...[
             Text(
               spec.trailing!,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: spec.trailingColor ?? t.onSurfaceVariant,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: spec.trailingColor ?? t.onSurfaceVariant),
             ),
             const SizedBox(width: 6),
           ],
@@ -1112,7 +1094,8 @@ class _HeroStat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10.5),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(fontSize: 10.5),
           textAlign: TextAlign.center,
         ),
       ],

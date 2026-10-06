@@ -168,7 +168,8 @@ class UserProfile {
     this.timezone = 'UTC',
     this.onboardingComplete = false,
     this.isAnonymous = true,
-    this.avatarPath,
+    this.avatarIcon,
+    this.avatarColor,
     this.dailyGoalMinutes = 180,
     this.createdAt,
   });
@@ -182,7 +183,20 @@ class UserProfile {
   /// True while the user has not linked a real account. Anonymous users get
   /// everything except study groups and the leaderboard.
   final bool isAnonymous;
-  final String? avatarPath;
+
+  /// The glyph on the avatar, as an `AppIcons` name, or null for initials.
+  ///
+  /// A glyph rather than a photo: the app has no image picker, no upload path
+  /// and no permission it would have to ask for, and a stored picture would
+  /// have to survive all three. It is also the honest shape for an account
+  /// that is anonymous by default.
+  final String? avatarIcon;
+
+  /// The avatar's colour as ARGB, or null to follow the theme's primary
+  /// container. Stored as an int rather than a palette name so a colour the
+  /// user picked once does not move when they change palette.
+  final int? avatarColor;
+
   final int dailyGoalMinutes;
   final DateTime? createdAt;
 
@@ -215,8 +229,10 @@ class UserProfile {
     String? timezone,
     bool? onboardingComplete,
     bool? isAnonymous,
-    String? avatarPath,
+    String? avatarIcon,
+    int? avatarColor,
     int? dailyGoalMinutes,
+    bool clearAvatar = false,
     DateTime? createdAt,
   }) =>
       UserProfile(
@@ -226,7 +242,11 @@ class UserProfile {
         timezone: timezone ?? this.timezone,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
         isAnonymous: isAnonymous ?? this.isAnonymous,
-        avatarPath: avatarPath ?? this.avatarPath,
+        // A null icon means "use my initials", which is a real choice rather
+        // than a missing value — so clearing it has to be asked for
+        // explicitly, or `copyWith` could never take the glyph away.
+        avatarIcon: clearAvatar ? null : (avatarIcon ?? this.avatarIcon),
+        avatarColor: avatarColor ?? this.avatarColor,
         dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
         createdAt: createdAt ?? this.createdAt,
       );
@@ -238,7 +258,8 @@ class UserProfile {
         'timezone': timezone,
         'onboardingComplete': onboardingComplete,
         'isAnonymous': isAnonymous,
-        'avatarPath': avatarPath,
+        'avatarIcon': avatarIcon,
+        'avatarColor': avatarColor,
         'dailyGoalMinutes': dailyGoalMinutes,
         'createdAt': createdAt?.millisecondsSinceEpoch,
       };
@@ -250,7 +271,10 @@ class UserProfile {
         timezone: j['timezone'] as String? ?? 'UTC',
         onboardingComplete: j['onboardingComplete'] as bool? ?? false,
         isAnonymous: j['isAnonymous'] as bool? ?? true,
-        avatarPath: j['avatarPath'] as String?,
+        // Guarded rather than cast: this runs inside bootstrap, where one
+        // malformed entry must not abort the launch.
+        avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
+        avatarColor: j['avatarColor'] is int ? j['avatarColor'] as int : null,
         dailyGoalMinutes: j['dailyGoalMinutes'] as int? ?? 180,
         createdAt: j['createdAt'] == null
             ? null
