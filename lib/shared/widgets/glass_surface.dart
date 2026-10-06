@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/color_tokens.dart';
 import '../../app/theme/glass_theme.dart';
+import 'pressable.dart';
+
+// Interaction primitives moved to their own file to keep this one to the
+// surfaces. Re-exported so every existing `glass_surface.dart` import keeps
+// resolving `Pressable` and `GlassIconBadge` unchanged.
+export 'pressable.dart';
 
 /// The base glass surface.
 ///
@@ -72,8 +78,11 @@ class GlassPanel extends StatelessWidget {
 
     final borderColor = accent == null
         ? border
-        : Color.lerp(border, accent, 0.55)!
-            .withValues(alpha: (0.55 + 0.35 * glowStrength).clamp(0, 1));
+        : Color.lerp(
+            border,
+            accent,
+            0.55,
+          )!.withValues(alpha: (0.55 + 0.35 * glowStrength).clamp(0, 1));
 
     final shadows = <BoxShadow>[
       // Ambient occlusion — wide and soft.
@@ -183,144 +192,6 @@ class GlassPanel extends StatelessWidget {
   }
 }
 
-/// Scale-on-press wrapper. Springs back with a slight overshoot so taps feel
-/// physical rather than binary.
-class Pressable extends StatefulWidget {
-  const Pressable({
-    super.key,
-    required this.child,
-    this.onTap,
-    this.onLongPress,
-    this.scale = 0.965,
-  });
-
-  final Widget child;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-  final double scale;
-
-  @override
-  State<Pressable> createState() => _PressableState();
-}
-
-class _PressableState extends State<Pressable> {
-  bool _down = false;
-
-  void _set(bool value) {
-    if (_down == value) return;
-    setState(() => _down = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null || widget.onLongPress != null;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: enabled ? (_) => _set(true) : null,
-      onTapUp: enabled ? (_) => _set(false) : null,
-      onTapCancel: enabled ? () => _set(false) : null,
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: AnimatedScale(
-        scale: _down ? widget.scale : 1,
-        // Fast in, springy out — the asymmetry is what makes it feel like a
-        // physical control rather than a CSS transition.
-        duration: Duration(milliseconds: _down ? 90 : 340),
-        curve: _down ? Curves.easeOutCubic : Curves.easeOutBack,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-/// Rounded gradient badge used for app icons and section glyphs.
-///
-/// Takes either a Material [icon] or a short text [glyph] — never an emoji, so
-/// that every badge in the app shares one weight, corner radius and lighting.
-class GlassIconBadge extends StatelessWidget {
-  const GlassIconBadge({
-    super.key,
-    this.icon,
-    this.glyph,
-    required this.color,
-    this.size = 40,
-    this.radius = 12,
-    this.glow = 0,
-  });
-
-  final IconData? icon;
-  final String? glyph;
-  final Color color;
-  final double size;
-  final double radius;
-
-  /// 0..1 — adds an outer accent bloom.
-  final double glow;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.glass;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.38),
-            color.withValues(alpha: 0.16),
-          ],
-        ),
-        border: Border.all(color: color.withValues(alpha: 0.48)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.18 + 0.30 * glow),
-            blurRadius: 12 + 14 * glow,
-            spreadRadius: -2,
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Top-left inner highlight, matching the panel treatment.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(radius),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [t.sheen, t.sheen.withValues(alpha: 0)],
-                    stops: const [0, 0.7],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: glyph != null
-                ? Text(
-                    glyph!,
-                    style: TextStyle(
-                      fontSize: size * 0.34,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                      letterSpacing: -0.2,
-                    ),
-                  )
-                : Icon(icon, size: size * 0.50, color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Small translucent pill — status badges, tags, segmented controls.
 class GlassPill extends StatelessWidget {
   const GlassPill({
@@ -351,9 +222,7 @@ class GlassPill extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        color: selected
-            ? a.withValues(alpha: 0.22)
-            : t.glassL2At(0.6),
+        color: selected ? a.withValues(alpha: 0.22) : t.glassL2At(0.6),
         border: Border.all(
           color: selected ? a.withValues(alpha: 0.70) : t.glassL2Border,
           width: selected ? 1.2 : 1,

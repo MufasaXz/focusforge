@@ -1,388 +1,583 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/shell/app_shell.dart';
 import '../../app/theme/color_tokens.dart';
 import '../../app/theme/glass_theme.dart';
-import '../../core/data/mock_data.dart';
+import '../../core/models/study.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/providers/audio_providers.dart';
+import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
-import '../../shared/widgets/glass_nav_bar.dart';
+import '../../shared/widgets/animated_digits.dart';
+import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/progress_ring.dart';
-import '../../shared/widgets/segmented_control.dart';
+import '../../shared/widgets/stagger.dart';
 
-enum _Phase { focus, shortBreak, longBreak }
-
-/// Tab 3 — the focus engine: Pomodoro / Countdown / Stopwatch, subject tagging,
-/// an ambient mixer and a live session dock.
+/// Tab 3 — the focus engine: Pomodoro, subject tagging, an ambient mixer and a
+/// live session dock pinned above the navigation bar.
 ///
-/// The timer is real: it ticks, advances segments, rolls into breaks and
-/// completes a cycle. The dock is pinned above the navigation bar rather than
-/// scrolling with the content, so the primary action is always reachable.
-///
-/// Audio playback lands in Phase 3 of the master plan, so the ambient tiles
-/// currently only mix state.
-class FocusScreen extends StatefulWidget {
+/// The screen is a projection, not an owner. [timerProvider] holds the
+/// wall-clock target, the phase machine and the completion stream; nothing here
+/// counts ticks. A timer that accumulates seconds in the widget loses time
+/// every time the app is backgrounded, which is the one failure a focus app
+/// cannot ship with.
+class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
 
   @override
-  State<FocusScreen> createState() => _FocusScreenState();
+  ConsumerState<FocusScreen> createState() => _FocusScreenState();
 }
 
-class _FocusScreenState extends State<FocusScreen> {
-  int _mode = 0; // 0 pomodoro, 1 countdown, 2 stopwatch
-  int _preset = 0;
-  int _subject = 0;
-  int _segment = 0;
-  _Phase _phase = _Phase.focus;
-  bool _running = false;
-  Duration _remaining = const Duration(minutes: 25);
-  Duration _elapsed = Duration.zero;
-  Timer? _ticker;
-  final Set<int> _ambient = {0};
+class _FocusScreenState extends ConsumerState<FocusScreen> {
+  /// Space the pinned dock occupies, including the bloom around it.
+  static const double _dockHeight = 96;
 
-  static const double _dockHeight = 90;
+  StreamSubscription<int>? _completions;
+  Timer? _celebrationTimer;
+  Timer? _glowTimer;
 
-  PomodoroPreset get _p => DemoData.presets[_preset];
-
-  Duration get _phaseTotal => switch (_phase) {
-        _Phase.focus => Duration(minutes: _p.focus),
-        _Phase.shortBreak => Duration(minutes: _p.shortBreak),
-        _Phase.longBreak => Duration(minutes: _p.longBreak),
-      };
+  /// Bumped per celebration so the banner's switcher key is always fresh.
+  int _celebrationId = 0;
+  _Completion? _celebration;
+  bool _breakGlow = false;
 
   @override
   void initState() {
     super.initState();
-    _remaining = Duration(minutes: _p.focus);
+    // The stream only fires for finished focus blocks — exactly the event that
+    // earns the celebration. Break ends are detected as phase changes below.
+    _completions = ref
+        .read(timerProvider.notifier)
+        .completions
+        .listen(_celebrate);
   }
 
   @override
   void dispose() {
-    _ticker?.cancel();
+    _completions?.cancel();
+    _celebrationTimer?.cancel();
+    _glowTimer?.cancel();
     super.dispose();
   }
 
-  void _toggle() {
-    setState(() => _running = !_running);
-    if (_running) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-    } else {
-      _ticker?.cancel();
-    }
-  }
-
-  void _tick() {
+  void _celebrate(int minutes) {
     if (!mounted) return;
+    ConfettiBurst.fire(context);
+    unawaited(HapticFeedback.heavyImpact());
+
+    final subjectId = ref.read(timerProvider).subjectId;
+    final subject = subjectId == null
+        ? null
+        : ref
+              .read(subjectsProvider)
+              .where((s) => s.id == subjectId)
+              .firstOrNull;
+
+    _celebrationTimer?.cancel();
     setState(() {
-      if (_mode == 2) {
-        _elapsed += const Duration(seconds: 1);
-        return;
-      }
-      if (_remaining.inSeconds <= 1) {
-        _advancePhase();
-      } else {
-        _remaining -= const Duration(seconds: 1);
-      }
+      _celebrationId++;
+      _celebration = _Completion(minutes: minutes, subject: subject);
+    });
+    // Long enough to read and act on, short enough not to sit in the way.
+    _celebrationTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _celebration = null);
     });
   }
 
-  /// Pomodoro rolls focus → break → focus, promoting to a long break after the
-  /// last segment in the cycle.
-  void _advancePhase() {
-    if (_mode == 1) {
-      _running = false;
-      _ticker?.cancel();
-      _remaining = Duration.zero;
-      return;
-    }
-    if (_phase == _Phase.focus) {
-      final last = _segment >= _p.segments - 1;
-      _phase = last ? _Phase.longBreak : _Phase.shortBreak;
-      _remaining = Duration(minutes: last ? _p.longBreak : _p.shortBreak);
-    } else {
-      _segment = (_segment + 1) % _p.segments;
-      _phase = _Phase.focus;
-      _remaining = Duration(minutes: _p.focus);
-    }
-  }
-
-  void _reset() {
-    _ticker?.cancel();
-    setState(() {
-      _running = false;
-      _phase = _Phase.focus;
-      _segment = 0;
-      _remaining = Duration(minutes: _p.focus);
-      _elapsed = Duration.zero;
+  /// A finished break gets a soft haptic and a colour wash, never confetti.
+  /// The contrast is the point: quiet recovery, loud achievement.
+  void _onBreakFinished() {
+    if (!mounted) return;
+    unawaited(HapticFeedback.selectionClick());
+    _glowTimer?.cancel();
+    setState(() => _breakGlow = true);
+    _glowTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _breakGlow = false);
     });
   }
 
-  void _skip() => setState(_advancePhase);
-
-  void _selectPreset(int i) {
-    _ticker?.cancel();
-    setState(() {
-      _preset = i;
-      _running = false;
-      _phase = _Phase.focus;
-      _segment = 0;
-      _remaining = Duration(minutes: _p.focus);
-    });
+  void _dismissCelebration() {
+    _celebrationTimer?.cancel();
+    if (mounted) setState(() => _celebration = null);
   }
-
-  Color _phaseColor(GlassTokens t) => switch (_phase) {
-        _Phase.focus => t.accentPrimary,
-        _Phase.shortBreak => t.success,
-        _Phase.longBreak => t.accentSecondary,
-      };
-
-  String get _phaseLabel => switch (_phase) {
-        _Phase.focus => 'Focus Time',
-        _Phase.shortBreak => 'Short Break',
-        _Phase.longBreak => 'Long Break',
-      };
 
   @override
   Widget build(BuildContext context) {
     final t = context.glass;
-    final accent = _phaseColor(t);
+    final timer = ref.watch(timerProvider);
+    final presets = ref.watch(presetsProvider);
+    final preset = presets[timer.presetIndex];
+    final subjects = ref.watch(subjectsProvider);
+    final catalogue = ref.watch(ambientCatalogueProvider);
+    final active = ref.watch(activeSoundsProvider);
+    final volumes = ref.watch(volumesProvider);
+    final stats = ref.watch(statsProvider);
+    final minutesToday = ref.watch(focusMinutesTodayProvider);
+    final sessionsToday = ref
+        .watch(sessionsProvider.notifier)
+        .forDay(DateTime.now())
+        .where((s) => s.completed)
+        .length;
+
+    final accent = _phaseColor(t, timer.phase);
+    final clock = formatClock(timer.remaining);
+    final phaseNoun = timer.phase == TimerPhase.focus ? 'focus' : 'break';
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
-    final shown = _mode == 2 ? _elapsed : _remaining;
-    final total = _mode == 2 ? const Duration(minutes: 60) : _phaseTotal;
-    final progress = _mode == 2
-        ? (_elapsed.inSeconds / total.inSeconds).clamp(0.0, 1.0)
-        : 1 - (_remaining.inSeconds / total.inSeconds).clamp(0.0, 1.0);
+    // The dock floats above the nav-bar band; the scroll view has to clear both,
+    // plus the home-indicator inset the nav bar itself grows by.
+    final dockBottom = kNavBarClearance + safeBottom;
+    final listBottom = dockBottom + _dockHeight + Gap.lg;
 
-    final dockBottom =
-        GlassNavBar.height + GlassNavBar.bottomInset + 10 + safeBottom;
+    // The engine emits focus completions on the stream. A break ending is only
+    // visible as a phase change, so it is recognised by the break's target
+    // instant having passed — a skipped break still has its target in the
+    // future, and a reset has no target at all.
+    ref.listen<TimerState>(timerProvider, (previous, next) {
+      if (previous == null) return;
+      final target = previous.targetEnd;
+      if (previous.phase.isBreak &&
+          next.phase == TimerPhase.focus &&
+          target != null &&
+          !target.isAfter(DateTime.now())) {
+        _onBreakFinished();
+      }
+    });
+
+    final cycleDone = timer.phase == TimerPhase.longBreak
+        ? preset.segments
+        : timer.completedFocusSegments % preset.segments;
+    final currentDot = timer.phase == TimerPhase.focus ? cycleDone : -1;
+
+    // Start and pause are the same control, so both directions get the same
+    // medium tap — the completion and break-end haptics above are deliberately
+    // different weights.
+    void toggleTimer() {
+      unawaited(HapticFeedback.mediumImpact());
+      ref.read(timerProvider.notifier).toggle();
+    }
 
     return Stack(
       children: [
         Positioned.fill(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              Gap.lg + 4,
-              MediaQuery.paddingOf(context).top + Gap.lg,
-              Gap.lg + 4,
-              dockBottom + _dockHeight + Gap.lg,
-            ),
-            children: [
-              Text('Focus Engine', style: context.type.headlineMedium),
-              const SizedBox(height: 3),
-              Text(
-                'Deep work, measured',
-                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+          // The entrance waits for the branch to be on screen; see
+          // [_TabEntrance].
+          child: _TabEntrance(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                Gap.lg + 4,
+                MediaQuery.paddingOf(context).top + Gap.lg,
+                Gap.lg + 4,
+                listBottom,
               ),
-              const SizedBox(height: Gap.xl),
-
-              SegmentedControl(
-                options: const ['Pomodoro', 'Countdown', 'Stopwatch'],
-                index: _mode,
-                onChanged: (i) {
-                  _reset();
-                  setState(() => _mode = i);
-                },
-              ),
-              const SizedBox(height: Gap.lg),
-
-              if (_mode != 2)
-                Center(
-                  child: GlassPill(
-                    onTap: () => _showPresetSheet(context),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Gap.lg,
-                      vertical: Gap.sm,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_p.icon, size: 14, color: accent),
-                        const SizedBox(width: 7),
-                        Text(_p.name),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.expand_more_rounded,
-                          size: 16,
-                          color: t.textTertiary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: Gap.lg),
-
-              // Subject tags --------------------------------------------------
-              EdgeFade(
-                trailing: 32,
-                child: SizedBox(
-                  height: 38,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: DemoData.subjects.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(width: Gap.sm),
-                    itemBuilder: (context, i) {
-                      if (i == DemoData.subjects.length) {
-                        return const GlassPill(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Gap.md,
-                            vertical: 8,
-                          ),
-                          child: Text('+ Add', style: TextStyle(fontSize: 12.5)),
-                        );
-                      }
-                      final s = DemoData.subjects[i];
-                      return GlassPill(
-                        selected: i == _subject,
-                        accent: s.color,
-                        onTap: () => setState(() => _subject = i),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Gap.md,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: s.color,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: s.color.withValues(alpha: 0.7),
-                                    blurRadius: 7,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Text(
-                              s.name,
-                              style: const TextStyle(fontSize: 12.5),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-
-              // Timer ---------------------------------------------------------
-              Center(
-                child: ProgressRing(
-                  value: progress,
-                  size: 208,
-                  stroke: 11,
-                  ticks: 60,
-                  colors: [
-                    accent,
-                    Color.lerp(accent, t.accentSecondary, 0.7)!,
-                  ],
+              children: [
+                // Stagger plays once per element lifetime, and this branch is
+                // built the first time the tab is shown (go_router does not
+                // preload branches) — so the entrance lands on first visit, not
+                // on every timer rebuild.
+                Stagger(
+                  index: 0,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Text('Focus Engine', style: context.type.headlineMedium),
+                      const SizedBox(height: 3),
                       Text(
-                        formatClock(shown),
-                        style: context.type.displayLarge?.copyWith(
-                          fontSize: 52,
-                          height: 1.02,
-                          letterSpacing: -2.2,
+                        'Deep work, measured',
+                        style: context.type.bodySmall?.copyWith(
+                          color: t.textTertiary,
                         ),
                       ),
-                      const SizedBox(height: Gap.xs),
-                      Text(
-                        _phaseLabel,
-                        style: context.type.labelLarge?.copyWith(
-                          color: accent,
-                          fontSize: 12.5,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      if (_mode == 0) ...[
-                        const SizedBox(height: Gap.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (var i = 0; i < _p.segments; i++) ...[
-                              if (i > 0) const SizedBox(width: 6),
-                              _SegmentDot(
-                                done: i < _segment,
-                                current: i == _segment && _phase == _Phase.focus,
-                                color: accent,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: Gap.xl),
+                const SizedBox(height: Gap.xl),
 
-              // Ambient mixer --------------------------------------------------
-              const SectionHeader(
-                title: 'Ambient mix',
-                icon: Icons.graphic_eq_rounded,
-              ),
-              GlassPanel(
-                radius: Radii.card,
-                padding: const EdgeInsets.all(Gap.md),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: Gap.md,
-                  crossAxisSpacing: Gap.md,
-                  childAspectRatio: 2.5,
-                  children: [
-                    for (var i = 0; i < DemoData.ambient.length; i++)
-                      _AmbientTile(
-                        tile: DemoData.ambient[i],
-                        active: _ambient.contains(i),
-                        onTap: () => setState(() {
-                          if (!_ambient.remove(i)) _ambient.add(i);
-                        }),
+                // Preset ------------------------------------------------------
+                Stagger(
+                  index: 1,
+                  child: Center(
+                    child: Semantics(
+                      button: true,
+                      label: 'Preset: ${preset.name}. Change preset',
+                      excludeSemantics: true,
+                      onTap: () => _showPresetSheet(context),
+                      child: GlassPill(
+                        onTap: () => _showPresetSheet(context),
+                        padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+                        child: SizedBox(
+                          height: 48,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(preset.icon, size: 15, color: accent),
+                              const SizedBox(width: 7),
+                              Text(preset.name),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.expand_more_rounded,
+                                size: 16,
+                                color: t.textTertiary,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                  ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.lg),
+
+                // Subject tags ------------------------------------------------
+                Stagger(
+                  index: 2,
+                  child: EdgeFade(
+                    trailing: 32,
+                    child: SizedBox(
+                      height: 48,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: subjects.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(width: Gap.sm),
+                        itemBuilder: (context, i) {
+                          final s = subjects[i];
+                          final selected = timer.subjectId == s.id;
+                          void toggle() => ref
+                              .read(timerProvider.notifier)
+                              .setSubject(selected ? null : s.id);
+                          return Semantics(
+                            button: true,
+                            selected: selected,
+                            label:
+                                'Subject ${s.name}, '
+                                '${selected ? 'selected' : 'not selected'}',
+                            excludeSemantics: true,
+                            onTap: toggle,
+                            child: GlassPill(
+                              selected: selected,
+                              accent: s.color,
+                              onTap: toggle,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: Gap.md,
+                              ),
+                              child: SizedBox(
+                                height: 48,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: s.color,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: s.color.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                            blurRadius: 7,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      s.name,
+                                      style: const TextStyle(fontSize: 12.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+
+                // Timer -------------------------------------------------------
+                Stagger(
+                  index: 3,
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Break-ended wash. A colour shift rather than a second
+                        // burst of particles, so recovery never competes with the
+                        // focus celebration for attention.
+                        IgnorePointer(
+                          child: AnimatedOpacity(
+                            opacity: _breakGlow ? 1 : 0,
+                            duration: Duration(
+                              milliseconds: _breakGlow ? 240 : 760,
+                            ),
+                            curve: Curves.easeOutCubic,
+                            child: Container(
+                              width: 252,
+                              height: 252,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    t.success.withValues(alpha: 0.30),
+                                    t.success.withValues(alpha: 0),
+                                  ],
+                                  stops: const [0, 0.82],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        ProgressRing(
+                          value: timer.progressFor(preset),
+                          size: 208,
+                          stroke: 11,
+                          ticks: 60,
+                          colors: [
+                            accent,
+                            Color.lerp(accent, t.accentSecondary, 0.7)!,
+                          ],
+                          semanticLabel:
+                              '${timer.phase.label}, $clock remaining, '
+                              '${timer.running ? 'running' : 'paused'}',
+                          child: ExcludeSemantics(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // The ring label carries the time for screen
+                                // readers, so the digits themselves are silent.
+                                SizedBox(
+                                  width: 168,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: AnimatedDigits(
+                                      text: clock,
+                                      style: context.type.displayLarge!
+                                          .copyWith(
+                                            fontSize: 52,
+                                            height: 1.02,
+                                            letterSpacing: -2.2,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: Gap.xs),
+                                Text(
+                                  timer.phase.label,
+                                  style: context.type.labelLarge?.copyWith(
+                                    color: accent,
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: Gap.md),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    for (
+                                      var i = 0;
+                                      i < preset.segments;
+                                      i++
+                                    ) ...[
+                                      if (i > 0) const SizedBox(width: 6),
+                                      _SegmentDot(
+                                        done: i < cycleDone,
+                                        current: i == currentDot,
+                                        color: accent,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+
+                // Ambient mixer ------------------------------------------------
+                Stagger(
+                  index: 4,
+                  child: SectionHeader(
+                    title: 'Ambient mix',
+                    icon: Icons.graphic_eq_rounded,
+                    trailing: active.isEmpty
+                        ? null
+                        : Semantics(
+                            button: true,
+                            label: 'Stop all ambient sounds',
+                            excludeSemantics: true,
+                            onTap: () => unawaited(
+                              ref.read(activeSoundsProvider.notifier).clear(),
+                            ),
+                            child: GlassPill(
+                              onTap: () => unawaited(
+                                ref.read(activeSoundsProvider.notifier).clear(),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: Gap.md,
+                              ),
+                              child: SizedBox(
+                                height: 36,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.stop_circle_outlined,
+                                      size: 15,
+                                      color: t.textSecondary,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    const Text(
+                                      'Stop all',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                Stagger(
+                  index: 5,
+                  child: GlassPanel(
+                    radius: Radii.card,
+                    padding: const EdgeInsets.all(Gap.md),
+                    child: Column(
+                      children: [
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: Gap.md,
+                          crossAxisSpacing: Gap.md,
+                          childAspectRatio: 2.5,
+                          children: [
+                            for (final sound in catalogue)
+                              _AmbientTile(
+                                tile: sound,
+                                active: active.contains(sound.id),
+                                onTap: () => unawaited(
+                                  ref
+                                      .read(activeSoundsProvider.notifier)
+                                      .toggle(sound),
+                                ),
+                              ),
+                          ],
+                        ),
+                        // Volume lives on the active tracks only: a slider for a
+                        // silent track would be a control with nothing to control.
+                        if (active.isNotEmpty) ...[
+                          const SizedBox(height: Gap.sm),
+                          Divider(height: 1, thickness: 1, color: t.hairline),
+                          for (final sound in catalogue.where(
+                            (s) => active.contains(s.id),
+                          ))
+                            _VolumeRow(
+                              sound: sound,
+                              value: (volumes[sound.id] ?? 0.5).clamp(0.0, 1.0),
+                              onChanged: (v) => unawaited(
+                                ref
+                                    .read(volumesProvider.notifier)
+                                    .set(sound.id, v),
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+
+                // Today --------------------------------------------------------
+                const Stagger(
+                  index: 6,
+                  child: SectionHeader(
+                    title: 'Today',
+                    icon: Icons.today_rounded,
+                  ),
+                ),
+                Stagger(
+                  index: 7,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _InfoCapsule(
+                          icon: Icons.local_fire_department_rounded,
+                          color: t.gold,
+                          value: 'Day ${stats.currentStreak}',
+                          semanticLabel: 'Streak: ${stats.currentStreak} days',
+                        ),
+                      ),
+                      const SizedBox(width: Gap.sm),
+                      Expanded(
+                        child: _InfoCapsule(
+                          icon: Icons.timer_rounded,
+                          color: t.accentPrimary,
+                          value: formatMinutes(minutesToday),
+                          semanticLabel:
+                              'Focus time today: ${formatMinutes(minutesToday)}',
+                        ),
+                      ),
+                      const SizedBox(width: Gap.sm),
+                      Expanded(
+                        child: _InfoCapsule(
+                          icon: Icons.check_circle_rounded,
+                          color: t.success,
+                          value: '$sessionsToday today',
+                          semanticLabel: 'Sessions today: $sessionsToday',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Completion banner ---------------------------------------------------
+        Positioned(
+          left: Gap.lg + 4,
+          right: Gap.lg + 4,
+          bottom: dockBottom + _dockHeight + Gap.sm,
+          child: IgnorePointer(
+            ignoring: _celebration == null,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 340),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.25),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
                 ),
               ),
-              const SizedBox(height: Gap.lg),
-
-              // Session strip ---------------------------------------------------
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoCapsule(
-                      icon: Icons.local_fire_department_rounded,
-                      color: t.gold,
-                      value: 'Day ${DemoData.streakDays}',
+              child: _celebration == null
+                  ? const SizedBox.shrink(key: ValueKey('no-celebration'))
+                  : KeyedSubtree(
+                      key: ValueKey('celebration-$_celebrationId'),
+                      child: _buildBanner(t, _celebration!),
                     ),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: _InfoCapsule(
-                      icon: Icons.timer_rounded,
-                      color: t.accentPrimary,
-                      value: formatMinutes(DemoData.focusMinutesToday),
-                    ),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: _InfoCapsule(
-                      icon: Icons.check_circle_rounded,
-                      color: t.success,
-                      value: '${DemoData.sessionCountToday} today',
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
 
@@ -401,94 +596,118 @@ class _FocusScreenState extends State<FocusScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Pressable(
-                    onTap: _reset,
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.refresh_rounded,
-                            size: 16,
-                            color: t.textSecondary,
+                  child: Semantics(
+                    button: true,
+                    label: 'Reset timer',
+                    excludeSemantics: true,
+                    onTap: () => ref.read(timerProvider.notifier).reset(),
+                    child: Pressable(
+                      onTap: () => ref.read(timerProvider.notifier).reset(),
+                      child: SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 16,
+                                color: t.textSecondary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Reset',
+                                style: context.type.labelLarge?.copyWith(
+                                  color: t.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Reset',
-                            style: context.type.labelLarge?.copyWith(
-                              color: t.textSecondary,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                Pressable(
-                  onTap: _toggle,
-                  scale: 0.92,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          accent,
-                          Color.lerp(accent, t.accentSecondary, 0.7)!,
+                Semantics(
+                  button: true,
+                  label: timer.running
+                      ? 'Pause $phaseNoun timer'
+                      : 'Start $phaseNoun timer',
+                  excludeSemantics: true,
+                  onTap: toggleTimer,
+                  child: Pressable(
+                    onTap: toggleTimer,
+                    scale: 0.92,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 260),
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            accent,
+                            Color.lerp(accent, t.accentSecondary, 0.7)!,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.50),
+                            blurRadius: 28,
+                            spreadRadius: -3,
+                          ),
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.22),
+                            blurRadius: 52,
+                            spreadRadius: -6,
+                          ),
                         ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.50),
-                          blurRadius: 28,
-                          spreadRadius: -3,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.42),
+                          width: 1.2,
                         ),
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.22),
-                          blurRadius: 52,
-                          spreadRadius: -6,
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.42),
-                        width: 1.2,
                       ),
-                    ),
-                    child: Icon(
-                      _running ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      size: 32,
-                      color: const Color(0xFF08101F),
+                      child: Icon(
+                        timer.running
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 32,
+                        color: const Color(0xFF08101F),
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
-                  child: Pressable(
-                    onTap: _mode == 0 ? _skip : null,
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Skip',
-                            style: context.type.labelLarge?.copyWith(
-                              color: _mode == 0
-                                  ? t.textSecondary
-                                  : t.textTertiary,
-                            ),
+                  child: Semantics(
+                    button: true,
+                    label: 'Skip to next phase',
+                    excludeSemantics: true,
+                    onTap: () => ref.read(timerProvider.notifier).skip(),
+                    child: Pressable(
+                      onTap: () => ref.read(timerProvider.notifier).skip(),
+                      child: SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Skip',
+                                style: context.type.labelLarge?.copyWith(
+                                  color: t.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.skip_next_rounded,
+                                size: 16,
+                                color: t.textSecondary,
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.skip_next_rounded,
-                            size: 16,
-                            color: _mode == 0
-                                ? t.textSecondary
-                                : t.textTertiary,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -501,13 +720,116 @@ class _FocusScreenState extends State<FocusScreen> {
     );
   }
 
+  Widget _buildBanner(GlassTokens t, _Completion completion) {
+    final subject = completion.subject;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: 'Focus block complete. ${completion.minutes} XP earned.',
+      child: GlassPanel(
+        radius: Radii.card,
+        blur: 18,
+        accent: t.gold,
+        glowStrength: 0.45,
+        padding: const EdgeInsets.all(Gap.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                GlassIconBadge(
+                  icon: Icons.bolt_rounded,
+                  color: t.gold,
+                  size: 38,
+                  radius: 11,
+                  glow: 0.55,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Focus block complete',
+                        style: context.type.titleSmall,
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        subject == null
+                            ? '${completion.minutes} minutes of deep work'
+                            : '${subject.name} · ${completion.minutes} minutes',
+                        style: context.type.labelSmall?.copyWith(
+                          color: t.textTertiary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Text(
+                  '+${completion.minutes} XP',
+                  style: context.type.titleSmall?.copyWith(
+                    color: t.gold,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                Expanded(
+                  child: GlassPill(
+                    selected: true,
+                    onTap: _dismissCelebration,
+                    padding: EdgeInsets.zero,
+                    child: const SizedBox(
+                      height: 44,
+                      child: Center(child: Text('Take a break')),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: GlassPill(
+                    onTap: () {
+                      ref.read(timerProvider.notifier).skip();
+                      _dismissCelebration();
+                    },
+                    padding: EdgeInsets.zero,
+                    child: const SizedBox(
+                      height: 44,
+                      child: Center(child: Text('Keep going')),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showPresetSheet(BuildContext context) {
-    final t = context.glass;
+    final presets = ref.read(presetsProvider);
+    final current = ref.read(timerProvider).presetIndex;
+
     showModalBottomSheet<void>(
       context: context,
+      // Root navigator: the sheet has to float over the nav bar, not under it.
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(Gap.lg),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          Gap.lg,
+          Gap.lg,
+          Gap.lg,
+          Gap.lg + MediaQuery.paddingOf(sheetContext).bottom,
+        ),
         child: GlassPanel(
           radius: Radii.hero,
           blur: 24,
@@ -521,59 +843,22 @@ class _FocusScreenState extends State<FocusScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: t.textTertiary,
+                    color: sheetContext.glass.textTertiary,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                 ),
               ),
               const SizedBox(height: Gap.lg),
-              Text('Pomodoro presets', style: context.type.titleMedium),
+              Text('Pomodoro presets', style: sheetContext.type.titleMedium),
               const SizedBox(height: Gap.sm),
-              for (var i = 0; i < DemoData.presets.length; i++)
-                Pressable(
+              for (var i = 0; i < presets.length; i++)
+                _PresetRow(
+                  preset: presets[i],
+                  selected: i == current,
                   onTap: () {
-                    _selectPreset(i);
-                    Navigator.of(context).pop();
+                    ref.read(timerProvider.notifier).setPreset(i);
+                    Navigator.of(sheetContext).pop();
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Gap.md),
-                    child: Row(
-                      children: [
-                        GlassIconBadge(
-                          icon: DemoData.presets[i].icon,
-                          color: t.accentPrimary,
-                          size: 38,
-                          radius: 11,
-                          glow: i == _preset ? 0.6 : 0,
-                        ),
-                        const SizedBox(width: Gap.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DemoData.presets[i].name,
-                                style: context.type.titleSmall,
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                '${DemoData.presets[i].focus}m focus · '
-                                '${DemoData.presets[i].shortBreak}m break · '
-                                '${DemoData.presets[i].segments} segments',
-                                style: context.type.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (i == _preset)
-                          Icon(
-                            Icons.check_circle_rounded,
-                            size: 18,
-                            color: t.accentPrimary,
-                          ),
-                      ],
-                    ),
-                  ),
                 ),
             ],
           ),
@@ -582,6 +867,20 @@ class _FocusScreenState extends State<FocusScreen> {
     );
   }
 }
+
+/// A finished focus block, captured at the moment the engine reports it.
+class _Completion {
+  const _Completion({required this.minutes, this.subject});
+
+  final int minutes;
+  final Subject? subject;
+}
+
+Color _phaseColor(GlassTokens t, TimerPhase phase) => switch (phase) {
+  TimerPhase.focus => t.accentPrimary,
+  TimerPhase.shortBreak => t.success,
+  TimerPhase.longBreak => t.accentSecondary,
+};
 
 class _SegmentDot extends StatelessWidget {
   const _SegmentDot({
@@ -619,7 +918,7 @@ class _AmbientTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final AmbientTile tile;
+  final AmbientSound tile;
   final bool active;
   final VoidCallback onTap;
 
@@ -627,52 +926,183 @@ class _AmbientTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.glass;
 
-    return Pressable(
+    return Semantics(
+      button: true,
+      selected: active,
+      label: '${tile.name} ambience, ${active ? 'on' : 'off'}',
+      excludeSemantics: true,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Radii.tile),
-          color: active
-              ? tile.color.withValues(alpha: 0.20)
-              : t.glassL2At(0.55),
-          border: Border.all(
-            color: active ? tile.color.withValues(alpha: 0.72) : t.glassL2Border,
-            width: active ? 1.3 : 1,
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Radii.tile),
+            color: active
+                ? tile.color.withValues(alpha: 0.20)
+                : t.glassL2At(0.55),
+            border: Border.all(
+              color: active
+                  ? tile.color.withValues(alpha: 0.72)
+                  : t.glassL2Border,
+              width: active ? 1.3 : 1,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: tile.color.withValues(alpha: 0.34),
+                      blurRadius: 20,
+                      spreadRadius: -4,
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: tile.color.withValues(alpha: 0.34),
-                    blurRadius: 20,
-                    spreadRadius: -4,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              tile.icon,
-              size: 17,
-              color: active ? tile.color : t.textTertiary,
-            ),
-            const SizedBox(width: Gap.sm),
-            Expanded(
-              child: Text(
-                tile.name,
-                style: context.type.labelMedium?.copyWith(
-                  color: active ? t.textPrimary : t.textSecondary,
-                  fontSize: 12,
-                ),
-                overflow: TextOverflow.ellipsis,
+          child: Row(
+            children: [
+              Icon(
+                tile.icon,
+                size: 17,
+                color: active ? tile.color : t.textTertiary,
               ),
-            ),
-            if (active)
-              Icon(Icons.graphic_eq_rounded, size: 14, color: tile.color),
-          ],
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Text(
+                  tile.name,
+                  style: context.type.labelMedium?.copyWith(
+                    color: active ? t.textPrimary : t.textSecondary,
+                    fontSize: 12,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (active)
+                Icon(Icons.graphic_eq_rounded, size: 14, color: tile.color),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Volume for one live track. Only rendered for sounds that are playing.
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({
+    required this.sound,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final AmbientSound sound;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+    final percent = (value * 100).round();
+
+    return MergeSemantics(
+      child: Semantics(
+        label: '${sound.name} volume',
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Icon(sound.icon, size: 16, color: sound.color),
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Slider(
+                  value: value,
+                  onChanged: onChanged,
+                  // The name is on the node's label; the formatter only has to
+                  // describe the value, or it is announced twice.
+                  semanticFormatterCallback: (v) =>
+                      '${(v * 100).round()} percent',
+                ),
+              ),
+              // The percentage is a visual echo of the slider's own value.
+              ExcludeSemantics(
+                child: SizedBox(
+                  width: 36,
+                  child: Text(
+                    '$percent%',
+                    textAlign: TextAlign.right,
+                    style: context.type.labelSmall?.copyWith(
+                      color: t.textTertiary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PresetRow extends StatelessWidget {
+  const _PresetRow({
+    required this.preset,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PomodoroPreset preset;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label:
+          '${preset.name}, ${preset.focus} minute focus, '
+          '${preset.shortBreak} minute break, ${preset.segments} segments',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              GlassIconBadge(
+                icon: preset.icon,
+                color: t.accentPrimary,
+                size: 38,
+                radius: 11,
+                glow: selected ? 0.6 : 0,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(preset.name, style: context.type.titleSmall),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${preset.focus}m focus · ${preset.shortBreak}m break · '
+                      '${preset.segments} segments',
+                      style: context.type.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 18,
+                  color: t.accentPrimary,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -684,35 +1114,79 @@ class _InfoCapsule extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.value,
+    required this.semanticLabel,
   });
 
   final IconData icon;
   final Color color;
   final String value;
+  final String semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return GlassPanel(
-      level: 2,
-      radius: Radii.item,
-      sheen: false,
-      padding: const EdgeInsets.symmetric(vertical: Gap.md, horizontal: Gap.sm),
-      child: Column(
-        children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: context.type.labelMedium?.copyWith(
-              color: context.glass.textPrimary,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: GlassPanel(
+        level: 2,
+        radius: Radii.item,
+        sheen: false,
+        padding: const EdgeInsets.symmetric(
+          vertical: Gap.md,
+          horizontal: Gap.sm,
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: context.type.labelMedium?.copyWith(
+                color: context.glass.textPrimary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+/// Holds a screen's staggered entrance until its tab is actually on screen.
+///
+/// The shell keeps every visited tab mounted in an `IndexedStack`, and
+/// go_router wraps the inactive branches in a disabled [TickerMode]. A
+/// [Stagger] starts its delay clock in `initState`, so a tree that is built
+/// before the branch is shown plays its entrance to an empty room and the user
+/// sees nothing move when they switch in. Deferring the first build until the
+/// ticker mode is enabled starts the clock on the frame the tab first appears;
+/// the flag latches, so a later switch back does not replay the entrance.
+class _TabEntrance extends StatefulWidget {
+  const _TabEntrance({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TabEntrance> createState() => _TabEntranceState();
+}
+
+class _TabEntranceState extends State<_TabEntrance> {
+  bool _entered = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // `TickerMode.valuesOf` registers a dependency on the branch's on-stage
+    // state, so this runs again the moment the tab is switched in. No setState:
+    // the framework rebuilds immediately after this call.
+    if (!_entered && TickerMode.valuesOf(context).enabled) _entered = true;
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _entered ? widget.child : const SizedBox.shrink();
 }

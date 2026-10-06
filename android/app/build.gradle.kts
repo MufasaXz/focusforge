@@ -7,6 +7,9 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Processes google-services.json into Firebase resources. Applied after the
+    // Flutter plugin so the Android plugin it hooks into is already present.
+    id("com.google.gms.google-services")
 }
 
 // Release signing material lives outside version control — see android/key.properties.

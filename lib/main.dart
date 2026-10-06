@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'app/bootstrap.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      // Day mode is the default, so the status bar glyphs start dark.
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
+
+  // Draw behind the system bars. The bar *colours* stay transparent and the
+  // icon brightness is set per screen by an AnnotatedRegion in the shell, so
+  // it can follow the theme instead of being frozen at startup.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Opens the local store and rehydrates every notifier before the first
+  // frame — see bootstrap.dart for why this is not done lazily.
+  final container = await bootstrap();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const FocusForgeApp(),
     ),
   );
-  runApp(const FocusForgeApp());
 }

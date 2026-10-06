@@ -8,11 +8,16 @@ import '../../app/theme/glass_theme.dart';
 /// The app canvas: a deep gradient, slow-drifting colour blobs, a light source
 /// in the top corner, a vignette and a film-grain overlay.
 ///
-/// Painting the blobs with [MaskFilter.blur] is far cheaper than stacking
-/// several [BackdropFilter]s, and it gives the glass surfaces something real to
-/// refract. The grain is generated once and tiled — it is the detail that stops
-/// large dark gradients from banding on OLED panels, which is most of what
-/// separates a rich dark theme from a flat one.
+/// The blobs are drawn sharp and blurred once as a layer, rather than blurred
+/// per circle with [MaskFilter]: the controller runs for 48 seconds at a time,
+/// so a per-frame mask filter meant four full re-rasterisations of a 110px blur
+/// every frame — the single most expensive thing on the dashboard's raster
+/// thread. One [ImageFiltered] pass over the composited layer looks the same
+/// and costs one filter instead of four.
+///
+/// The grain is generated once and tiled — it is the detail that stops large
+/// dark gradients from banding on OLED panels, which is most of what separates
+/// a rich dark theme from a flat one.
 class MeshBackground extends StatefulWidget {
   const MeshBackground({super.key, required this.child});
 
@@ -85,12 +90,15 @@ class _MeshBackgroundState extends State<MeshBackground>
         fit: StackFit.expand,
         children: [
           RepaintBoundary(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) => CustomPaint(
-                painter: _MeshPainter(
-                  progress: _controller.value,
-                  colors: t.blobs,
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 110, sigmaY: 110),
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) => CustomPaint(
+                  painter: _MeshPainter(
+                    progress: _controller.value,
+                    colors: t.blobs,
+                  ),
                 ),
               ),
             ),
@@ -117,10 +125,7 @@ class _MeshBackgroundState extends State<MeshBackground>
                 gradient: RadialGradient(
                   center: Alignment.center,
                   radius: 0.95,
-                  colors: [
-                    t.vignette.withValues(alpha: 0),
-                    t.vignette,
-                  ],
+                  colors: [t.vignette.withValues(alpha: 0), t.vignette],
                 ),
               ),
             ),
@@ -175,10 +180,8 @@ class _MeshPainter extends CustomPainter {
         (anchors[i].dx + math.cos(angle) * orbits[i].dx) * size.width,
         (anchors[i].dy + math.sin(angle) * orbits[i].dy) * size.height,
       );
-      final paint = Paint()
-        ..color = colors[i]
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 110);
-      canvas.drawCircle(center, radius, paint);
+      // Sharp on purpose — the blur is applied once to the whole layer above.
+      canvas.drawCircle(center, radius, Paint()..color = colors[i]);
     }
   }
 

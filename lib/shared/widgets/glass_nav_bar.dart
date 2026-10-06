@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme/color_tokens.dart';
 import '../../app/theme/glass_theme.dart';
@@ -87,8 +88,9 @@ class _GlassNavBarState extends State<GlassNavBar>
   Widget build(BuildContext context) {
     final t = context.glass;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final height =
-        widget.compact ? GlassNavBar.compactHeight : GlassNavBar.height;
+    final height = widget.compact
+        ? GlassNavBar.compactHeight
+        : GlassNavBar.height;
     final r = BorderRadius.circular(Radii.pill);
 
     return Padding(
@@ -121,7 +123,9 @@ class _GlassNavBarState extends State<GlassNavBar>
         child: ClipRRect(
           borderRadius: r,
           child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            // Theme-driven: a pale canvas needs less blur than a dark one to
+            // read as frosted, and over-blurring it just smears to grey.
+            filter: ui.ImageFilter.blur(sigmaX: t.blurNav, sigmaY: t.blurNav),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: t.navFill,
@@ -178,11 +182,23 @@ class _GlassNavBarState extends State<GlassNavBar>
                                 for (var i = 0; i < widget.items.length; i++)
                                   SizedBox(
                                     width: itemWidth,
+                                    // Full bar height: the row of icons is
+                                    // shorter than 48dp on its own, and a tab
+                                    // is a primary target.
+                                    height: double.infinity,
                                     child: _NavButton(
                                       item: widget.items[i],
                                       selected: widget.index == i,
                                       compact: widget.compact,
-                                      onTap: () => widget.onChanged(i),
+                                      semanticLabel:
+                                          '${widget.items[i].label} tab, '
+                                          '${i + 1} of ${widget.items.length}',
+                                      onTap: () {
+                                        if (i != widget.index) {
+                                          HapticFeedback.selectionClick();
+                                        }
+                                        widget.onChanged(i);
+                                      },
                                     ),
                                   ),
                               ],
@@ -278,12 +294,14 @@ class _NavButton extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.compact,
+    required this.semanticLabel,
     required this.onTap,
   });
 
   final NavItem item;
   final bool selected;
   final bool compact;
+  final String semanticLabel;
   final VoidCallback onTap;
 
   @override
@@ -291,55 +309,64 @@ class _NavButton extends StatelessWidget {
     final t = context.glass;
     final showLabel = selected && !compact;
 
-    return Pressable(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: semanticLabel,
+      // The visual label only exists for the active tab; the spoken one always
+      // does, so the inner text must not be read a second time.
+      excludeSemantics: true,
       onTap: onTap,
-      scale: 0.90,
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  selected ? item.activeIcon : item.icon,
-                  size: compact ? 21 : 22.5,
-                  color: selected ? t.textPrimary : t.textSecondary,
-                ),
-                if (item.statusDot)
-                  Positioned(
-                    right: -5,
-                    top: -3,
-                    child: _StatusDot(selected: selected),
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.90,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    selected ? item.activeIcon : item.icon,
+                    size: compact ? 21 : 22.5,
+                    color: selected ? t.textPrimary : t.textSecondary,
                   ),
-              ],
-            ),
-            ClipRect(
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.centerLeft,
-                child: AnimatedOpacity(
-                  opacity: showLabel ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
-                  child: showLabel
-                      ? Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: Text(
-                            item.label,
-                            style: context.type.labelLarge?.copyWith(
-                              color: t.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13.5,
-                              letterSpacing: -0.2,
+                  if (item.statusDot)
+                    Positioned(
+                      right: -5,
+                      top: -3,
+                      child: _StatusDot(selected: selected),
+                    ),
+                ],
+              ),
+              ClipRect(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedOpacity(
+                    opacity: showLabel ? 1 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    child: showLabel
+                        ? Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Text(
+                              item.label,
+                              style: context.type.labelLarge?.copyWith(
+                                color: t.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
+                                letterSpacing: -0.2,
+                              ),
                             ),
-                          ),
-                        )
-                      : const SizedBox(width: 0, height: 0),
+                          )
+                        : const SizedBox(width: 0, height: 0),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

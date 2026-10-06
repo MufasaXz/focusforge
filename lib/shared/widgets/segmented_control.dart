@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../app/theme/color_tokens.dart';
@@ -28,9 +30,16 @@ class SegmentedControl extends StatelessWidget {
     final a = accent ?? t.accentPrimary;
     final n = options.length;
 
+    // Material's 48dp minimum target. The 4dp inset around the pill is kept
+    // whenever the control is tall enough to afford it, and given up when it is
+    // not: the segments themselves have to stay tappable, and a 40dp row of
+    // three is exactly the kind of control that gets mis-tapped.
+    final h = math.max(height, 48.0);
+    final pad = math.min(4.0, (h - 48) / 2);
+
     return Container(
-      height: height,
-      padding: const EdgeInsets.all(4),
+      height: h,
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
         color: t.glassL2At(0.55),
@@ -70,22 +79,30 @@ class SegmentedControl extends StatelessWidget {
             children: [
               for (var i = 0; i < n; i++)
                 Expanded(
-                  child: Pressable(
-                    scale: 0.94,
+                  child: Semantics(
+                    button: true,
+                    selected: i == index,
+                    label: options[i],
+                    excludeSemantics: true,
                     onTap: () => onChanged(i),
-                    child: Center(
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 220),
-                        style: context.type.labelLarge!.copyWith(
-                          fontSize: 13,
-                          color: i == index ? t.textPrimary : t.textTertiary,
-                          fontWeight:
-                              i == index ? FontWeight.w700 : FontWeight.w600,
-                        ),
-                        child: Text(
-                          options[i],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    child: Pressable(
+                      scale: 0.94,
+                      onTap: () => onChanged(i),
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          style: context.type.labelLarge!.copyWith(
+                            fontSize: 13,
+                            color: i == index ? t.textPrimary : t.textTertiary,
+                            fontWeight: i == index
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                          child: Text(
+                            options[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ),

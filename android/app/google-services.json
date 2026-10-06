@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "54619667392",
+    "project_id": "focusforge-1edf7",
+    "storage_bucket": "focusforge-1edf7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54619667392:android:7df78836980d430a2f2625",
+        "android_client_info": {
+          "package_name": "dev.focusforge.focusforge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpysZBFI4PLmAyfgsDo1ZY0Nn7Eei3wzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

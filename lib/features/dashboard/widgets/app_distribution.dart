@@ -1,124 +1,135 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/color_tokens.dart';
 import '../../../app/theme/glass_theme.dart';
-import '../../../core/data/mock_data.dart';
-import '../../../core/utils/format.dart';
+import '../../../core/models/shield.dart';
+import '../../../core/providers/shield_providers.dart';
 import '../../../shared/widgets/glass_surface.dart';
 import '../../../shared/widgets/glass_toggle.dart';
 
-/// Per-app usage rows with a shield toggle.
-class AppDistribution extends StatefulWidget {
-  const AppDistribution({super.key, required this.apps});
-
-  final List<TrackedApp> apps;
-
-  @override
-  State<AppDistribution> createState() => _AppDistributionState();
-}
-
-class _AppDistributionState extends State<AppDistribution> {
-  late final List<bool> _shielded =
-      widget.apps.map((a) => a.shielded).toList();
+/// Per-app feed shields, wired to the real shield state.
+///
+/// Rows come from [allFeedRowsProvider], so toggling one here is the same
+/// mutation the Shield tab performs — persisted, synced to the platform
+/// service, and reflected everywhere. The whole row is the hit target; the
+/// switch is the affordance, not the only place a finger can land.
+class AppDistribution extends ConsumerWidget {
+  const AppDistribution({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.glass;
+    final rows = ref.watch(allFeedRowsProvider);
+
+    if (rows.isEmpty) {
+      return Text(
+        'No feeds configured yet.',
+        style: context.type.bodySmall?.copyWith(color: t.textTertiary),
+      );
+    }
 
     return Column(
       children: [
-        for (var i = 0; i < widget.apps.length; i++) ...[
-          if (i > 0) Divider(color: t.hairline, height: Gap.xl),
-          _Row(
-            app: widget.apps[i],
-            shielded: _shielded[i],
-            onToggle: (v) => setState(() => _shielded[i] = v),
-          ),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) Divider(color: t.hairline, height: Gap.md),
+          _ShieldRow(row: rows[i]),
         ],
       ],
     );
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.app,
-    required this.shielded,
-    required this.onToggle,
-  });
+class _ShieldRow extends ConsumerWidget {
+  const _ShieldRow({required this.row});
 
-  final TrackedApp app;
-  final bool shielded;
-  final ValueChanged<bool> onToggle;
+  final FeedRow row;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.glass;
-    final over = app.minutes > app.limit;
 
-    return Row(
-      children: [
-        GlassIconBadge(icon: app.icon, color: app.color, glow: shielded ? 0.6 : 0),
-        const SizedBox(width: Gap.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      app.name,
-                      style: context.type.titleSmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (shielded) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: t.success,
-                        boxShadow: [
-                          BoxShadow(
-                            color: t.success.withValues(alpha: 0.7),
-                            blurRadius: 8,
+    void toggle() {
+      HapticFeedback.lightImpact();
+      ref.read(feedGroupsProvider.notifier).toggle(row.id, !row.enabled);
+    }
+
+    return Semantics(
+      container: true,
+      toggled: row.enabled,
+      label: '${row.appName}: ${row.title}',
+      onTap: toggle,
+      child: Pressable(
+        onTap: toggle,
+        scale: 0.985,
+        child: ExcludeSemantics(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+            child: Row(
+              children: [
+                GlassIconBadge(
+                  icon: row.icon,
+                  color: row.color,
+                  glow: row.enabled ? 0.6 : 0,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              row.appName,
+                              style: context.type.titleSmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          if (row.enabled) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: t.success,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: t.success.withValues(alpha: 0.7),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                    ),
-                  ],
-                  const Spacer(),
-                  Text(
-                    formatMinutes(app.minutes),
-                    style: context.type.labelMedium?.copyWith(
-                      color: over ? t.danger : t.textSecondary,
-                    ),
+                      const SizedBox(height: 2),
+                      Text(
+                        row.title,
+                        style: context.type.bodySmall?.copyWith(
+                          color: t.textTertiary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 7),
-              GlassProgressBar(
-                value: app.ratio,
-                color: over ? t.danger : app.color,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                over
-                    ? '${formatMinutes(app.minutes - app.limit)} over limit'
-                    : 'Limit ${formatMinutes(app.limit)}',
-                style: context.type.labelSmall?.copyWith(
-                  color: over ? t.danger : t.textTertiary,
                 ),
-              ),
-            ],
+                const SizedBox(width: Gap.md),
+                GlassToggle(
+                  value: row.enabled,
+                  onChanged: (_) => toggle(),
+                  accent: row.color,
+                  semanticLabel: row.title,
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: Gap.md),
-        GlassToggle(value: shielded, onChanged: onToggle, accent: app.color),
-      ],
+      ),
     );
   }
 }

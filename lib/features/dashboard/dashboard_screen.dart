@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/color_tokens.dart';
 import '../../app/theme/glass_theme.dart';
-import '../../core/data/mock_data.dart';
+import '../../core/data/seed.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/providers/shield_providers.dart';
+import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
+import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/progress_ring.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
+import '../onboarding/coach_marks.dart';
 import 'widgets/app_distribution.dart';
 import 'widgets/focus_heatmap.dart';
 import 'widgets/subject_breakdown.dart';
@@ -16,249 +25,486 @@ import 'widgets/weekly_chart.dart';
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
 /// No app bar: the screen opens on a greeting, and every section is a glass
-/// panel floating over the ambient canvas. Sections stagger in on first build.
-class DashboardScreen extends StatelessWidget {
+/// panel floating over the ambient canvas. Everything below the greeting is
+/// read from the Riverpod stores, so a session finished on the Focus tab is
+/// reflected the moment this screen rebuilds.
+///
+/// Pull-to-refresh re-reads those stores behind a short skeleton frame: the
+/// read itself is synchronous, so without the hold the refresh would resolve
+/// in a single frame and read as a flicker rather than as loading.
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    await Future<void>.delayed(const Duration(milliseconds: 420));
+    if (!mounted) return;
+    // No network yet — a refresh is re-reading the local stores. These reads
+    // are the no-op that keeps the call honest once a repository lands here.
+    ref.read(sessionsProvider);
+    ref.read(subjectsProvider);
+    ref.read(statsProvider);
+    setState(() => _refreshing = false);
+  }
+
+  /// The Focus tab is branch 2 of the shell. Falling back to a route push
+  /// keeps the CTA working if the dashboard is ever shown outside the shell.
+  void _startFocusing() {
+    final shell = StatefulNavigationShell.maybeOf(context);
+    if (shell != null) {
+      shell.goBranch(2);
+      return;
+    }
+    context.go(AppRoutes.paths[AppRoutes.focus]!);
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = context.glass;
     final now = DateTime.now();
-    final progress = DemoData.focusMinutesToday / DemoData.focusGoalMinutes;
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        Gap.lg + 4,
-        MediaQuery.paddingOf(context).top + Gap.lg,
-        Gap.lg + 4,
-        kNavBarClearance,
-      ),
-      children: [
-        // Greeting -----------------------------------------------------------
-        Stagger(
-          index: 0,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${greetingFor(now)}, ${DemoData.userName}',
-                      style: context.type.headlineMedium,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      formatDate(now),
-                      style: context.type.bodySmall
-                          ?.copyWith(color: t.textTertiary),
-                    ),
-                  ],
+    final user = ref.watch(userProvider);
+    final stats = ref.watch(statsProvider);
+    final minutesToday = ref.watch(focusMinutesTodayProvider);
+    final goalMinutes = ref.watch(dailyGoalProvider);
+    final progress = ref.watch(goalProgressProvider);
+    final sessions = ref.watch(sessionsProvider);
+    final subjects = ref.watch(subjectsProvider);
+    final activeShields = ref.watch(activeShieldCountProvider);
+
+    final sessionsToday = sessions
+        .where((s) => s.completed && _sameDay(s.startedAt, now))
+        .length;
+
+    // Every number on this screen is derived from the session log, so the
+    // chart, the heatmap and the ring above them can never disagree.
+    final week = ref.watch(weeklyBarsProvider);
+    final weekTotal = ref.watch(weekTotalHoursProvider);
+    final weekAverage = ref.watch(weekAverageHoursProvider);
+    final heatmapWeeks = ref.watch(heatmapWeeksProvider);
+
+    return CoachMarks(
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        color: t.accentPrimary,
+        backgroundColor: t.canvasGradient.last,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            MediaQuery.paddingOf(context).top + Gap.lg,
+            Gap.lg + 4,
+            kNavBarClearance,
+          ),
+          children: [
+            // Greeting -------------------------------------------------------
+            Stagger(
+              index: 0,
+              child: _Greeting(
+                name: user.firstName,
+                streak: stats.currentStreak,
+                now: now,
+              ),
+            ),
+            const SizedBox(height: Gap.xl),
+
+            if (_refreshing) ...const [
+              SkeletonCard(height: 330, radius: Radii.hero),
+              SizedBox(height: Gap.xl),
+              SkeletonCard(height: 230),
+              SizedBox(height: Gap.xl),
+              SkeletonCard(height: 310),
+              SizedBox(height: Gap.xl),
+              SkeletonList(count: 3, itemHeight: 72),
+            ] else if (sessions.isEmpty)
+              // A brand-new user gets one designed state instead of a page of
+              // zeroed charts — the empty state explains what will fill in.
+              Stagger(index: 1, child: _NoSessions(onStart: _startFocusing))
+            else ...[
+              // Daily overview ------------------------------------------------
+              Stagger(
+                index: 1,
+                child: _DailyOverview(
+                  progress: progress,
+                  minutesToday: minutesToday,
+                  goalMinutes: goalMinutes,
+                  sessionsToday: sessionsToday,
+                  totalHours: stats.totalFocusHours,
+                  level: stats.level,
                 ),
               ),
-              const SizedBox(width: Gap.md),
-              // Streak chip — the one number worth surfacing in the chrome.
-              GlassPanel(
-                radius: Radii.pill,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gap.md,
-                  vertical: 8,
+              const SizedBox(height: Gap.xl),
+
+              // Weekly --------------------------------------------------------
+              const Stagger(
+                index: 2,
+                child: SectionHeader(
+                  title: 'This week',
+                  icon: Icons.bar_chart_rounded,
                 ),
-                accent: t.gold,
-                glowStrength: 0.55,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 15,
-                      color: t.gold,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '${DemoData.streakDays}',
-                      style: context.type.labelLarge?.copyWith(
-                        color: t.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+              ),
+              Stagger(
+                index: 3,
+                child: _WeeklyPanel(
+                  total: weekTotal,
+                  average: weekAverage,
+                  days: week,
                 ),
+              ),
+              const SizedBox(height: Gap.xl),
+
+              // Heatmap -------------------------------------------------------
+              const Stagger(
+                index: 4,
+                child: SectionHeader(
+                  title: 'Focus heatmap',
+                  icon: Icons.calendar_month_rounded,
+                ),
+              ),
+              Stagger(
+                index: 5,
+                child: GlassPanel(
+                  radius: Radii.card,
+                  padding: const EdgeInsets.all(Gap.lg),
+                  child: FocusHeatmap(weeks: heatmapWeeks),
+                ),
+              ),
+              const SizedBox(height: Gap.xl),
+
+              // App shields ---------------------------------------------------
+              Stagger(
+                index: 6,
+                child: SectionHeader(
+                  title: 'App shields',
+                  icon: Icons.shield_rounded,
+                  trailing: Text(
+                    '$activeShields active',
+                    style: context.type.labelSmall?.copyWith(
+                      color: t.textTertiary,
+                    ),
+                  ),
+                ),
+              ),
+              const Stagger(
+                index: 7,
+                child: GlassPanel(
+                  radius: Radii.card,
+                  padding: EdgeInsets.all(Gap.lg),
+                  child: AppDistribution(),
+                ),
+              ),
+              const SizedBox(height: Gap.xl),
+
+              // Subjects ------------------------------------------------------
+              const Stagger(
+                index: 8,
+                child: SectionHeader(
+                  title: 'Subject breakdown',
+                  icon: Icons.donut_large_rounded,
+                ),
+              ),
+              Stagger(
+                index: 9,
+                child: GlassPanel(
+                  radius: Radii.card,
+                  padding: const EdgeInsets.all(Gap.lg),
+                  child: SubjectBreakdown(subjects: subjects),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+bool _sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+String _spokenMinutes(int minutes) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  final parts = <String>[
+    if (h > 0) '$h ${h == 1 ? 'hour' : 'hours'}',
+    if (m > 0) '$m ${m == 1 ? 'minute' : 'minutes'}',
+  ];
+  return parts.isEmpty ? 'no focus logged' : parts.join(' ');
+}
+
+/// Greeting plus the streak pill — the one number worth surfacing in chrome.
+class _Greeting extends StatelessWidget {
+  const _Greeting({
+    required this.name,
+    required this.streak,
+    required this.now,
+  });
+
+  final String name;
+  final int streak;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${greetingFor(now)}, $name',
+                style: context.type.headlineMedium,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                formatDate(now),
+                style: context.type.bodySmall?.copyWith(color: t.textTertiary),
               ),
             ],
           ),
         ),
-        const SizedBox(height: Gap.xl),
-
-        // Daily overview -----------------------------------------------------
-        Stagger(
-          index: 1,
-          child: GlassPanel(
-            radius: Radii.hero,
-            blur: 18,
-            padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.xl, Gap.xl, Gap.lg),
-            child: Column(
+        if (streak > 0) ...[
+          const SizedBox(width: Gap.md),
+          GlassPanel(
+            radius: Radii.pill,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: 8,
+            ),
+            accent: t.gold,
+            glowStrength: 0.55,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                ProgressRing(
-                  value: progress,
-                  size: 188,
-                  stroke: 11,
-                  ticks: 24,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatMinutes(DemoData.focusMinutesToday),
-                        style: context.type.displayMedium?.copyWith(
-                          fontSize: 36,
-                          letterSpacing: -1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        'of ${formatMinutes(DemoData.focusGoalMinutes)} goal',
-                        style: context.type.bodySmall?.copyWith(
-                          color: t.textTertiary,
-                        ),
-                      ),
-                    ],
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 15,
+                  color: t.gold,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$streak',
+                  style: context.type.labelLarge?.copyWith(
+                    color: t.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: Gap.xl),
-                const Row(
-                  children: [
-                    Expanded(
-                      child: _StatChip(
-                        icon: Icons.phone_iphone_rounded,
-                        value: '${DemoData.pickups}',
-                        label: 'Pickups',
-                      ),
-                    ),
-                    SizedBox(width: Gap.sm),
-                    Expanded(
-                      child: _StatChip(
-                        icon: Icons.lock_open_rounded,
-                        value: '${DemoData.unlocks}',
-                        label: 'Unlocks',
-                      ),
-                    ),
-                    SizedBox(width: Gap.sm),
-                    Expanded(
-                      child: _StatChip(
-                        icon: Icons.timer_rounded,
-                        value: '${DemoData.focusMinutesStat}',
-                        label: 'Focus mins',
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: Gap.xl),
-
-        // Weekly --------------------------------------------------------------
-        const Stagger(
-          index: 2,
-          child: SectionHeader(title: 'This week', icon: Icons.bar_chart_rounded),
-        ),
-        Stagger(
-          index: 3,
-          child: GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${DemoData.weekTotalHours}h',
-                      style: context.type.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(width: Gap.sm),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Text(
-                        'focused',
-                        style: context.type.bodySmall,
-                      ),
-                    ),
-                    const Spacer(),
-                    const _TrendPill(label: '+18%'),
-                  ],
-                ),
-                const SizedBox(height: Gap.lg),
-                const WeeklyChart(days: DemoData.week),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-
-        // Heatmap --------------------------------------------------------------
-        const Stagger(
-          index: 4,
-          child: SectionHeader(
-            title: 'Focus heatmap',
-            icon: Icons.calendar_month_rounded,
-          ),
-        ),
-        Stagger(
-          index: 5,
-          child: GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: const FocusHeatmap(weeks: DemoData.heatmap),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-
-        // App distribution ------------------------------------------------------
-        Stagger(
-          index: 6,
-          child: SectionHeader(
-            title: 'App distribution',
-            icon: Icons.apps_rounded,
-            trailing: Text(
-              'Today',
-              style: context.type.labelSmall?.copyWith(color: t.textTertiary),
-            ),
-          ),
-        ),
-        Stagger(
-          index: 7,
-          child: GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: const AppDistribution(apps: DemoData.apps),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-
-        // Subjects ---------------------------------------------------------------
-        const Stagger(
-          index: 8,
-          child: SectionHeader(
-            title: 'Subject breakdown',
-            icon: Icons.donut_large_rounded,
-          ),
-        ),
-        Stagger(
-          index: 9,
-          child: GlassPanel(
-            radius: Radii.card,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: const SubjectBreakdown(subjects: DemoData.subjects),
-          ),
-        ),
+        ],
       ],
+    );
+  }
+}
+
+/// Ring, goal copy and the three stat chips.
+class _DailyOverview extends StatelessWidget {
+  const _DailyOverview({
+    required this.progress,
+    required this.minutesToday,
+    required this.goalMinutes,
+    required this.sessionsToday,
+    required this.totalHours,
+    required this.level,
+  });
+
+  final double progress;
+  final int minutesToday;
+  final int goalMinutes;
+  final int sessionsToday;
+  final double totalHours;
+  final int level;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+
+    return GlassPanel(
+      radius: Radii.hero,
+      blur: 18,
+      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.xl, Gap.xl, Gap.lg),
+      child: Column(
+        children: [
+          ProgressRing(
+            value: progress,
+            size: 188,
+            stroke: 11,
+            ticks: 24,
+            semanticLabel:
+                'Daily focus, ${_spokenMinutes(minutesToday)} of '
+                '${_spokenMinutes(goalMinutes)}, '
+                '${(progress * 100).round()} percent of goal',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  formatMinutes(minutesToday),
+                  style: context.type.displayMedium?.copyWith(
+                    fontSize: 36,
+                    letterSpacing: -1.4,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'of ${formatMinutes(goalMinutes)} goal',
+                  style: context.type.bodySmall?.copyWith(
+                    color: t.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chips = <Widget>[
+                _StatChip(
+                  icon: Icons.task_alt_rounded,
+                  value: '$sessionsToday',
+                  label: 'Sessions',
+                ),
+                _StatChip(
+                  icon: Icons.timelapse_rounded,
+                  value: '${totalHours.round()}h',
+                  label: 'All time',
+                ),
+                _StatChip(
+                  icon: Icons.military_tech_rounded,
+                  value: '$level',
+                  label: 'Level',
+                ),
+              ];
+
+              // Three equal columns need ~340dp to keep the labels on one
+              // line; below that the chips keep a third of the row as a
+              // minimum and flow onto a second line instead of clipping.
+              if (constraints.maxWidth < 340) {
+                final minWidth = (constraints.maxWidth - Gap.sm * 2) / 3;
+                return Wrap(
+                  spacing: Gap.sm,
+                  runSpacing: Gap.sm,
+                  children: [
+                    for (final chip in chips)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: minWidth),
+                        child: chip,
+                      ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  for (var i = 0; i < chips.length; i++) ...[
+                    if (i > 0) const SizedBox(width: Gap.sm),
+                    Expanded(child: chips[i]),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The weekly panel: headline total, average pill and the tappable chart.
+class _WeeklyPanel extends StatelessWidget {
+  const _WeeklyPanel({
+    required this.total,
+    required this.average,
+    required this.days,
+  });
+
+  final double total;
+  final double average;
+  final List<DayBar> days;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+    return GlassPanel(
+      radius: Radii.card,
+      padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${total.toStringAsFixed(1)}h',
+                style: context.type.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: Gap.sm),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text('focused', style: context.type.bodySmall),
+              ),
+              const Spacer(),
+              _MetaPill(
+                icon: Icons.insights_rounded,
+                label: '${average.toStringAsFixed(1)}h avg',
+                color: t.accentSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: Gap.lg),
+          WeeklyChart(days: days),
+        ],
+      ),
+    );
+  }
+}
+
+/// Designed first-run state — shown whenever there is nothing to chart.
+class _NoSessions extends StatelessWidget {
+  const _NoSessions({required this.onStart});
+
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.glass;
+    return GlassPanel(
+      radius: Radii.hero,
+      blur: 18,
+      padding: EdgeInsets.zero,
+      child: EmptyState(
+        icon: Icons.timer_outlined,
+        title: 'No sessions yet',
+        subtitle:
+            'Finish your first focus block and this page fills in — '
+            'the daily ring, weekly chart, heatmap and app shields.',
+        action: GlassPill(
+          selected: true,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          onTap: onStart,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.play_arrow_rounded, size: 18, color: t.accentPrimary),
+              const SizedBox(width: 6),
+              const Text('Start focusing'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -283,6 +529,7 @@ class _StatChip extends StatelessWidget {
       sheen: false,
       padding: const EdgeInsets.symmetric(vertical: Gap.md, horizontal: Gap.sm),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: t.accentPrimary),
           const SizedBox(height: 7),
@@ -292,6 +539,8 @@ class _StatChip extends StatelessWidget {
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 1),
           Text(
@@ -300,6 +549,8 @@ class _StatChip extends StatelessWidget {
               fontSize: 10,
               color: t.textTertiary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -308,15 +559,20 @@ class _StatChip extends StatelessWidget {
 }
 
 /// Small delta badge used next to headline metrics.
-class _TrendPill extends StatelessWidget {
-  const _TrendPill({required this.label});
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
+  final IconData icon;
   final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final t = context.glass;
-    final c = t.success;
+    final c = color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2, vertical: 4),
       decoration: BoxDecoration(
@@ -327,7 +583,7 @@ class _TrendPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.trending_up_rounded, size: 13, color: c),
+          Icon(icon, size: 13, color: c),
           const SizedBox(width: 3),
           Text(
             label,

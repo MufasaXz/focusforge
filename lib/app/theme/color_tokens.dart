@@ -8,6 +8,17 @@ import 'package:flutter/material.dart';
 ///
 /// Light mode deliberately shifts the accents darker — the pastel neons used on
 /// the dark canvas do not carry enough contrast against a pale background.
+///
+/// ## Deliberate deviations from the master plan's glass table
+///
+/// The plan specifies dark L1 at 5% and L2 at 13%, and light L1 at 45% and L2
+/// at 70%. The values here are 7%/10% dark and 55%/80% light. This is
+/// intentional and was tuned against rendered screenshots, not guessed: the
+/// plan's numbers were chosen before the canvas had drifting colour blobs
+/// behind it, and against a moving background the lower fills stop reading as
+/// a *pane* and start reading as a hole. Do not "fix" these back to the spec
+/// without re-rendering — see the note in [GlassPanel] about why the border,
+/// rim and sheen matter more than the fill percentage.
 @immutable
 class GlassTokens extends ThemeExtension<GlassTokens> {
   const GlassTokens({
@@ -37,6 +48,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     required this.track,
     required this.grainOpacity,
     required this.vignette,
+    this.blurL1 = 0,
+    this.blurL2 = 0,
+    this.blurNav = 24,
   });
 
   /// Background gradient stops, painted top-left to bottom-right.
@@ -89,6 +103,19 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
   /// Edge darkening, which pulls the eye to the centre of the screen.
   final Color vignette;
 
+  /// Backdrop-blur sigmas, in logical pixels.
+  ///
+  /// These live on the token set rather than being hardcoded at the call site
+  /// because the correct value is a function of the theme: a pale background
+  /// needs *less* blur than a dark one to read as frosted, and over-blurring a
+  /// light canvas just smears the content underneath into grey. The spec is
+  /// 24 on dark and 20 on light; both are within the 10–20px band that reads
+  /// as glass without turning into fog, with the nav allowed a little more
+  /// because it floats over moving content.
+  final double blurL1;
+  final double blurL2;
+  final double blurNav;
+
   static const GlassTokens dark = GlassTokens(
     canvasGradient: [
       Color(0xFF0C1226),
@@ -117,7 +144,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     innerRim: Color(0x14FFFFFF),
     textPrimary: Color(0xFFF3F6FD),
     textSecondary: Color(0xB8F3F6FD),
-    textTertiary: Color(0x80F3F6FD),
+    // 60%, not 50%: at 50% this fails WCAG AA (4.5:1) once it is composited
+    // over a translucent glass fill rather than the raw canvas.
+    textTertiary: Color(0x99F3F6FD),
     accentPrimary: Color(0xFFA8C7FA),
     accentSecondary: Color(0xFFD0BCFF),
     success: Color(0xFF8FE7C0),
@@ -128,6 +157,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     // Grain should be felt, not seen. Above ~0.2 it reads as a dirty screen.
     grainOpacity: 0.14,
     vignette: Color(0x80000000),
+    blurL1: 0,
+    blurL2: 24,
+    blurNav: 24,
   );
 
   static const GlassTokens light = GlassTokens(
@@ -156,7 +188,7 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     innerRim: Color(0x33000000),
     textPrimary: Color(0xFF0C1226),
     textSecondary: Color(0xB30C1226),
-    textTertiary: Color(0x800C1226),
+    textTertiary: Color(0x990C1226),
     accentPrimary: Color(0xFF2F5FD0),
     accentSecondary: Color(0xFF6B4FCF),
     success: Color(0xFF0F7A54),
@@ -166,6 +198,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     track: Color(0x140C1226),
     grainOpacity: 0.06,
     vignette: Color(0x14000000),
+    blurL1: 0,
+    blurL2: 20,
+    blurNav: 20,
   );
 
   /// Convenience for the active accent gradient used by rings and pills.
@@ -208,6 +243,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
     Color? track,
     double? grainOpacity,
     Color? vignette,
+    double? blurL1,
+    double? blurL2,
+    double? blurNav,
   }) {
     return GlassTokens(
       canvasGradient: canvasGradient ?? this.canvasGradient,
@@ -236,6 +274,9 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
       track: track ?? this.track,
       grainOpacity: grainOpacity ?? this.grainOpacity,
       vignette: vignette ?? this.vignette,
+      blurL1: blurL1 ?? this.blurL1,
+      blurL2: blurL2 ?? this.blurL2,
+      blurNav: blurNav ?? this.blurNav,
     );
   }
 
@@ -269,8 +310,13 @@ class GlassTokens extends ThemeExtension<GlassTokens> {
       track: Color.lerp(track, other.track, t)!,
       grainOpacity: t < 0.5 ? grainOpacity : other.grainOpacity,
       vignette: Color.lerp(vignette, other.vignette, t)!,
+      blurL1: _lerpD(blurL1, other.blurL1, t),
+      blurL2: _lerpD(blurL2, other.blurL2, t),
+      blurNav: _lerpD(blurNav, other.blurNav, t),
     );
   }
+
+  static double _lerpD(double a, double b, double t) => a + (b - a) * t;
 
   static List<Color> _lerpColors(List<Color> a, List<Color> b, double t) {
     final n = a.length < b.length ? a.length : b.length;
