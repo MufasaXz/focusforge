@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_accessibility_service/flutter_accessibility_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:usage_stats/usage_stats.dart';
+
+import 'native_shield_service.dart';
 
 /// The permissions onboarding asks for.
 enum AppPermission {
@@ -47,6 +48,14 @@ enum PermissionOutcome {
 /// platform throws rather than returning a negative answer.
 class PermissionManager {
   const PermissionManager();
+
+  /// One instance for the process.
+  ///
+  /// The accessibility answer comes from the same service the shield engine
+  /// uses, rather than from a second plugin with its own idea of whether the
+  /// service is on. Two sources for one fact is how a screen ends up saying
+  /// "off" while blocking is working.
+  static final _shield = NativeShieldService();
 
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -99,7 +108,7 @@ class PermissionManager {
         case AppPermission.accessibility:
           // No dialog exists. This opens Accessibility settings and returns
           // immediately, so the real answer arrives on resume.
-          await FlutterAccessibilityService.requestAccessibilityPermission();
+          await _shield.requestPermission();
           return await _settle(permission);
 
         case AppPermission.usageAccess:
@@ -126,10 +135,9 @@ class PermissionManager {
       switch (permission) {
         AppPermission.notifications => Permission.notification.status,
         AppPermission.doNotDisturb => Permission.accessNotificationPolicy.status,
-        AppPermission.accessibility =>
-          FlutterAccessibilityService.isAccessibilityPermissionEnabled().then(
-            (on) => on ? PermissionStatus.granted : PermissionStatus.denied,
-          ),
+        AppPermission.accessibility => _shield.isServiceEnabled().then(
+          (on) => on ? PermissionStatus.granted : PermissionStatus.denied,
+        ),
         AppPermission.usageAccess => UsageStats.checkUsagePermission().then(
           (on) => on ?? false ? PermissionStatus.granted : PermissionStatus.denied,
         ),

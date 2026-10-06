@@ -24,39 +24,60 @@ abstract class ShieldPlatformService {
   /// Fires when the native side reports an interception. Feeds the Deep Breath
   /// Gate and the impulse-event log.
   Stream<ShieldInterception> get interceptions;
+
+  /// Lets [packageId] through for [seconds] — the "open it anyway" path.
+  ///
+  /// A no-op where there is no engine to tell, so the caller never has to
+  /// branch on the platform to offer the option.
+  Future<void> grantTemporaryAccess(String packageId, {required int seconds});
 }
 
 /// The complete desired shield state.
+///
+/// One list of tiers plus the YouTube surfaces. There is deliberately no
+/// separate rule type: a rule is a tier plus a package id, and deriving it
+/// here rather than storing it means the Shield screen and the engine cannot
+/// drift apart about what is armed.
 class ShieldConfig {
   const ShieldConfig({
-    required this.feedShields,
     required this.whitelist,
-    required this.activeProfileId,
-    required this.strictMode,
+    required this.youtube,
+    this.strictMode = const StrictModeConfig(),
+    this.graceSeconds = defaultGraceSeconds,
   });
 
-  final List<FeedRow> feedShields;
-  final List<WhitelistEntry> whitelist;
-  final String? activeProfileId;
-  final StrictModeConfig strictMode;
+  /// How long "open it anyway" buys, in seconds.
+  static const defaultGraceSeconds = 30;
 
-  /// Everything the native side needs, and nothing else. Kept as a plain map
-  /// so it crosses a channel without a codec.
+  final List<WhitelistEntry> whitelist;
+  final YoutubeRules youtube;
+  final StrictModeConfig strictMode;
+  final int graceSeconds;
+
+  /// Everything the native side needs, and nothing else.
+  ///
+  /// Keyed by Android package name, because that is the only identifier the
+  /// accessibility service can match against — an internal row id would be a
+  /// rule the engine has no way to recognise. Entries with no package, or in
+  /// the always-allowed tier, produce no rule at all rather than one that
+  /// silently does nothing.
   Map<String, dynamic> toChannelPayload() => {
-        'feeds': {
-          for (final f in feedShields)
-            f.id: {'enabled': f.enabled, 'mode': f.mode.name},
-        },
-        'whitelist': {
-          for (final w in whitelist)
-            w.id: {
-              'tier': w.tier.name,
-              'budgetMinutes': w.budgetMinutes,
-            },
-        },
-        'activeProfileId': activeProfileId,
-        'strictMode': strictMode.toJson(),
-      };
+    'apps': {
+      for (final e in whitelist)
+        if (e.packageId != null && e.tier.isEnforced)
+          e.packageId!: {
+            'label': e.name,
+            'mode': e.tier == WhitelistTier.budgeted ? 'budget' : 'block',
+            'budgetMinutes': e.budgetMinutes ?? 0,
+          },
+    },
+    'youtube': youtube.toJson(),
+    // Strict mode is passed as a deadline rather than a duration: the engine
+    // has no idea when the window opened, and computing it here means the two
+    // sides cannot disagree about whether it is still running.
+    'strictUntil': strictMode.endsAt?.millisecondsSinceEpoch,
+    'graceSeconds': graceSeconds,
+  };
 }
 
 /// A single blocked-app launch, as reported by the native service.
@@ -65,18 +86,25 @@ class ShieldInterception {
     required this.appName,
     required this.packageId,
     required this.at,
+    this.walkedAway = true,
   });
 
   final String appName;
   final String packageId;
   final DateTime at;
+
+  /// True when the user took the offered way out rather than going in. This is
+  /// the only number that can say whether the block is working — a block that
+  /// is dismissed every time is a speed bump, not a shield.
+  final bool walkedAway;
 }
 
-/// Stands in for the native engine until Phase 2.
+/// Stands in for the native engine everywhere there is no accessibility
+/// service to talk to — the browser preview, tests, and any non-Android build.
 ///
 /// It remembers the last config it was handed and exposes it, so the shield
-/// layer is fully exercisable — and inspectable — in the browser preview and in
-/// tests. Nothing here pretends to actually block anything.
+/// layer is fully exercisable — and inspectable — without a device. Nothing
+/// here pretends to actually block anything.
 class RecordingShieldService implements ShieldPlatformService {
   ShieldConfig? lastApplied;
 
@@ -87,12 +115,20 @@ class RecordingShieldService implements ShieldPlatformService {
 
   @override
   Future<void> requestPermission() async {
-    // Phase 2: launch the Accessibility settings intent.
+    // There is no settings page to open, and nothing to enable.
   }
 
   @override
   Future<void> applyConfig(ShieldConfig config) async {
     lastApplied = config;
+  }
+
+  @override
+  Future<void> grantTemporaryAccess(
+    String packageId, {
+    required int seconds,
+  }) async {
+    // Nothing is being blocked, so there is nothing to let through.
   }
 
   @override

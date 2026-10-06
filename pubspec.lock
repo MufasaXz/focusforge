@@ -166,14 +166,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_accessibility_service:
-    dependency: "direct main"
-    description:
-      name: flutter_accessibility_service
-      sha256: abe4e708ee2ec2fb494b0fe5077992ea841e99b3809dd3bf79b5a84771709c2c
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   flutter_lints:
     dependency: "direct dev"
     description:

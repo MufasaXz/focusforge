@@ -25,8 +25,12 @@ dependencies:
   # to the same two screens. Its pinned release also hardcodes
   # `compileSdkVersion 33`, which cannot build against the AndroidX versions
   # the rest of the graph pulls in.
+  # No `flutter_accessibility_service`: the shield runs on its own native
+  # `AccessibilityService`, which is the only way to keep blocking alive when
+  # the Flutter engine is not. The plugin's listener also dropped every event
+  # whose source node was null, which is most of them, so it could never have
+  # reported a block even when it was installed correctly.
   permission_handler: ^11.3.1
-  flutter_accessibility_service: ^0.3.0
   usage_stats: ^2.0.1
   just_audio: ^0.9.41
   # Only for `Blend.harmonize`, which rotates the categorical subject, tier and

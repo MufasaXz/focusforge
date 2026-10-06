@@ -46,13 +46,13 @@
             </intent-filter>
         </activity>
 
-        <!-- The accessibility service the shield runs on. This is the listener
-             shipped by `flutter_accessibility_service`; the app does not
-             subclass it. Android has no dialog for accessibility access — the
-             user enables it from Settings — so this declaration is what makes
-             FocusForge appear in that list at all. -->
+        <!-- The accessibility service the shield runs on. Android has no
+             dialog for accessibility access — the user enables it from
+             Settings — so this declaration is what makes FocusForge appear in
+             that list at all. See res/xml/accessibilityservice.xml for what it
+             is allowed to observe. -->
         <service
-            android:name="slayer.accessibility.service.flutter_accessibility_service.AccessibilityListener"
+            android:name=".shield.FocusAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false"
             android:label="FocusForge">
@@ -81,4 +81,15 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+
+    <!-- Package visibility. Android 11+ hides installed apps from
+         getInstalledPackages() unless the app says why it needs them, and the
+         picker is built on exactly that call. Without this the list comes back
+         with roughly twenty entries and no error, so the user simply cannot
+         find the app they want to block. The permission is only used to read
+         labels and icons for the picker; nothing is enumerated in the
+         background. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission"/>
 </manifest>

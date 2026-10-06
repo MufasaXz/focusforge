@@ -2,18 +2,29 @@
 <!--
   What the FocusForge accessibility service is allowed to observe.
 
-  Window-state changes only: the service needs to know which app came to the
-  foreground so the shield can decide whether to act. It deliberately does not
-  request window content, text, view IDs, gesture injection or key events —
-  nothing in the shield reads what is on screen, only which app is showing it.
-  Keeping `canRetrieveWindowContent` false is what makes that promise
-  enforceable by the platform rather than merely stated in the UI.
+  Window-state changes, so the service can tell which app came to the
+  foreground and decide whether that app is one the user asked it to keep
+  closed. It does not request gesture injection, key events, or the ability to
+  act on the user's behalf.
+
+  `canRetrieveWindowContent` is true, and that is a real widening of what the
+  service can see. It is required for one feature and nothing else: telling the
+  YouTube Shorts player apart from a normal video, so a student can keep
+  lectures and lose the feed. The service reads view ids inside YouTube and
+  only while a YouTube rule is on; it never reads, stores or transmits anything
+  it sees, and no other app's content is inspected at all. The description
+  string the user reads when they grant access says so plainly.
+
+  `flagReportViewIds` is what makes the view ids readable. `notificationTimeout`
+  is short because this runs on the launch path — a block that arrives after the
+  user is already scrolling has already failed.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowsChanged|typeWindowStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
     android:accessibilityFeedbackType="feedbackVisual"
-    android:notificationTimeout="300"
-    android:accessibilityFlags="flagDefault"
-    android:canRetrieveWindowContent="false"
+    android:notificationTimeout="100"
+    android:accessibilityFlags="flagDefault|flagReportViewIds"
+    android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_service_description"
+    android:summary="@string/accessibility_service_summary"
 />

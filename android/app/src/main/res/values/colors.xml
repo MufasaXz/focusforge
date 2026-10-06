@@ -4,4 +4,14 @@
          so the hand-off from the Android window to the Flutter splash has no
          visible seam. values-night/ carries the dark one. -->
     <color name="ff_launch_background">#FFF8F6</color>
+
+    <!-- The block screen. It is drawn by the accessibility service rather than
+         by Flutter, so it cannot read the app's ColorScheme — these are the
+         same roles, kept here by hand. values-night/ carries the dark set. -->
+    <color name="ff_block_surface">#FFF8F6</color>
+    <color name="ff_block_on_surface">#201A18</color>
+    <color name="ff_block_muted">#54433C</color>
+    <color name="ff_block_outline">#D8C2BA</color>
+    <color name="ff_block_accent">#E8672A</color>
+    <color name="ff_block_on_accent">#FFFFFF</color>
 </resources>

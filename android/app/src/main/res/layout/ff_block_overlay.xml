@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The screen shown over a blocked app.
+
+  Drawn by the accessibility service as a TYPE_ACCESSIBILITY_OVERLAY window, so
+  it is not part of the Flutter tree and cannot read the app's ColorScheme.
+  The colours are the same roles, defined in values/ and values-night/ so the
+  two brightnesses stay in step with the rest of the app.
+
+  Two actions and no way to dismiss by accident: the primary gets the user out
+  of the app, the outlined one lets them back in. There is deliberately no
+  back-button handling, no outside-touch-to-dismiss and no timer — a block
+  screen with an escape hatch that is easier than the decision is not a block
+  screen.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ff_block_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ff_block_surface"
+    android:fitsSystemWindows="true">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="32dp"
+            android:paddingVertical="40dp">
+
+            <ImageView
+                android:id="@+id/ff_block_icon"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/ff_block_app"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:maxWidth="320dp"
+                android:gravity="center"
+                android:textColor="@color/ff_block_on_surface"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ff_block_reason"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:maxWidth="320dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:textColor="@color/ff_block_muted"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/ff_block_back"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginTop="32dp"
+                android:minWidth="220dp"
+                android:paddingHorizontal="28dp"
+                android:background="@drawable/ff_block_button_primary"
+                android:stateListAnimator="@null"
+                android:textColor="@color/ff_block_on_accent"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/ff_block_anyway"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:minWidth="220dp"
+                android:paddingHorizontal="28dp"
+                android:background="@drawable/ff_block_button_ghost"
+                android:stateListAnimator="@null"
+                android:textColor="@color/ff_block_muted"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/ff_block_note"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:maxWidth="300dp"
+                android:gravity="center"
+                android:textColor="@color/ff_block_muted"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
