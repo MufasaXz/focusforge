@@ -40,28 +40,57 @@ class Achievement {
 }
 
 /// A study group the user belongs to.
+///
+/// A group is local until there is a backend to sync it: it holds the name,
+/// the icon, the weekly target and an invite code the user can share. The
+/// hours are the user's own, measured from their session log — which is the
+/// truth about a group of one, and is why [memberCount] is a constant rather
+/// than a stored number. A made-up headcount is the exact kind of decoration
+/// this model is shaped to avoid.
 @immutable
 class StudyGroup {
   const StudyGroup({
     required this.id,
     required this.name,
     required this.icon,
-    required this.memberCount,
-    required this.weeklyHours,
     required this.targetHours,
+    required this.createdAt,
+    this.weeklyHours = 0,
     this.inviteCode = '',
   });
 
   final String id;
   final String name;
   final IconData icon;
-  final int memberCount;
+
+  /// The user's completed hours this week, filled in by the provider from the
+  /// session log. Not persisted — a stored copy would go stale the moment a
+  /// session ends.
   final double weeklyHours;
+
   final double targetHours;
+  final DateTime createdAt;
+
+  /// Shareable, and generated locally. Two people who both install FocusForge
+  /// can hold the same code and compare weeks by hand; nothing syncs.
   final String inviteCode;
+
+  /// Everyone in the group. One, until membership can actually be synced.
+  int get memberCount => 1;
 
   double get progress =>
       targetHours <= 0 ? 0 : (weeklyHours / targetHours).clamp(0.0, 1.0);
+
+  StudyGroup copyWith({String? name, IconData? icon, double? targetHours, double? weeklyHours}) =>
+      StudyGroup(
+        id: id,
+        name: name ?? this.name,
+        icon: icon ?? this.icon,
+        targetHours: targetHours ?? this.targetHours,
+        createdAt: createdAt,
+        weeklyHours: weeklyHours ?? this.weeklyHours,
+        inviteCode: inviteCode,
+      );
 }
 
 /// A member row inside a group, or a row on the leaderboard.

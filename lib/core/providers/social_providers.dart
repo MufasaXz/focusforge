@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed.dart';
@@ -63,11 +64,7 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
 
     return [
       for (final badge in SeedData.badges)
-        if (_measurableBadgeIds.contains(badge.id))
-          // Seed progress is demo content, not this user's history. Strip it
-          // so not even the first frame can show a fabricated bar; [refresh]
-          // fills in the measured value.
-          badge.copyWith(progress: 0),
+        if (_measurableBadgeIds.contains(badge.id)) badge,
     ];
   }
 
@@ -299,7 +296,109 @@ double _subjectTargetFraction(
 
 // -- Study groups ------------------------------------------------------------
 
-final groupsProvider = Provider<List<StudyGroup>>((_) => SeedData.groups);
+/// The user's own groups.
+///
+/// A group lives on this device: it holds a name, an icon, a weekly target and
+/// a code to share. The hours are the user's real logged time, recomputed from
+/// the session log so the bar moves when a session ends rather than on the
+/// next launch.
+///
+/// There is no seeded group. A group nobody joined, with members nobody
+/// invited, is not a feature — it is a screenshot.
+class GroupsNotifier extends Notifier<List<StudyGroup>> {
+  /// Dotted like every other store key; should move into [StoreKeys] with the
+  /// next store change.
+  static const _key = 'groups.custom';
+
+  @override
+  List<StudyGroup> build() {
+    // Watched, not read: a group's progress is the user's progress, so it has
+    // to move the moment a session is logged.
+    final hours = ref.watch(leaderboardWeekHoursProvider);
+    return [
+      for (final group in _restore(ref.read(localStoreProvider).getList(_key)))
+        group.copyWith(weeklyHours: hours),
+    ];
+  }
+
+  /// Rebuilds a group from its stored row. Every field is type-tested — this
+  /// runs during bootstrap, where one bad row must not abort the launch.
+  static List<StudyGroup> _restore(List<Map<String, dynamic>> stored) => [
+    for (final m in stored)
+      if (m['id'] case final String id)
+        StudyGroup(
+          id: id,
+          name: m['name'] is String ? m['name'] as String : 'Group',
+          icon: AppIcons.resolve(
+            m['icon'] is String ? m['icon'] as String : null,
+          ),
+          targetHours: m['targetHours'] is num
+              ? (m['targetHours'] as num).toDouble()
+              : 10,
+          createdAt: m['createdAt'] is num
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  (m['createdAt'] as num).toInt(),
+                )
+              : DateTime.now(),
+          inviteCode: m['inviteCode'] is String
+              ? m['inviteCode'] as String
+              : '',
+        ),
+  ];
+
+  Future<void> _persist() async {
+    await ref.read(localStoreProvider).setList(_key, [
+      for (final g in state)
+        {
+          'id': g.id,
+          'name': g.name,
+          'icon': AppIcons.nameOfOr(g.icon, 'groups'),
+          'targetHours': g.targetHours,
+          'inviteCode': g.inviteCode,
+          'createdAt': g.createdAt.millisecondsSinceEpoch,
+        },
+    ]);
+  }
+
+  Future<StudyGroup> create({
+    required String name,
+    required IconData icon,
+    required double targetHours,
+  }) async {
+    final now = DateTime.now();
+    final group = StudyGroup(
+      id: 'g${now.microsecondsSinceEpoch}',
+      name: name.trim(),
+      icon: icon,
+      targetHours: targetHours.clamp(1, 100),
+      createdAt: now,
+      weeklyHours: ref.read(leaderboardWeekHoursProvider),
+      inviteCode: _code(name),
+    );
+    state = [...state, group];
+    await _persist();
+    return group;
+  }
+
+  Future<void> remove(String id) async {
+    state = state.where((g) => g.id != id).toList(growable: false);
+    await _persist();
+  }
+
+  /// A short, shareable code. Generated from the name so it is recognisable,
+  /// with digits from the clock so two groups cannot collide by accident.
+  static String _code(String name) {
+    final letters = name.replaceAll(RegExp(r'[^A-Za-z]'), '').toUpperCase();
+    final prefix = letters.padRight(3, 'X').substring(0, 3);
+    final digits = (DateTime.now().microsecondsSinceEpoch % 9000 + 1000)
+        .toString();
+    return '$prefix-$digits';
+  }
+}
+
+final groupsProvider = NotifierProvider<GroupsNotifier, List<StudyGroup>>(
+  GroupsNotifier.new,
+);
 
 /// Groups are the one feature gated behind a real account.
 final canUseGroupsProvider = Provider<bool>(
@@ -307,44 +406,6 @@ final canUseGroupsProvider = Provider<bool>(
 );
 
 // -- Leaderboard -------------------------------------------------------------
-
-class LeaderboardScopeNotifier extends Notifier<LeaderboardScope> {
-  /// Persisted under a dotted key like every other store entry; this should
-  /// become a [StoreKeys] constant with the next store change.
-  static const _scopeKey = 'leaderboard.scope';
-
-  @override
-  LeaderboardScope build() {
-    // Read straight from the store: the scope is only needed once the
-    // leaderboard screen opens, so there is no first-frame value to protect
-    // and no reason to depend on bootstrap's hydrate call being wired.
-    return _parse(ref.read(localStoreProvider).getString(_scopeKey));
-  }
-
-  LocalStore get _store => ref.read(localStoreProvider);
-
-  /// Restores a persisted scope; exposed for bootstrap.
-  void hydrate(String? stored) {
-    final parsed = _parseOrNull(stored);
-    if (parsed != null) state = parsed;
-  }
-
-  Future<void> set(LeaderboardScope scope) async {
-    state = scope;
-    await _store.setString(_scopeKey, scope.name);
-  }
-
-  static LeaderboardScope _parse(String? stored) =>
-      _parseOrNull(stored) ?? LeaderboardScope.friends;
-
-  static LeaderboardScope? _parseOrNull(String? stored) =>
-      LeaderboardScope.values.where((s) => s.name == stored).firstOrNull;
-}
-
-final leaderboardScopeProvider =
-    NotifierProvider<LeaderboardScopeNotifier, LeaderboardScope>(
-      LeaderboardScopeNotifier.new,
-    );
 
 /// Hours of completed focus logged since Monday 00:00 local — the span the
 /// subject rings and the heatmap call "this week".
@@ -364,53 +425,63 @@ final leaderboardWeekHoursProvider = Provider<double>((ref) {
   return minutes / 60;
 });
 
-/// The board for the selected scope.
-///
-/// Every row but the user's is [SeedData] sample content — there is no backend
-/// to supply friends or global standings, and the screen says so. The user's
-/// row is real: it is measured over the current Monday-aligned week, inserted
-/// at the rank those hours actually earn, and omitted at zero so a fresh
-/// install is never handed a standing it has not earned.
-final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
-  final scope = ref.watch(leaderboardScopeProvider);
-  final myHours = ref.watch(leaderboardWeekHoursProvider);
-  final displayName = ref.watch(userProvider).displayName.trim();
+/// The same window, one week earlier — the only honest comparison the app can
+/// draw without a server, because it is against the user's own history.
+final previousWeekHoursProvider = Provider<double>((ref) {
+  final now = DateTime.now();
+  final thisMonday = DateTime(
+    now.year,
+    now.month,
+    now.day - (now.weekday - 1),
+  );
+  final lastMonday = DateTime(
+    thisMonday.year,
+    thisMonday.month,
+    thisMonday.day - 7,
+  );
 
-  final sample = switch (scope) {
-    LeaderboardScope.friends => SeedData.leaderboard,
-    LeaderboardScope.group =>
-      SeedData.leaderboard.take(5).toList(growable: false),
-    LeaderboardScope.global => _globalSample,
-  };
-
-  final rows = [
-    for (final entry in sample)
-      if (!entry.isMe) entry,
-  ];
-
-  if (myHours > 0) {
-    rows.add(
-      LeaderboardEntry(
-        name: displayName.isEmpty ? 'You' : displayName,
-        hours: myHours,
-        isMe: true,
-      ),
-    );
-    rows.sort((a, b) => b.hours.compareTo(a.hours));
+  var minutes = 0;
+  for (final session in ref.watch(sessionsProvider)) {
+    if (!session.completed) continue;
+    final at = session.startedAt;
+    if (at.isBefore(lastMonday) || !at.isBefore(thisMonday)) continue;
+    minutes += session.minutes;
   }
-  return rows;
+  return minutes / 60;
 });
 
-/// Sample global standings, pending the backend. See [leaderboardProvider].
-const _globalSample = <LeaderboardEntry>[
-  LeaderboardEntry(name: 'Kenji A.', hours: 31.4),
-  LeaderboardEntry(name: 'Marta L.', hours: 29.8),
-  LeaderboardEntry(name: 'Sarah K.', hours: 27.2),
-  LeaderboardEntry(name: 'Omar F.', hours: 24.1),
-  LeaderboardEntry(name: 'Mike R.', hours: 21.5),
-  LeaderboardEntry(name: 'Emma T.', hours: 20.2),
-  LeaderboardEntry(name: 'Luna S.', hours: 18.4),
-];
+/// Completed sessions logged this week.
+final weekSessionCountProvider = Provider<int>((ref) {
+  final now = DateTime.now();
+  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  return ref
+      .watch(sessionsProvider)
+      .where((s) => s.completed && !s.startedAt.isBefore(monday))
+      .length;
+});
+
+/// The board for the selected scope.
+///
+/// One row: the user's, measured over the current Monday-aligned week. There
+/// is no backend to supply friends or global standings, and the screen says so
+/// rather than filling the gaps with invented names — a fabricated rival is
+/// the one kind of demo data a user cannot tell from a real one.
+///
+/// Empty at zero rather than a row reading 0h: a fresh install has not earned
+/// a standing, and showing one would be the first thing it has to unlearn.
+final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
+  final myHours = ref.watch(leaderboardWeekHoursProvider);
+  if (myHours <= 0) return const [];
+
+  final displayName = ref.watch(userProvider).displayName.trim();
+  return [
+    LeaderboardEntry(
+      name: displayName.isEmpty ? 'You' : displayName,
+      hours: myHours,
+      isMe: true,
+    ),
+  ];
+});
 
 /// The signed-in user's row, wherever they are in the list.
 final myRankProvider = Provider<LeaderboardEntry?>(

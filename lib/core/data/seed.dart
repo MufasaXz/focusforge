@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../models/shield.dart';
 import '../models/social.dart';
 import '../models/study.dart';
 import '../models/user.dart';
@@ -46,37 +45,19 @@ class SubjectTemplate {
   final Color color;
 }
 
-/// A package the onboarding flow can offer to block.
-@immutable
-class DetectableApp {
-  const DetectableApp({
-    required this.name,
-    required this.packageId,
-    required this.icon,
-    required this.color,
-    required this.tier,
-  });
-
-  final String name;
-  final String packageId;
-  final IconData icon;
-  final Color color;
-
-  /// 0 = high distraction, 1 = moderate, 2 = productive.
-  final int tier;
-}
-
 /// The catalogue a fresh install starts from.
 ///
-/// Nothing here is anybody's history. It is the reference content the app
-/// cannot function without — the subject templates offered during onboarding,
-/// the apps it knows how to detect, the feed groups and whitelist tiers a
-/// shield is built from, the badge definitions, the ambient tracks. All of it
-/// is the same for every user and none of it claims to be progress.
+/// Nothing here is anybody's history, and nothing here is anybody's choices.
+/// It is the reference content the app cannot render without — the subject
+/// templates offered during onboarding, the badge definitions, the ambient
+/// tracks, the Pomodoro presets. All of it is the same for every user and none
+/// of it claims to be progress.
 ///
-/// The numbers that used to live here — a demo account, 129 hours, a 12-day
-/// streak, five weeks of invented heatmap history — are gone. A new user's
-/// dashboard starts at zero and earns its shape.
+/// What is deliberately *not* here: the app list, the block rules, the
+/// leaderboard, the study groups. Those are the user's own, and a seeded
+/// version of any of them would be the app putting words in their mouth. The
+/// numbers that used to live here — a demo account, 129 hours, a 12-day
+/// streak, five weeks of invented heatmap history — are gone with them.
 class SeedData {
   const SeedData._();
 
@@ -116,200 +97,6 @@ class SeedData {
       minutesToday: 35,
       weekDone: 1.5,
       weekTarget: 3,
-    ),
-  ];
-
-  // -- Shield ----------------------------------------------------------------
-
-  static const feedGroups = <FeedGroup>[
-    FeedGroup(
-      title: 'Meta Ecosystem',
-      icon: Icons.groups_rounded,
-      rows: [
-        FeedRow(
-          id: 'instagram_reels',
-          appName: 'Instagram',
-          icon: Icons.photo_camera_rounded,
-          color: Color(0xFFFF9FC4),
-          title: 'Block Reels Feed',
-          description:
-              'Removes the Reels tab and Explore algorithmic content. Stories, DMs and profile stay functional.',
-          enabled: true,
-        ),
-        FeedRow(
-          id: 'facebook_watch',
-          appName: 'Facebook',
-          icon: Icons.facebook_rounded,
-          color: Color(0xFF7FA9FF),
-          title: 'Block Watch Feed',
-          description: 'Disables the infinite video loop in the Watch tab.',
-          enabled: false,
-        ),
-      ],
-    ),
-    FeedGroup(
-      title: 'Google Ecosystem',
-      icon: Icons.play_circle_outline_rounded,
-      rows: [
-        FeedRow(
-          id: 'youtube_shorts',
-          appName: 'YouTube',
-          icon: Icons.smart_display_rounded,
-          color: Color(0xFFFFB4AB),
-          title: 'Block Shorts',
-          description:
-              'Hides the Shorts shelf and blocks the swipe-up player surface.',
-          enabled: true,
-        ),
-      ],
-    ),
-    FeedGroup(
-      title: 'ByteDance',
-      icon: Icons.music_note_rounded,
-      rows: [
-        FeedRow(
-          id: 'tiktok_feed',
-          appName: 'TikTok',
-          icon: Icons.music_note_rounded,
-          color: Color(0xFF8FE39B),
-          title: 'Restrict TikTok',
-          description: 'Choose how aggressively the feed is removed.',
-          enabled: true,
-          modes: ShieldMode.values,
-        ),
-      ],
-    ),
-    FeedGroup(
-      title: 'Twitter / X',
-      icon: Icons.tag_rounded,
-      rows: [
-        FeedRow(
-          id: 'twitter_trending',
-          appName: 'X',
-          icon: Icons.close_rounded,
-          color: Color(0xFFB0BEC5),
-          title: 'Block Explore & Trending',
-          description: 'Removes the algorithmic discovery tabs.',
-          enabled: false,
-        ),
-      ],
-    ),
-  ];
-
-  static const alwaysAllowed = <WhitelistEntry>[
-    WhitelistEntry(
-      id: 'phone',
-      name: 'Phone',
-      icon: Icons.call_rounded,
-      color: Color(0xFF8FE39B),
-      tier: WhitelistTier.alwaysAllowed,
-    ),
-    WhitelistEntry(
-      id: 'maps',
-      name: 'Maps',
-      icon: Icons.map_rounded,
-      color: Color(0xFF8FE39B),
-      tier: WhitelistTier.alwaysAllowed,
-    ),
-    WhitelistEntry(
-      id: 'calendar',
-      name: 'Calendar',
-      icon: Icons.calendar_today_rounded,
-      color: Color(0xFF8FE39B),
-      tier: WhitelistTier.alwaysAllowed,
-    ),
-    WhitelistEntry(
-      id: 'clock',
-      name: 'Clock',
-      icon: Icons.alarm_rounded,
-      color: Color(0xFF8FE39B),
-      tier: WhitelistTier.alwaysAllowed,
-    ),
-  ];
-
-  static const budgeted = <WhitelistEntry>[
-    WhitelistEntry(
-      id: 'slack',
-      name: 'Slack',
-      icon: Icons.forum_rounded,
-      color: Color(0xFF7FA9FF),
-      tier: WhitelistTier.budgeted,
-      budgetMinutes: 45,
-      usedMinutes: 22,
-    ),
-    WhitelistEntry(
-      id: 'gmail',
-      name: 'Gmail',
-      icon: Icons.mail_rounded,
-      color: Color(0xFF7FA9FF),
-      tier: WhitelistTier.budgeted,
-      budgetMinutes: 30,
-      usedMinutes: 26,
-    ),
-  ];
-
-  static const blockedApps = <WhitelistEntry>[
-    WhitelistEntry(
-      id: 'tiktok',
-      name: 'TikTok',
-      icon: Icons.music_note_rounded,
-      color: Color(0xFFFFB4AB),
-      tier: WhitelistTier.blocked,
-    ),
-    WhitelistEntry(
-      id: 'instagram',
-      name: 'Instagram',
-      icon: Icons.photo_camera_rounded,
-      color: Color(0xFFFFB4AB),
-      tier: WhitelistTier.blocked,
-    ),
-    WhitelistEntry(
-      id: 'reddit',
-      name: 'Reddit',
-      icon: Icons.forum_rounded,
-      color: Color(0xFFFFB4AB),
-      tier: WhitelistTier.blocked,
-    ),
-    WhitelistEntry(
-      id: 'youtube',
-      name: 'YouTube',
-      icon: Icons.smart_display_rounded,
-      color: Color(0xFFFFB4AB),
-      tier: WhitelistTier.blocked,
-    ),
-  ];
-
-  /// The whitelist grouped by tier, which is how the screen renders it.
-  static const whitelistTiers = <WhitelistTier, List<WhitelistEntry>>{
-    WhitelistTier.alwaysAllowed: alwaysAllowed,
-    WhitelistTier.budgeted: budgeted,
-    WhitelistTier.blocked: blockedApps,
-  };
-
-  static const profiles = <RestrictionProfile>[
-    RestrictionProfile(
-      id: 'exam_week',
-      name: 'Exam Week',
-      icon: Icons.local_fire_department_rounded,
-      blockedApps: 14,
-      dailyTargetHours: 6,
-      active: true,
-      schedules: ['Mon–Sun 07:00–22:00'],
-    ),
-    RestrictionProfile(
-      id: 'regular',
-      name: 'Regular Study',
-      icon: Icons.menu_book_rounded,
-      blockedApps: 8,
-      dailyTargetHours: 4,
-      schedules: ['Mon–Fri 16:00–21:00'],
-    ),
-    RestrictionProfile(
-      id: 'weekend',
-      name: 'Weekend Relax',
-      icon: Icons.beach_access_rounded,
-      blockedApps: 3,
-      dailyTargetHours: 2,
     ),
   ];
 
@@ -410,7 +197,6 @@ class SeedData {
       icon: Icons.local_fire_department_rounded,
       color: Color(0xFFFFC48A),
       target: 1,
-      progress: 1,
       unlockedAt: null,
     ),
     Achievement(
@@ -420,7 +206,6 @@ class SeedData {
       icon: Icons.calendar_month_rounded,
       color: Color(0xFF7FA9FF),
       target: 7,
-      progress: 7,
     ),
     Achievement(
       id: 'century_club',
@@ -429,7 +214,6 @@ class SeedData {
       icon: Icons.military_tech_rounded,
       color: Color(0xFFFFD166),
       target: 100,
-      progress: 128.5,
     ),
     Achievement(
       id: 'night_owl',
@@ -438,7 +222,6 @@ class SeedData {
       icon: Icons.nightlight_round,
       color: Color(0xFFB79CFF),
       target: 1,
-      progress: 1,
     ),
     Achievement(
       id: 'early_bird',
@@ -447,7 +230,6 @@ class SeedData {
       icon: Icons.wb_twilight_rounded,
       color: Color(0xFFFFC48A),
       target: 1,
-      progress: 1,
     ),
     Achievement(
       id: 'shield_bearer',
@@ -456,7 +238,6 @@ class SeedData {
       icon: Icons.shield_rounded,
       color: Color(0xFF8FE39B),
       target: 500,
-      progress: 500,
     ),
     Achievement(
       id: 'deep_diver',
@@ -465,7 +246,6 @@ class SeedData {
       icon: Icons.self_improvement_rounded,
       color: Color(0xFF7FD8E8),
       target: 1,
-      progress: 1,
     ),
     Achievement(
       id: 'steady_hand',
@@ -474,7 +254,6 @@ class SeedData {
       icon: Icons.check_circle_rounded,
       color: Color(0xFF8FE39B),
       target: 50,
-      progress: 50,
     ),
     Achievement(
       id: 'month_king',
@@ -483,7 +262,6 @@ class SeedData {
       icon: Icons.workspace_premium_rounded,
       color: Color(0xFFFFD166),
       target: 30,
-      progress: 12,
     ),
     Achievement(
       id: 'hundred_hours',
@@ -492,7 +270,6 @@ class SeedData {
       icon: Icons.timelapse_rounded,
       color: Color(0xFFB79CFF),
       target: 100,
-      progress: 128.5,
     ),
     Achievement(
       id: 'marathon',
@@ -501,7 +278,6 @@ class SeedData {
       icon: Icons.hiking_rounded,
       color: Color(0xFFFFC48A),
       target: 6,
-      progress: 5,
     ),
     Achievement(
       id: 'breath_master',
@@ -510,7 +286,6 @@ class SeedData {
       icon: Icons.air_rounded,
       color: Color(0xFF7FD8E8),
       target: 25,
-      progress: 9,
     ),
     Achievement(
       id: 'group_up',
@@ -519,7 +294,6 @@ class SeedData {
       icon: Icons.groups_rounded,
       color: Color(0xFF8FE39B),
       target: 1,
-      progress: 2,
     ),
     Achievement(
       id: 'challenger',
@@ -528,7 +302,6 @@ class SeedData {
       icon: Icons.emoji_events_rounded,
       color: Color(0xFFFFD166),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'perfectionist',
@@ -537,7 +310,6 @@ class SeedData {
       icon: Icons.star_rounded,
       color: Color(0xFFB79CFF),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'unplugged',
@@ -546,7 +318,6 @@ class SeedData {
       icon: Icons.do_not_disturb_on_rounded,
       color: Color(0xFFFF9FC4),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'subject_master',
@@ -555,7 +326,6 @@ class SeedData {
       icon: Icons.school_rounded,
       color: Color(0xFF7FA9FF),
       target: 20,
-      progress: 14,
     ),
     Achievement(
       id: 'consistency',
@@ -564,7 +334,6 @@ class SeedData {
       icon: Icons.schedule_rounded,
       color: Color(0xFF8FE39B),
       target: 10,
-      progress: 4,
     ),
     Achievement(
       id: 'social_butterfly',
@@ -573,7 +342,6 @@ class SeedData {
       icon: Icons.hub_rounded,
       color: Color(0xFF7FD8E8),
       target: 3,
-      progress: 2,
     ),
     Achievement(
       id: 'top_ten',
@@ -582,7 +350,6 @@ class SeedData {
       icon: Icons.leaderboard_rounded,
       color: Color(0xFFFFD166),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'year_one',
@@ -591,7 +358,6 @@ class SeedData {
       icon: Icons.cake_rounded,
       color: Color(0xFFFFC48A),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'zero_quit',
@@ -600,7 +366,6 @@ class SeedData {
       icon: Icons.verified_rounded,
       color: Color(0xFF8FE39B),
       target: 1,
-      progress: 0,
     ),
     Achievement(
       id: 'night_shift',
@@ -609,7 +374,6 @@ class SeedData {
       icon: Icons.bedtime_rounded,
       color: Color(0xFFB79CFF),
       target: 10,
-      progress: 3,
     ),
     Achievement(
       id: 'phoenix',
@@ -618,40 +382,7 @@ class SeedData {
       icon: Icons.auto_awesome_rounded,
       color: Color(0xFFFF9FC4),
       target: 1,
-      progress: 0,
     ),
-  ];
-
-  static const groups = <StudyGroup>[
-    StudyGroup(
-      id: 'physics_squad',
-      name: 'Physics Squad',
-      icon: Icons.science_rounded,
-      memberCount: 5,
-      weeklyHours: 48,
-      targetHours: 60,
-      inviteCode: 'PHY-4821',
-    ),
-    StudyGroup(
-      id: 'math_crew',
-      name: 'Math Study Crew',
-      icon: Icons.square_foot_rounded,
-      memberCount: 3,
-      weeklyHours: 16,
-      targetHours: 32,
-      inviteCode: 'MTH-9134',
-    ),
-  ];
-
-  static const leaderboard = <LeaderboardEntry>[
-    LeaderboardEntry(name: 'Sarah K.', hours: 14.2),
-    LeaderboardEntry(name: 'You', hours: 12.8, isMe: true),
-    LeaderboardEntry(name: 'Mike R.', hours: 11.5),
-    LeaderboardEntry(name: 'Emma T.', hours: 10.2),
-    LeaderboardEntry(name: 'James P.', hours: 9.8),
-    LeaderboardEntry(name: 'Luna S.', hours: 8.4),
-    LeaderboardEntry(name: 'Diego M.', hours: 7.9),
-    LeaderboardEntry(name: 'Priya N.', hours: 7.1),
   ];
 
   static const notifications = NotificationPrefs();
@@ -706,97 +437,4 @@ class SeedData {
         Persona.parent => const [60, 120, 180],
       };
 
-  static const detectableApps = <DetectableApp>[
-    DetectableApp(
-      name: 'Instagram',
-      packageId: 'com.instagram.android',
-      icon: Icons.photo_camera_rounded,
-      color: Color(0xFFFF9FC4),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'TikTok',
-      packageId: 'com.zhiliaoapp.musically',
-      icon: Icons.music_note_rounded,
-      color: Color(0xFF8FE39B),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'X',
-      packageId: 'com.twitter.android',
-      icon: Icons.close_rounded,
-      color: Color(0xFFB0BEC5),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'YouTube',
-      packageId: 'com.google.android.youtube',
-      icon: Icons.smart_display_rounded,
-      color: Color(0xFFFFB4AB),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'Snapchat',
-      packageId: 'com.snapchat.android',
-      icon: Icons.chat_bubble_rounded,
-      color: Color(0xFFFFD166),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'Reddit',
-      packageId: 'com.reddit.frontpage',
-      icon: Icons.forum_rounded,
-      color: Color(0xFFFFC48A),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'Facebook',
-      packageId: 'com.facebook.katana',
-      icon: Icons.facebook_rounded,
-      color: Color(0xFF7FA9FF),
-      tier: 0,
-    ),
-    DetectableApp(
-      name: 'WhatsApp',
-      packageId: 'com.whatsapp',
-      icon: Icons.chat_rounded,
-      color: Color(0xFF8FE39B),
-      tier: 1,
-    ),
-    DetectableApp(
-      name: 'Telegram',
-      packageId: 'org.telegram.messenger',
-      icon: Icons.send_rounded,
-      color: Color(0xFF7FD8E8),
-      tier: 1,
-    ),
-    DetectableApp(
-      name: 'Discord',
-      packageId: 'com.discord',
-      icon: Icons.headset_mic_rounded,
-      color: Color(0xFFB79CFF),
-      tier: 1,
-    ),
-    DetectableApp(
-      name: 'Google Docs',
-      packageId: 'com.google.android.apps.docs',
-      icon: Icons.description_rounded,
-      color: Color(0xFF7FA9FF),
-      tier: 2,
-    ),
-    DetectableApp(
-      name: 'Notion',
-      packageId: 'notion.id',
-      icon: Icons.sticky_note_2_rounded,
-      color: Color(0xFFB0BEC5),
-      tier: 2,
-    ),
-    DetectableApp(
-      name: 'Calculator',
-      packageId: 'com.google.android.calculator',
-      icon: Icons.calculate_rounded,
-      color: Color(0xFF8FE39B),
-      tier: 2,
-    ),
-  ];
 }
