@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show clampDouble, lerpDouble;
+import 'dart:ui' show clampDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,59 +9,69 @@ import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/icon_badge.dart';
 
+/// One stop in the first-run sequence: a widget to point at, and the copy.
+///
+/// The target is a [GlobalKey] rather than a position. The hole is measured
+/// from the live [RenderBox] every time the sequence is shown, so a tip cannot
+/// drift away from the thing it describes — and a tip whose widget is not on
+/// screen is dropped rather than drawn over empty space.
+@immutable
+class CoachSpot {
+  const CoachSpot({
+    required this.target,
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.minRadius = 44,
+    this.padding = 10,
+  });
+
+  final GlobalKey target;
+  final IconData icon;
+  final String title;
+  final String body;
+
+  /// The floor for the hole's radius, so a small target such as an icon still
+  /// gets a spotlight big enough to read as one.
+  final double minRadius;
+
+  /// Breathing room added around the measured widget.
+  final double padding;
+}
+
 /// First-run spotlight sequence for the dashboard.
 ///
-/// Three hints, in the order a new user needs them: what the progress ring is,
-/// how to start a session, and what the streak badge rewards. It wraps its
-/// child rather than pushing a route, so the dashboard mounts it once and
-/// never has to think about it again — the widget reads the `coachmarks.seen`
-/// flag itself and renders nothing once the sequence has been dismissed.
+/// It wraps its child rather than pushing a route, so the dashboard mounts it
+/// once and never has to think about it again — the widget reads the
+/// `coachmarks.seen` flag itself and renders nothing once the sequence has
+/// been dismissed.
 ///
-/// The spotlight positions are expressed as alignments, not measured from
-/// widget keys. That is a deliberate trade: it costs a little precision on
-/// unusual viewports, and it buys a dashboard that needs no instrumentation
-/// and no rebuild when its layout changes.
-///
-/// Mount it around the dashboard body, inside a widget that gives it bounded
-/// constraints — a `Scaffold` body or a `Stack`, not a scroll view.
-class CoachMarks extends StatefulWidget {
-  const CoachMarks({super.key, required this.child});
+/// The spotlight is an [OverlayEntry] on the root overlay, not a stack inside
+/// the dashboard. That is what lets a tip point at the navigation bar: the bar
+/// is a sibling of the tab body, so a hole drawn inside the body could never
+/// reach it, and the tip about the Focus tab used to land just off the bottom
+/// edge of the screen as a result.
+class CoachMarks extends ConsumerStatefulWidget {
+  const CoachMarks({super.key, required this.child, required this.spots});
 
   final Widget child;
 
+  /// The sequence, in order. Built by the caller, because only the dashboard
+  /// knows which of its own sections are actually on screen.
+  final List<CoachSpot> spots;
+
   @override
-  State<CoachMarks> createState() => _CoachMarksState();
+  ConsumerState<CoachMarks> createState() => _CoachMarksState();
 }
 
-class _CoachMarksState extends State<CoachMarks>
+class _CoachMarksState extends ConsumerState<CoachMarks>
     with SingleTickerProviderStateMixin {
   static const _seenKey = 'coachmarks.seen';
 
-  static const _spots = <_Spot>[
-    _Spot(
-      alignment: Alignment(-0.05, -0.32),
-      radius: 118,
-      icon: Icons.donut_large_rounded,
-      title: 'Your daily progress',
-      body:
-          'This ring fills as you focus. Start a session and it starts '
-          'moving.',
-    ),
-    _Spot(
-      alignment: Alignment(0.25, 0.94),
-      radius: 46,
-      icon: Icons.timer_rounded,
-      title: 'Start a session',
-      body: 'Tap the Focus tab to begin your first Pomodoro.',
-    ),
-    _Spot(
-      alignment: Alignment(0.72, -0.87),
-      radius: 46,
-      icon: Icons.local_fire_department_rounded,
-      title: 'Build your streak',
-      body: 'Study every day and the flame keeps growing.',
-    ),
-  ];
+  /// Marks the overlay's own coordinate space, so a widget's global position
+  /// can be converted into it. The root overlay usually starts at the window's
+  /// origin, but "usually" is not a layout guarantee.
+  final _overlayKey = GlobalKey(debugLabel: 'coach.overlay');
 
   late final AnimationController _move = AnimationController(
     vsync: this,
@@ -69,57 +79,127 @@ class _CoachMarksState extends State<CoachMarks>
     value: 1,
   );
 
-  bool _visible = false;
+  OverlayEntry? _entry;
   bool _checked = false;
   int _index = 0;
-  _Spot _from = _spots.first;
-  _Spot _to = _spots.first;
 
-  /// Runs once, from the first build. The flag is read through a [Consumer]
-  /// rather than a container lookup so this stays a plain [StatefulWidget] —
-  /// the dashboard can drop it in without making its own widget tree
-  /// Riverpod-aware.
-  void _checkFirstRun(WidgetRef ref) {
+  /// The hole at the previous and next stop, so the spotlight glides between
+  /// them instead of jumping.
+  _Hole? _from;
+  _Hole? _to;
+
+  /// The stops that resolved to a real box this time round.
+  List<_Step> _steps = const [];
+
+  @override
+  void dispose() {
+    _removeEntry();
+    _move.dispose();
+    super.dispose();
+  }
+
+  /// Runs once, from the first build. The flag is read through the container
+  /// rather than a [Consumer] so the dashboard can drop this in without making
+  /// its own widget tree Riverpod-aware.
+  void _checkFirstRun() {
     if (_checked) return;
     _checked = true;
     // Only the absence of the key counts. A stored `false` means the user has
     // already been through it — the flag is written once and never reset.
     if (ref.read(localStoreProvider).getBool(_seenKey) != null) return;
+    if (widget.spots.isEmpty) return;
+
+    // After the frame: the targets have to have been laid out before they can
+    // be measured, and on the first build they have not.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _visible = true);
+      if (!mounted) return;
+      _show();
     });
   }
 
-  @override
-  void dispose() {
-    _move.dispose();
-    super.dispose();
+  /// Measures every spot and starts the sequence over whatever is on screen.
+  void _show() {
+    final steps = <_Step>[];
+    for (final spot in widget.spots) {
+      final rect = _rectOf(spot.target);
+      // A target that is not mounted, or that has no size yet, has nothing to
+      // point at. Dropping the tip is the honest outcome: a spotlight over
+      // empty space tells the user to look at something that is not there.
+      if (rect == null || rect.isEmpty) continue;
+      steps.add(
+        _Step(
+          spot: spot,
+          hole: _Hole(
+            center: rect.center,
+            radius: math.max(
+              spot.minRadius,
+              rect.longestSide / 2 + spot.padding,
+            ),
+          ),
+        ),
+      );
+    }
+    if (steps.isEmpty) return;
+
+    setState(() {
+      _steps = steps;
+      _index = 0;
+      _from = steps.first.hole;
+      _to = steps.first.hole;
+    });
+    _insertEntry();
   }
 
-  /// The spot currently on screen, interpolated between the last two stops so
-  /// the hole glides instead of jumping.
-  _Spot get _current {
+  /// The widget's box in the overlay's coordinate space.
+  Rect? _rectOf(GlobalKey key) {
+    final target = key.currentContext;
+    final overlay = _overlayKey.currentContext;
+    if (target == null || overlay == null) return null;
+
+    final box = target.findRenderObject();
+    final space = overlay.findRenderObject();
+    if (box is! RenderBox || space is! RenderBox) return null;
+    if (!box.hasSize || !box.attached) return null;
+
+    final origin = box.localToGlobal(Offset.zero, ancestor: space);
+    return origin & box.size;
+  }
+
+  void _insertEntry() {
+    if (_entry != null) return;
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    final entry = OverlayEntry(builder: _buildOverlay);
+    _entry = entry;
+    overlay.insert(entry);
+  }
+
+  void _removeEntry() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  _Hole get _current {
+    final from = _from;
+    final to = _to;
+    if (from == null || to == null) {
+      return const _Hole(center: Offset.zero, radius: 0);
+    }
     final t = Curves.easeOutCubic.transform(_move.value);
-    return _Spot(
-      alignment: Alignment(
-        lerpDouble(_from.alignment.x, _to.alignment.x, t)!,
-        lerpDouble(_from.alignment.y, _to.alignment.y, t)!,
-      ),
-      radius: lerpDouble(_from.radius, _to.radius, t)!,
-      icon: _to.icon,
-      title: _to.title,
-      body: _to.body,
+    return _Hole(
+      center: Offset.lerp(from.center, to.center, t)!,
+      radius: from.radius + (to.radius - from.radius) * t,
     );
   }
 
-  void _go(WidgetRef ref, int index) {
-    if (index >= _spots.length) {
-      _dismiss(ref);
+  void _go(int index) {
+    if (index >= _steps.length) {
+      _dismiss();
       return;
     }
     setState(() {
       _from = _current;
-      _to = _spots[index];
+      _to = _steps[index].hole;
       _index = index;
     });
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -127,107 +207,99 @@ class _CoachMarksState extends State<CoachMarks>
     } else {
       _move.forward(from: 0);
     }
+    _entry?.markNeedsBuild();
   }
 
-  void _dismiss(WidgetRef ref) {
+  void _dismiss() {
     unawaited(ref.read(localStoreProvider).setBool(_seenKey, true));
-    setState(() => _visible = false);
+    _removeEntry();
+    if (mounted) setState(() => _steps = const []);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, _) {
-        _checkFirstRun(ref);
-        return Stack(
-          children: [
-            widget.child,
-            if (_visible)
-              Positioned.fill(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = Size(
-                      constraints.maxWidth,
-                      constraints.maxHeight,
-                    );
-                    return AnimatedBuilder(
-                      animation: _move,
-                      builder: (context, _) {
-                        final spot = _current;
-                        final center = spot.alignment.alongSize(size);
-                        final padding = MediaQuery.paddingOf(context);
-                        // Keep the bubble clear of both the screen edge and
-                        // the system insets.
-                        final insets = EdgeInsets.fromLTRB(
-                          math.max(Gap.xl, padding.left + Gap.sm),
-                          math.max(Gap.lg, padding.top + Gap.sm),
-                          math.max(Gap.xl, padding.right + Gap.sm),
-                          math.max(Gap.lg, padding.bottom + Gap.sm),
-                        );
-                        return Stack(
-                          children: [
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => _go(ref, _index + 1),
-                                child: CustomPaint(
-                                  painter: _SpotlightPainter(
-                                    center: center,
-                                    radius: spot.radius,
-                                    progress: (_index + 1) / _spots.length,
-                                    scrim: Colors.black.withValues(alpha: 0.68),
-                                    ring: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned.fill(
-                              child: CustomSingleChildLayout(
-                                delegate: _BubbleLayout(
-                                  center: center,
-                                  radius: spot.radius,
-                                  gap: Gap.lg,
-                                  insets: insets,
-                                ),
-                                child: _Bubble(
-                                  spot: spot,
-                                  index: _index,
-                                  total: _spots.length,
-                                  onNext: () => _go(ref, _index + 1),
-                                  onDismiss: () => _dismiss(ref),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-          ],
-        );
-      },
+    _checkFirstRun();
+    return widget.child;
+  }
+
+  Widget _buildOverlay(BuildContext context) {
+    final step = _index < _steps.length ? _steps[_index] : null;
+    if (step == null) return const SizedBox.shrink();
+
+    return Stack(
+      key: _overlayKey,
+      children: [
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _move,
+            builder: (context, _) {
+              final hole = _current;
+              final padding = MediaQuery.paddingOf(context);
+              final insets = EdgeInsets.fromLTRB(
+                math.max(Gap.xl, padding.left + Gap.sm),
+                math.max(Gap.lg, padding.top + Gap.sm),
+                math.max(Gap.xl, padding.right + Gap.sm),
+                math.max(Gap.lg, padding.bottom + Gap.sm),
+              );
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _go(_index + 1),
+                      child: CustomPaint(
+                        painter: _SpotlightPainter(
+                          center: hole.center,
+                          radius: hole.radius,
+                          progress: (_index + 1) / _steps.length,
+                          scrim: Colors.black.withValues(alpha: 0.68),
+                          ring: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: CustomSingleChildLayout(
+                      delegate: _BubbleLayout(
+                        center: hole.center,
+                        radius: hole.radius,
+                        gap: Gap.lg,
+                        insets: insets,
+                      ),
+                      child: _Bubble(
+                        spot: step.spot,
+                        index: _index,
+                        total: _steps.length,
+                        onNext: () => _go(_index + 1),
+                        onDismiss: _dismiss,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// One stop in the sequence. [alignment] and [radius] describe the hole;
-/// everything else is the bubble's copy.
-class _Spot {
-  const _Spot({
-    required this.alignment,
-    required this.radius,
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
+/// One resolved stop: the copy plus the measured hole.
+@immutable
+class _Step {
+  const _Step({required this.spot, required this.hole});
 
-  final Alignment alignment;
+  final CoachSpot spot;
+  final _Hole hole;
+}
+
+@immutable
+class _Hole {
+  const _Hole({required this.center, required this.radius});
+
+  final Offset center;
   final double radius;
-  final IconData icon;
-  final String title;
-  final String body;
 }
 
 /// Places the bubble on the far side of the spotlight hole and keeps it inside
@@ -279,7 +351,11 @@ class _BubbleLayout extends SingleChildLayoutDelegate {
     } else {
       y = above >= safe.top ? above : below;
     }
-    y = clampDouble(y, safe.top, math.max(safe.top, safe.bottom - childSize.height));
+    y = clampDouble(
+      y,
+      safe.top,
+      math.max(safe.top, safe.bottom - childSize.height),
+    );
 
     final x = clampDouble(
       (size.width - childSize.width) / 2,
@@ -307,7 +383,7 @@ class _Bubble extends StatelessWidget {
     required this.onDismiss,
   });
 
-  final _Spot spot;
+  final CoachSpot spot;
   final int index;
   final int total;
   final VoidCallback onNext;
@@ -318,66 +394,78 @@ class _Bubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final last = index == total - 1;
 
-    return Card.outlined(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                IconBadge(
-                  icon: spot.icon,
-                  color: cs.primary,
-                  size: 34,
-                  radius: Radii.tile,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(spot.title, style: Theme.of(context).textTheme.titleMedium),
-                ),
-                IconButton(
-                  onPressed: onDismiss,
-                  tooltip: 'Dismiss tips',
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 18,
-                  icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            Text(
-              spot.body,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.lg),
-            Row(
-              children: [
-                for (var i = 0; i < total; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 5),
-                    child: Container(
-                      width: i == index ? 16 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: i == index ? cs.primary : cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(Radii.pill),
-                      ),
+    return Material(
+      // The overlay is outside the page's Material ancestor, so the card needs
+      // its own — without it the text has no surface to be drawn on.
+      color: Colors.transparent,
+      child: Card.outlined(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.card),
+          side: BorderSide(color: cs.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  IconBadge(
+                    icon: spot.icon,
+                    color: cs.primary,
+                    size: 34,
+                    radius: Radii.tile,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Text(
+                      spot.title,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: onNext,
-                  child: Text(last ? 'Got it' : 'Next'),
-                ),
-              ],
-            ),
-          ],
+                  IconButton(
+                    onPressed: onDismiss,
+                    tooltip: 'Dismiss tips',
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 18,
+                    icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              Text(
+                spot.body,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: Gap.lg),
+              Row(
+                children: [
+                  for (var i = 0; i < total; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 5),
+                      child: Container(
+                        width: i == index ? 16 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: i == index
+                              ? cs.primary
+                              : cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: onNext,
+                    child: Text(last ? 'Got it' : 'Next'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

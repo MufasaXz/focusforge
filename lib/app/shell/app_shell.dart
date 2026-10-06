@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -5,8 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/coach_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/services/native_shield_service.dart';
+import '../router.dart';
 
 /// Root shell: the four tab branches and the frosted navigation bar.
 ///
@@ -38,6 +42,9 @@ class _AppShellState extends ConsumerState<AppShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // A cold start can be a launch the block screen sent us: "open it anyway"
+    // brings the app up so the pause can be shown.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBlockedLaunch());
   }
 
   @override
@@ -54,7 +61,27 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(timerProvider.notifier).sync();
+      unawaited(_checkBlockedLaunch());
     }
+  }
+
+  /// Shows the pause after the user chose to open a blocked app anyway.
+  ///
+  /// The block screen hands the app back with the package it was covering, and
+  /// the breath gate is the whole reason the choice was offered: a silent
+  /// return to the dashboard would turn "open it anyway" into a plain escape
+  /// hatch with no cost at all. The extras are read once and cleared natively,
+  /// so a later resume cannot replay the same pause.
+  Future<void> _checkBlockedLaunch() async {
+    final service = ref.read(shieldServiceProvider);
+    if (service is! NativeShieldService) return;
+    final blocked = await service.takeBlockedApp();
+    if (blocked == null || !mounted) return;
+    final label = blocked['label'];
+    context.push(
+      AppRoutes.paths[AppRoutes.breathGate]!,
+      extra: label is String && label.isNotEmpty ? label : 'That app',
+    );
   }
 
   void _select(int i) {
@@ -138,9 +165,15 @@ class _AppShellState extends ConsumerState<AppShell>
                       ),
                       label: 'Shield',
                     ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.timer_outlined),
-                      selectedIcon: Icon(Icons.timer),
+                    NavigationDestination(
+                      // The first-run tips point at this icon from the root
+                      // overlay, so the key has to be attached where the icon
+                      // is really built rather than at the destination.
+                      icon: _CoachAnchor(
+                        anchorKey: ref.watch(coachTargetsProvider).focusTab,
+                        child: const Icon(Icons.timer_outlined),
+                      ),
+                      selectedIcon: const Icon(Icons.timer),
                       label: 'Focus',
                     ),
                     const NavigationDestination(
@@ -159,12 +192,27 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 }
 
+/// Attaches a coach-mark key to a destination glyph.
+///
+/// A [NavigationDestination] takes a widget for its icon, not a key, so the
+/// key has to be carried by a widget that is actually built inside the bar —
+/// otherwise the first-run tip measures the destination's slot rather than the
+/// glyph the user is being told to tap.
+class _CoachAnchor extends StatelessWidget {
+  const _CoachAnchor({required this.anchorKey, required this.child});
+
+  final Key anchorKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => KeyedSubtree(key: anchorKey, child: child);
+}
+
 /// Shield destination glyph with an M3 [Badge] while any shield is armed.
 ///
 /// A dot rather than a count: the number belongs on the Shield screen, where
 /// there is room to say what it counts.
-class _ShieldIcon extends StatelessWidget {
-  const _ShieldIcon({required this.shielded, required this.icon});
+class _ShieldIcon extends StatelessWidget {  const _ShieldIcon({required this.shielded, required this.icon});
 
   final bool shielded;
   final IconData icon;
