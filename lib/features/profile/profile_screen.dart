@@ -698,15 +698,17 @@ class _AppearanceCard extends ConsumerWidget {
 class _ClockFaceCard extends ConsumerWidget {
   const _ClockFaceCard();
 
-  /// A sample for every preview — not a reading from anywhere. Four previews
-  /// ticking out of step would be four clocks to read instead of one choice
-  /// to make, and a live one would suggest the timer is running on this page.
-  static const _sample = Duration(minutes: 24, seconds: 51);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
     final face = ref.watch(clockFaceProvider);
+    // The previews draw the timer's own value rather than a sample: it is the
+    // one number that is real here, and a face that looks right at a made-up
+    // time is no guarantee it looks right at the one on the clock. They do
+    // not tick — nothing on this page is running — but they never disagree
+    // with what the timer would show either.
+    final timer = ref.watch(timerProvider);
+    final preset = ref.watch(presetsProvider)[timer.presetIndex];
 
     return Card.filled(
       child: Padding(
@@ -755,7 +757,8 @@ class _ClockFaceCard extends ConsumerWidget {
                         width: width,
                         child: _ClockFaceOption(
                           face: option,
-                          sample: _sample,
+                          remaining: timer.remaining,
+                          progress: timer.progressFor(preset),
                           selected: option == face,
                           onTap: () =>
                               ref.read(clockFaceProvider.notifier).set(option),
@@ -775,13 +778,15 @@ class _ClockFaceCard extends ConsumerWidget {
 class _ClockFaceOption extends StatelessWidget {
   const _ClockFaceOption({
     required this.face,
-    required this.sample,
+    required this.remaining,
+    required this.progress,
     required this.selected,
     required this.onTap,
   });
 
   final ClockFace face;
-  final Duration sample;
+  final Duration remaining;
+  final double progress;
   final bool selected;
   final VoidCallback onTap;
 
@@ -821,13 +826,11 @@ class _ClockFaceOption extends StatelessWidget {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: ClockDisplay(
-                      remaining: sample,
+                      remaining: remaining,
                       face: face,
                       accent: t.primary,
                       height: 30,
-                      // Two thirds through, so the minimal face's rule shows
-                      // what it does rather than sitting empty.
-                      progress: 0.66,
+                      progress: progress,
                     ),
                   ),
                 ),
