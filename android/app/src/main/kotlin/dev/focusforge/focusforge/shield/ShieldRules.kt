@@ -153,11 +153,22 @@ object ShieldStore {
     private const val PREFS = "focusforge_shield"
     private const val KEY_RULES = "rules"
 
-    fun load(context: Context): ShieldRules =
-        ShieldRules.parse(
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getString(KEY_RULES, null),
-        )
+    /**
+     * The stored payload, exactly as written.
+     *
+     * Reading this is a map lookup, not disk I/O — the preferences are already
+     * in memory by the time anyone asks. That is what lets the service call it
+     * on every window event and be certain it is never acting on a stale rule
+     * set: a config pushed while the service was disconnected, a write that
+     * landed after the last refresh, a rule the user changed in another window
+     * — all of them are picked up by the next event rather than by the next
+     * service restart.
+     */
+    fun raw(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_RULES, null)
+
+    fun load(context: Context): ShieldRules = ShieldRules.parse(raw(context))
 
     fun save(context: Context, rules: ShieldRules) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

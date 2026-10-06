@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
@@ -42,11 +43,29 @@ class FocusAccessibilityService : AccessibilityService() {
         private const val DEBOUNCE_MS = 350L
         private const val FALLBACK_HOME_DELAY_MS = 700L
 
+        /** How long a passing window gets before the block screen comes down. */
+        private const val DISMISS_CONFIRM_MS = 400L
+
         /** Bound on the YouTube window walk, so a deep tree cannot stall the
          *  launch path it is running on. */
         private const val MAX_NODES = 400
 
         private const val YOUTUBE = "com.google.android.youtube"
+
+        /**
+         * View ids that only exist while the Shorts player is on screen.
+         *
+         * Deliberately not "reel_" or "shorts": the home feed's Shorts carousel
+         * carries those too, and matching them closed all of YouTube the moment
+         * it launched.
+         */
+        private val SHORTS_PLAYER_IDS = listOf(
+            "reel_recycler",
+            "reel_pager",
+            "reel_watch",
+            "reel_player",
+            "shorts_player",
+        )
 
         /** Extras the service puts on the intent it sends to [MainActivity]. */
         const val EXTRA_BLOCKED_PACKAGE = "ff.blocked.package"
@@ -96,12 +115,52 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    /**
+     * Where the YouTube window is read.
+     *
+     * Walking that tree is hundreds of synchronous calls into another process,
+     * and `onAccessibilityEvent` runs on the main thread. Doing it there stalls
+     * the service's own looper — and with it the system's accessibility
+     * pipeline — for as long as the walk takes, which on a heavy feed is long
+     * enough that the app being inspected stops drawing. YouTube in particular
+     * came up as a black window.
+     */
+    private val worker = HandlerThread("ff-shield-inspect").apply { start() }
+    private val inspector = Handler(worker.looper)
+
+    /** One inspection at a time; a burst of window events must not queue up. */
+    private var inspecting = false
+
     private lateinit var windowManager: WindowManager
     private lateinit var inflater: LayoutInflater
 
     /** The rules, refreshed whenever the app pushes a new set. */
     @Volatile
     private var rules: ShieldRules = ShieldRules.EMPTY
+
+    /** The payload [rules] was parsed from, so a re-read is a string compare. */
+    @Volatile
+    private var rulesRaw: String? = null
+
+    /**
+     * The live rule set, re-read on every use.
+     *
+     * The service used to hold whatever it was handed at connect time and wait
+     * to be told about changes. Anything that missed that one call — a config
+     * written while the service was reconnecting, a rule added in the moment
+     * before it was bound — left it enforcing yesterday's list, which is
+     * indistinguishable from the shield having quietly switched itself off.
+     * Reading the store every time removes the failure mode rather than
+     * narrowing it: there is no cached copy left to go stale.
+     */
+    private fun currentRules(): ShieldRules {
+        val raw = ShieldStore.raw(this)
+        if (raw == rulesRaw) return rules
+        val parsed = ShieldRules.parse(raw)
+        rulesRaw = raw
+        rules = parsed
+        return parsed
+    }
 
     /**
      * Packages that must never be covered, whatever the rules say. Getting any
@@ -128,26 +187,58 @@ class FocusAccessibilityService : AccessibilityService() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         inflater = LayoutInflater.from(this)
         exempt += buildExemptSet()
-        rules = ShieldStore.load(this)
+        rulesRaw = null
+        currentRules()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         dismissOverlay()
         if (instance === this) instance = null
-        return super.onUnbind(intent)
+        // `true` asks the framework to call `onRebind` rather than dropping the
+        // binding outright when it tears the service down for a config change
+        // or a package update. Without it the shield goes dark until Android
+        // decides to reconnect on its own.
+        return true
+    }
+
+    override fun onRebind(intent: Intent?) {
+        super.onRebind(intent)
+        instance = this
+        rulesRaw = null
+        currentRules()
     }
 
     override fun onDestroy() {
         dismissOverlay()
+        worker.quitSafely()
         if (instance === this) instance = null
         super.onDestroy()
     }
 
     override fun onInterrupt() = Unit
 
-    /** Re-reads the rules the app just wrote. Called from [ShieldBridge]. */
+    /** Re-reads the rules the app just wrote, and re-decides what is in front. */
     fun refresh() {
-        rules = ShieldStore.load(this)
+        rulesRaw = null
+        currentRules()
+        recheckForeground()
+    }
+
+    /**
+     * Re-runs the decision for whatever is on screen right now.
+     *
+     * A rule the user has just added has to apply to the app they are looking
+     * at, not only to the next launch. Without this the block only took effect
+     * on some later window event, so an app that was already open — or already
+     * sitting in the background when the rule was added — simply came forward
+     * unrestricted.
+     */
+    fun recheckForeground() {
+        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
+        if (front.isEmpty() || front in exempt) return
+        lastPackage = null
+        lastCheckAt = 0L
+        decide(front)
     }
 
     /** Lets a package through for a while — the "open it anyway" path. */
@@ -187,14 +278,74 @@ class FocusAccessibilityService : AccessibilityService() {
         lastPackage = packageName
         lastCheckAt = now
 
-        if (blockedPackage != null && blockedPackage != packageName) dismissOverlay()
         if (blockedPackage == packageName) return
 
-        val grace = graceUntil[packageName] ?: 0L
-        if (now < grace) return
+        // Something other than the covered app is in front. That is *not* on
+        // its own a reason to take the block screen down: system dialogs, the
+        // keyboard, an ad or analytics process and Google Play services all
+        // raise window events of their own while the blocked app is still the
+        // one the user is looking at. Dropping the overlay for each of them and
+        // putting it back a moment later is the flicker that reads as the app
+        // glitching and restarting. So the dismissal is deferred and confirmed
+        // against what is actually in front by then.
+        if (blockedPackage != null) {
+            confirmDismissal(packageName)
+            return
+        }
 
-        val reason = reasonToBlock(packageName) ?: return
-        showOverlay(packageName, reason)
+        decide(packageName)
+    }
+
+    /** Decides whether [packageName] should be covered, and covers it. */
+    private fun decide(packageName: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now < (graceUntil[packageName] ?: 0L)) return
+
+        val current = currentRules()
+
+        // The cheap path, and the common one: no YouTube rule in play means the
+        // decision needs nothing but the package name.
+        if (packageName != YOUTUBE || !current.youtube.any) {
+            packageReason(packageName, current)?.let { showOverlay(packageName, it) }
+            return
+        }
+
+        // YouTube needs its window read, and that happens off the main thread.
+        // Capture the root here — one call — and walk it on the worker.
+        val root = rootInActiveWindow
+        if (inspecting) return
+        inspecting = true
+        inspector.post {
+            val reason = youtubeReason(current.youtube, root)
+                ?: packageReason(packageName, current)
+            handler.post {
+                inspecting = false
+                if (reason != null) showOverlay(packageName, reason)
+            }
+        }
+    }
+
+    /**
+     * Takes the block screen down only once the covered app is really gone.
+     *
+     * Re-checks a moment later instead of trusting the event that triggered it,
+     * because most of the packages that raise a window event while an app is
+     * covered are passing through rather than replacing it.
+     */
+    private fun confirmDismissal(candidate: String) {
+        if (candidate in exempt) {
+            dismissOverlay()
+            return
+        }
+        handler.postDelayed({
+            val front = rootInActiveWindow?.packageName?.toString().orEmpty()
+            if (front == blockedPackage) return@postDelayed
+            dismissOverlay()
+            // Whatever the user moved to is a decision of its own. Without this
+            // the first switch away from a covered app lands on an app that is
+            // never asked about, and a blocked one opens unblocked.
+            if (front.isNotEmpty() && front !in exempt) decide(front)
+        }, DISMISS_CONFIRM_MS)
     }
 
     /**
@@ -205,18 +356,7 @@ class FocusAccessibilityService : AccessibilityService() {
      * "you are out of time" are different sentences, and a user who cannot tell
      * them apart cannot tell what to change.
      */
-    private fun reasonToBlock(packageName: String): String? {
-        val current = rules
-
-        // The surface rules are additive, not decisive: they can only ever add
-        // a reason. A user who closes Shorts and also blocks the app outright
-        // must still be covered while watching an ordinary video, so a surface
-        // rule that finds nothing falls through to the package rule instead of
-        // clearing the app.
-        if (packageName == YOUTUBE && current.youtube.any) {
-            youtubeReason(current.youtube)?.let { return it }
-        }
-
+    private fun packageReason(packageName: String, current: ShieldRules): String? {
         val rule = current.ruleFor(packageName) ?: return null
 
         // Strict Mode is the one thing that overrides a budget: a daily
@@ -253,9 +393,20 @@ class FocusAccessibilityService : AccessibilityService() {
      * ids below are YouTube's own naming, and they are the only on-screen
      * content this service ever looks at — bounded, never stored, and only
      * while the YouTube rules are on.
+     *
+     * The distinction that matters is between the Shorts *player* and the
+     * Shorts *shelf*. The home feed carries a Shorts carousel, and its ids
+     * contain "shorts" and "reel_" just as the player's do. Matching those
+     * alone meant that turning on "Block Shorts" closed YouTube the moment it
+     * opened — the carousel on the home page was mistaken for someone watching
+     * Shorts, and the app never got as far as loading. Only ids that exist
+     * solely while the vertical player is on screen count.
      */
-    private fun youtubeReason(youtube: YoutubeRules): String? {
-        val root = rootInActiveWindow ?: return null
+    private fun youtubeReason(
+        youtube: YoutubeRules,
+        root: AccessibilityNodeInfo?,
+    ): String? {
+        if (root == null) return null
 
         var shorts = false
         var player = false
@@ -269,7 +420,7 @@ class FocusAccessibilityService : AccessibilityService() {
             visited++
             val id = node.viewIdResourceName
             if (id != null) {
-                if (id.contains("reel_") || id.contains("shorts")) shorts = true
+                if (SHORTS_PLAYER_IDS.any { id.contains(it) }) shorts = true
                 if (id.contains("player_view") || id.contains("watch_player")) {
                     player = true
                 }
@@ -332,6 +483,12 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun showOverlay(packageName: String, reason: String) {
         dismissOverlay()
+
+        // A decision can be made a frame or two after the event that started
+        // it, and by then the user may have moved on. Covering whatever is in
+        // front now would be covering an app that was never asked about.
+        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
+        if (front.isNotEmpty() && front != packageName) return
 
         val view = inflater.inflate(R.layout.ff_block_overlay, null)
         val label = labelFor(packageName)
@@ -432,7 +589,7 @@ class FocusAccessibilityService : AccessibilityService() {
                     )
                     .putExtra(EXTRA_BLOCKED_PACKAGE, packageName)
                     .putExtra(EXTRA_BLOCKED_LABEL, label)
-                    .putExtra(EXTRA_GRACE_SECONDS, rules.graceSeconds),
+                    .putExtra(EXTRA_GRACE_SECONDS, currentRules().graceSeconds),
             )
         } catch (_: Exception) {
             // No UI to hand over to, so nothing will grant the grace later and
@@ -440,7 +597,7 @@ class FocusAccessibilityService : AccessibilityService() {
             // grant is the only way out that is not a loop of block screens,
             // and the report is the only record this interception will get.
             ShieldEvents.emit(packageName, label, ShieldEvents.OPENED_ANYWAY)
-            grantGrace(packageName, rules.graceSeconds)
+            grantGrace(packageName, currentRules().graceSeconds)
         }
     }
 
@@ -474,7 +631,7 @@ class FocusAccessibilityService : AccessibilityService() {
             packageManager.getApplicationInfo(packageName, 0),
         ).toString()
     } catch (_: PackageManager.NameNotFoundException) {
-        rules.ruleFor(packageName)?.label ?: packageName
+        currentRules().ruleFor(packageName)?.label ?: packageName
     }
 
     private fun iconFor(packageName: String) = try {
