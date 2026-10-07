@@ -983,6 +983,14 @@ class _TabEntranceState extends State<_TabEntrance> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      _entered ? widget.child : const SizedBox.shrink();
+  Widget build(BuildContext context) {
+    // Checked here as well as in `didChangeDependencies`, and checked on every
+    // build. This widget hides its entire child until the branch is on stage,
+    // so anything that went wrong with the notification would not be a late
+    // animation — it would be a blank tab, which is what a user would report
+    // as "a white screen". Reading the value during build costs nothing and
+    // makes the blank state impossible to reach while the tab is visible.
+    if (!_entered && TickerMode.valuesOf(context).enabled) _entered = true;
+    return _entered ? widget.child : const SizedBox.shrink();
+  }
 }
