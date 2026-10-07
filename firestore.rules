@@ -10,6 +10,8 @@ rules_version = '2';
 //   users/{uid}/guardian             a child's record of the parent who linked
 //   users/{uid}/progress/{doc}       the child's own study summary
 //   users/{uid}/remoteRules/{doc}    the block list a parent set for that child
+//   users/{uid}/catalog/{doc}        the apps on the child's device
+//   leaderboard/{week}/entries/{uid} one row per person per week
 //
 // Two rules do the real work: a document under a user's tree is readable by
 // that user and by their linked guardian, and writable by exactly one of them
@@ -79,6 +81,28 @@ service cloud.firestore {
         allow read: if isSelf(uid) || isGuardianOf(uid);
         allow write: if isGuardianOf(uid);
       }
+
+      // The apps installed on this device. The child publishes them so their
+      // parent has something to choose from; only the guardian may read them,
+      // and only the child may write them.
+      match /catalog/{doc} {
+        allow read: if isSelf(uid) || isGuardianOf(uid);
+        allow write: if isSelf(uid);
+      }
+    }
+
+    // The weekly board. A row is a name and an hour count — nothing else —
+    // and it is readable by anyone signed in, because being on a board is a
+    // public act. Writing is not: a row is only ever yours.
+    match /leaderboard/{week}/entries/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(uid) &&
+        request.resource.data.keys().hasOnly(['name', 'minutes', 'updatedAt']) &&
+        request.resource.data.minutes is int &&
+        request.resource.data.minutes >= 0 &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() <= 60;
+      allow delete: if isSelf(uid);
     }
   }
 }
