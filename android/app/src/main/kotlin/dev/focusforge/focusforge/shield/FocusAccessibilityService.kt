@@ -455,7 +455,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
         // The cheap path, and the common one: no YouTube rule in play means the
         // decision needs nothing but the package name.
-        if (packageName != YOUTUBE || !current.youtube.any) {
+        if (packageName != YOUTUBE || !youtubeArmed(current)) {
             packageReason(packageName, current)?.let { showOverlay(packageName, it) }
             return
         }
@@ -466,7 +466,7 @@ class FocusAccessibilityService : AccessibilityService() {
         if (inspecting) return
         inspecting = true
         inspector.post {
-            val reason = youtubeReason(current.youtube, root)
+            val reason = youtubeReason(current, root)
                 ?: packageReason(packageName, current)
             handler.post {
                 inspecting = false
@@ -523,6 +523,11 @@ class FocusAccessibilityService : AccessibilityService() {
 
         return when (rule.mode) {
             RuleMode.BLOCK -> "You asked FocusForge to keep this closed."
+            RuleMode.FOCUS -> if (current.focusActive(System.currentTimeMillis())) {
+                "This stays closed while you are focusing."
+            } else {
+                null
+            }
             RuleMode.BUDGET -> {
                 val budget = rule.budgetMinutes
                 if (budget <= 0) return null
@@ -564,12 +569,28 @@ class FocusAccessibilityService : AccessibilityService() {
      * ([WATCH_IDS]) rather than whether any player node exists, and matches
      * the browse surfaces by their own ids ([FEED_IDS]).
      */
+    /**
+     * Whether the YouTube surface switches apply right now.
+     *
+     * The two switches can be armed for the whole day or only for a focus
+     * block; either way there is nothing to read on screen until one of them
+     * is on, which is what keeps the window walk off the common path.
+     */
+    private fun youtubeArmed(current: ShieldRules): Boolean =
+        current.youtube.any &&
+            (
+                !current.youtube.focusOnly ||
+                    current.focusActive(System.currentTimeMillis())
+                )
+
     private fun youtubeReason(
-        youtube: YoutubeRules,
+        current: ShieldRules,
         root: AccessibilityNodeInfo?,
     ): String? {
         if (root == null) return null
+        if (!youtubeArmed(current)) return null
 
+        val youtube = current.youtube
         var shorts = false
         var watching = false
         var feed = false

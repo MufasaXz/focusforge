@@ -255,6 +255,7 @@ class _RuleSummary extends StatelessWidget {
 
   static String _ruleLabel(WhitelistEntry entry) => switch (entry.tier) {
     WhitelistTier.blocked => 'Closes when opened',
+    WhitelistTier.focusOnly => 'Closes while focusing',
     WhitelistTier.budgeted =>
       '${formatMinutes(entry.budgetMinutes ?? 0)} a day',
     WhitelistTier.alwaysAllowed => 'Never closed',

@@ -1041,6 +1041,7 @@ class _AppRuleRow extends ConsumerWidget {
   String get _meta {
     return switch (row.rule?.tier) {
       WhitelistTier.blocked => 'Closes when opened',
+      WhitelistTier.focusOnly => 'Closes while you focus',
       WhitelistTier.budgeted =>
         '${formatMinutes(row.usedMinutes)} of '
             '${formatMinutes(row.rule?.budgetMinutes ?? 0)} used today',
@@ -1054,6 +1055,7 @@ class _AppRuleRow extends ConsumerWidget {
   String get _semanticLabel {
     return switch (row.rule?.tier) {
       WhitelistTier.blocked => '${row.name}, closes when opened',
+      WhitelistTier.focusOnly => '${row.name}, closes while focusing',
       WhitelistTier.budgeted =>
         '${row.name}, ${formatMinutes(row.rule?.budgetMinutes ?? 0)} a day, '
             '${formatMinutes(row.usedMinutes)} used today',
@@ -1499,6 +1501,10 @@ class _TierOption extends StatelessWidget {
         Icons.block_rounded,
         'Closes as soon as it opens.',
       ),
+      WhitelistTier.focusOnly => (
+        Icons.center_focus_strong_rounded,
+        'Closed while a focus block runs, and open the rest of the day.',
+      ),
       WhitelistTier.budgeted => (
         Icons.hourglass_bottom_rounded,
         'Open until the day\'s allowance is spent, then it closes.',
@@ -1704,6 +1710,23 @@ class _YoutubeView extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(youtubeRulesProvider.notifier).setFeed(v),
                 ),
+                // Only meaningful once something is being closed, and a
+                // switch that arms nothing is the inert control this screen
+                // does not have.
+                if (rules.any) ...[
+                  Divider(color: cs.outlineVariant, height: 1),
+                  _SurfaceSwitch(
+                    icon: Icons.center_focus_strong_rounded,
+                    title: 'Only while focusing',
+                    body:
+                        'Arms both switches while a focus block runs. '
+                        'YouTube is free the rest of the day.',
+                    value: rules.focusOnly,
+                    onChanged: (v) => ref
+                        .read(youtubeRulesProvider.notifier)
+                        .setFocusOnly(v),
+                  ),
+                ],
               ],
             ),
           ),

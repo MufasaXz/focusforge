@@ -113,6 +113,12 @@ Future<ProviderContainer> bootstrap() async {
       .read(breathEventsProvider.notifier)
       .hydrate(store.getList(StoreKeys.breathEvents));
 
+  // Reading this installs the timer → engine bridge and pushes the whole
+  // config once. The engine outlives the app and can be holding rules from
+  // before it was closed — including a focus window that has since ended — so
+  // the launch push is what reconciles the two sides rather than a nicety.
+  container.read(shieldFocusWindowProvider);
+
   // -- Social ----------------------------------------------------------------
   container
       .read(achievementsProvider.notifier)

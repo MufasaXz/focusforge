@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 
 /// Which tier a whitelist entry sits in.
 ///
-/// The three tiers are also the shield's rule set: `blocked` closes the app,
-/// `budgeted` closes it once a daily allowance is spent, and `alwaysAllowed`
-/// leaves it alone. Keeping one list rather than a separate rule list is what
-/// stops the screen and the engine from disagreeing about what is armed.
+/// The four tiers are also the shield's rule set: `blocked` closes the app,
+/// `budgeted` closes it once a daily allowance is spent, `focusOnly` closes it
+/// while a focus block runs, and `alwaysAllowed` leaves it alone. Keeping one
+/// list rather than a separate rule list is what stops the screen and the
+/// engine from disagreeing about what is armed.
 enum WhitelistTier {
   alwaysAllowed('Always allowed', Color(0xFF8FE39B)),
   budgeted('Time budgeted', Color(0xFF7FA9FF)),
-  blocked('Blocked', Color(0xFFFFB4AB));
+  blocked('Blocked', Color(0xFFFFB4AB)),
+  focusOnly('Only while focusing', Color(0xFFFFD08A));
 
   const WhitelistTier(this.label, this.color);
 
@@ -100,7 +102,11 @@ class WhitelistEntry {
 /// and "YouTube is gone".
 @immutable
 class YoutubeRules {
-  const YoutubeRules({this.shorts = false, this.feed = false});
+  const YoutubeRules({
+    this.shorts = false,
+    this.feed = false,
+    this.focusOnly = false,
+  });
 
   /// Close the Shorts player.
   final bool shorts;
@@ -109,20 +115,36 @@ class YoutubeRules {
   /// from a direct link.
   final bool feed;
 
+  /// Arm the two switches only while a focus block runs.
+  ///
+  /// The same "only while focusing" the app rules offer, for the one app whose
+  /// surfaces are picked rather than the whole package: YouTube is free the
+  /// rest of the day, and shut while the user is working.
+  final bool focusOnly;
+
   bool get any => shorts || feed;
 
   static const off = YoutubeRules();
 
-  YoutubeRules copyWith({bool? shorts, bool? feed}) =>
-      YoutubeRules(shorts: shorts ?? this.shorts, feed: feed ?? this.feed);
+  YoutubeRules copyWith({bool? shorts, bool? feed, bool? focusOnly}) =>
+      YoutubeRules(
+        shorts: shorts ?? this.shorts,
+        feed: feed ?? this.feed,
+        focusOnly: focusOnly ?? this.focusOnly,
+      );
 
-  Map<String, dynamic> toJson() => {'shorts': shorts, 'feed': feed};
+  Map<String, dynamic> toJson() => {
+    'shorts': shorts,
+    'feed': feed,
+    'focusOnly': focusOnly,
+  };
 
   /// Type-tested rather than cast: this is read during bootstrap, where a
   /// wrong-typed value must degrade to "off" instead of aborting the launch.
   factory YoutubeRules.fromJson(Map<String, dynamic> j) => YoutubeRules(
     shorts: j['shorts'] is bool ? j['shorts'] as bool : false,
     feed: j['feed'] is bool ? j['feed'] as bool : false,
+    focusOnly: j['focusOnly'] is bool ? j['focusOnly'] as bool : false,
   );
 }
 

@@ -9,6 +9,7 @@ import '../services/local_store.dart';
 import '../services/native_shield_service.dart';
 import '../services/shield_service.dart';
 import 'app_providers.dart';
+import 'study_providers.dart';
 
 /// The shield engine for this build.
 ///
@@ -79,10 +80,37 @@ void syncShield(
     whitelist: apps,
     youtube: youtube ?? ref.read(youtubeRulesProvider),
     strictMode: strictMode ?? ref.read(strictModeProvider),
+    focusUntil: focusWindowEnd(ref.read(timerProvider)),
   );
   // Fire and forget — a slow channel must never stall a toggle.
   unawaited(service.applyConfig(config));
 }
+
+/// When the focus-only rules stop applying, or null when nothing is running.
+///
+/// A paused block is not focusing: the rules lift the moment the clock stops,
+/// which is what the user sees on the screen they paused it from.
+DateTime? focusWindowEnd(TimerState timer) {
+  if (!timer.running || timer.phase != TimerPhase.focus) return null;
+  return timer.targetEnd ?? DateTime.now().add(timer.remaining);
+}
+
+/// Keeps the engine's focus window in step with the timer.
+///
+/// A focus-only rule is armed exactly while a block runs, and only the timer
+/// knows when that is. One listener covers the start, the pause, the skip and
+/// the natural end of a block alike; reading it during bootstrap also pushes
+/// the whole config once at launch, which repairs a push that was lost while
+/// the app was closed.
+final shieldFocusWindowProvider = Provider<void>((ref) {
+  // `fireImmediately` is the launch push: whatever the engine is holding from
+  // before the app was closed is replaced by the state that is true now.
+  ref.listen(
+    timerProvider,
+    (previous, next) => syncShield(ref),
+    fireImmediately: true,
+  );
+});
 
 // -- App rules ---------------------------------------------------------------
 
@@ -110,7 +138,10 @@ class WhitelistNotifier extends Notifier<List<WhitelistEntry>> {
   /// Stored tier index, clamped. A missing or wrong-typed value falls back
   /// instead of throwing or indexing out of bounds.
   static WhitelistTier _tierOr(Object? value, int fallback) =>
-      WhitelistTier.values[(_storedInt(value) ?? fallback).clamp(0, 2)];
+      WhitelistTier.values[(_storedInt(value) ?? fallback).clamp(
+        0,
+        WhitelistTier.values.length - 1,
+      )];
 
   /// Rebuilds an entry from its stored row.
   ///
@@ -305,6 +336,9 @@ class YoutubeRulesNotifier extends Notifier<YoutubeRules> {
   Future<void> setShorts(bool value) => set(state.copyWith(shorts: value));
 
   Future<void> setFeed(bool value) => set(state.copyWith(feed: value));
+
+  Future<void> setFocusOnly(bool value) =>
+      set(state.copyWith(focusOnly: value));
 }
 
 final youtubeRulesProvider =

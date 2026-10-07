@@ -79,6 +79,7 @@ class ShieldConfig {
     required this.whitelist,
     required this.youtube,
     this.strictMode = const StrictModeConfig(),
+    this.focusUntil,
     this.graceSeconds = defaultGraceSeconds,
   });
 
@@ -93,6 +94,14 @@ class ShieldConfig {
   final List<WhitelistEntry> whitelist;
   final YoutubeRules youtube;
   final StrictModeConfig strictMode;
+
+  /// When the running focus block ends, or null when none is running.
+  ///
+  /// A deadline rather than a flag, for the same reason Strict Mode passes
+  /// one: the engine has no idea when the block started, and a config pushed
+  /// at the start still lifts on time if the app is never heard from again.
+  final DateTime? focusUntil;
+
   final int graceSeconds;
 
   /// Everything the native side needs, and nothing else.
@@ -108,7 +117,11 @@ class ShieldConfig {
         if (e.packageId != null && e.tier.isEnforced)
           e.packageId!: {
             'label': e.name,
-            'mode': e.tier == WhitelistTier.budgeted ? 'budget' : 'block',
+            'mode': switch (e.tier) {
+              WhitelistTier.budgeted => 'budget',
+              WhitelistTier.focusOnly => 'focus',
+              _ => 'block',
+            },
             'budgetMinutes': e.budgetMinutes ?? 0,
           },
     },
@@ -117,6 +130,7 @@ class ShieldConfig {
     // has no idea when the window opened, and computing it here means the two
     // sides cannot disagree about whether it is still running.
     'strictUntil': strictMode.endsAt?.millisecondsSinceEpoch,
+    'focusUntil': focusUntil?.millisecondsSinceEpoch,
     'graceSeconds': graceSeconds,
   };
 }

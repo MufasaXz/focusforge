@@ -9,11 +9,30 @@ enum class RuleMode {
     BLOCK,
 
     /** Closed once today's foreground time passes [AppRule.budgetMinutes]. */
-    BUDGET;
+    BUDGET,
+
+    /**
+     * Closed only while a focus block is running.
+     *
+     * The user's version of "keep it shut while I work": the app is free the
+     * rest of the day, and the deadline comes from the timer rather than from
+     * anything this service has to keep track of.
+     */
+    FOCUS;
 
     companion object {
-        fun fromName(name: String?): RuleMode =
-            if (name == "budget") BUDGET else BLOCK
+        fun fromName(name: String?): RuleMode = when (name) {
+            "budget" -> BUDGET
+            "focus" -> FOCUS
+            else -> BLOCK
+        }
+
+        /** The wire name, shared with the Dart side's payload. */
+        fun wireName(mode: RuleMode): String = when (mode) {
+            BUDGET -> "budget"
+            FOCUS -> "focus"
+            BLOCK -> "block"
+        }
     }
 }
 
@@ -35,11 +54,17 @@ data class AppRule(
 data class YoutubeRules(
     val shorts: Boolean,
     val feed: Boolean,
+    /**
+     * Arm the two switches only while a focus block is running — the same
+     * "only while focusing" the app rules offer, for the one app whose
+     * surfaces are picked rather than the whole package.
+     */
+    val focusOnly: Boolean,
 ) {
     val any: Boolean get() = shorts || feed
 
     companion object {
-        val OFF = YoutubeRules(shorts = false, feed = false)
+        val OFF = YoutubeRules(shorts = false, feed = false, focusOnly = false)
     }
 }
 
@@ -60,6 +85,15 @@ data class ShieldRules(
      * a budget the user can spend their way through is not a commitment.
      */
     val strictUntilMillis: Long?,
+    /**
+     * When the running focus block ends, as epoch milliseconds, or null when
+     * none is running. This is what arms the focus-only rules.
+     *
+     * A deadline rather than a flag: a config pushed at the start of a block
+     * still lifts on time if the app is never heard from again, and the
+     * service does not have to hold a timer of its own to know when to stop.
+     */
+    val focusUntilMillis: Long?,
 ) {
     fun ruleFor(packageName: String): AppRule? = apps[packageName]
 
@@ -69,12 +103,19 @@ data class ShieldRules(
         return now < until
     }
 
+    /** True while a focus block is running. */
+    fun focusActive(now: Long): Boolean {
+        val until = focusUntilMillis ?: return false
+        return now < until
+    }
+
     companion object {
         val EMPTY = ShieldRules(
             apps = emptyMap(),
             youtube = YoutubeRules.OFF,
             graceSeconds = DEFAULT_GRACE_SECONDS,
             strictUntilMillis = null,
+            focusUntilMillis = null,
         )
 
         /**
@@ -115,12 +156,18 @@ data class ShieldRules(
                 val youtube = YoutubeRules(
                     shorts = yt?.optBoolean("shorts", false) ?: false,
                     feed = yt?.optBoolean("feed", false) ?: false,
+                    focusOnly = yt?.optBoolean("focusOnly", false) ?: false,
                 )
 
                 // `optLong` returns 0 for an absent key, which would read as a
                 // window that closed in 1970 rather than one that never opened.
                 val strict = if (root.has("strictUntil") && !root.isNull("strictUntil")) {
                     root.optLong("strictUntil", 0L).takeIf { it > 0L }
+                } else {
+                    null
+                }
+                val focus = if (root.has("focusUntil") && !root.isNull("focusUntil")) {
+                    root.optLong("focusUntil", 0L).takeIf { it > 0L }
                 } else {
                     null
                 }
@@ -133,6 +180,7 @@ data class ShieldRules(
                         DEFAULT_GRACE_SECONDS,
                     ).coerceIn(5, 600),
                     strictUntilMillis = strict,
+                    focusUntilMillis = focus,
                 )
             } catch (_: Exception) {
                 EMPTY
@@ -185,7 +233,7 @@ object ShieldStore {
                 packageName,
                 JSONObject()
                     .put("label", rule.label)
-                    .put("mode", if (rule.mode == RuleMode.BUDGET) "budget" else "block")
+                    .put("mode", RuleMode.wireName(rule.mode))
                     .put("budgetMinutes", rule.budgetMinutes),
             )
         }
@@ -195,9 +243,11 @@ object ShieldStore {
                 "youtube",
                 JSONObject()
                     .put("shorts", rules.youtube.shorts)
-                    .put("feed", rules.youtube.feed),
+                    .put("feed", rules.youtube.feed)
+                    .put("focusOnly", rules.youtube.focusOnly),
             )
             .put("strictUntil", rules.strictUntilMillis ?: JSONObject.NULL)
+            .put("focusUntil", rules.focusUntilMillis ?: JSONObject.NULL)
             .put("graceSeconds", rules.graceSeconds)
             .toString()
     }
