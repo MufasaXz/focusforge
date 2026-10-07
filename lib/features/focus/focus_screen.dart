@@ -238,85 +238,87 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         // control the user has to be careful with.
                         child: GestureDetector(
                           onDoubleTap: () => showFullscreenClock(context),
-                          // The flip board is a wide rectangle, and a dial
-                          // around it both fights its shape and shrinks it:
-                          // the face picked to be big ends up the smallest
-                          // thing on the page. It takes the width instead,
-                          // and the ring stays with the faces that fit it.
-                          child: face == ClockFace.flip
-                              ? Semantics(
-                                  label:
-                                      '${timer.phase.label}, $clock remaining, '
-                                      '${timer.running ? 'running' : 'paused'}',
-                                  child: ExcludeSemantics(
-                                    child: _FlipClock(
+                          // A double tap is not a gesture a screen reader can
+                          // perform, so the same route is the clock's own
+                          // action — the label says what it reads, the hint
+                          // says what it does.
+                          child: Semantics(
+                            button: true,
+                            label:
+                                '${timer.phase.label}, $clock remaining, '
+                                '${timer.running ? 'running' : 'paused'}',
+                            hint: 'Opens the clock full screen',
+                            onTap: () => showFullscreenClock(context),
+                            // The flip board is a wide rectangle, and a dial
+                            // around it both fights its shape and shrinks it:
+                            // the face picked to be big ends up the smallest
+                            // thing on the page. It takes the width instead,
+                            // and the ring stays with the faces that fit it.
+                            child: ExcludeSemantics(
+                              child: face == ClockFace.flip
+                                  ? _FlipClock(
                                       remaining: timer.remaining,
                                       accent: accent,
                                       phase: timer.phase,
                                       segments: preset.segments,
                                       cycleDone: cycleDone,
                                       currentDot: currentDot,
-                                    ),
-                                  ),
-                                )
-                              : ProgressRing(
-                                  value: timer.progressFor(preset),
-                                  size: 252,
-                                  stroke: 12,
-                                  ticks: 60,
-                                  // The second horizon: how far through the set of
-                                  // focus blocks this session is. The inner arc
-                                  // answers "how much longer", which is a different
-                                  // question from "how many more", and a timer that
-                                  // shows only one of them makes the other a mental
-                                  // sum.
-                                  outer: preset.segments <= 0
-                                      ? null
-                                      : (timer.completedFocusSegments %
-                                                preset.segments) /
-                                            preset.segments,
-                                  colors: [
-                                    accent,
-                                    Color.lerp(accent, t.secondary, 0.7)!,
-                                  ],
-                                  semanticLabel:
-                                      '${timer.phase.label}, $clock remaining, '
-                                      '${timer.running ? 'running' : 'paused'}',
-                                  child: ExcludeSemantics(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // The ring label carries the time for
-                                        // screen readers, so the figures
-                                        // themselves are silent.
-                                        SizedBox(
-                                          width: 214,
-                                          height: 78,
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: ClockDisplay(
-                                              remaining: timer.remaining,
-                                              face: face,
-                                              accent: accent,
-                                              height: 72,
-                                              progress: timer.progressFor(
-                                                preset,
+                                    )
+                                  : ProgressRing(
+                                      value: timer.progressFor(preset),
+                                      size: 252,
+                                      stroke: 12,
+                                      ticks: 60,
+                                      // The second horizon: how far through the set of
+                                      // focus blocks this session is. The inner arc
+                                      // answers "how much longer", which is a different
+                                      // question from "how many more", and a timer that
+                                      // shows only one of them makes the other a mental
+                                      // sum.
+                                      outer: preset.segments <= 0
+                                          ? null
+                                          : (timer.completedFocusSegments %
+                                                    preset.segments) /
+                                                preset.segments,
+                                      colors: [
+                                        accent,
+                                        Color.lerp(accent, t.secondary, 0.7)!,
+                                      ],
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // The label carries the time for
+                                          // screen readers, so the figures
+                                          // themselves are silent.
+                                          SizedBox(
+                                            width: 214,
+                                            height: 78,
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: ClockDisplay(
+                                                remaining: timer.remaining,
+                                                face: face,
+                                                accent: accent,
+                                                height: 72,
+                                                progress: timer.progressFor(
+                                                  preset,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(height: Gap.xs),
-                                        _ClockCaption(
-                                          phase: timer.phase,
-                                          accent: accent,
-                                          segments: preset.segments,
-                                          cycleDone: cycleDone,
-                                          currentDot: currentDot,
-                                        ),
-                                      ],
+                                          const SizedBox(height: Gap.xs),
+                                          _ClockCaption(
+                                            phase: timer.phase,
+                                            accent: accent,
+                                            segments: preset.segments,
+                                            cycleDone: cycleDone,
+                                            currentDot: currentDot,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ),
+                            ),
+                          ),
                         ),
                       ),
                       // The gesture is not visible, so it is said out loud
