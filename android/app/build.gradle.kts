@@ -73,8 +73,19 @@ android {
             if (hasReleaseKey) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 runs on the release build. It drops the parts of the Flutter
+            // embedding the app never reaches, and the one that matters is the
+            // Play Store deferred-components support: it is compiled against
+            // Play Core, so leaving it in drags Play Core type references into
+            // the dex of an app that has no Play Services at all — which is
+            // what F-Droid's scanner (and any other scanner) flags. Shrinking
+            // also takes the APK down by several megabytes.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
