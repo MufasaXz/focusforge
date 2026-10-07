@@ -202,38 +202,6 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: Gap.xl),
-      prefStagger(
-        const SectionHeader(title: 'Developer', icon: Icons.build_outlined),
-      ),
-      prefStagger(
-        Card.filled(
-          clipBehavior: Clip.antiAlias,
-          child: _SettingTile(
-            spec: const _SettingSpec(
-              icon: Icons.restart_alt_outlined,
-              label: 'Replay onboarding',
-              subtitle: 'Run the first-launch flow again',
-            ),
-            onTap: () async {
-              await ref.read(userProvider.notifier).replayOnboarding();
-              // The router has no refresh listenable, so it only re-evaluates
-              // its redirect on a navigation — nudge it once the flag flips.
-              if (context.mounted) context.goNamed(AppRoutes.onboarding);
-            },
-          ),
-        ),
-      ),
-      prefStagger(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(6, Gap.sm, 6, 0),
-          child: Text(
-            'Onboarding starts over from the first screen. Nothing already '
-            'logged is deleted.',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: t.onSurfaceVariant),
-          ),
-        ),
-      ),
     ];
 
     return _TabEntrance(
@@ -831,7 +799,6 @@ class _SettingSpec {
     required this.icon,
     required this.label,
     this.routeName,
-    this.subtitle,
     this.trailing,
     this.trailingColor,
     this.locked = false,
@@ -840,7 +807,6 @@ class _SettingSpec {
   final IconData icon;
   final String label;
   final String? routeName;
-  final String? subtitle;
   final String? trailing;
   final Color? trailingColor;
 
@@ -866,7 +832,6 @@ class _SettingTile extends StatelessWidget {
         radius: 10,
       ),
       title: Text(spec.label),
-      subtitle: spec.subtitle == null ? null : Text(spec.subtitle!),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

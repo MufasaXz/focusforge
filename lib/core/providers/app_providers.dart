@@ -61,10 +61,6 @@ class UserNotifier extends Notifier<UserProfile> {
 
   Future<void> completeOnboarding() =>
       save(state.copyWith(onboardingComplete: true));
-
-  /// Resets onboarding so the flow can be replayed from Profile.
-  Future<void> replayOnboarding() =>
-      save(state.copyWith(onboardingComplete: false));
 }
 
 final userProvider = NotifierProvider<UserNotifier, UserProfile>(
