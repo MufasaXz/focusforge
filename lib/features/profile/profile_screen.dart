@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
+import '../../core/models/parent.dart';
 import '../../core/models/study.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/parent_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -48,6 +50,8 @@ class ProfileScreen extends ConsumerWidget {
     final unlocked = ref.watch(unlockedCountProvider);
     final me = ref.watch(myRankProvider);
     final strict = ref.watch(strictModeProvider);
+    final guardian = ref.watch(guardianProvider).value;
+    final children = ref.watch(childrenProvider).value ?? const <ChildLink>[];
 
     final standings = ref.watch(leaderboardProvider);
     final rankIndex = standings.indexWhere((e) => e.isMe);
@@ -82,6 +86,18 @@ class ProfileScreen extends ConsumerWidget {
         routeName: AppRoutes.strictMode,
         trailing: strict.enabled ? 'On' : 'Off',
         trailingColor: strict.enabled ? t.error : null,
+      ),
+      _SettingSpec(
+        icon: Icons.family_restroom_outlined,
+        label: 'Parent control',
+        routeName: AppRoutes.parentControl,
+        // One value, and the one that matters: is anybody watching this
+        // device, or is this the phone doing the watching.
+        trailing: guardian != null
+            ? 'Linked'
+            : children.isEmpty
+            ? null
+            : '${children.length} linked',
       ),
       _SettingSpec(
         icon: Icons.timer_outlined,

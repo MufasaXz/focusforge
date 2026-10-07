@@ -7,6 +7,8 @@ import '../features/dashboard/dashboard_screen.dart';
 import '../features/focus/focus_screen.dart';
 import '../features/onboarding/auth_screen.dart';
 import '../features/onboarding/onboarding_flow.dart';
+import '../features/parent/child_dashboard_screen.dart';
+import '../features/parent/parent_control_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/about_screen.dart';
 import '../features/settings/clock_face_screen.dart';
@@ -42,6 +44,8 @@ class AppRoutes {
   static const privacy = 'privacy';
   static const about = 'about';
   static const clockFace = 'clock-face';
+  static const parentControl = 'parent-control';
+  static const parentChild = 'parent-child';
 
   static const paths = <String, String>{
     dashboard: '/dashboard',
@@ -59,6 +63,10 @@ class AppRoutes {
     privacy: '/profile/privacy',
     clockFace: '/profile/clock-face',
     about: '/profile/about',
+    parentControl: '/profile/parent-control',
+    // Reached only from the Parent control page, so the path is absolute
+    // rather than built from the parent's.
+    parentChild: '/profile/parent-control/:uid',
   };
 }
 
@@ -200,6 +208,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'about',
                     name: AppRoutes.about,
                     builder: (context, state) => const AboutScreen(),
+                  ),
+                  GoRoute(
+                    path: 'parent-control',
+                    name: AppRoutes.parentControl,
+                    builder: (context, state) => const ParentControlScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':uid',
+                        name: AppRoutes.parentChild,
+                        builder: (context, state) => ChildDashboardScreen(
+                          childUid: state.pathParameters['uid'] ?? '',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
