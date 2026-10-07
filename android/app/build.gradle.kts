@@ -66,6 +66,24 @@ android {
     }
 }
 
+// The delivered file says what it is — `focusforge-1.0.0.apk`, not
+// `app-release.apk`. A copy rather than a rename: the Flutter tool reads the
+// APK it expects at the path it expects, and the build directory carries both
+// names. The version is the app's own, so the two cannot drift apart.
+//
+// It hangs off the assemble task rather than being a task of its own: a task
+// that declares `outputs/flutter-apk` as an output has Gradle's stale-output
+// cleanup delete the `app-release.apk` the Flutter plugin puts there.
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    doLast {
+        copy {
+            from(layout.buildDirectory.file("outputs/apk/release/app-release.apk"))
+            into(layout.buildDirectory.dir("outputs/flutter-apk"))
+            rename { "focusforge-${flutter.versionName}.apk" }
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
