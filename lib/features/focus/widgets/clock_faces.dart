@@ -100,7 +100,7 @@ class _FlipBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final style = Theme.of(context).textTheme.displayLarge!.copyWith(
-      fontSize: height * 0.62,
+      fontSize: height * 0.68,
       height: 1,
       fontWeight: FontWeight.w700,
       color: cs.onSurface,
@@ -203,11 +203,10 @@ class _FlipCardState extends State<_FlipCard>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final radius = widget.height * 0.14;
-    final background = cs.surfaceContainerHighest;
+    final radius = widget.height * 0.09;
     final divider = Color.alphaBlend(
-      cs.surface.withValues(alpha: 0.55),
-      cs.onSurface.withValues(alpha: 0.22),
+      cs.surface.withValues(alpha: 0.35),
+      cs.onSurface.withValues(alpha: 0.30),
     );
 
     return SizedBox(
@@ -224,71 +223,89 @@ class _FlipCardState extends State<_FlipCard>
           // aligns its non-positioned children to the top-left, so both halves
           // would land in the top half of the card and the bottom would stay
           // blank. The halves are anchored to the edge they belong to.
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            child: Stack(
-              children: [
-                // The halves the flap will uncover.
+          return Stack(
+            children: [
+              // The halves the flap will uncover.
+              _HalfSlot(
+                top: true,
+                height: widget.height,
+                child: _Half(
+                  glyph: _current,
+                  style: widget.style,
+                  top: true,
+                  width: widget.width,
+                  height: widget.height,
+                  radius: radius,
+                ),
+              ),
+              _HalfSlot(
+                top: false,
+                height: widget.height,
+                child: _Half(
+                  glyph: falling ? _outgoing : _current,
+                  style: widget.style,
+                  top: false,
+                  width: widget.width,
+                  height: widget.height,
+                  radius: radius,
+                ),
+              ),
+              if (falling)
                 _HalfSlot(
                   top: true,
                   height: widget.height,
-                  child: _Half(
-                    glyph: _current,
+                  child: _FlippingHalf(
+                    glyph: _outgoing,
                     style: widget.style,
                     top: true,
                     width: widget.width,
                     height: widget.height,
+                    radius: radius,
+                    angle: -math.pi / 2 * (t / 0.5),
                   ),
-                ),
+                )
+              else
                 _HalfSlot(
                   top: false,
                   height: widget.height,
-                  child: _Half(
-                    glyph: falling ? _outgoing : _current,
+                  child: _FlippingHalf(
+                    glyph: _current,
                     style: widget.style,
                     top: false,
                     width: widget.width,
                     height: widget.height,
+                    radius: radius,
+                    angle: math.pi / 2 * (1 - (t - 0.5) / 0.5),
                   ),
                 ),
-                if (falling)
-                  _HalfSlot(
-                    top: true,
-                    height: widget.height,
-                    child: _FlippingHalf(
-                      glyph: _outgoing,
-                      style: widget.style,
-                      top: true,
-                      width: widget.width,
-                      height: widget.height,
-                      angle: -math.pi / 2 * (t / 0.5),
-                    ),
-                  )
-                else
-                  _HalfSlot(
-                    top: false,
-                    height: widget.height,
-                    child: _FlippingHalf(
-                      glyph: _current,
-                      style: widget.style,
-                      top: false,
-                      width: widget.width,
-                      height: widget.height,
-                      angle: math.pi / 2 * (1 - (t - 0.5) / 0.5),
+              // The hinge: a hairline in the fold, and the shade the top
+              // half casts on the one below it. Together they are what the
+              // eye reads as a seam rather than as a line drawn on a panel.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: widget.height / 2 - 0.5,
+                child: Container(height: 1, color: divider),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: widget.height / 2 + 0.5,
+                height: widget.height * 0.07,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        cs.shadow.withValues(alpha: 0.16),
+                        cs.shadow.withValues(alpha: 0),
+                      ],
                     ),
                   ),
-                // The hinge line, drawn over both halves.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: widget.height / 2 - 0.5,
-                  child: Container(height: 1, color: divider),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
@@ -326,6 +343,17 @@ class _HalfSlot extends StatelessWidget {
 }
 
 /// Half a card, unrotated.
+///
+/// A half is a *window* on the figure, not a smaller figure: the glyph is laid
+/// out at the card's full height and the window clips it to the half it owns.
+/// Laying the glyph out at the window's own height instead is the mistake that
+/// makes the board read as doubled — both halves then show a complete figure
+/// and the card looks like two stacked clocks. The [OverflowBox] is what lets
+/// the glyph keep its full height inside a slot half that tall.
+///
+/// Each half also paints its own fill. Light falls from above, so the top half
+/// is the lighter of the two and the bottom sits in shade: that difference is
+/// what makes the hinge read as a fold.
 class _Half extends StatelessWidget {
   const _Half({
     required this.glyph,
@@ -333,6 +361,7 @@ class _Half extends StatelessWidget {
     required this.top,
     required this.width,
     required this.height,
+    required this.radius,
   });
 
   final String glyph;
@@ -340,23 +369,36 @@ class _Half extends StatelessWidget {
   final bool top;
   final double width;
   final double height;
+  final double radius;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.vertical(
-      top: top ? Radius.circular(height * 0.14) : Radius.zero,
-      bottom: top ? Radius.zero : Radius.circular(height * 0.14),
-    ),
-    child: Align(
-      alignment: top ? Alignment.topCenter : Alignment.bottomCenter,
-      heightFactor: 0.5,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Center(child: Text(glyph, style: style, maxLines: 1)),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final base = cs.surfaceContainerHighest;
+    final fill = top
+        ? base
+        : Color.alphaBlend(cs.shadow.withValues(alpha: 0.10), base);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        top: top ? Radius.circular(radius) : Radius.zero,
+        bottom: top ? Radius.zero : Radius.circular(radius),
       ),
-    ),
-  );
+      child: ColoredBox(
+        color: fill,
+        child: OverflowBox(
+          alignment: top ? Alignment.topCenter : Alignment.bottomCenter,
+          minHeight: height,
+          maxHeight: height,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Center(child: Text(glyph, style: style, maxLines: 1)),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Half a card, hinged at its inner edge and turned in 3D.
@@ -367,6 +409,7 @@ class _FlippingHalf extends StatelessWidget {
     required this.top,
     required this.width,
     required this.height,
+    required this.radius,
     required this.angle,
   });
 
@@ -375,6 +418,7 @@ class _FlippingHalf extends StatelessWidget {
   final bool top;
   final double width;
   final double height;
+  final double radius;
   final double angle;
 
   @override
@@ -391,6 +435,7 @@ class _FlippingHalf extends StatelessWidget {
       top: top,
       width: width,
       height: height,
+      radius: radius,
     ),
   );
 }

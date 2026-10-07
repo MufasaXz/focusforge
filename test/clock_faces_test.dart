@@ -183,6 +183,55 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('each half is a window on one full-height figure', (
+      tester,
+    ) async {
+      const size = 48.0;
+      await tester.pumpWidget(
+        wrap(
+          const ClockDisplay(
+            remaining: remaining,
+            face: ClockFace.flip,
+            accent: Colors.orange,
+            height: size,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // A card is 0.98 of the face height, so its halves are windows 0.49
+      // tall. The figure inside has to be laid out at the card's own height
+      // and centred on the hinge — that is what makes each window show its
+      // own half of the figure. Laid out at the window's height instead,
+      // every window holds a complete figure and the card reads as two
+      // stacked clocks, which is exactly the doubling the eye catches.
+      final display = tester.getRect(find.byType(ClockDisplay));
+      final hinge = display.center.dy;
+      final card = size * 0.98;
+
+      final glyphs = tester.renderObjectList<RenderBox>(find.text('2'));
+      expect(glyphs, isNotEmpty, reason: 'the card draws its figure');
+      for (final glyph in glyphs) {
+        final rect = glyph.localToGlobal(Offset.zero) & glyph.size;
+        expect(
+          rect.center.dy,
+          closeTo(hinge, 1.0),
+          reason: 'the figure sits on the hinge, not on one half of it',
+        );
+      }
+
+      final windows = tester.renderObjectList<RenderBox>(find.byType(ClipRRect));
+      expect(windows, isNotEmpty);
+      for (final window in windows) {
+        expect(
+          window.size.height,
+          closeTo(card / 2, 0.5),
+          reason: 'a window is half a card',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a figure that changes flips and lands on the new one', (
       tester,
     ) async {
