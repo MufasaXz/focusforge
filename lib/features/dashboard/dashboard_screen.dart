@@ -8,6 +8,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
+import '../../core/providers/parent_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -16,6 +17,7 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
+import '../parent/widgets/child_study_card.dart';
 import 'widgets/daily_goal_sheet.dart';
 import 'widgets/focus_heatmap.dart';
 import 'widgets/day_summary_sheet.dart';
@@ -167,7 +169,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // The two columns, in reading order: what today looks like, then what the
     // log says. Only used when there is width for them.
+    //
+    // A parent's own log is not what their home tab is for, so the child's
+    // card leads — the same selection the Shield tab and the child's page use,
+    // so all three are about one child at a time.
+    final watchingChild =
+        user.isGuardian && ref.watch(activeChildProvider) != null;
     final left = <Widget>[
+      if (watchingChild) ...[
+        const ChildStudyCard(),
+        const SizedBox(height: Gap.xl),
+      ],
       if (sessions.isEmpty)
         _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta)
       else ...[
