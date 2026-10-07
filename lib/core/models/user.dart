@@ -81,10 +81,8 @@ enum ClockFace {
   final String blurb;
   final IconData icon;
 
-  static ClockFace fromName(String? name) => values.firstWhere(
-    (v) => v.name == name,
-    orElse: () => ClockFace.minimal,
-  );
+  static ClockFace fromName(String? name) =>
+      values.firstWhere((v) => v.name == name, orElse: () => ClockFace.minimal);
 }
 
 /// Everything the appearance section can change, in one value.
@@ -96,8 +94,17 @@ class ThemeSettings {
   const ThemeSettings({
     this.mode = ThemePreference.system,
     this.palette = AppPalette.ember,
-    this.amoled = false,
+    this.amoled = defaultAmoled,
   });
+
+  /// True black ships on.
+  ///
+  /// Most phones have an OLED panel, this is a screen left on a desk for an
+  /// hour at a time, and the difference between a very dark grey and no light
+  /// at all is the whole reason the setting exists. It only means anything in
+  /// dark mode, so a light-mode install is unaffected — and the switch is
+  /// there for anyone who would rather have the tinted surface.
+  static const defaultAmoled = true;
 
   final ThemePreference mode;
   final AppPalette palette;

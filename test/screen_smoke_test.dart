@@ -668,9 +668,9 @@ void main() {
       required bool amoled,
     }) async {
       useTallPhone(tester);
-      if (amoled) {
-        await container.read(themeSettingsProvider.notifier).setAmoled(true);
-      }
+      // Set, not merely turned on: true black ships on, so a test that wants
+      // the tinted surface has to say so.
+      await container.read(themeSettingsProvider.notifier).setAmoled(amoled);
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
@@ -683,9 +683,7 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('the background is the theme surface by default', (
-      tester,
-    ) async {
+    testWidgets('the wash is drawn when true black is off', (tester) async {
       final container = freshContainer();
       await pumpClock(tester, container, amoled: false);
 

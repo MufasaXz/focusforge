@@ -106,12 +106,18 @@ void main() {
   });
 
   group('ThemeSettings', () {
-    test('the defaults are the ones the app shipped with', () {
+    test('the defaults are the ones the app ships with', () {
       const settings = ThemeSettings();
 
       expect(settings.mode, ThemePreference.system);
       expect(settings.palette, AppPalette.ember);
-      expect(settings.amoled, isFalse);
+      expect(
+        settings.amoled,
+        isTrue,
+        reason:
+            'true black is the shipped look in dark mode — the switch turns '
+            'it off, and a light-mode install never sees it',
+      );
     });
 
     test('copyWith keeps the fields it is not given', () {

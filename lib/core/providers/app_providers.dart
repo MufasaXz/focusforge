@@ -95,7 +95,9 @@ class ThemeSettingsNotifier extends Notifier<ThemeSettings> {
     state = ThemeSettings(
       mode: ThemePreference.fromName(mode),
       palette: AppPalette.fromName(palette),
-      amoled: amoled ?? false,
+      // An install that never touched the switch has nothing stored and takes
+      // the shipped default; one that turned it off keeps that.
+      amoled: amoled ?? ThemeSettings.defaultAmoled,
     );
   }
 
@@ -117,8 +119,8 @@ class ThemeSettingsNotifier extends Notifier<ThemeSettings> {
 
 final themeSettingsProvider =
     NotifierProvider<ThemeSettingsNotifier, ThemeSettings>(
-  ThemeSettingsNotifier.new,
-);
+      ThemeSettingsNotifier.new,
+    );
 
 // -- Focus clock -------------------------------------------------------------
 
