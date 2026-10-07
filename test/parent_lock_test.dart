@@ -1,9 +1,10 @@
-// The parent's security code, and the one thing it guards that is not a screen:
-// whether a rule set on another phone is actually enforced here.
+// The parent's security code, and the one thing it guards that is not a
+// screen: whether a rule set on another phone is actually enforced here.
 //
-// WHAT INVARIANT: a linked parent plus a code means the shield asks for the
-// code before a rule changes, and "watching only" means the parent's list is
-// stored but never reaches the engine.
+// WHAT INVARIANT: the code lives in the child's link record as a digest, set
+// by the parent's phone; a linked device with a code asks for it before a rule
+// changes; and "watching only" means the parent's list is stored but never
+// reaches the engine.
 //
 // WHY IT MATTERS: the code is the only thing standing between a child and the
 // rules their parent set, and the enforcement flag is what makes "I am just
@@ -27,9 +28,13 @@ import 'package:focusforge/core/services/shield_service.dart';
 /// A backend that is already paired, so the child's side has something to
 /// react to without a network.
 class PairedParentService implements ParentService {
-  PairedParentService({required this.blocks});
+  PairedParentService({required this.blocks, this.guardian});
 
   RemoteBlocks blocks;
+  GuardianLink? guardian;
+
+  /// What the parent's phone would have written, so a test can assert on it.
+  ParentCode? publishedCode;
 
   @override
   bool get available => true;
@@ -43,7 +48,7 @@ class PairedParentService implements ParentService {
 
   @override
   Stream<GuardianLink?> watchGuardian(String uid) =>
-      Stream.value(GuardianLink(uid: 'parent-1', name: 'Amma'));
+      Stream.value(guardian ?? GuardianLink(uid: 'parent-1', name: 'Amma'));
 
   @override
   Stream<RemoteBlocks?> watchBlocks(String childUid) =>
@@ -75,6 +80,14 @@ class PairedParentService implements ParentService {
 
   @override
   Future<void> publishBlocks(String childUid, RemoteBlocks blocks) async {}
+
+  @override
+  Future<void> publishCode(String childUid, ParentCode? code) async {
+    publishedCode = code;
+    guardian = code == null
+        ? GuardianLink(uid: 'parent-1', name: 'Amma')
+        : GuardianLink(uid: 'parent-1', name: 'Amma', code: code);
+  }
 
   @override
   Future<void> publishCatalog(String uid, List<CatalogApp> apps) async {}
@@ -117,50 +130,73 @@ void main() {
     return container;
   }
 
-  test('the code is stored as a hash and verified, never kept as digits', () async {
-    final container = ProviderContainer(
-      overrides: [localStoreProvider.overrideWithValue(store)],
-    );
-    addTearDown(container.dispose);
-    final codes = container.read(securityCodeProvider.notifier);
+  test('a code is a digest of four digits, never the digits', () {
+    final code = ParentCode.of('4821');
 
-    expect(container.read(securityCodeProvider), isFalse);
-    await codes.set('4821');
-    expect(container.read(securityCodeProvider), isTrue);
+    expect(code.hash.contains('4821'), isFalse);
+    expect(code.salt, isNotEmpty);
+    expect(code.verify('4821'), isTrue);
+    expect(code.verify('4822'), isFalse);
+    expect(code.verify(''), isFalse);
 
-    final stored = store.getString(StoreKeys.parentSecurity)!;
-    expect(stored.contains('4821'), isFalse);
-    expect(stored.contains(':'), isTrue);
+    // Exactly four digits, so "821" and "48211" are typos rather than codes.
+    expect(ParentCode.looksValid('4821'), isTrue);
+    expect(ParentCode.looksValid('821'), isFalse);
+    expect(ParentCode.looksValid('48211'), isFalse);
+    expect(ParentCode.looksValid('abcd'), isFalse);
 
-    expect(codes.verify('4821'), isTrue);
-    expect(codes.verify('4822'), isFalse);
-    expect(codes.verify(''), isFalse);
+    // Two parents who pick the same four digits do not share a digest.
+    expect(ParentCode.of('4821').hash, isNot(code.hash));
+  });
 
-    await codes.clear();
-    expect(container.read(securityCodeProvider), isFalse);
-    expect(codes.verify('4821'), isFalse);
+  test('a link record with half a digest carries no code', () {
+    expect(ParentCode.fromJson({'codeSalt': 's'}), isNull);
+    expect(ParentCode.fromJson({'codeHash': 'h'}), isNull);
+    expect(ParentCode.fromJson({'codeSalt': 's', 'codeHash': 'h'})?.salt, 's');
+
+    final link = GuardianLink.fromJson({
+      'parentUid': 'parent-1',
+      'parentName': 'Amma',
+      'codeSalt': 'salt',
+      'codeHash': 'hash',
+    });
+    expect(link?.code?.hash, 'hash');
   });
 
   test('a code is only asked for on a linked device that has one', () async {
-    final container = childDevice(
+    final plain = childDevice(
       RecordingShieldService(),
       parent: PairedParentService(blocks: const RemoteBlocks()),
     );
 
     // The guardian stream has to have delivered before the link is real.
-    await container.read(guardianProvider.future);
-    expect(container.read(parentLockedProvider), isFalse);
+    await plain.read(guardianProvider.future);
+    expect(plain.read(parentLockedProvider), isFalse);
 
     // Linked but no code: nothing to ask for.
-    expect(container.read(securityCodeProvider), isFalse);
-    expect(container.read(parentLockedProvider), isFalse);
+    expect(plain.read(parentCodeProvider), isNull);
+    expect(plain.read(parentLockedProvider), isFalse);
 
-    await container.read(securityCodeProvider.notifier).set('4821');
-    expect(container.read(parentLockedProvider), isTrue);
+    // The parent sets one on their own phone; it arrives with the record.
+    final coded = childDevice(
+      RecordingShieldService(),
+      parent: PairedParentService(
+        blocks: const RemoteBlocks(),
+        guardian: GuardianLink(
+          uid: 'parent-1',
+          name: 'Amma',
+          code: ParentCode.of('4821'),
+        ),
+      ),
+    );
+    await coded.read(guardianProvider.future);
+    expect(coded.read(parentLockedProvider), isTrue);
+    expect(coded.read(parentCodeProvider)?.verify('4821'), isTrue);
+    expect(coded.read(parentCodeProvider)?.verify('1234'), isFalse);
 
     // Entered once for this run.
-    container.read(parentLockProvider.notifier).open();
-    expect(container.read(parentLockedProvider), isFalse);
+    coded.read(parentLockProvider.notifier).open();
+    expect(coded.read(parentLockedProvider), isFalse);
   });
 
   test('a parent\'s blocks reach the engine, and watching does not', () async {
