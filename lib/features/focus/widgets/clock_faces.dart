@@ -59,6 +59,7 @@ class ClockDisplay extends StatelessWidget {
           remaining: remaining,
           accent: accent,
           height: height,
+          progress: progress,
         );
       case ClockFace.neon:
         return _NeonClock(text: text, accent: accent, height: height);
@@ -718,29 +719,37 @@ class _MinimalClock extends StatelessWidget {
 /// hand meets at twelve when the block is done. A dial that swept forward
 /// would be saying the session had just started; this one says how much of it
 /// is left, which is the question the screen exists to answer.
+///
+/// The segment's own progress runs around the rim, so the dial carries both
+/// readings without a second circle around it — a ring outside a dial is a
+/// circle around a circle, and the one inside loses the room it needs.
 class _AnalogClock extends StatelessWidget {
   const _AnalogClock({
     required this.remaining,
     required this.accent,
     required this.height,
+    required this.progress,
   });
 
   final Duration remaining;
   final Color accent;
   final double height;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return CustomPaint(
       // A dial is square, and a little larger than the figures it replaces:
-      // the hands need room the glyphs did not.
+      // the hands need room the glyphs did not. The parent decides how much
+      // room that is — this is only the size to ask for when it does not say.
       size: Size.square(height * 1.22),
       painter: _AnalogPainter(
         remaining: remaining,
         accent: accent,
         ink: cs.onSurface,
         marks: cs.onSurfaceVariant,
+        progress: progress,
       ),
     );
   }
@@ -752,6 +761,7 @@ class _AnalogPainter extends CustomPainter {
     required this.accent,
     required this.ink,
     required this.marks,
+    required this.progress,
   });
 
   final Duration remaining;
@@ -759,28 +769,46 @@ class _AnalogPainter extends CustomPainter {
   final Color ink;
   final Color marks;
 
+  /// How much of the segment is behind us, 0 to 1, drawn around the rim.
+  final double progress;
+
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = s / 2;
 
-    // The dial: a hairline circle with sixty marks around it, every fifth one
-    // long. It is what makes the hands' positions readable as positions.
+    // The rim: the track the session fills, and the marks that make the hands'
+    // positions readable as positions. The track is what the line will cover.
+    final rim = radius - s * 0.03;
     canvas.drawCircle(
       center,
-      radius - s * 0.012,
+      rim,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = s * 0.014
-        ..color = marks.withValues(alpha: 0.30),
+        ..strokeWidth = s * 0.022
+        ..color = marks.withValues(alpha: 0.22),
     );
+
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: rim),
+        -math.pi / 2,
+        2 * math.pi * progress.clamp(0.0, 1.0),
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = s * 0.022
+          ..strokeCap = StrokeCap.round
+          ..color = accent,
+      );
+    }
 
     final mark = Paint()..strokeCap = StrokeCap.round;
     for (var i = 0; i < 60; i++) {
       final major = i % 5 == 0;
       final angle = i * math.pi / 30 - math.pi / 2;
-      final outer = radius - s * 0.05;
+      final outer = radius - s * 0.09;
       final inner = outer - (major ? s * 0.075 : s * 0.035);
       canvas.drawLine(
         center + Offset(math.cos(angle) * inner, math.sin(angle) * inner),
@@ -831,5 +859,6 @@ class _AnalogPainter extends CustomPainter {
       old.remaining != remaining ||
       old.accent != accent ||
       old.ink != ink ||
-      old.marks != marks;
+      old.marks != marks ||
+      old.progress != progress;
 }
