@@ -137,9 +137,10 @@ enough to think in — no uninstall tricks, and nothing a store would reject.
 
 Each palette is a seed *pair*: dark mode is a brighter mix of the same hue
 rather than a desaturated copy of the light one. Appearance follows the system
-by default and can be pinned to light or dark. **True black** moves the surface
-family to pure `#000000` and leaves every accent alone — the whole app, the
-full-screen clock included.
+by default and can be pinned to light or dark; **true black** ships on, so a
+dark system gets the pure `#000000` surface family without anyone opening a
+setting. It leaves every accent alone — the whole app, the full-screen clock
+included — and can be switched off.
 
 </details>
 
