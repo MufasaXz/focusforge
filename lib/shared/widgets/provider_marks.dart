@@ -1,0 +1,230 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../app/theme/app_theme.dart';
+
+/// The provider marks the account surfaces draw: the Google "G" and the mail
+/// envelope, each sitting in the rounded square every sign-in sheet puts them
+/// in.
+///
+/// Google is painted rather than lettered. The Material icon that reads as a
+/// "G" is a monochrome glyph of a different shape, and on a sign-in screen the
+/// four-colour mark is the thing that says *Google* before the label is read —
+/// a grey G says "generic provider". Painting it also keeps the dependency
+/// list at zero: an SVG asset would need a renderer, and a bundled PNG would
+/// blur at whatever size the badge lands on.
+class GoogleMark extends StatelessWidget {
+  const GoogleMark({super.key, this.size = 20});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size.square(size),
+    painter: const _GooglePainter(),
+    isComplex: false,
+  );
+}
+
+/// The mail mark: an envelope in the red the account sheets use for mail.
+class MailMark extends StatelessWidget {
+  const MailMark({super.key, this.size = 20});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Icon(
+    Icons.mail_rounded,
+    size: size,
+    color: const Color(0xFFEA4335),
+  );
+}
+
+/// A provider mark in its rounded square: the box every account screen draws
+/// behind the logo, on the tonal surface the rest of the app uses.
+class ProviderBadge extends StatelessWidget {
+  const ProviderBadge({super.key, required this.child, this.size = 38});
+
+  final Widget child;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(size * 0.28),
+        border: Border.all(color: cs.outlineVariant, width: 1),
+      ),
+      child: Center(child: child),
+    );
+  }
+}
+
+/// The four-colour G.
+///
+/// The mark is a ring with a bite taken out of its upper right, plus the bar
+/// that turns the bite into a G. Four arcs of one circle and one rectangle
+/// reproduce it; the colours and where each arc hands over to the next are
+/// what make it recognisable, so they are named rather than inlined.
+class _GooglePainter extends CustomPainter {
+  const _GooglePainter();
+
+  static const _blue = Color(0xFF4285F4);
+  static const _green = Color(0xFF34A853);
+  static const _yellow = Color(0xFFFBBC05);
+  static const _red = Color(0xFFEA4335);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final center = Offset(size.width / 2, size.height / 2);
+    final stroke = s * 0.23;
+    final radius = (s - stroke) / 2;
+    final ring = Rect.fromCircle(center: center, radius: radius);
+
+    final pen = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+
+    // Angles run clockwise from due east, the same convention `drawArc` uses.
+    void arc(double fromDegrees, double sweepDegrees, Color color) {
+      canvas.drawArc(
+        ring,
+        fromDegrees * math.pi / 180,
+        sweepDegrees * math.pi / 180,
+        false,
+        pen..color = color,
+      );
+    }
+
+    arc(0, 45, _blue); // lower right, into the bar
+    arc(45, 90, _green); // the bottom
+    arc(135, 75, _yellow); // the left
+    arc(-150, 100, _red); // the top, leaving the mouth open
+    // Nothing is drawn from -50° to 0°: that gap is the bite.
+
+    // The bar, level with the middle and running out to the ring's edge. It
+    // is what closes the gap into a G rather than a C.
+    canvas.drawRect(
+      Rect.fromLTRB(
+        center.dx,
+        center.dy,
+        center.dx + radius + stroke / 2,
+        center.dy + stroke,
+      ),
+      Paint()..color = _blue,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GooglePainter oldDelegate) => false;
+}
+
+/// The provider rows the account surfaces share: the Google and email options,
+/// with their marks in the same rounded squares.
+///
+/// Shared because the sign-in screen and the profile's link-account sheet have
+/// to offer the same two choices; a second hand-built row would drift from
+/// this one the first time either is touched.
+class ProviderRow extends StatefulWidget {
+  const ProviderRow({
+    super.key,
+    required this.label,
+    required this.leading,
+    this.onTap,
+    this.busy = false,
+    this.done = false,
+  });
+
+  final String label;
+  final Widget leading;
+
+  /// Null when the backend cannot mint this credential: the row stays on
+  /// screen, dimmed and inert, so the option is explained rather than hidden.
+  final VoidCallback? onTap;
+  final bool busy;
+
+  /// True for the beat after this row's call succeeded.
+  final bool done;
+
+  @override
+  State<ProviderRow> createState() => _ProviderRowState();
+}
+
+class _ProviderRowState extends State<ProviderRow> {
+  bool _pressed = false;
+
+  bool get _live => widget.onTap != null && !widget.busy && !widget.done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Listener(
+      // A raw pointer listener rather than a gesture recogniser: it does not
+      // enter the gesture arena, so the row's own onTap still fires normally.
+      onPointerDown: _live ? (_) => setState(() => _pressed = true) : null,
+      onPointerUp: _live ? (_) => setState(() => _pressed = false) : null,
+      onPointerCancel: _live ? (_) => setState(() => _pressed = false) : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.975 : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: Card.outlined(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.item),
+            side: BorderSide(
+              color: widget.done ? cs.primary : cs.outlineVariant,
+            ),
+          ),
+          child: ListTile(
+            onTap: _live ? widget.onTap : null,
+            // Null makes the row informational: the provider is explained
+            // rather than hidden, and the disabled palette says so.
+            enabled: _live,
+            leading: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: widget.done
+                  ? ProviderBadge(
+                      key: const ValueKey('done'),
+                      size: 38,
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 20,
+                        color: cs.primary,
+                      ),
+                    )
+                  : ProviderBadge(
+                      key: const ValueKey('mark'),
+                      size: 38,
+                      child: widget.leading,
+                    ),
+            ),
+            title: Text(widget.label, style: theme.textTheme.titleSmall),
+            trailing: widget.busy
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.primary,
+                    ),
+                  )
+                : Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: cs.onSurfaceVariant,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}

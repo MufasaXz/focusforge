@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +13,6 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/services/auth_service.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
@@ -19,6 +20,7 @@ import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
 import 'widgets/avatar_sheet.dart';
 import 'widgets/edit_profile_sheet.dart';
+import 'widgets/link_account_sheet.dart';
 import 'widgets/subject_target_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
@@ -453,46 +455,35 @@ class _EditProfileButton extends StatelessWidget {
 
 /// Honest state for a device-only account: what works, what does not, and the
 /// one action that changes it.
-class _AnonymousCard extends ConsumerStatefulWidget {
+class _AnonymousCard extends ConsumerWidget {
   const _AnonymousCard();
 
-  @override
-  ConsumerState<_AnonymousCard> createState() => _AnonymousCardState();
-}
-
-class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
-  bool _busy = false;
-
-  Future<void> _link() async {
-    setState(() => _busy = true);
-    final auth = ref.read(authServiceProvider);
-    try {
-      // `linkAccount` upgrades whatever profile the auth service is holding,
-      // and it has never seen the one bootstrap hydrated from the store. Hand
-      // it over first — otherwise it mints a fresh anonymous uid and drops the
-      // name, persona and goal already on this device.
-      await auth.updateProfile(ref.read(userProvider));
-      final linked = await auth.linkAccount(provider: 'local');
-      await ref.read(userProvider.notifier).save(linked);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Account linked. Study groups and the leaderboard are unlocked.',
-          ),
+  /// Opens the provider choice and adopts whatever credential comes back.
+  ///
+  /// There is no in-flight state on this button. The sheet is modal, so a
+  /// second tap cannot reach the card while it is open, and the row that is
+  /// actually working carries its own spinner — a button spinning behind a
+  /// barrier would say the same thing twice and never stop saying it.
+  Future<void> _link(BuildContext context, WidgetRef ref) async {
+    // Captured before the await: linking replaces this card, so by the time
+    // the sheet returns the context below it is gone.
+    final messenger = ScaffoldMessenger.of(context);
+    final profile = await showLinkAccountSheet(context);
+    if (profile == null || !context.mounted) return;
+    await ref.read(userProvider.notifier).save(profile);
+    final name = profile.displayName.trim();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          '${name.isEmpty ? 'Signed in' : 'Signed in as $name'}. Study '
+          'groups and the leaderboard are unlocked.',
         ),
-      );
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.friendly)));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
     return Card.outlined(
       child: Padding(
@@ -546,32 +537,21 @@ class _AnonymousCardState extends ConsumerState<_AnonymousCard> {
               ],
             ),
             const SizedBox(height: Gap.lg),
-            Semantics(
-              button: true,
-              enabled: !_busy,
-              label: 'Link an account',
-              // The visible label already says it; without this the row is
-              // announced twice.
-              excludeSemantics: true,
-              child: FilledButton(
-                onPressed: _busy ? null : _link,
-                child: _busy
-                    ? SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: t.onSurfaceVariant,
-                        ),
-                      )
-                    : const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.link_rounded, size: 18),
-                          SizedBox(width: Gap.sm),
-                          Text('Link an account'),
-                        ],
-                      ),
+            // No Semantics wrapper: a FilledButton already announces itself as
+            // a button and takes its name from the label inside it. Wrapping
+            // it in a non-container `Semantics(button: true)` was worse than
+            // redundant — the wrapper has no boundary of its own, so it was
+            // absorbed by the card's node and the whole card came out as one
+            // button whose name was every word on it.
+            FilledButton(
+              onPressed: () => unawaited(_link(context, ref)),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.link_rounded, size: 18),
+                  SizedBox(width: Gap.sm),
+                  Text('Link an account'),
+                ],
               ),
             ),
           ],
