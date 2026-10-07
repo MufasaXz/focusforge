@@ -1,0 +1,1 @@
+First release: focus timer with flip-board, analog and minimal clock faces; app shield with surface rules for YouTube, the Deep Breath Gate and Strict Mode; ambient sound mixer; daily goal, streaks, per-subject breakdown and achievements — all on the device.
