@@ -18,18 +18,18 @@ import 'parent_lock.dart';
 
 /// Parent control — one page, two roles.
 ///
-/// A device is either watched by a parent or it is a parent's own. Which one
-/// this is decides the order of the page, not its contents: the linking card
-/// first on a child's phone, the children first on a parent's. Keeping both
-/// halves on one page means a parent who set their own device up as "for me"
-/// can still pair a child later without hunting for a second screen.
+/// A device is either watched by a parent or it is a parent's own, and the two
+/// halves belong to different people: a parent's page is the children they
+/// monitor, a student's page is this device and the parent watching it.
+/// Showing both to everyone is what put "add a child" in front of a student
+/// who has no children to add.
 class ParentControlScreen extends ConsumerWidget {
   const ParentControlScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final available = ref.watch(parentServiceProvider).available;
-    final guardian = ref.watch(guardianProvider).value;
+    final guardian = ref.watch(guardianProvider).valueOrNull;
     final isGuardian = ref.watch(userProvider).isGuardian;
 
     return AppPage(
@@ -38,7 +38,7 @@ class ParentControlScreen extends ConsumerWidget {
           ? 'Watched by ${guardian.name}'
           : isGuardian
           ? 'Watch a child\'s study'
-          : 'Pairing and the security code',
+          : 'Link this device to a parent',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -46,16 +46,12 @@ class ParentControlScreen extends ConsumerWidget {
             const _NoBackendCard(),
             const SizedBox(height: Gap.xl),
           ],
-          // The role the device was set up for comes first. Both sections stay
-          // reachable either way; this is about which question is answered
-          // before the user has to scroll.
-          if (isGuardian || guardian == null) ...[
-            _ChildrenSection(enabled: available),
+          // The role this device was set up for decides the page, not the
+          // order of its halves.
+          if (isGuardian)
+            _ChildrenSection(enabled: available)
+          else
             _ThisDeviceSection(enabled: available),
-          ] else ...[
-            const _ThisDeviceSection(enabled: true),
-            _ChildrenSection(enabled: available),
-          ],
           const _WhatATParentSeesNote(),
         ],
       ),
@@ -102,7 +98,11 @@ class _NoBackendCard extends StatelessWidget {
 
 // -- This device -------------------------------------------------------------
 
-/// Whether this device is watched, and the code that guards turning it off.
+/// Whether this device is watched, and the way out of it.
+///
+/// The code that guards the way out is not set here: it is the parent's, set
+/// on the parent's own phone, and it arrives with the link record. A child
+/// holding this device cannot arm or disarm it.
 class _ThisDeviceSection extends ConsumerWidget {
   const _ThisDeviceSection({required this.enabled});
 
@@ -110,18 +110,19 @@ class _ThisDeviceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final guardian = ref.watch(guardianProvider).value;
-    final hasCode = ref.watch(securityCodeProvider);
+    final guardian = ref.watch(guardianProvider).valueOrNull;
+    final codeSet = ref.watch(parentCodeProvider) != null;
 
     return AppSection(
       title: 'This device',
       footnote: guardian == null
           ? 'A parent types the code into their own phone. Nothing is shared '
                 'until they do.'
-          : hasCode
-          ? 'The code is asked for before anything here is turned off.'
-          : 'No security code is set. Anyone holding this device can turn '
-                'parent control off.',
+          : codeSet
+          ? 'Turning parent control off asks for the four digits your parent '
+                'set on their phone.'
+          : 'Your parent has not set a security code yet. Until they do, '
+                'parent control can be turned off here without asking.',
       children: [
         if (guardian == null)
           ListTile(
@@ -149,26 +150,6 @@ class _ThisDeviceSection extends ConsumerWidget {
                   : 'Linked on ${_day(guardian.linkedAt!)}',
             ),
           ),
-          if (hasCode)
-            ListTile(
-              leading: const IconBadge(
-                icon: Icons.lock_rounded,
-                color: Color(0xFFFFD08A),
-              ),
-              title: const Text('Security code is on'),
-              subtitle: const Text('Change or remove it'),
-              onTap: () => unawaited(_changeSecurityCode(context, ref)),
-            )
-          else
-            ListTile(
-              leading: const IconBadge(
-                icon: Icons.lock_open_rounded,
-                color: Color(0xFFFFD08A),
-              ),
-              title: const Text('Set a security code'),
-              subtitle: const Text('Optional — stops it being turned off'),
-              onTap: () => unawaited(_setSecurityCode(context, ref)),
-            ),
           ListTile(
             leading: Icon(
               Icons.link_off_rounded,
@@ -222,10 +203,10 @@ class _PairCodeBody extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     // The link is written by the *other* phone, so this screen finds out the
     // same way the rest of the app does.
-    final guardian = ref.watch(guardianProvider).value;
+    final guardian = ref.watch(guardianProvider).valueOrNull;
 
     ref.listen(guardianProvider, (previous, next) {
-      final link = next.value;
+      final link = next.valueOrNull;
       if (link == null) return;
       Navigator.of(context).pop();
       showAppSnack(context, 'Linked to ${link.name}.');
@@ -312,8 +293,7 @@ Future<void> _turnOff(
     context,
     ref,
     message:
-        'Enter the code a parent set to unlink this device from '
-        '${guardian.name}.',
+        'Enter the four digits ${guardian.name} set to unlink this device.',
   )) {
     return;
   }
@@ -349,109 +329,6 @@ Future<void> _turnOff(
   }
 }
 
-// -- The security code -------------------------------------------------------
-
-Future<void> _setSecurityCode(BuildContext context, WidgetRef ref) async {
-  final code = await showAppInputDialog(
-    context: context,
-    title: 'Set a security code',
-    message:
-        'Ask a parent to type a code only they know. It is asked for before '
-        'parent control is turned off, and before the shield rules change.',
-    actionLabel: 'Set code',
-    hintText: 'At least 4 digits',
-    icon: Icons.lock_rounded,
-    keyboardType: TextInputType.number,
-    footnote:
-        'A speed bump, not a lock: clearing the app\'s data or uninstalling '
-        'it removes the code along with everything else.',
-  );
-  if (code == null) return;
-  if (code.length < 4) {
-    if (context.mounted) showAppSnack(context, 'Use at least 4 digits.');
-    return;
-  }
-  await ref.read(securityCodeProvider.notifier).set(code);
-  if (context.mounted) showAppSnack(context, 'Security code set.');
-}
-
-Future<void> _changeSecurityCode(BuildContext context, WidgetRef ref) async {
-  final action = await showAppDialog<String>(
-    context: context,
-    builder: (context) => _SecurityCodeBody(),
-  );
-  if (action == null || !context.mounted) return;
-  if (action == 'remove') {
-    await _removeSecurityCode(context, ref);
-  } else {
-    await _setSecurityCode(context, ref);
-  }
-}
-
-Future<void> _removeSecurityCode(BuildContext context, WidgetRef ref) async {
-  if (!await confirmParentUnlock(
-    context,
-    ref,
-    message: 'Enter the current code to remove it.',
-  )) {
-    return;
-  }
-  await ref.read(securityCodeProvider.notifier).clear();
-  if (context.mounted) showAppSnack(context, 'Security code removed.');
-}
-
-class _SecurityCodeBody extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            const IconBadge(
-              icon: Icons.lock_rounded,
-              color: Color(0xFFFFD08A),
-              size: 40,
-              radius: 12,
-            ),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Text(
-                'Security code',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Gap.md),
-        Text(
-          'Changing or removing the code is itself behind the code.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: Gap.lg),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.password_rounded),
-          title: const Text('Change the code'),
-          onTap: () => Navigator.of(context).pop('change'),
-        ),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.lock_open_rounded),
-          title: const Text('Remove the code'),
-          onTap: () => Navigator.of(context).pop('remove'),
-        ),
-        const SizedBox(height: Gap.md),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
-    );
-  }
-}
-
 // -- Children ----------------------------------------------------------------
 
 /// The parent's list. Empty on a child's device, which is the normal case.
@@ -462,7 +339,11 @@ class _ChildrenSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final children = ref.watch(childrenProvider).value ?? const <ChildLink>[];
+    // `valueOrNull` throughout: a stream that errors — no rules published yet,
+    // no connection — must leave the page standing with an empty list, not
+    // throw out of the build and leave the screen blank.
+    final children =
+        ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
     final loading = ref.watch(childrenProvider).isLoading;
 
     return AppSection(

@@ -2,24 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/parent.dart';
 import '../../core/providers/parent_providers.dart';
+import '../../core/services/parent_service.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/progress_ring.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../settings/settings_support.dart';
+import 'widgets/week_strip.dart';
 
 /// One child, as their parent sees them.
 ///
-/// Two halves: the summary the child's device publishes, and the block list
-/// this device sets. The summary is deliberately small — minutes, sessions,
-/// goal, streak, leading subject — because a dashboard that showed the session
-/// log would be a parent reading their child's whole day rather than checking
-/// that the work is happening.
+/// Three parts: the summary the child's device publishes — today's numbers and
+/// the week's shape — the apps this parent keeps closed, and the four-digit
+/// code that guards the link. The summary is deliberately small: minutes,
+/// sessions, goal, streak, leading subject. A dashboard that showed the
+/// session log would be a parent reading their child's whole day rather than
+/// checking that the work is happening.
+///
+/// Every stream here is read with `valueOrNull`, never `value`: a denied or
+/// offline read is a state this page has to draw, and `value` throws out of
+/// the build when a stream is in error — which is what left the screen blank.
 class ChildDashboardScreen extends ConsumerStatefulWidget {
   const ChildDashboardScreen({super.key, required this.childUid});
 
@@ -34,8 +44,8 @@ class _ChildDashboardScreenState extends ConsumerState<ChildDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Reached by deep link as well as by tapping a row, and the picker sheet
-    // reads the selection rather than the route.
+    // Reached by deep link as well as by tapping a row, and the pickers on the
+    // other screens read the selection rather than the route.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(selectedChildProvider.notifier).select(widget.childUid);
@@ -45,41 +55,179 @@ class _ChildDashboardScreenState extends ConsumerState<ChildDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final children = ref.watch(childrenProvider).value ?? const <ChildLink>[];
-    final child = children
-        .where((c) => c.uid == widget.childUid)
-        .firstOrNull;
-    final progress = ref.watch(childProgressProvider(widget.childUid)).value;
-    final blocks = ref.watch(childBlocksProvider(widget.childUid)).value;
+    final children = ref.watch(childrenProvider);
+    final list = children.valueOrNull ?? const <ChildLink>[];
+    final child = list.where((c) => c.uid == widget.childUid).firstOrNull;
+
+    final progressRead = ref.watch(childProgressProvider(widget.childUid));
+    final blocksRead = ref.watch(childBlocksProvider(widget.childUid));
+    final progress = progressRead.valueOrNull;
+    final blocks = blocksRead.valueOrNull;
+
+    // The list itself can fail or still be loading. Both are drawn rather than
+    // fallen through: an empty page with a title is what a parent would report
+    // as a broken screen.
+    if (child == null && children.isLoading && list.isEmpty) {
+      return AppPage(
+        title: 'Child',
+        subtitle: 'Their device',
+        child: const SkeletonList(count: 4, itemHeight: 84),
+      );
+    }
 
     return AppPage(
       title: child?.name ?? 'Child',
       subtitle: 'Their device',
+      trailing: list.length > 1 ? _ChildSwitcher(current: widget.childUid) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (progress == null || progress.updatedAt == null)
-            const EmptyState(
-              icon: Icons.hourglass_empty_rounded,
-              title: 'Nothing from their device yet',
-              subtitle:
-                  'Their phone publishes a summary as it is used. This page '
-                  'fills in as soon as it does.',
+          if (child == null)
+            EmptyState(
+              icon: Icons.link_off_rounded,
+              title: 'This child is not linked any more',
+              subtitle: children.hasError
+                  ? 'Their record could not be read just now. Pull the list '
+                        'open again from Parent control.'
+                  : 'Their device is no longer on your list, so there is '
+                        'nothing here to watch or to block.',
+              action: TextButton(
+                onPressed: () => context.go(
+                  AppRoutes.paths[AppRoutes.parentControl]!,
+                ),
+                child: const Text('Back to Parent control'),
+              ),
             )
-          else
-            _ProgressCard(progress: progress),
-          const SizedBox(height: Gap.lg),
-          _BlocksSection(
-            childUid: widget.childUid,
-            blocks: blocks ?? const RemoteBlocks(),
-          ),
+          else ...[
+            if (progressRead.hasError && progress == null)
+              const _Unreachable(
+                what: 'summary',
+                body:
+                    'Their phone publishes a summary as it is used, and this '
+                    'device could not read it. It fills in as soon as the read '
+                    'goes through.',
+              )
+            else if (progress == null || progress.updatedAt == null)
+              const EmptyState(
+                icon: Icons.hourglass_empty_rounded,
+                title: 'Nothing from their device yet',
+                subtitle:
+                    'Their phone publishes a summary as it is used. This page '
+                    'fills in as soon as it does.',
+              )
+            else
+              _ProgressCard(progress: progress),
+            const SizedBox(height: Gap.lg),
+            if (blocksRead.hasError && blocks == null)
+              const _Unreachable(
+                what: 'block list',
+                body:
+                    'The rules set for their device could not be read just '
+                    'now. Nothing has changed on their phone.',
+              )
+            else
+              _BlocksSection(
+                childUid: widget.childUid,
+                blocks: blocks ?? const RemoteBlocks(),
+              ),
+            _SecurityCodeSection(childUid: widget.childUid, name: child.name),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Today's numbers, with the age of the reading attached.
+/// A read that failed, said plainly.
+class _Unreachable extends StatelessWidget {
+  const _Unreachable({required this.what, required this.body});
+
+  final String what;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card.outlined(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 18, color: cs.onSurfaceVariant),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Can\'t read their $what',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    body,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Who this page is about, when there is more than one child to look at.
+class _ChildSwitcher extends ConsumerWidget {
+  const _ChildSwitcher({required this.current});
+
+  final String current;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final children =
+        ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
+
+    return PopupMenuButton<String>(
+      tooltip: 'Switch child',
+      icon: const Icon(Icons.switch_account_rounded),
+      onSelected: (uid) {
+        if (uid == current) return;
+        ref.read(selectedChildProvider.notifier).select(uid);
+        context.pushReplacementNamed(
+          AppRoutes.parentChild,
+          pathParameters: {'uid': uid},
+        );
+      },
+      itemBuilder: (context) => [
+        for (final child in children)
+          PopupMenuItem(
+            value: child.uid,
+            child: Row(
+              children: [
+                if (child.uid == current) ...[
+                  const Icon(Icons.check_rounded, size: 16),
+                  const SizedBox(width: Gap.sm),
+                ],
+                Text(child.name),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Today's numbers and the week's shape, with the age of the reading attached.
 ///
 /// The date matters more than the numbers: a parent looking at "3h 20m" that
 /// was published four days ago is looking at a stale reading, and a dashboard
@@ -164,6 +312,8 @@ class _ProgressCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: Gap.lg),
+            WeekStrip(progress: progress),
             const SizedBox(height: Gap.md),
             Row(
               children: [
@@ -303,8 +453,8 @@ class _BlocksSection extends ConsumerWidget {
         ),
         const SizedBox(height: Gap.md),
         Text(
-          'Their device picks these up the next time it is online. YouTube is '
-          'blocked from the Shield screen on their device.',
+          'Their device picks these up the next time it is online. The Shield '
+          'tab blocks their apps too, and reaches the same list.',
           style: theme.textTheme.labelSmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
@@ -317,7 +467,8 @@ class _BlocksSection extends ConsumerWidget {
 
 Future<void> _setEnforced(WidgetRef ref, String childUid, bool value) async {
   final current =
-      ref.read(childBlocksProvider(childUid)).value ?? const RemoteBlocks();
+      ref.read(childBlocksProvider(childUid)).valueOrNull ??
+      const RemoteBlocks();
   await ref
       .read(parentServiceProvider)
       .publishBlocks(childUid, current.copyWith(enforced: value));
@@ -329,7 +480,8 @@ Future<void> _removeApp(
   RemoteBlock app,
 ) async {
   final current =
-      ref.read(childBlocksProvider(childUid)).value ?? const RemoteBlocks();
+      ref.read(childBlocksProvider(childUid)).valueOrNull ??
+      const RemoteBlocks();
   await ref.read(parentServiceProvider).publishBlocks(
     childUid,
     current.copyWith(
@@ -347,7 +499,7 @@ Future<void> _removeApp(
 /// knows what is installed. A parent choosing from a canned catalogue of
 /// famous apps would be choosing a name, not an app.
 Future<void> _addApps(BuildContext context, WidgetRef ref, String childUid) async {
-  final catalog = ref.read(childCatalogProvider(childUid)).value;
+  final catalog = ref.read(childCatalogProvider(childUid)).valueOrNull;
   if (catalog == null || catalog.isEmpty) {
     showAppSnack(
       context,
@@ -357,7 +509,8 @@ Future<void> _addApps(BuildContext context, WidgetRef ref, String childUid) asyn
     return;
   }
   final current =
-      ref.read(childBlocksProvider(childUid)).value ?? const RemoteBlocks();
+      ref.read(childBlocksProvider(childUid)).valueOrNull ??
+      const RemoteBlocks();
 
   await showModalBottomSheet<void>(
     context: context,
@@ -540,6 +693,187 @@ class _AppPickerSheetState extends ConsumerState<_AppPickerSheet> {
     await ref
         .read(parentServiceProvider)
         .publishBlocks(widget.childUid, updated);
+  }
+}
+
+// -- The security code -------------------------------------------------------
+
+/// The four digits a parent sets, and the child's way past them.
+///
+/// Set here, on the parent's phone, and carried in the link record itself: the
+/// child's device checks what was typed against the digest, and the parent's
+/// app is the only place the code can be armed or changed. It is a speed bump,
+/// not a lock — a child can still clear the app's data — and the sheet says so
+/// rather than implying otherwise.
+class _SecurityCodeSection extends ConsumerWidget {
+  const _SecurityCodeSection({required this.childUid, required this.name});
+
+  final String childUid;
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final code = ref.watch(childGuardianProvider(childUid)).valueOrNull?.code;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionHeader(
+          title: 'Security code',
+          icon: Icons.lock_rounded,
+        ),
+        Card.filled(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: IconBadge(
+              icon: code == null ? Icons.lock_open_rounded : Icons.lock_rounded,
+              color: const Color(0xFFFFD08A),
+            ),
+            title: Text(
+              code == null
+                  ? 'Set a four-digit code'
+                  : 'A code is set for $name',
+            ),
+            subtitle: Text(
+              code == null
+                  ? '$name\'s device can unlink itself without asking'
+                  : '$name must enter it to unlink their device',
+            ),
+            trailing: const AppChevron(),
+            onTap: () => unawaited(
+              code == null
+                  ? _setCode(context, ref, childUid, name)
+                  : _changeCode(context, ref, childUid, name),
+            ),
+          ),
+        ),
+        const SizedBox(height: Gap.md),
+        Text(
+          'A speed bump, not a lock: clearing the app\'s data or uninstalling '
+          'it removes the link along with everything else. The same code '
+          'unlocks the shield on $name\'s device.',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: cs.onSurfaceVariant,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
+      ],
+    );
+  }
+}
+
+Future<void> _setCode(
+  BuildContext context,
+  WidgetRef ref,
+  String childUid,
+  String name,
+) async {
+  final code = await showAppInputDialog(
+    context: context,
+    title: 'Set a four-digit code',
+    message:
+        'Pick four digits only you and $name know. $name will need them to '
+        'unlink their device, and to change the shield on it.',
+    actionLabel: 'Set code',
+    hintText: 'Four digits',
+    icon: Icons.lock_rounded,
+    keyboardType: TextInputType.number,
+  );
+  if (code == null) return;
+  if (!ParentCode.looksValid(code)) {
+    if (context.mounted) showAppSnack(context, 'Use exactly four digits.');
+    return;
+  }
+  if (!context.mounted) return;
+  await _publish(context, ref, childUid, ParentCode.of(code), 'Code set.');
+}
+
+Future<void> _changeCode(
+  BuildContext context,
+  WidgetRef ref,
+  String childUid,
+  String name,
+) async {
+  final action = await showAppDialog<String>(
+    context: context,
+    builder: (context) => _CodeActions(name: name),
+  );
+  if (action == null || !context.mounted) return;
+  if (action == 'change') {
+    await _setCode(context, ref, childUid, name);
+    return;
+  }
+  await _publish(context, ref, childUid, null, 'Code removed.');
+}
+
+/// Writes the code to the link record and says what happened.
+Future<void> _publish(
+  BuildContext context,
+  WidgetRef ref,
+  String childUid,
+  ParentCode? code,
+  String done,
+) async {
+  try {
+    await ref.read(parentServiceProvider).publishCode(childUid, code);
+    if (context.mounted) showAppSnack(context, done);
+  } on PairException catch (error) {
+    if (context.mounted) showAppSnack(context, error.friendly);
+  }
+}
+
+class _CodeActions extends StatelessWidget {
+  const _CodeActions({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const IconBadge(
+              icon: Icons.lock_rounded,
+              color: Color(0xFFFFD08A),
+              size: 40,
+              radius: 12,
+            ),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Text(
+                'The code for $name',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Gap.lg),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.password_rounded),
+          title: const Text('Set a new code'),
+          onTap: () => Navigator.of(context).pop('change'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.lock_open_rounded),
+          title: const Text('Remove the code'),
+          subtitle: const Text('Their device can unlink itself again'),
+          onTap: () => Navigator.of(context).pop('remove'),
+        ),
+        const SizedBox(height: Gap.md),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }
 

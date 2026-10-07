@@ -29,12 +29,14 @@ Future<bool> confirmParentUnlock(
     icon: Icons.lock_rounded,
     keyboardType: TextInputType.number,
     footnote:
-        'This is the code set when the device was linked, not the six-digit '
-        'pairing code.',
+        'This is the four digits your parent set on their own phone, not the '
+        'six-digit pairing code.',
   );
   if (code == null) return false;
 
-  if (!ref.read(securityCodeProvider.notifier).verify(code)) {
+  // The digest lives in the link record, so the check happens against what the
+  // parent actually set rather than against a copy this device keeps.
+  if (ref.read(parentCodeProvider)?.verify(code) != true) {
     if (context.mounted) {
       showAppSnack(context, 'That code does not match.');
     }

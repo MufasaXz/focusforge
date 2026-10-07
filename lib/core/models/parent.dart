@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 import 'shield.dart';
@@ -22,6 +26,58 @@ class PairCode {
   /// Exactly six digits, nothing else. Checked before a lookup so a typo is a
   /// message rather than a round trip.
   static bool looksValid(String value) => RegExp(r'^\d{6}$').hasMatch(value);
+}
+
+/// The four digits a parent sets, and the digest their child's device checks
+/// against.
+///
+/// The digits are never stored, on either phone: the parent's app writes a
+/// salted SHA-256 digest into the child's link record, and the child's app
+/// hashes what was typed and compares. Both devices can read the record, which
+/// is the point — the code is what a child has to ask their parent for before
+/// they can unlink the device.
+///
+/// It is a speed bump, not a lock: Android cannot stop a child from clearing
+/// the app's data or uninstalling it, and ten thousand combinations is not a
+/// secret worth defending. Every screen that uses it says so rather than
+/// implying otherwise.
+@immutable
+class ParentCode {
+  const ParentCode({required this.salt, required this.hash});
+
+  /// Random per code, so two parents who choose 1234 do not share a digest.
+  final String salt;
+
+  final String hash;
+
+  /// Exactly four digits, nothing else.
+  static bool looksValid(String value) => RegExp(r'^\d{4}$').hasMatch(value);
+
+  static String digest(String code, String salt) =>
+      sha256.convert(utf8.encode('$salt:$code')).toString();
+
+  /// A fresh digest for [code], with a new salt.
+  static ParentCode of(String code) {
+    final random = Random.secure();
+    final salt = List.generate(
+      16,
+      (_) => random.nextInt(256),
+    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return ParentCode(salt: salt, hash: digest(code, salt));
+  }
+
+  bool verify(String code) => digest(code, salt) == hash;
+
+  /// The digest as the child's link record carries it, or null when either
+  /// half is missing — a record with only one of the two can never verify.
+  static ParentCode? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final salt = raw['codeSalt'];
+    final hash = raw['codeHash'];
+    if (salt is! String || salt.isEmpty) return null;
+    if (hash is! String || hash.isEmpty) return null;
+    return ParentCode(salt: salt, hash: hash);
+  }
 }
 
 /// A child on a parent's list.
@@ -59,11 +115,20 @@ class ChildLink {
 /// The parent a child's device is linked to.
 @immutable
 class GuardianLink {
-  const GuardianLink({required this.uid, required this.name, this.linkedAt});
+  const GuardianLink({
+    required this.uid,
+    required this.name,
+    this.linkedAt,
+    this.code,
+  });
 
   final String uid;
   final String name;
   final DateTime? linkedAt;
+
+  /// The code the parent set for this device, or null when they have not set
+  /// one. Read from the same record as the link itself, because it guards it.
+  final ParentCode? code;
 
   static GuardianLink? fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -77,6 +142,7 @@ class GuardianLink {
       linkedAt: at is num
           ? DateTime.fromMillisecondsSinceEpoch(at.toInt())
           : null,
+      code: ParentCode.fromJson(raw),
     );
   }
 }
@@ -96,6 +162,9 @@ class ChildProgress {
     this.topSubject,
     this.day,
     this.updatedAt,
+    this.weekMinutes = 0,
+    this.weekSessions = 0,
+    this.weekDays = const [],
   });
 
   final int minutes;
@@ -110,6 +179,12 @@ class ChildProgress {
 
   final DateTime? updatedAt;
 
+  /// The current week's total, and the same figure per day, oldest first, so
+  /// a parent sees the shape of the week rather than one day's number.
+  final int weekMinutes;
+  final int weekSessions;
+  final List<int> weekDays;
+
   double get goalProgress =>
       goalMinutes <= 0 ? 0 : (minutes / goalMinutes).clamp(0.0, 1.0);
 
@@ -121,6 +196,9 @@ class ChildProgress {
     'topSubject': ?topSubject,
     'day': ?day,
     'updatedAt': updatedAt?.millisecondsSinceEpoch,
+    'weekMinutes': weekMinutes,
+    'weekSessions': weekSessions,
+    'weekDays': weekDays,
   };
 
   static ChildProgress fromJson(Object? raw) {
@@ -129,6 +207,7 @@ class ChildProgress {
     final updated = raw['updatedAt'];
     final subject = raw['topSubject'];
     final day = raw['day'];
+    final days = raw['weekDays'];
     return ChildProgress(
       minutes: intOr(raw['minutes'], 0),
       sessions: intOr(raw['sessions'], 0),
@@ -139,6 +218,16 @@ class ChildProgress {
       updatedAt: updated is num
           ? DateTime.fromMillisecondsSinceEpoch(updated.toInt())
           : null,
+      weekMinutes: intOr(raw['weekMinutes'], 0),
+      weekSessions: intOr(raw['weekSessions'], 0),
+      // Every row is type-checked: one bad number must not take down a
+      // parent's screen during a rebuild.
+      weekDays: days is List
+          ? [
+              for (final value in days)
+                if (value is num) value.toInt(),
+            ]
+          : const [],
     );
   }
 }

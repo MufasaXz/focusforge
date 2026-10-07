@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/parent.dart';
 import '../services/app_catalog.dart';
-import '../services/local_store.dart';
 import '../services/parent_service.dart';
 import 'app_providers.dart';
 import 'shield_providers.dart';
@@ -54,58 +50,19 @@ final myRemoteBlocksProvider = StreamProvider<RemoteBlocks?>((ref) {
   final service = ref.watch(parentServiceProvider);
   final uid = ref.watch(accountUidProvider);
   if (!service.available || uid == null) return Stream.value(null);
-  if (ref.watch(guardianProvider).value == null) return Stream.value(null);
+  if (ref.watch(guardianProvider).valueOrNull == null) {
+    return Stream.value(null);
+  }
   return service.watchBlocks(uid);
 });
 
-/// The security code that gates turning the link off.
+/// The code a parent set for this device, as their link record carries it.
 ///
-/// Set by a parent, checked here. It is a speed bump, not a lock: Android
-/// cannot stop a child from clearing the app's data or uninstalling it, and
-/// the screen that asks for it says so rather than implying otherwise.
-class SecurityCodeNotifier extends Notifier<bool> {
-  final _random = Random.secure();
-
-  @override
-  bool build() => false;
-
-  LocalStore get _store => ref.read(localStoreProvider);
-
-  static String _hash(String code, String salt) =>
-      sha256.convert(utf8.encode('$salt:$code')).toString();
-
-  /// Whether a code is set, read from the store during bootstrap.
-  void hydrate(String? stored) => state = stored != null && stored.isNotEmpty;
-
-  Future<void> set(String code) async {
-    final salt = List.generate(
-      16,
-      (_) => _random.nextInt(256),
-    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    await _store.setString(
-      StoreKeys.parentSecurity,
-      '$salt:${_hash(code, salt)}',
-    );
-    state = true;
-  }
-
-  bool verify(String code) {
-    final stored = _store.getString(StoreKeys.parentSecurity);
-    if (stored == null) return false;
-    final split = stored.indexOf(':');
-    if (split <= 0) return false;
-    return _hash(code, stored.substring(0, split)) ==
-        stored.substring(split + 1);
-  }
-
-  Future<void> clear() async {
-    await _store.setString(StoreKeys.parentSecurity, '');
-    state = false;
-  }
-}
-
-final securityCodeProvider = NotifierProvider<SecurityCodeNotifier, bool>(
-  SecurityCodeNotifier.new,
+/// Read rather than stored here: the code belongs to the link, and a link that
+/// is gone takes the code with it. A device with no code answers null, and
+/// [parentLockedProvider] then never asks.
+final parentCodeProvider = Provider<ParentCode?>(
+  (ref) => ref.watch(guardianProvider).valueOrNull?.code,
 );
 
 // -- Parent side -------------------------------------------------------------
@@ -138,7 +95,8 @@ final selectedChildProvider = NotifierProvider<SelectedChildNotifier, String?>(
 /// The child the parent is actually looking at: the chosen one while they are
 /// still on the list, and the first child otherwise.
 final activeChildProvider = Provider<ChildLink?>((ref) {
-  final children = ref.watch(childrenProvider).value ?? const <ChildLink>[];
+  final children =
+      ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
   if (children.isEmpty) return null;
   final selected = ref.watch(selectedChildProvider);
   return children.where((c) => c.uid == selected).firstOrNull ?? children.first;
@@ -174,6 +132,19 @@ final childCatalogProvider = StreamProvider.family<List<CatalogApp>, String>((
   return service.watchCatalog(childUid);
 });
 
+/// The link record of one child, as their parent sees it.
+///
+/// The parent's copy of the record is where the code lives, so this is how a
+/// parent finds out whether one is set before they offer to change it.
+final childGuardianProvider = StreamProvider.family<GuardianLink?, String>((
+  ref,
+  childUid,
+) {
+  final service = ref.watch(parentServiceProvider);
+  if (!service.available) return Stream.value(null);
+  return service.watchGuardian(childUid);
+});
+
 /// Whether the parent's security code has been entered on this run.
 ///
 /// Session-only on purpose: the code is what stands between a child and the
@@ -197,8 +168,8 @@ final parentLockProvider = NotifierProvider<ParentLockNotifier, bool>(
 /// All three parts matter: a linked parent, a code that was actually set —
 /// setting one is optional — and this run not having been unlocked already.
 final parentLockedProvider = Provider<bool>((ref) {
-  if (ref.watch(guardianProvider).value == null) return false;
-  if (!ref.watch(securityCodeProvider)) return false;
+  if (ref.watch(guardianProvider).valueOrNull == null) return false;
+  if (ref.watch(parentCodeProvider) == null) return false;
   return !ref.watch(parentLockProvider);
 });
 
@@ -213,7 +184,9 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
   // A parent's rules land in the shield's own state first, so every later
   // rebuild of the config — a toggle, a preset change — carries them too.
   ref.listen(myRemoteBlocksProvider, (previous, next) {
-    final blocks = next.value;
+    // `valueOrNull`, not `value`: an error reading the parent's list must
+    // leave the rules as they are, not throw out of the listener.
+    final blocks = next.valueOrNull;
     if (blocks == null) return;
     // A parent who is only watching keeps their list, and this is what makes
     // "only watching" mean nothing is enforced rather than nothing is stored.
@@ -225,19 +198,27 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
 
 /// Publishes this device's summary for a linked parent to read.
 ///
-/// A summary and nothing else: minutes, sessions, the goal, the streak and the
-/// subject that led the week. The session log itself stays here — a parent can
-/// see whether the work is happening without reading the child's whole day.
+/// A summary and nothing else: minutes, sessions, the goal, the streak, the
+/// subject that led the week and the week's own totals. The session log itself
+/// stays here — a parent can see whether the work is happening without reading
+/// the child's whole day.
 final parentProgressPublisherProvider = Provider<void>((ref) {
   Future<void> publish() async {
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
-    if (ref.read(guardianProvider).value == null) return;
+    if (ref.read(guardianProvider).valueOrNull == null) return;
 
     final now = DateTime.now();
     final sessions = ref.read(sessionsProvider.notifier).forDay(now);
     final top = ref.read(topSubjectProvider(StudyRange.week));
+    // The week's shape, oldest day first, in minutes — the same bars the
+    // child's own dashboard draws, so the two cannot disagree.
+    final bars = ref.read(rangeBarsProvider(StudyRange.week));
+    final weekSessions = ref
+        .read(sessionsProvider)
+        .where((s) => s.completed && _withinLastWeek(s.startedAt, now))
+        .length;
     await service.publishProgress(
       uid,
       ChildProgress(
@@ -250,6 +231,9 @@ final parentProgressPublisherProvider = Provider<void>((ref) {
             '${now.year}-${now.month.toString().padLeft(2, '0')}-'
             '${now.day.toString().padLeft(2, '0')}',
         updatedAt: now,
+        weekMinutes: bars.fold(0, (sum, b) => sum + (b.hours * 60).round()),
+        weekSessions: weekSessions,
+        weekDays: [for (final bar in bars) (bar.hours * 60).round()],
       ),
     );
   }
@@ -259,6 +243,15 @@ final parentProgressPublisherProvider = Provider<void>((ref) {
   ref.listen(guardianProvider, (previous, next) => unawaited(publish()));
   unawaited(publish());
 });
+
+/// Whether [at] falls inside the seven days the week chart covers — today and
+/// the six before it, matching `rangeBarsProvider(StudyRange.week)`.
+bool _withinLastWeek(DateTime at, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final start = today.subtract(const Duration(days: 6));
+  final day = DateTime(at.year, at.month, at.day);
+  return !day.isBefore(start) && !day.isAfter(today);
+}
 
 /// Publishes this device's app list so a linked parent can choose from it.
 ///
@@ -270,7 +263,7 @@ final catalogPublisherProvider = Provider<void>((ref) {
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
-    if (ref.read(guardianProvider).value == null) return;
+    if (ref.read(guardianProvider).valueOrNull == null) return;
 
     final installed = await AppCatalog.installed(
       excludePackage: AppCatalog.selfPackage,

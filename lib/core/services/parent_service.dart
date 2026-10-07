@@ -48,6 +48,10 @@ abstract class ParentService {
   /// Publishes the block list a parent set for a child.
   Future<void> publishBlocks(String childUid, RemoteBlocks blocks);
 
+  /// Sets, or with null clears, the four-digit code that guards [childUid]'s
+  /// link. Written by the parent, checked by the child's device.
+  Future<void> publishCode(String childUid, ParentCode? code);
+
   /// The block list a parent set for this device, if any.
   Stream<RemoteBlocks?> watchBlocks(String childUid);
 
@@ -271,6 +275,23 @@ class FirebaseParentService implements ParentService {
   );
 
   @override
+  Future<void> publishCode(String childUid, ParentCode? code) => _guard(
+    // The link record carries the code, because it is the record the code
+    // protects: whoever can read the link can check a code against it, and the
+    // child's own device is the one that has to. A merge keeps the link itself
+    // — the parent's name, the date — exactly as it was.
+    () => _db.doc('users/$childUid/guardian/link').set(
+      code == null
+          ? {
+              'codeSalt': FieldValue.delete(),
+              'codeHash': FieldValue.delete(),
+            }
+          : {'codeSalt': code.salt, 'codeHash': code.hash},
+      SetOptions(merge: true),
+    ),
+  );
+
+  @override
   Stream<RemoteBlocks?> watchBlocks(String childUid) => _db
       .collection('users')
       .doc(childUid)
@@ -353,6 +374,9 @@ class UnavailableParentService implements ParentService {
   @override
   Future<void> publishBlocks(String childUid, RemoteBlocks blocks) async =>
       _refuse();
+
+  @override
+  Future<void> publishCode(String childUid, ParentCode? code) async => _refuse();
 
   @override
   Stream<RemoteBlocks?> watchBlocks(String childUid) => Stream.value(null);

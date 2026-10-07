@@ -185,12 +185,6 @@ class StoreKeys {
   static const coachSeen = 'coachmarks.seen';
   static const clockFace = 'focus.clock';
 
-  /// The salted hash of the parent's security code, when one is set.
-  ///
-  /// A hash rather than the code: this device belongs to the child, and a
-  /// stored plaintext PIN is a PIN the child can read out of a backup.
-  static const parentSecurity = 'parent.security';
-
   /// Whether this device's week appears on the weekly board.
   static const boardOptIn = 'leaderboard.optIn';
 }

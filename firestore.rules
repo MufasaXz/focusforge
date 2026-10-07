@@ -7,7 +7,8 @@ rules_version = '2';
 //   pairCodes/{code}                 a six-digit code a child's app shows
 //   users/{uid}                      role, name, the linked parent's name
 //   users/{uid}/children/{childUid}  a parent's list of children
-//   users/{uid}/guardian/link        a child's record of the parent who linked
+//   users/{uid}/guardian/link        a child's record of the parent who linked,
+//                                    and the digest of the code they set
 //   users/{uid}/progress/{doc}       the child's own study summary
 //   users/{uid}/remoteRules/{doc}    the block list a parent set for that child
 //   users/{uid}/catalog/{doc}        the apps on the child's device
@@ -61,6 +62,14 @@ service cloud.firestore {
       // retire it; the create is refused while a record already exists, so a
       // second parent cannot take over a device that is already linked.
       //
+      // The record also carries the four-digit code a parent sets for this
+      // device — a salted digest, never the digits. The parent writes it here
+      // (an update), because it is the record the code protects: the child's
+      // device reads the same document to check what was typed. A parent may
+      // update the record but not re-parent it — `parentUid` has to stay as it
+      // was — and a child may not edit the digest that stands between them and
+      // an unlink, which is why the self case is delete-only.
+      //
       // `match` statements point at *documents*, and `users/{uid}/guardian`
       // has an odd number of segments — it names a collection, not a document,
       // so a rule block written there does not cover the `guardian/link`
@@ -75,7 +84,9 @@ service cloud.firestore {
         allow create: if signedIn() &&
           request.resource.data.parentUid == request.auth.uid &&
           !exists(/databases/$(database)/documents/users/$(uid)/guardian/link);
-        allow update, delete: if isSelf(uid);
+        allow update: if isGuardianOf(uid) &&
+          request.resource.data.parentUid == resource.data.parentUid;
+        allow delete: if isSelf(uid);
       }
 
       // The child's progress: the child writes it, the guardian reads it.

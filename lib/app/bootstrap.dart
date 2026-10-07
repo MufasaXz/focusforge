@@ -118,12 +118,9 @@ Future<ProviderContainer> bootstrap() async {
 
   // -- Parent control --------------------------------------------------------
   //
-  // The security code is a hash on this device, set by a parent; hydrating it
-  // here is what lets the Parent control page know whether one is armed before
-  // it offers to turn the link off.
-  container
-      .read(securityCodeProvider.notifier)
-      .hydrate(store.getString(StoreKeys.parentSecurity));
+  // Nothing to hydrate: the security code lives in the child's link record,
+  // written by the parent's phone, so it arrives with the link itself rather
+  // than being kept here.
 
   // Reading the bridge installs the timer → engine and parent → engine paths
   // and pushes the whole config once. The engine outlives the app and can be
