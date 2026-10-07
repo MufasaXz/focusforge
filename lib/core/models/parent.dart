@@ -27,25 +27,15 @@ class PairCode {
 /// A child on a parent's list.
 @immutable
 class ChildLink {
-  const ChildLink({
-    required this.uid,
-    required this.name,
-    this.linkedAt,
-    this.focusOnly = false,
-  });
+  const ChildLink({required this.uid, required this.name, this.linkedAt});
 
   final String uid;
   final String name;
   final DateTime? linkedAt;
 
-  /// True when the parent has chosen to watch rather than to block: the
-  /// child's progress is visible and no blocks are pushed.
-  final bool focusOnly;
-
   Map<String, dynamic> toJson() => {
     'name': name,
     'linkedAt': linkedAt?.millisecondsSinceEpoch,
-    'focusOnly': focusOnly,
   };
 
   static ChildLink? fromJson(String uid, Object? raw) {
@@ -59,16 +49,11 @@ class ChildLink {
       linkedAt: at is num
           ? DateTime.fromMillisecondsSinceEpoch(at.toInt())
           : null,
-      focusOnly: raw['focusOnly'] == true,
     );
   }
 
-  ChildLink copyWith({String? name, bool? focusOnly}) => ChildLink(
-    uid: uid,
-    name: name ?? this.name,
-    linkedAt: linkedAt,
-    focusOnly: focusOnly ?? this.focusOnly,
-  );
+  ChildLink copyWith({String? name}) =>
+      ChildLink(uid: uid, name: name ?? this.name, linkedAt: linkedAt);
 }
 
 /// The parent a child's device is linked to.
@@ -192,26 +177,77 @@ class RemoteBlock {
   }
 }
 
+/// An app on the child's device, as the parent's picker sees it.
+///
+/// Only the two things a parent needs to recognise an app: the package the
+/// rule is written against and the name they would say out loud. No icon, no
+/// usage, no history — the picker is a list of names, not a report on what the
+/// child did with them.
+@immutable
+class CatalogApp {
+  const CatalogApp({required this.packageId, required this.name});
+
+  final String packageId;
+  final String name;
+
+  Map<String, dynamic> toJson() => {'packageId': packageId, 'name': name};
+
+  static CatalogApp? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final packageId = raw['packageId'];
+    if (packageId is! String || packageId.isEmpty) return null;
+    final name = raw['name'];
+    return CatalogApp(
+      packageId: packageId,
+      name: name is String && name.trim().isNotEmpty ? name.trim() : packageId,
+    );
+  }
+}
+
 /// The block list a parent has set for one child.
 @immutable
 class RemoteBlocks {
   const RemoteBlocks({
     this.apps = const [],
     this.youtube = YoutubeRules.off,
+    this.enforced = true,
     this.updatedAt,
   });
 
   final List<RemoteBlock> apps;
   final YoutubeRules youtube;
+
+  /// Whether the parent is enforcing the list or only watching.
+  ///
+  /// The list is kept either way: a parent who turns enforcement off for a
+  /// week should find their choices where they left them. It is the child's
+  /// side that reads this and decides what to push to the engine.
+  final bool enforced;
+
   final DateTime? updatedAt;
 
   bool get isEmpty => apps.isEmpty && !youtube.any;
 
+  /// The rules that are actually in force on the child's device.
+  RemoteBlocks get inForce => enforced ? this : const RemoteBlocks();
+
   Map<String, dynamic> toJson() => {
     'apps': apps.map((a) => a.toJson()).toList(growable: false),
     'youtube': youtube.toJson(),
+    'enforced': enforced,
     'updatedAt': updatedAt?.millisecondsSinceEpoch,
   };
+
+  RemoteBlocks copyWith({
+    List<RemoteBlock>? apps,
+    YoutubeRules? youtube,
+    bool? enforced,
+  }) => RemoteBlocks(
+    apps: apps ?? this.apps,
+    youtube: youtube ?? this.youtube,
+    enforced: enforced ?? this.enforced,
+    updatedAt: DateTime.now(),
+  );
 
   static RemoteBlocks fromJson(Object? raw) {
     if (raw is! Map) return const RemoteBlocks();
@@ -230,6 +266,7 @@ class RemoteBlocks {
       youtube: youtube is Map
           ? YoutubeRules.fromJson(Map<String, dynamic>.from(youtube))
           : YoutubeRules.off,
+      enforced: raw['enforced'] != false,
       updatedAt: updated is num
           ? DateTime.fromMillisecondsSinceEpoch(updated.toInt())
           : null,

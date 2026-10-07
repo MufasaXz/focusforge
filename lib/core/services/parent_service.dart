@@ -51,6 +51,13 @@ abstract class ParentService {
   /// The block list a parent set for this device, if any.
   Stream<RemoteBlocks?> watchBlocks(String childUid);
 
+  /// Publishes the apps installed on this device, so a parent can pick from
+  /// them rather than typing a package name.
+  Future<void> publishCatalog(String uid, List<CatalogApp> apps);
+
+  /// The apps on the child's device, as the parent's picker sees them.
+  Stream<List<CatalogApp>> watchCatalog(String childUid);
+
   void dispose();
 }
 
@@ -201,7 +208,6 @@ class FirebaseParentService implements ParentService {
           .set({
             'name': name,
             'linkedAt': DateTime.now().millisecondsSinceEpoch,
-            'focusOnly': false,
           }),
     );
     // A code is good once. Leaving it live would let a second parent claim the
@@ -282,6 +288,34 @@ class FirebaseParentService implements ParentService {
       .map((doc) => doc.exists ? RemoteBlocks.fromJson(doc.data()) : null);
 
   @override
+  Future<void> publishCatalog(String uid, List<CatalogApp> apps) => _guard(
+    () => _db
+        .collection('users')
+        .doc(uid)
+        .collection('catalog')
+        .doc('current')
+        .set({
+          'apps': apps.map((a) => a.toJson()).toList(growable: false),
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        }),
+  );
+
+  @override
+  Stream<List<CatalogApp>> watchCatalog(String childUid) => _db
+      .collection('users')
+      .doc(childUid)
+      .collection('catalog')
+      .doc('current')
+      .snapshots()
+      .map((doc) {
+        final apps = doc.data()?['apps'];
+        if (apps is! List) return const <CatalogApp>[];
+        return [
+          for (final row in apps) ?CatalogApp.fromJson(row),
+        ];
+      });
+
+  @override
   void dispose() {}
 }
 
@@ -330,6 +364,13 @@ class UnavailableParentService implements ParentService {
 
   @override
   Stream<RemoteBlocks?> watchBlocks(String childUid) => Stream.value(null);
+
+  @override
+  Future<void> publishCatalog(String uid, List<CatalogApp> apps) async {}
+
+  @override
+  Stream<List<CatalogApp>> watchCatalog(String childUid) =>
+      Stream.value(const []);
 
   @override
   void dispose() {}

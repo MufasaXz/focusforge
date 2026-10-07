@@ -134,6 +134,8 @@ Future<ProviderContainer> bootstrap() async {
   // And a linked child publishes its summary for the parent to read. Nothing
   // is sent while no parent is linked.
   container.read(parentProgressPublisherProvider);
+  // The app list a parent picks blocks from, published on the same terms.
+  container.read(catalogPublisherProvider);
 
   // -- Social ----------------------------------------------------------------
   container

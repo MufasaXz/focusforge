@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/parent.dart';
+import '../services/app_catalog.dart';
 import '../services/local_store.dart';
 import '../services/parent_service.dart';
 import 'app_providers.dart';
@@ -163,6 +164,44 @@ final childBlocksProvider = StreamProvider.family<RemoteBlocks?, String>((
   return service.watchBlocks(childUid);
 });
 
+/// The apps on the selected child's device, for the parent's picker.
+final childCatalogProvider = StreamProvider.family<List<CatalogApp>, String>((
+  ref,
+  childUid,
+) {
+  final service = ref.watch(parentServiceProvider);
+  if (!service.available) return Stream.value(const <CatalogApp>[]);
+  return service.watchCatalog(childUid);
+});
+
+/// Whether the parent's security code has been entered on this run.
+///
+/// Session-only on purpose: the code is what stands between a child and the
+/// rules their parent set, so it is asked for again after the app is closed
+/// rather than remembered for good.
+class ParentLockNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void open() => state = true;
+
+  void lock() => state = false;
+}
+
+final parentLockProvider = NotifierProvider<ParentLockNotifier, bool>(
+  ParentLockNotifier.new,
+);
+
+/// True while a change to the shield has to clear the parent's code first.
+///
+/// All three parts matter: a linked parent, a code that was actually set —
+/// setting one is optional — and this run not having been unlocked already.
+final parentLockedProvider = Provider<bool>((ref) {
+  if (ref.watch(guardianProvider).value == null) return false;
+  if (!ref.watch(securityCodeProvider)) return false;
+  return !ref.watch(parentLockProvider);
+});
+
 // -- Wiring ------------------------------------------------------------------
 
 /// Keeps the engine in step with the timer and with the parent's rules.
@@ -175,7 +214,10 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
   // rebuild of the config — a toggle, a preset change — carries them too.
   ref.listen(myRemoteBlocksProvider, (previous, next) {
     final blocks = next.value;
-    if (blocks != null) ref.read(remoteBlocksProvider.notifier).set(blocks);
+    if (blocks == null) return;
+    // A parent who is only watching keeps their list, and this is what makes
+    // "only watching" mean nothing is enforced rather than nothing is stored.
+    ref.read(remoteBlocksProvider.notifier).set(blocks.inForce);
   });
   ref.listen(timerProvider, (previous, next) => syncShield(ref));
   syncShield(ref);
@@ -214,6 +256,36 @@ final parentProgressPublisherProvider = Provider<void>((ref) {
 
   ref.listen(sessionsProvider, (previous, next) => unawaited(publish()));
   ref.listen(dailyGoalProvider, (previous, next) => unawaited(publish()));
+  ref.listen(guardianProvider, (previous, next) => unawaited(publish()));
+  unawaited(publish());
+});
+
+/// Publishes this device's app list so a linked parent can choose from it.
+///
+/// Only while a parent is linked, and only the two fields the picker needs:
+/// the package the rule is written against and a name to recognise it by.
+/// Nothing about how the apps are used travels with it.
+final catalogPublisherProvider = Provider<void>((ref) {
+  Future<void> publish() async {
+    final service = ref.read(parentServiceProvider);
+    final uid = ref.read(accountUidProvider);
+    if (!service.available || uid == null) return;
+    if (ref.read(guardianProvider).value == null) return;
+
+    final installed = await AppCatalog.installed(
+      excludePackage: AppCatalog.selfPackage,
+    );
+    // System apps are most of the list and none of the intent: a parent
+    // blocking the settings app is not what "block their apps" means, and the
+    // engine refuses several of them anyway.
+    await service.publishCatalog(uid, [
+      for (final app in installed)
+        if (!app.isSystem)
+          CatalogApp(packageId: app.packageId, name: app.name),
+    ]);
+  }
+
+  // A fresh link is the moment the parent's picker has something to show.
   ref.listen(guardianProvider, (previous, next) => unawaited(publish()));
   unawaited(publish());
 });
