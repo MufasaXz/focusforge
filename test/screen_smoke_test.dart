@@ -129,7 +129,10 @@ void main() {
   Future<void> tipsSeen() => store.setBool(StoreKeys.coachSeen, true);
 
   /// Runs [body] with the platform pinned to Android.
-  Future<void> onAndroid(WidgetTester tester, Future<void> Function() body) async {
+  Future<void> onAndroid(
+    WidgetTester tester,
+    Future<void> Function() body,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await body();
@@ -139,7 +142,7 @@ void main() {
   }
 
   group('Shield screen', () {
-    testWidgets('every installed app is listed, with no add step', (
+    testWidgets('the list is the apps the user installed, with no add step', (
       tester,
     ) async {
       useTallPhone(tester);
@@ -162,12 +165,49 @@ void main() {
       await settle(tester);
 
       expect(find.text('Social App'), findsOneWidget);
-      expect(find.text('Vendor Browser'), findsOneWidget);
-      // The system app is listed, and says that it is one.
-      expect(find.text('System'), findsOneWidget);
+      expect(
+        find.text('Vendor Browser'),
+        findsNothing,
+        reason:
+            'system apps are most of the device and none of the intent — they '
+            'buried the apps the user chose to install',
+      );
       // There is no picker to open: the list *is* the device.
       expect(find.text('Add apps'), findsNothing);
       expect(find.text('All apps'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a system app that already carries a rule stays visible', (
+      tester,
+    ) async {
+      useTallPhone(tester);
+      final container = freshContainer(
+        apps: const [
+          InstalledApp(
+            packageId: 'com.example.vendor',
+            name: 'Vendor Browser',
+            isSystem: true,
+          ),
+        ],
+      );
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.example.vendor',
+            name: 'Vendor Browser',
+            tier: WhitelistTier.blocked,
+          );
+
+      await tester.pumpWidget(wrap(container, const ShieldScreen()));
+      await settle(tester);
+
+      expect(
+        find.text('Vendor Browser'),
+        findsOneWidget,
+        reason: 'a rule with no row is a restriction the user cannot turn off',
+      );
+      expect(find.text('System'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -187,17 +227,21 @@ void main() {
           ),
         ],
       );
-      await container.read(whitelistProvider.notifier).addInstalledApp(
-        packageId: 'com.example.blocked',
-        name: 'Blocked App',
-        tier: WhitelistTier.blocked,
-      );
-      await container.read(whitelistProvider.notifier).addInstalledApp(
-        packageId: 'com.example.budget',
-        name: 'Budgeted App',
-        tier: WhitelistTier.budgeted,
-        budgetMinutes: 30,
-      );
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.example.blocked',
+            name: 'Blocked App',
+            tier: WhitelistTier.blocked,
+          );
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.example.budget',
+            name: 'Budgeted App',
+            tier: WhitelistTier.budgeted,
+            budgetMinutes: 30,
+          );
 
       await tester.pumpWidget(wrap(container, const ShieldScreen()));
       await settle(tester);
@@ -229,12 +273,14 @@ void main() {
         usage: const {'com.example.budget': 12},
         usageAccess: true,
       );
-      await container.read(whitelistProvider.notifier).addInstalledApp(
-        packageId: 'com.example.budget',
-        name: 'Budgeted App',
-        tier: WhitelistTier.budgeted,
-        budgetMinutes: 30,
-      );
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.example.budget',
+            name: 'Budgeted App',
+            tier: WhitelistTier.budgeted,
+            budgetMinutes: 30,
+          );
 
       await tester.pumpWidget(wrap(container, const ShieldScreen()));
       await settle(tester);
@@ -278,17 +324,21 @@ void main() {
 
     testWidgets('an app the engine will never cover says so', (tester) async {
       useTallPhone(tester);
+      // A launcher the user installed themselves: not a system app, and still
+      // one the engine refuses to cover, because locking someone out of their
+      // home screen is not a restriction anyone asked for. The protected rows
+      // that *are* system apps never reach the list — that is the test above.
       final container = freshContainer(
         apps: const [
           InstalledApp(
-            packageId: 'com.android.systemui',
-            name: 'System UI',
-            isSystem: true,
+            packageId: 'com.example.launcher',
+            name: 'Third-party Launcher',
+            isSystem: false,
           ),
         ],
         // Straight from the engine: this is the list the running service
         // refuses to cover, not a copy the screen keeps.
-        protectedPackages: const {'com.android.systemui'},
+        protectedPackages: const {'com.example.launcher'},
       );
 
       await tester.pumpWidget(wrap(container, const ShieldScreen()));
@@ -307,13 +357,18 @@ void main() {
     ) async {
       useTallPhone(tester);
       await onAndroid(tester, () async {
-        final container = freshContainer(shieldEnabled: true, usageAccess: false);
-        await container.read(whitelistProvider.notifier).addInstalledApp(
-          packageId: 'com.example.budget',
-          name: 'Budgeted App',
-          tier: WhitelistTier.budgeted,
-          budgetMinutes: 30,
+        final container = freshContainer(
+          shieldEnabled: true,
+          usageAccess: false,
         );
+        await container
+            .read(whitelistProvider.notifier)
+            .addInstalledApp(
+              packageId: 'com.example.budget',
+              name: 'Budgeted App',
+              tier: WhitelistTier.budgeted,
+              budgetMinutes: 30,
+            );
 
         await tester.pumpWidget(wrap(container, const ShieldScreen()));
         await settle(tester);
@@ -385,7 +440,8 @@ void main() {
       expect(
         find.text('SCREEN TIME TODAY'),
         findsOneWidget,
-        reason: 'screen time is about the phone, not the session log, so it '
+        reason:
+            'screen time is about the phone, not the session log, so it '
             'is worth showing before the first session',
       );
       // The shield summary used to live here too. It answers a question about
@@ -402,14 +458,16 @@ void main() {
       final now = DateTime.now();
 
       await tipsSeen();
-      await container.read(sessionsProvider.notifier).record(
-        FocusSession(
-          id: 's-test',
-          subjectId: 'math',
-          startedAt: DateTime(now.year, now.month, now.day, 9),
-          minutes: 50,
-        ),
-      );
+      await container
+          .read(sessionsProvider.notifier)
+          .record(
+            FocusSession(
+              id: 's-test',
+              subjectId: 'math',
+              startedAt: DateTime(now.year, now.month, now.day, 9),
+              minutes: 50,
+            ),
+          );
 
       await tester.pumpWidget(wrap(container, const DashboardScreen()));
       await settle(tester);

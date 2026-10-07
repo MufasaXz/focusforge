@@ -53,7 +53,9 @@ class ScreenTimeRow {
 /// the top of the raw list and neither is something the user chose to spend
 /// time in, so leaving them in would bury the one number that means something.
 /// A package with no name in the installed list is dropped with them.
-final screenTimeTodayProvider = FutureProvider<List<ScreenTimeRow>>((ref) async {
+final screenTimeTodayProvider = FutureProvider<List<ScreenTimeRow>>((
+  ref,
+) async {
   final usage = await ref.watch(appUsageTodayProvider.future);
   if (usage.isEmpty) return const [];
 
@@ -63,11 +65,7 @@ final screenTimeTodayProvider = FutureProvider<List<ScreenTimeRow>>((ref) async 
   final rows = <ScreenTimeRow>[
     for (final entry in usage.entries)
       if (names[entry.key] case final String name)
-        ScreenTimeRow(
-          packageId: entry.key,
-          name: name,
-          minutes: entry.value,
-        ),
+        ScreenTimeRow(packageId: entry.key, name: name, minutes: entry.value),
   ]..sort((a, b) => b.minutes.compareTo(a.minutes));
   return rows;
 });
@@ -127,11 +125,18 @@ class ShieldAppRow {
   bool get isRestricted => rule?.tier.isEnforced ?? false;
 }
 
-/// Every app on the device, joined with its rule and today's usage.
+/// Every app on the device worth a row, joined with its rule and today's usage.
 ///
 /// One list rather than a list of rules plus a picker: with the whole device
 /// on screen, "add an app" stops being a step and a rule becomes something you
 /// switch on a row that is already there.
+///
+/// System apps are left out. They are most of the list — every service, every
+/// overlay, every vendor stub — and they are not what anyone opens the Shield
+/// tab to close, so they buried the handful of apps the user actually chose to
+/// install. The one exception is a system app that already carries a rule:
+/// hiding it would leave a restriction running with nothing on screen that
+/// could turn it off.
 final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
   final apps = ref.watch(installedAppsProvider).valueOrNull;
   if (apps == null) return const [];
@@ -147,14 +152,15 @@ final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
 
   return [
     for (final app in apps)
-      ShieldAppRow(
-        packageId: app.packageId,
-        name: app.name,
-        isSystem: app.isSystem,
-        usedMinutes: usage[app.packageId] ?? 0,
-        isProtected: protectedSet.contains(app.packageId),
-        rule: rules[app.packageId],
-      ),
+      if (!app.isSystem || rules.containsKey(app.packageId))
+        ShieldAppRow(
+          packageId: app.packageId,
+          name: app.name,
+          isSystem: app.isSystem,
+          usedMinutes: usage[app.packageId] ?? 0,
+          isProtected: protectedSet.contains(app.packageId),
+          rule: rules[app.packageId],
+        ),
   ];
 });
 

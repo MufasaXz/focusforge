@@ -81,6 +81,38 @@ class FocusAccessibilityService : AccessibilityService() {
             "shorts_player",
         )
 
+        /**
+         * View ids that only exist on a browse surface — the home feed and the
+         * search results list.
+         *
+         * The home page does not advertise itself with a single id, and the
+         * list has changed names across YouTube releases, so several are
+         * matched and any one of them is enough. None of them appears on the
+         * watch page, which is what keeps a lecture opened from a direct link
+         * playing.
+         */
+        private val FEED_IDS = listOf(
+            "results",
+            "feed_recycler_view",
+            "home_feed",
+            "rich_grid",
+        )
+
+        /**
+         * View ids that mean a video is actually being watched.
+         *
+         * Deliberately not `player_view`: the home page inflates a player
+         * container for the miniplayer, so matching it read the feed as "a
+         * video is playing" and the home block never fired — which is the bug
+         * this list exists to close. The watch page's own player and its
+         * controls are not present anywhere else.
+         */
+        private val WATCH_IDS = listOf(
+            "watch_player",
+            "player_controller",
+            "fullscreen_player",
+        )
+
         /** Extras the service puts on the intent it sends to [MainActivity]. */
         const val EXTRA_BLOCKED_PACKAGE = "ff.blocked.package"
         const val EXTRA_BLOCKED_LABEL = "ff.blocked.label"
@@ -524,6 +556,13 @@ class FocusAccessibilityService : AccessibilityService() {
      * opened — the carousel on the home page was mistaken for someone watching
      * Shorts, and the app never got as far as loading. Only ids that exist
      * solely while the vertical player is on screen count.
+     *
+     * The feed rule has the mirror-image problem. It was reading the home page
+     * as "a video is playing", because the home page inflates a player
+     * container for the miniplayer, so the feed switch did nothing on the one
+     * screen it was named after. It now asks whether a *watch* surface is up
+     * ([WATCH_IDS]) rather than whether any player node exists, and matches
+     * the browse surfaces by their own ids ([FEED_IDS]).
      */
     private fun youtubeReason(
         youtube: YoutubeRules,
@@ -532,8 +571,8 @@ class FocusAccessibilityService : AccessibilityService() {
         if (root == null) return null
 
         var shorts = false
-        var player = false
-        var results = false
+        var watching = false
+        var feed = false
 
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
@@ -544,10 +583,8 @@ class FocusAccessibilityService : AccessibilityService() {
             val id = node.viewIdResourceName
             if (id != null) {
                 if (SHORTS_PLAYER_IDS.any { id.contains(it) }) shorts = true
-                if (id.contains("player_view") || id.contains("watch_player")) {
-                    player = true
-                }
-                if (id.contains("results")) results = true
+                if (WATCH_IDS.any { id.contains(it) }) watching = true
+                if (FEED_IDS.any { id.contains(it) }) feed = true
             }
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { queue.add(it) }
@@ -555,8 +592,10 @@ class FocusAccessibilityService : AccessibilityService() {
         }
 
         return when {
+            // Shorts first: the vertical player can sit over the feed, and
+            // there the more specific reason is the one worth showing.
             shorts && youtube.shorts -> "You asked FocusForge to keep Shorts closed."
-            results && !player && youtube.feed ->
+            feed && !watching && youtube.feed ->
                 "You asked FocusForge to keep the YouTube feed closed."
             else -> null
         }
