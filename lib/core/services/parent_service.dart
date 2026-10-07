@@ -188,12 +188,13 @@ class FirebaseParentService implements ParentService {
     // child. Both are written before the code is retired, so a half-finished
     // link is a retry rather than a lost pairing.
     //
-    // The guardian is a *document* at `users/{uid}/guardian`, not a document
-    // in a subcollection of the same name: the rules grant that path and the
-    // `isGuardianOf()` lookup reads it, so a `guardian/link` document is a
-    // write nothing has ever allowed.
+    // The record is a document *inside* the child's `guardian` collection:
+    // `users/{uid}/guardian/link`. A document path must have an even number
+    // of segments — `users/{uid}/guardian` names a collection, not a
+    // document, and the SDK refuses it ("document references must have an
+    // even number of segments") before a request is ever sent.
     await _guard(
-      () => _db.doc('users/$childUid/guardian').set({
+      () => _db.doc('users/$childUid/guardian/link').set({
         'parentUid': me,
         'parentName': parentName,
         'linkedAt': DateTime.now().millisecondsSinceEpoch,
@@ -232,13 +233,13 @@ class FirebaseParentService implements ParentService {
 
   @override
   Stream<GuardianLink?> watchGuardian(String uid) => _db
-      .doc('users/$uid/guardian')
+      .doc('users/$uid/guardian/link')
       .snapshots()
       .map((doc) => doc.exists ? GuardianLink.fromJson(doc.data()) : null);
 
   @override
   Future<void> unlink(String uid) =>
-      _guard(() => _db.doc('users/$uid/guardian').delete());
+      _guard(() => _db.doc('users/$uid/guardian/link').delete());
 
   @override
   Future<void> publishProgress(String uid, ChildProgress progress) => _guard(
