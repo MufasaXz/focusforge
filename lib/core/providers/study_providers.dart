@@ -524,6 +524,7 @@ class TimerState {
     this.presetIndex = 0,
     this.subjectId,
     this.segmentStartedAt,
+    this.segmentExtra = Duration.zero,
   });
 
   final TimerPhase phase;
@@ -546,7 +547,18 @@ class TimerState {
   /// with a real start time.
   final DateTime? segmentStartedAt;
 
+  /// What the dock's ±5 controls have added to (or taken off) this segment.
+  ///
+  /// It belongs to the segment, not to the plan: the next block runs its own
+  /// length again. It is part of the segment's length, so the ring's
+  /// denominator and the minutes a finished block logs both include it.
+  final Duration segmentExtra;
+
   bool get idle => !running && remaining == _presetDurationOf(phase);
+
+  /// How long this segment is actually running for.
+  Duration plannedDuration(PomodoroPreset preset) =>
+      _durationForPreset(preset, phase) + segmentExtra;
 
   TimerState copyWith({
     TimerPhase? phase,
@@ -559,6 +571,7 @@ class TimerState {
     String? subjectId,
     bool clearSubject = false,
     DateTime? segmentStartedAt,
+    Duration? segmentExtra,
   }) => TimerState(
     phase: phase ?? this.phase,
     running: running ?? this.running,
@@ -571,7 +584,15 @@ class TimerState {
     // "keep" — so clearing needs its own flag, exactly like [clearTargetEnd].
     subjectId: clearSubject ? null : (subjectId ?? this.subjectId),
     segmentStartedAt: segmentStartedAt ?? this.segmentStartedAt,
+    segmentExtra: segmentExtra ?? this.segmentExtra,
   );
+
+  static Duration _durationForPreset(PomodoroPreset preset, TimerPhase phase) =>
+      switch (phase) {
+        TimerPhase.focus => preset.focusDuration,
+        TimerPhase.shortBreak => preset.shortBreakDuration,
+        TimerPhase.longBreak => preset.longBreakDuration,
+      };
 
   static Duration _presetDurationOf(TimerPhase p) => p == TimerPhase.focus
       ? const Duration(minutes: 25)
@@ -579,11 +600,7 @@ class TimerState {
 
   /// 0..1 through the current segment, for the ring.
   double progressFor(PomodoroPreset preset) {
-    final total = switch (phase) {
-      TimerPhase.focus => preset.focusDuration,
-      TimerPhase.shortBreak => preset.shortBreakDuration,
-      TimerPhase.longBreak => preset.longBreakDuration,
-    };
+    final total = plannedDuration(preset);
     if (total.inMilliseconds == 0) return 0;
     return (1 - remaining.inMilliseconds / total.inMilliseconds).clamp(
       0.0,
@@ -691,6 +708,7 @@ class TimerNotifier extends Notifier<TimerState> {
         'segmentStartedAt': state.segmentStartedAt?.millisecondsSinceEpoch,
         'completedFocusSegments': state.completedFocusSegments,
         'remainingMs': state.remaining.inMilliseconds,
+        'segmentExtraMs': state.segmentExtra.inMilliseconds,
       });
 
   /// Restores the persisted timer.
@@ -723,6 +741,8 @@ class TimerNotifier extends Notifier<TimerState> {
       _durationForPreset(preset, phase).inMilliseconds,
     );
     final paused = Duration(milliseconds: pausedMs < 0 ? 0 : pausedMs);
+    final extraMs = _intOr(stored['segmentExtraMs'], 0);
+    final extra = Duration(milliseconds: extraMs < 0 ? 0 : extraMs);
 
     _ticker?.cancel();
     final now = DateTime.now();
@@ -741,7 +761,7 @@ class TimerNotifier extends Notifier<TimerState> {
           id: 's-${started.microsecondsSinceEpoch}',
           subjectId: subjectId ?? '',
           startedAt: started,
-          minutes: preset.focus,
+          minutes: (preset.focusDuration + extra).inMinutes,
         ),
       );
     }
@@ -756,6 +776,7 @@ class TimerNotifier extends Notifier<TimerState> {
         presetIndex: presetIndex,
         subjectId: subjectId,
         segmentStartedAt: startedAt,
+        segmentExtra: extra,
       );
       _startTicker();
       unawaited(_persist());
@@ -774,6 +795,7 @@ class TimerNotifier extends Notifier<TimerState> {
       completedFocusSegments:
           segments + (finishedWhileAway && phase == TimerPhase.focus ? 1 : 0),
       segmentStartedAt: running ? null : startedAt,
+      segmentExtra: running ? Duration.zero : extra,
     );
     unawaited(_persist());
   }
@@ -857,6 +879,46 @@ class TimerNotifier extends Notifier<TimerState> {
 
   void toggle() => state.running ? pause() : start();
 
+  /// The shortest a segment can be nudged down to, and the longest up to.
+  static const minSegment = Duration(minutes: 5);
+  static const maxSegment = Duration(minutes: 180);
+
+  /// Adds [delta] to the current segment — the focus block while focusing,
+  /// the break while resting.
+  ///
+  /// A running segment moves its deadline rather than its counter, so the
+  /// clock, the ring and the minutes a finished block logs all agree on how
+  /// long the block really was. A block shortened past its own end simply
+  /// finishes on the next tick; one that would fall under [minSegment] or
+  /// past [maxSegment] is left alone rather than half-applied.
+  void nudge(Duration delta) {
+    final planned = state.plannedDuration(preset) + delta;
+    if (planned < minSegment || planned > maxSegment) return;
+
+    final extra = state.segmentExtra + delta;
+    final target = state.targetEnd;
+    if (state.running && target != null) {
+      final moved = target.add(delta);
+      final remaining = moved.difference(DateTime.now());
+      state = state.copyWith(
+        segmentExtra: extra,
+        targetEnd: moved,
+        remaining: remaining.isNegative ? Duration.zero : remaining,
+      );
+    } else if (state.segmentStartedAt != null) {
+      final remaining = state.remaining + delta;
+      state = state.copyWith(
+        segmentExtra: extra,
+        remaining: remaining.isNegative ? Duration.zero : remaining,
+      );
+    } else {
+      // Not started: the segment is exactly as long as it is now planned to
+      // be, so the clock shows the new length before the first tick.
+      state = state.copyWith(segmentExtra: extra, remaining: planned);
+    }
+    unawaited(_persist());
+  }
+
   /// Abandons the current segment and returns to a fresh focus block.
   void reset() {
     _ticker?.cancel();
@@ -910,7 +972,9 @@ class TimerNotifier extends Notifier<TimerState> {
 
     if (finished == TimerPhase.focus) {
       final started = state.segmentStartedAt ?? DateTime.now();
-      final minutes = preset.focus;
+      // The block's real length, not the plan's: one the dock stretched or
+      // trimmed is logged as it was actually run.
+      final minutes = (preset.focusDuration + state.segmentExtra).inMinutes;
       if (log) {
         _completions.add(minutes);
         // The subject counters are derived from this log, so recording the

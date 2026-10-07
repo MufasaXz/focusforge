@@ -50,6 +50,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   /// rather than as a card. Centred, so the pair stays under the timer.
   static const double _dockWidth = 460;
 
+  /// The ±5 controls that flank the bar: square, so the pair reads as one
+  /// frame around it whatever the bar's own width ends up being.
+  static const double _nudgeSize = 44;
+
   StreamSubscription<int>? _completions;
   Timer? _celebrationTimer;
 
@@ -129,6 +133,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final accent = _phaseColor(t, timer.phase);
     final clock = formatClock(timer.remaining);
     final phaseNoun = timer.phase == TimerPhase.focus ? 'focus' : 'break';
+    // A segment can only be nudged within its own bounds, so a control that
+    // would take it past one of them greys out rather than silently refusing.
+    final planned = timer.plannedDuration(preset);
+    const nudge = Duration(minutes: 5);
+    final canShrink = planned - nudge >= TimerNotifier.minSegment;
+    final canGrow = planned + nudge <= TimerNotifier.maxSegment;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
     // The dock floats above the nav-bar band; the scroll view has to clear both,
@@ -443,72 +453,106 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           bottom: dockBottom,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _dockWidth),
-              child: Card.filled(
-                color: t.surfaceContainerHigh,
-                shape: const StadiumBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.sm,
-                    vertical: Gap.sm,
+              // The bar keeps its own width and the ±5 controls sit outside
+              // it. On a narrow screen the bar gives up width instead: a nudge
+              // that scrolled off the row would be worse than a shorter pill.
+              constraints: const BoxConstraints(
+                maxWidth: _dockWidth + 2 * (_nudgeSize + Gap.sm),
+              ),
+              child: Row(
+                children: [
+                  _DockNudge(
+                    minutes: -5,
+                    enabled: canShrink,
+                    color: t.onSurfaceVariant,
+                    semanticLabel: 'Take five minutes off the $phaseNoun',
+                    onTap: () => ref
+                        .read(timerProvider.notifier)
+                        .nudge(const Duration(minutes: -5)),
                   ),
-                  // Centred rather than spread. The bar keeps its full width —
-                  // it is a surface the thumb lands on, and a shrink-wrapped
-                  // pill floating over the page reads as a tooltip — but the
-                  // three controls sit together in the middle of it, because
-                  // Reset and Skip are one gesture away from the play button,
-                  // not a reach away from it.
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _DockAction(
-                        icon: Icons.refresh_rounded,
-                        label: 'Reset',
-                        semanticLabel: 'Reset timer',
-                        color: t.onSurfaceVariant,
-                        onTap: () => ref.read(timerProvider.notifier).reset(),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Semantics(
-                        button: true,
-                        label: timer.running
-                            ? 'Pause $phaseNoun timer'
-                            : 'Start $phaseNoun timer',
-                        excludeSemantics: true,
-                        onTap: toggleTimer,
-                        child: Pressable(
-                          onTap: toggleTimer,
-                          scale: 0.92,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 260),
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: accent,
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Card.filled(
+                      color: t.surfaceContainerHigh,
+                      shape: const StadiumBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Gap.sm,
+                          vertical: Gap.sm,
+                        ),
+                        // Centred rather than spread. The bar keeps its full
+                        // width — it is a surface the thumb lands on, and a
+                        // shrink-wrapped pill floating over the page reads as
+                        // a tooltip — but the three controls sit together in
+                        // the middle of it, because Reset and Skip are one
+                        // gesture away from the play button, not a reach away
+                        // from it.
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _DockAction(
+                              icon: Icons.refresh_rounded,
+                              label: 'Reset',
+                              semanticLabel: 'Reset timer',
+                              color: t.onSurfaceVariant,
+                              onTap: () =>
+                                  ref.read(timerProvider.notifier).reset(),
                             ),
-                            child: Icon(
-                              timer.running
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              size: 27,
-                              color: _onPhaseColor(t, timer.phase),
+                            const SizedBox(width: Gap.sm),
+                            Semantics(
+                              button: true,
+                              label: timer.running
+                                  ? 'Pause $phaseNoun timer'
+                                  : 'Start $phaseNoun timer',
+                              excludeSemantics: true,
+                              onTap: toggleTimer,
+                              child: Pressable(
+                                onTap: toggleTimer,
+                                scale: 0.92,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 260),
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: accent,
+                                  ),
+                                  child: Icon(
+                                    timer.running
+                                        ? Icons.pause_rounded
+                                        : Icons.play_arrow_rounded,
+                                    size: 27,
+                                    color: _onPhaseColor(t, timer.phase),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: Gap.sm),
+                            _DockAction(
+                              icon: Icons.skip_next_rounded,
+                              label: 'Skip',
+                              semanticLabel: 'Skip to next phase',
+                              color: t.onSurfaceVariant,
+                              onTap: () =>
+                                  ref.read(timerProvider.notifier).skip(),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: Gap.sm),
-                      _DockAction(
-                        icon: Icons.skip_next_rounded,
-                        label: 'Skip',
-                        semanticLabel: 'Skip to next phase',
-                        color: t.onSurfaceVariant,
-                        onTap: () => ref.read(timerProvider.notifier).skip(),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: Gap.sm),
+                  _DockNudge(
+                    minutes: 5,
+                    enabled: canGrow,
+                    color: t.onSurfaceVariant,
+                    semanticLabel: 'Add five minutes to the $phaseNoun',
+                    onTap: () => ref
+                        .read(timerProvider.notifier)
+                        .nudge(const Duration(minutes: 5)),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1099,6 +1143,62 @@ class _DockAction extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One of the ±5 controls that flank the session bar.
+///
+/// It acts on whichever segment is on the clock — the focus block while
+/// focusing, the break while resting — so the pair carries no mode of its
+/// own, and it moves the segment rather than the plan: the next block runs
+/// its own length again.
+class _DockNudge extends StatelessWidget {
+  const _DockNudge({
+    required this.minutes,
+    required this.enabled,
+    required this.color,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  final int minutes;
+  final bool enabled;
+  final Color color;
+  final String semanticLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final t = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel,
+      excludeSemantics: true,
+      onTap: enabled ? onTap : null,
+      child: Pressable(
+        onTap: enabled ? onTap : null,
+        scale: 0.92,
+        child: Card.filled(
+          color: t.surfaceContainerHigh,
+          shape: const StadiumBorder(),
+          child: SizedBox(
+            width: _FocusScreenState._nudgeSize,
+            height: _FocusScreenState._nudgeSize,
+            child: Center(
+              child: Text(
+                minutes > 0 ? '+$minutes' : '$minutes',
+                style: tt.labelLarge?.copyWith(
+                  color: enabled ? color : color.withValues(alpha: 0.38),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ),
       ),
