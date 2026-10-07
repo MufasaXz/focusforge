@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/icon_registry.dart';
+import '../models/parent.dart';
 import '../models/shield.dart';
 import '../services/local_store.dart';
 import '../services/native_shield_service.dart';
@@ -76,11 +77,19 @@ void syncShield(
   // receiver has no context type, so Dart would infer the `ref.read` result as
   // nullable.
   final List<WhitelistEntry> apps = whitelist ?? ref.read(whitelistProvider);
+  final RemoteBlocks remote = ref.read(remoteBlocksProvider);
+  final YoutubeRules localYoutube = youtube ?? ref.read(youtubeRulesProvider);
+  // A parent's surface rules win while they are in force: they were set on
+  // another device and the child cannot see or edit them here.
+  final YoutubeRules surfaces = remote.youtube.any
+      ? remote.youtube
+      : localYoutube;
   final config = ShieldConfig(
     whitelist: apps,
-    youtube: youtube ?? ref.read(youtubeRulesProvider),
+    youtube: surfaces,
     strictMode: strictMode ?? ref.read(strictModeProvider),
     focusUntil: focusWindowEnd(ref.read(timerProvider)),
+    remote: remote.apps,
   );
   // Fire and forget — a slow channel must never stall a toggle.
   unawaited(service.applyConfig(config));
@@ -95,22 +104,31 @@ DateTime? focusWindowEnd(TimerState timer) {
   return timer.targetEnd ?? DateTime.now().add(timer.remaining);
 }
 
-/// Keeps the engine's focus window in step with the timer.
+/// The blocks a parent has set for this device.
 ///
-/// A focus-only rule is armed exactly while a block runs, and only the timer
-/// knows when that is. One listener covers the start, the pause, the skip and
-/// the natural end of a block alike; reading it during bootstrap also pushes
-/// the whole config once at launch, which repairs a push that was lost while
-/// the app was closed.
-final shieldFocusWindowProvider = Provider<void>((ref) {
-  // `fireImmediately` is the launch push: whatever the engine is holding from
-  // before the app was closed is replaced by the state that is true now.
-  ref.listen(
-    timerProvider,
-    (previous, next) => syncShield(ref),
-    fireImmediately: true,
-  );
-});
+/// Held here rather than fetched by the engine: the parent layer watches
+/// Firestore and pushes what it finds in, and every path that rebuilds the
+/// config reads the same value — so a local toggle cannot quietly drop a
+/// parent's rule on its way to the service.
+class RemoteBlocksNotifier extends Notifier<RemoteBlocks> {
+  @override
+  RemoteBlocks build() => const RemoteBlocks();
+
+  /// Replaces the parent's rules and re-pushes the config.
+  void set(RemoteBlocks next) {
+    final wasEmpty = state.apps.isEmpty && !state.youtube.any;
+    final isEmpty = next.apps.isEmpty && !next.youtube.any;
+    // Nothing on either side is not a change worth a channel call.
+    if (wasEmpty && isEmpty) return;
+    state = next;
+    syncShield(ref);
+  }
+}
+
+final remoteBlocksProvider =
+    NotifierProvider<RemoteBlocksNotifier, RemoteBlocks>(
+      RemoteBlocksNotifier.new,
+    );
 
 // -- App rules ---------------------------------------------------------------
 
