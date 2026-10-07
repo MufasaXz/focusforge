@@ -9,7 +9,6 @@ enum AppPermission {
   accessibility,
   notifications,
   usageAccess,
-  overlay,
   doNotDisturb,
 }
 
@@ -29,10 +28,10 @@ enum PermissionOutcome {
 
   /// The request opened a system Settings page.
   ///
-  /// Android has no dialog for accessibility, usage access or overlay — the
-  /// user has to find the app in a list and toggle it themselves. The answer
-  /// therefore does not exist yet when [PermissionManager.request] returns,
-  /// and the UI must not claim either way until the app is resumed.
+  /// Android has no dialog for accessibility or usage access — the user has
+  /// to find the app in a list and toggle it themselves. The answer therefore
+  /// does not exist yet when [PermissionManager.request] returns, and the UI
+  /// must not claim either way until the app is resumed.
   openedSettings,
 
   /// This platform has no such permission.
@@ -67,7 +66,7 @@ class PermissionManager {
 
   /// Whether the current platform can be asked at all.
   ///
-  /// Notifications exist everywhere; the other four are Android's app-usage
+  /// Notifications exist everywhere; the other three are Android's app-usage
   /// and notification-policy APIs and have no iOS equivalent.
   bool supports(AppPermission permission) => switch (permission) {
     AppPermission.notifications => _isAndroid || _isApple,
@@ -114,11 +113,6 @@ class PermissionManager {
         case AppPermission.usageAccess:
           await UsageStats.openUsageAccessSettings();
           return await _settle(permission);
-
-        case AppPermission.overlay:
-          // Also a settings page on Android, not a dialog.
-          await Permission.systemAlertWindow.request();
-          return await _settle(permission);
       }
     } catch (_) {
       return PermissionOutcome.unsupported;
@@ -141,7 +135,6 @@ class PermissionManager {
         AppPermission.usageAccess => UsageStats.checkUsagePermission().then(
           (on) => on ?? false ? PermissionStatus.granted : PermissionStatus.denied,
         ),
-        AppPermission.overlay => Permission.systemAlertWindow.status,
       };
 
   static PermissionOutcome _fromStatus(PermissionStatus status) =>

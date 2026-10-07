@@ -5,8 +5,10 @@
          "permanently denied" without ever showing a dialog. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Overlay, for the Deep Breath Gate. -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <!-- No SYSTEM_ALERT_WINDOW: the Deep Breath Gate is drawn as a
+         TYPE_ACCESSIBILITY_OVERLAY window by the accessibility service, which
+         the service may do without the draw-over-apps permission. Asking for
+         it would be a permission the app never exercises. -->
 
     <!-- Usage access, for the per-app screen-time breakdown. A special
          permission: the user grants it from Settings rather than from a
@@ -50,12 +52,20 @@
              dialog for accessibility access — the user enables it from
              Settings — so this declaration is what makes FocusForge appear in
              that list at all. See res/xml/accessibilityservice.xml for what it
-             is allowed to observe. -->
+             is allowed to observe.
+
+             `isAccessibilityTool="false"` is the honest answer and Android 12+
+             reads it: this service is not a tool for people with disabilities,
+             it is a focus tool that watches which app came to the front. Play
+             asks for the attribute to be stated rather than inferred, and a
+             false here is what makes the system's own warning about the
+             service accurate. -->
         <service
             android:name=".shield.FocusAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false"
-            android:label="FocusForge">
+            android:label="FocusForge"
+            android:isAccessibilityTool="false">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>
@@ -80,16 +90,34 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-    </queries>
 
-    <!-- Package visibility. Android 11+ hides installed apps from
-         getInstalledPackages() unless the app says why it needs them, and the
-         picker is built on exactly that call. Without this the list comes back
-         with roughly twenty entries and no error, so the user simply cannot
-         find the app they want to block. The permission is only used to read
-         labels and icons for the picker; nothing is enumerated in the
-         background. -->
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission"/>
+        <!-- Package visibility, without QUERY_ALL_PACKAGES.
+
+             Android 11+ hides installed apps from the package manager unless
+             the app says which ones it needs. The shield's list wants exactly
+             one class of app: the ones with a launcher icon, because those are
+             the ones a user can open and therefore the only ones a block can
+             fire on. Declaring that intent is what grants visibility to them
+             and to nothing else.
+
+             `QUERY_ALL_PACKAGES` would also work and is what this used to
+             declare — but Google Play restricts it to a short list of approved
+             use cases, and "an app blocker" is not on it, so the permission is
+             a rejection waiting to happen. This does the same job and needs no
+             declaration form. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+
+        <!-- And the launcher itself, which is a HOME activity and not
+             necessarily a LAUNCHER one. The engine resolves it to put it on
+             the never-close list; without this entry the lookup comes back
+             null, the home app is not protected, and a rule that matched it
+             would leave the phone with no way back to the app list. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.HOME"/>
+        </intent>
+    </queries>
 </manifest>

@@ -15,10 +15,9 @@ import 'onboarding_chrome.dart';
 ///
 /// Every button here opens the real thing — a system dialog where the platform
 /// has one, and the relevant Settings page where it does not. Android gives
-/// accessibility, usage access and overlay no dialog at all, so those three
-/// send the user to Settings and are re-checked when the app is resumed. The
-/// one thing this screen must never do is tick a box the operating system has
-/// not ticked.
+/// accessibility and usage access no dialog at all, so those two send the user
+/// to Settings and are re-checked when the app is resumed. The one thing this
+/// screen must never do is tick a box the operating system has not ticked.
 class PermissionsStep extends ConsumerStatefulWidget {
   const PermissionsStep({super.key, required this.onNext});
 
@@ -183,18 +182,6 @@ const _permissions = <_Permission>[
         'Reads screen time per app so the dashboard can show where your day '
         'actually went.',
     privacy: 'Usage history never leaves this device and is never uploaded.',
-    platform: 'Android',
-  ),
-  _Permission(
-    kind: AppPermission.overlay,
-    title: 'Overlay',
-    icon: Icons.layers_rounded,
-    why:
-        'Draws the Deep Breath Gate over an app you are about to open, so '
-        'there is one calm moment before the scroll starts.',
-    privacy:
-        'The overlay only ever draws the gate. It cannot read what is '
-        'behind it.',
     platform: 'Android',
   ),
   _Permission(
