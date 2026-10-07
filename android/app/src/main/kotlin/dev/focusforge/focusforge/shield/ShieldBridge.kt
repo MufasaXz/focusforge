@@ -39,18 +39,25 @@ class ShieldBridge(
         fun recordLaunch(intent: Intent?) {
             val packageName = intent
                 ?.getStringExtra(FocusAccessibilityService.EXTRA_BLOCKED_PACKAGE)
-                ?: return
-            launchExtras = mapOf(
-                "package" to packageName,
-                "label" to (
-                    intent.getStringExtra(FocusAccessibilityService.EXTRA_BLOCKED_LABEL)
-                        ?: packageName
+            // An ordinary launch clears the pending one rather than leaving it
+            // to be delivered later: these extras describe the intent that
+            // started *this* launch, and replaying an older one would open the
+            // app on a block the user has long since dealt with.
+            launchExtras = if (packageName == null) {
+                null
+            } else {
+                mapOf(
+                    "package" to packageName,
+                    "label" to (
+                        intent.getStringExtra(FocusAccessibilityService.EXTRA_BLOCKED_LABEL)
+                            ?: packageName
+                        ),
+                    "graceSeconds" to intent.getIntExtra(
+                        FocusAccessibilityService.EXTRA_GRACE_SECONDS,
+                        ShieldRules.DEFAULT_GRACE_SECONDS,
                     ),
-                "graceSeconds" to intent.getIntExtra(
-                    FocusAccessibilityService.EXTRA_GRACE_SECONDS,
-                    ShieldRules.DEFAULT_GRACE_SECONDS,
-                ),
-            )
+                )
+            }
         }
 
         /** Reads and clears the pending launch, so it is delivered once. */

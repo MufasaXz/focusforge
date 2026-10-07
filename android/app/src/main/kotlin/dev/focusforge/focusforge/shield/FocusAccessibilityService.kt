@@ -61,6 +61,17 @@ class FocusAccessibilityService : AccessibilityService() {
          *  launch path it is running on. */
         private const val MAX_NODES = 400
 
+        /**
+         * How long YouTube gets to finish inflating before its window is read
+         * a second time.
+         *
+         * The first event for a launch arrives while the feed is still being
+         * built, so a rule that reads the tree once lets a feed that had not
+         * loaded yet through. Long enough for the browse surface to appear,
+         * short enough that the app is not usable in between.
+         */
+        private const val YOUTUBE_RECHECK_MS = 900L
+
         private const val YOUTUBE = "com.google.android.youtube"
 
         /** The status bar, the shade and the volume panel. */
@@ -213,6 +224,15 @@ class FocusAccessibilityService : AccessibilityService() {
 
     /** One inspection at a time; a burst of window events must not queue up. */
     private var inspecting = false
+
+    /**
+     * The package the one delayed YouTube re-read has been spent on.
+     *
+     * The re-read is for a window that was still inflating, not a poll, so it
+     * happens once per arrival: cleared when something else comes to the
+     * front, which is what gives the next visit its own second look.
+     */
+    private var youtubeRetryFor: String? = null
 
     private lateinit var windowManager: WindowManager
     private lateinit var inflater: LayoutInflater
@@ -424,6 +444,10 @@ class FocusAccessibilityService : AccessibilityService() {
         lastPackage = foreground
         lastCheckAt = now
 
+        // A different arrival gets its own delayed second look: the one just
+        // spent belonged to whatever came to the front before this.
+        if (foreground != youtubeRetryFor) youtubeRetryFor = null
+
         if (blockedPackage == foreground) return
 
         // Something other than the covered app is in front. That is *not* on
@@ -462,15 +486,34 @@ class FocusAccessibilityService : AccessibilityService() {
 
         // YouTube needs its window read, and that happens off the main thread.
         // Capture the root here — one call — and walk it on the worker.
-        val root = rootInActiveWindow
         if (inspecting) return
         inspecting = true
+        val root = rootInActiveWindow
+        // The first event for a launch arrives while the feed is still being
+        // built, so a decision that finds nothing gets one delayed second look
+        // — but only one, or a rule that does not match would poll forever.
+        val retry = youtubeRetryFor != packageName
+        youtubeRetryFor = packageName
         inspector.post {
-            val reason = youtubeReason(current, root)
-                ?: packageReason(packageName, current)
+            // The flag is cleared in a `finally`: a walk that throws (a window
+            // that went away mid-read, a node recycled under it) used to leave
+            // it set for the life of the service, and with it set every later
+            // YouTube decision returned early — which is how the rules
+            // appeared to switch themselves off until a restart.
+            val reason = try {
+                youtubeReason(current, root) ?: packageReason(packageName, current)
+            } finally {
+                handler.post { inspecting = false }
+            }
             handler.post {
-                inspecting = false
-                if (reason != null) showOverlay(packageName, reason)
+                when {
+                    reason != null -> showOverlay(packageName, reason)
+                    retry -> handler.postDelayed({
+                        if (blockedPackage == null && foregroundPackage() == packageName) {
+                            decide(packageName)
+                        }
+                    }, YOUTUBE_RECHECK_MS)
+                }
             }
         }
     }
