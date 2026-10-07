@@ -21,6 +21,17 @@
     <!-- Do Not Disturb access, for Strict Mode. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
 
+    <!-- Merged in from the Google libraries, and removed again. READ_GSERVICES
+         is a signature permission: only apps signed by Google are ever granted
+         it, so for this app it does nothing at runtime — but it is printed in
+         the permission list every installer and security scanner reads, and a
+         focus app asking to read Google services data is a question with no
+         good answer. Google sign-in talks to Play services through its own
+         APIs, not through this provider. -->
+    <uses-permission
+        android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"
+        tools:node="remove"/>
+
     <application
         android:label="FocusForge"
         android:name="${applicationName}"

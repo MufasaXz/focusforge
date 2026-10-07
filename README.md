@@ -192,6 +192,21 @@ flutter build apk --release # installable Android build
 Requires **Flutter 3.47+** (Dart 3.13+). App blocking needs Android; everything
 else runs anywhere Flutter does.
 
+### Installing the APK
+
+Google Play Protect scans apps installed from outside the Play Store, and on
+many devices it hard-blocks apps that declare accessibility access — which is
+the access the shield runs on. If the installer says **App blocked to protect
+your device**, there are three ways through:
+
+1. Tap **More details → Install anyway**, if the dialog offers it.
+2. Or pause the scanner first — **Play Store → profile → Play Protect → gear
+   icon → pause app scanning** — install, then turn it back on.
+3. Or install over a cable: `adb install focusforge-1.0.0.apk`. An adb install
+   does not go through the package installer's scanner at all.
+
+Devices without Google services have no such block.
+
 ## Contributing
 
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
