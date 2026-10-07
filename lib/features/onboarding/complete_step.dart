@@ -45,9 +45,17 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   Future<void> _finish() async {
     if (_finishing) return;
     setState(() => _finishing = true);
+    final guardian = ref.read(userProvider).isGuardian;
     await ref.read(userProvider.notifier).completeOnboarding();
     if (!mounted) return;
-    context.go(AppRoutes.paths[AppRoutes.dashboard]!);
+    // A parent's device has one thing left to do, and it needs the child's
+    // phone in hand. Landing them on the page that asks for the code is the
+    // difference between pairing now and pairing never.
+    context.go(
+      guardian
+          ? AppRoutes.paths[AppRoutes.parentControl]!
+          : AppRoutes.paths[AppRoutes.dashboard]!,
+    );
   }
 
   @override
@@ -62,10 +70,13 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final preset = ref.watch(
       presetsProvider,
     )[ref.watch(timerProvider).presetIndex];
+    final guardian = ref.watch(userProvider).isGuardian;
 
     return StepScaffold(
       title: "You're all set",
-      subtitle: 'Here is what FocusForge will do for you.',
+      subtitle: guardian
+          ? 'Next: link your child\'s phone.'
+          : 'Here is what FocusForge will do for you.',
       primaryLabel: "Let's Go",
       primaryBusy: _finishing,
       onPrimary: _finish,
@@ -123,24 +134,28 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         const Stagger(index: 4, child: SectionHeader(title: 'Quick tips')),
         Stagger(
           index: 5,
-          child: const Card.filled(
+          child: Card.filled(
             clipBehavior: Clip.antiAlias,
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: Gap.xs),
+              padding: const EdgeInsets.symmetric(vertical: Gap.xs),
               child: Column(
                 children: [
-                  _Tip(
+                  const _Tip(
                     icon: Icons.timer_outlined,
                     text: 'Tap Focus to start your first session.',
                   ),
-                  _Tip(
+                  const _Tip(
                     icon: Icons.insights_outlined,
                     text: 'The dashboard fills in as you study.',
                     divider: true,
                   ),
                   _Tip(
-                    icon: Icons.shield_outlined,
-                    text: 'Tune what gets blocked in the Shield tab.',
+                    icon: guardian
+                        ? Icons.family_restroom_rounded
+                        : Icons.shield_outlined,
+                    text: guardian
+                        ? 'Add your child\'s phone from Parent control.'
+                        : 'Tune what gets blocked in the Shield tab.',
                     divider: true,
                   ),
                 ],

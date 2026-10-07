@@ -7,6 +7,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
+import 'device_step.dart';
 import 'goal_step.dart';
 import 'permissions_step.dart';
 import 'persona_step.dart';
@@ -14,12 +15,12 @@ import 'profile_step.dart';
 import 'splash_step.dart';
 import 'subjects_step.dart';
 
-/// The first-run flow — screens 0 through 8 of the plan.
+/// The first-run flow — screens 0 through 9 of the plan.
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
-/// widget owns the whole journey: splash, account, persona, profile, subjects,
-/// blocks, goal, permissions, celebration. The last step flips
-/// `completeOnboarding()` and the router takes it from there.
+/// widget owns the whole journey: splash, account, persona, whose device,
+/// profile, subjects, blocks, goal, permissions, celebration. The last step
+/// flips `completeOnboarding()` and the router takes it from there.
 ///
 /// A [PageView] rather than an [AnimatedSwitcher] because it keeps each step
 /// alive while the user moves back and forth: returning to the subject picker
@@ -34,7 +35,7 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 }
 
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
-  static const _stepCount = 8;
+  static const _stepCount = 9;
   static const _authIndex = 1;
 
   final _controller = PageController();
@@ -102,6 +103,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                         SplashStep(onDone: _afterSplash),
                         AuthScreen(embedded: true, onAuthenticated: _next),
                         PersonaStep(onNext: _next),
+                        DeviceStep(onNext: _next),
                         ProfileStep(onNext: _next),
                         SubjectsStep(onNext: _next),
                         GoalStep(onNext: _next),

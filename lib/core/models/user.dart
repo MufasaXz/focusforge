@@ -177,6 +177,7 @@ class UserProfile {
     this.timezone = 'UTC',
     this.onboardingComplete = false,
     this.isAnonymous = true,
+    this.isGuardian = false,
     this.avatarIcon,
     this.avatarColor,
     this.dailyGoalMinutes = 180,
@@ -192,6 +193,14 @@ class UserProfile {
   /// True while the user has not linked a real account. Anonymous users get
   /// everything except study groups and the leaderboard.
   final bool isAnonymous;
+
+  /// True when this device was set up to watch children rather than to study.
+  ///
+  /// A separate answer from [persona] on purpose: a parent may well use the
+  /// app themselves as well, and a student's phone is often set up by the
+  /// parent who chose the persona. This is only "whose device is this", and
+  /// it decides which half of Parent control opens first.
+  final bool isGuardian;
 
   /// The glyph on the avatar, as an `AppIcons` name, or null for initials.
   ///
@@ -238,6 +247,7 @@ class UserProfile {
     String? timezone,
     bool? onboardingComplete,
     bool? isAnonymous,
+    bool? isGuardian,
     String? avatarIcon,
     int? avatarColor,
     int? dailyGoalMinutes,
@@ -250,6 +260,7 @@ class UserProfile {
     timezone: timezone ?? this.timezone,
     onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     isAnonymous: isAnonymous ?? this.isAnonymous,
+    isGuardian: isGuardian ?? this.isGuardian,
     // A null icon means "use my initials", which is a real choice rather
     // than a missing value — so clearing it has to be asked for
     // explicitly, or `copyWith` could never take the glyph away.
@@ -266,6 +277,7 @@ class UserProfile {
     'timezone': timezone,
     'onboardingComplete': onboardingComplete,
     'isAnonymous': isAnonymous,
+    'isGuardian': isGuardian,
     'avatarIcon': avatarIcon,
     'avatarColor': avatarColor,
     'dailyGoalMinutes': dailyGoalMinutes,
@@ -279,6 +291,7 @@ class UserProfile {
     timezone: j['timezone'] as String? ?? 'UTC',
     onboardingComplete: j['onboardingComplete'] as bool? ?? false,
     isAnonymous: j['isAnonymous'] as bool? ?? true,
+    isGuardian: j['isGuardian'] as bool? ?? false,
     // Guarded rather than cast: this runs inside bootstrap, where one
     // malformed entry must not abort the launch.
     avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
