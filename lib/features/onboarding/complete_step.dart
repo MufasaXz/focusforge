@@ -55,7 +55,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final cs = Theme.of(context).colorScheme;
     final persona = ref.watch(userProvider).persona;
     final subjectCount = ref.watch(subjectsProvider).length;
-    final goal = ref.watch(dailyGoalProvider);
+    final goal = ref.watch(todayGoalMinutesProvider);
     // The preset the timer will actually start with, not a claim about the
     // shield: apps are chosen in the Shield tab now, so a count here would be
     // a zero dressed up as a fact.

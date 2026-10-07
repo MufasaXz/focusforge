@@ -324,3 +324,38 @@ class SubjectPalette {
     for (final c in all) harmonize(c, primary),
   ];
 }
+
+/// The daily-goal ring's own gradient.
+///
+/// The one gradient in the app that is not generated from the scheme. The ring
+/// is the product's mark — the icon is a ring, and the app's own art draws it
+/// in mint and teal — so it keeps that colour in every palette rather than
+/// turning ember or iris along with the rest of the screen. Light and dark are
+/// a pair for the same reason every seed pair is: the luminous mint that reads
+/// on a black surface washes out to nothing on a white one.
+class GoalRingPalette {
+  const GoalRingPalette._();
+
+  /// Sweep order, clockwise from twelve: green, teal, pale mint at the tail.
+  static const dark = <Color>[
+    Color(0xFF5AF0A8),
+    Color(0xFF3DEBD0),
+    Color(0xFF8FEFC6),
+  ];
+
+  static const light = <Color>[
+    Color(0xFF12A96B),
+    Color(0xFF0E9E92),
+    Color(0xFF3FBE93),
+  ];
+
+  static List<Color> forBrightness(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  /// The sprout drawn above the readout.
+  static const darkLeaf = Color(0xFF63F0AE);
+  static const lightLeaf = Color(0xFF0F9E63);
+
+  static Color leaf(Brightness brightness) =>
+      brightness == Brightness.dark ? darkLeaf : lightLeaf;
+}

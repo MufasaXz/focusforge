@@ -64,7 +64,10 @@ Future<ProviderContainer> bootstrap() async {
 
   container
       .read(dailyGoalProvider.notifier)
-      .hydrate(store.getInt(StoreKeys.dailyGoal));
+      .hydrate(
+        store.getInt(StoreKeys.dailyGoal),
+        store.getMap(StoreKeys.dailyGoalDays),
+      );
 
   container
       .read(clockFaceProvider.notifier)

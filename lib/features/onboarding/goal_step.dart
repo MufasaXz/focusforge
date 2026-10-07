@@ -35,7 +35,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
   /// own. The seed value is the one number that cannot be told apart from a
   /// deliberate choice, so it is treated as "not chosen yet".
   late double _minutes = () {
-    final stored = ref.read(dailyGoalProvider);
+    final stored = ref.read(dailyGoalProvider).defaultMinutes;
     final base = stored == SeedData.focusGoalMinutes
         ? SeedData.goalSuggestions(_persona)[1]
         : stored;

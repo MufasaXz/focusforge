@@ -12,12 +12,14 @@ import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
-import '../../shared/widgets/progress_ring.dart';
+import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
+import 'widgets/daily_goal_sheet.dart';
 import 'widgets/focus_heatmap.dart';
 import 'widgets/day_summary_sheet.dart';
+import 'widgets/goal_ring.dart';
 import 'widgets/screen_time_card.dart';
 import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
@@ -78,9 +80,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
-    final minutesToday = ref.watch(focusMinutesTodayProvider);
-    final goalMinutes = ref.watch(dailyGoalProvider);
-    final progress = ref.watch(goalProgressProvider);
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
     // Derived from the session log, not read from the stats aggregate: a
@@ -127,8 +126,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           icon: Icons.donut_large_rounded,
           title: 'Your daily progress',
           body:
-              'This ring fills as you focus. Finish a session and it starts '
-              'moving.',
+              'This ring fills as you focus — it starts moving the moment a '
+              'block runs, and keeps what you finish.',
         ),
       if (streak > 0)
         CoachSpot(
@@ -169,9 +168,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta)
       else ...[
         _DailyOverview(
-          progress: progress,
-          minutesToday: minutesToday,
-          goalMinutes: goalMinutes,
           sessionsToday: sessionsToday,
           totalHours: stats.totalFocusHours,
           level: stats.level,
@@ -415,21 +411,20 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-/// Ring, goal copy and the three stat chips.
-class _DailyOverview extends StatelessWidget {
+/// The day's gauge: the goal ring, today's target, and the day's numbers.
+///
+/// It watches the live focus count itself rather than taking it as an
+/// argument: that count changes once a second while a block is running, and a
+/// dashboard that rebuilt its charts, heatmap and breakdown at that rate would
+/// be paying for the ring with the rest of the page.
+class _DailyOverview extends ConsumerWidget {
   const _DailyOverview({
-    required this.progress,
-    required this.minutesToday,
-    required this.goalMinutes,
     required this.sessionsToday,
     required this.totalHours,
     required this.level,
     this.ringKey,
   });
 
-  final double progress;
-  final int minutesToday;
-  final int goalMinutes;
   final int sessionsToday;
   final double totalHours;
   final int level;
@@ -438,8 +433,14 @@ class _DailyOverview extends StatelessWidget {
   final Key? ringKey;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
+
+    final goalMinutes = ref.watch(todayGoalMinutesProvider);
+    final progress = ref.watch(todayGoalProgressProvider);
+    final minutesToday = ref.watch(liveFocusSecondsTodayProvider) ~/ 60;
 
     return Card.filled(
       shape: RoundedRectangleBorder(
@@ -449,34 +450,50 @@ class _DailyOverview extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.xl, Gap.xl, Gap.lg),
         child: Column(
           children: [
-            ProgressRing(
+            GoalRing(
               key: ringKey,
               value: progress,
-              size: 188,
-              stroke: 11,
-              ticks: 24,
+              size: 224,
+              stroke: 16,
               semanticLabel:
                   'Daily focus, ${_spokenMinutes(minutesToday)} of '
                   '${_spokenMinutes(goalMinutes)}, '
                   '${(progress * 100).round()} percent of goal',
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    formatMinutes(minutesToday),
-                    style: Theme.of(context).textTheme.displayMedium
-                        ?.copyWith(fontSize: 36, letterSpacing: -1.4),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    'of ${formatMinutes(goalMinutes)} goal',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SproutMark(
+                      size: 32,
+                      color: GoalRingPalette.leaf(brightness),
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        formatMinutes(minutesToday),
+                        style: tt.displayMedium?.copyWith(
+                          fontSize: 34,
+                          letterSpacing: -1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Focus today',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: Gap.xl),
+            const SizedBox(height: Gap.lg),
+            _GoalRow(
+              goalMinutes: goalMinutes,
+              onTap: () => showDailyGoalSheet(context),
+            ),
+            const SizedBox(height: Gap.md),
             LayoutBuilder(
               builder: (context, constraints) {
                 final chips = <Widget>[
@@ -528,6 +545,66 @@ class _DailyOverview extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Today's target, and the way into the editor that sets it per day.
+///
+/// The weekday is named on the row rather than left to the greeting above:
+/// the number beside it is that day's, and the one thing this row has to say
+/// is that the days do not share a target.
+class _GoalRow extends StatelessWidget {
+  const _GoalRow({required this.goalMinutes, required this.onTap});
+
+  final int goalMinutes;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final today = formatDate(DateTime.now()).split(',').first;
+
+    return Semantics(
+      button: true,
+      label:
+          "Today's goal, $today, ${_spokenMinutes(goalMinutes)}. "
+          'Opens the goal editor',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.item),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.sm,
+            vertical: Gap.sm,
+          ),
+          child: Row(
+            children: [
+              IconBadge(
+                icon: Icons.flag_rounded,
+                color: GoalRingPalette.leaf(Theme.of(context).brightness),
+                size: 38,
+                radius: 11,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(child: Text("Today's goal", style: tt.titleSmall)),
+              const SizedBox(width: Gap.sm),
+              Text(
+                formatMinutes(goalMinutes),
+                style: tt.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: Gap.sm),
+              Icon(Icons.edit_outlined, size: 18, color: cs.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );
@@ -635,7 +712,7 @@ class _NoSessions extends StatelessWidget {
         title: 'No sessions yet',
         subtitle:
             'Finish your first focus block and this page fills in — '
-            'the daily ring, the study tracker and the heatmap.',
+            'the daily ring, the weekly chart and the heatmap.',
         action: FilledButton.icon(
           key: ctaKey,
           onPressed: onStart,

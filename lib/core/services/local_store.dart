@@ -179,6 +179,7 @@ class StoreKeys {
   static const ambientVolumes = 'audio.volumes';
   static const ambientActive = 'audio.active';
   static const dailyGoal = 'goal.daily';
+  static const dailyGoalDays = 'goal.days';
   static const presets = 'focus.presets';
   static const customPlan = 'focus.customPlan';
   static const coachSeen = 'coachmarks.seen';
