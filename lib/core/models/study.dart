@@ -227,6 +227,67 @@ class CustomPlan {
   static const int maxFocus = 120;
 }
 
+/// The focus goal for each day of the week.
+///
+/// One number for the whole week was the old shape and it is the wrong one for
+/// anyone whose days differ: a Sunday with nothing on it and a Monday with
+/// school in it are not the same target, and a single number makes the user
+/// choose which of the two days to be wrong about. [defaultMinutes] is the
+/// number onboarding sets; a weekday only appears in [byWeekday] once it has
+/// been given a value of its own, so "the same every day" stays the state that
+/// needs no explaining.
+@immutable
+class DailyGoals {
+  const DailyGoals({required this.defaultMinutes, this.byWeekday = const {}});
+
+  final int defaultMinutes;
+
+  /// Keyed by `DateTime.weekday` — Monday (1) through Sunday (7).
+  final Map<int, int> byWeekday;
+
+  /// The range the goal editor's sliders span, named here so a stored value
+  /// and the control that edits it can never disagree about it.
+  static const int minMinutes = 30;
+  static const int maxMinutes = 8 * 60;
+
+  int forWeekday(int weekday) => byWeekday[weekday] ?? defaultMinutes;
+
+  /// True once any day carries a target of its own.
+  bool get isPerDay => byWeekday.isNotEmpty;
+
+  DailyGoals copyWith({int? defaultMinutes, Map<int, int>? byWeekday}) =>
+      DailyGoals(
+        defaultMinutes: defaultMinutes ?? this.defaultMinutes,
+        byWeekday: byWeekday ?? this.byWeekday,
+      );
+
+  /// The overrides as they are written to the store.
+  Map<String, dynamic> toJson() => {
+    for (final entry in byWeekday.entries) '${entry.key}': entry.value,
+  };
+
+  /// Reads stored overrides, dropping anything unreadable.
+  ///
+  /// Runs inside bootstrap, so a malformed entry degrades to "no override"
+  /// rather than aborting the launch, and the range is clamped because a value
+  /// outside it would open the editor with its slider pinned at an end that
+  /// does not describe the day.
+  static Map<int, int> readOverrides(Map<String, dynamic>? stored) {
+    if (stored == null) return const {};
+    final out = <int, int>{};
+    for (final entry in stored.entries) {
+      final day = int.tryParse(entry.key);
+      final minutes = _intOr(entry.value, 0);
+      if (day == null || day < DateTime.monday || day > DateTime.sunday) {
+        continue;
+      }
+      if (minutes <= 0) continue;
+      out[day] = minutes.clamp(minMinutes, maxMinutes);
+    }
+    return out;
+  }
+}
+
 /// A bundled looping ambience. [asset] is the path inside `assets/audio`.
 @immutable
 class AmbientSound {

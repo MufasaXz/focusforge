@@ -280,9 +280,9 @@ class DaySummary {
   });
 
   const DaySummary.empty(this.day)
-      : slices = const [],
-        totalMinutes = 0,
-        sessions = 0;
+    : slices = const [],
+      totalMinutes = 0,
+      sessions = 0;
 
   final DateTime day;
 
@@ -325,19 +325,19 @@ final daySummaryProvider = Provider.family<DaySummary, DateTime>((ref, day) {
     final id = session.subjectId;
     final subject = subjects[id];
     minutes[id] = (minutes[id] ?? 0) + session.minutes;
-    names[id] = subject?.name ?? (session.label.isEmpty ? 'Unassigned' : session.label);
+    names[id] =
+        subject?.name ?? (session.label.isEmpty ? 'Unassigned' : session.label);
     colors[id] = subject?.color ?? _unassignedSubjectColor;
   }
 
-  final slices =
-      [
-        for (final entry in minutes.entries)
-          DaySubjectSlice(
-            name: names[entry.key] ?? 'Unassigned',
-            color: colors[entry.key] ?? _unassignedSubjectColor,
-            minutes: entry.value,
-          ),
-      ]..sort((a, b) => b.minutes.compareTo(a.minutes));
+  final slices = [
+    for (final entry in minutes.entries)
+      DaySubjectSlice(
+        name: names[entry.key] ?? 'Unassigned',
+        color: colors[entry.key] ?? _unassignedSubjectColor,
+        minutes: entry.value,
+      ),
+  ]..sort((a, b) => b.minutes.compareTo(a.minutes));
 
   return DaySummary(
     day: _dateOnly(day),
@@ -907,29 +907,85 @@ DateTime? _dateOrNull(Object? value) {
 
 // -- Daily goal --------------------------------------------------------------
 
-class DailyGoalNotifier extends Notifier<int> {
+class DailyGoalsNotifier extends Notifier<DailyGoals> {
   @override
-  int build() => SeedData.focusGoalMinutes;
+  DailyGoals build() =>
+      const DailyGoals(defaultMinutes: SeedData.focusGoalMinutes);
 
-  void hydrate(int? stored) {
-    if (stored != null && stored > 0) state = stored;
+  LocalStore get _store => ref.read(localStoreProvider);
+
+  /// Restores the stored goal.
+  ///
+  /// Two keys, read separately because they were written separately: the one
+  /// number onboarding sets, and the per-day overrides the goal editor adds.
+  /// An install that has only ever set the one number keeps it.
+  void hydrate(int? storedDefault, Map<String, dynamic>? storedDays) {
+    state = DailyGoals(
+      defaultMinutes: storedDefault != null && storedDefault > 0
+          ? storedDefault
+          : SeedData.focusGoalMinutes,
+      byWeekday: DailyGoals.readOverrides(storedDays),
+    );
   }
 
+  /// Sets the goal for every day — the onboarding step's single number.
+  ///
+  /// Clears the per-day overrides: this is the "start over" write, and a
+  /// Wednesday left over from a previous setup would be a target with no
+  /// visible source.
   Future<void> set(int minutes) async {
-    state = minutes;
-    await ref.read(localStoreProvider).setInt(StoreKeys.dailyGoal, minutes);
+    state = DailyGoals(defaultMinutes: minutes);
+    await _store.setInt(StoreKeys.dailyGoal, minutes);
+    await _store.setMap(StoreKeys.dailyGoalDays, const {});
+  }
+
+  /// Gives one weekday a target of its own.
+  Future<void> setDay(int weekday, int minutes) async {
+    state = state.copyWith(byWeekday: {...state.byWeekday, weekday: minutes});
+    await _store.setMap(StoreKeys.dailyGoalDays, state.toJson());
   }
 }
 
-final dailyGoalProvider = NotifierProvider<DailyGoalNotifier, int>(
-  DailyGoalNotifier.new,
+final dailyGoalProvider = NotifierProvider<DailyGoalsNotifier, DailyGoals>(
+  DailyGoalsNotifier.new,
 );
 
+/// Today's target, in minutes.
+///
+/// Read through the clock rather than stored, so the number on screen is the
+/// one for the day the user is actually in.
+final todayGoalMinutesProvider = Provider<int>((ref) {
+  final goals = ref.watch(dailyGoalProvider);
+  return goals.forWeekday(DateTime.now().weekday);
+});
+
+/// Seconds of focus logged today, including the block in flight.
+///
+/// The block in flight counts from the moment the timer is started and is
+/// banked when the round finishes: the engine writes the session on
+/// completion, so nothing here has to be remembered across a pause, a restart
+/// or a cold launch. Seconds rather than minutes because the ring draws the
+/// difference — a minute is a tenth of a degree on an eight-hour goal, and a
+/// gauge that moves in visible steps reads as a fault.
+final liveFocusSecondsTodayProvider = Provider<int>((ref) {
+  final banked = ref.watch(focusMinutesTodayProvider) * 60;
+  final timer = ref.watch(timerProvider);
+  if (timer.phase != TimerPhase.focus || timer.segmentStartedAt == null) {
+    return banked;
+  }
+  final preset = ref.watch(presetsProvider)[timer.presetIndex];
+  final elapsed = preset.focusDuration - timer.remaining;
+  return elapsed.isNegative ? banked : banked + elapsed.inSeconds;
+});
+
 /// 0..1 progress toward today's goal.
-final goalProgressProvider = Provider<double>((ref) {
-  final goal = ref.watch(dailyGoalProvider);
+final todayGoalProgressProvider = Provider<double>((ref) {
+  final goal = ref.watch(todayGoalMinutesProvider);
   if (goal <= 0) return 0;
-  return (ref.watch(focusMinutesTodayProvider) / goal).clamp(0.0, 1.0);
+  return (ref.watch(liveFocusSecondsTodayProvider) / (goal * 60)).clamp(
+    0.0,
+    1.0,
+  );
 });
 
 // -- Presets -----------------------------------------------------------------
