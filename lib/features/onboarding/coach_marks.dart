@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show clampDouble;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
@@ -66,8 +67,16 @@ class CoachMarks extends ConsumerStatefulWidget {
 }
 
 class _CoachMarksState extends ConsumerState<CoachMarks>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const _seenKey = StoreKeys.coachSeen;
+
+  /// How long a target has to hold still before the tracker lets it go.
+  ///
+  /// The dashboard slides its sections up as it mounts, so a hole measured on
+  /// the frame the sequence starts sits wherever the target was mid-slide.
+  /// The tracker follows it until it has not moved for this long, which is
+  /// past the end of every entrance the app runs.
+  static const _settle = Duration(milliseconds: 250);
 
   /// Marks the overlay's own coordinate space, so a widget's global position
   /// can be converted into it. The root overlay usually starts at the window's
@@ -79,6 +88,15 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
     duration: const Duration(milliseconds: 420),
     value: 1,
   );
+
+  /// Follows the current target until it holds still.
+  ///
+  /// A ticker rather than a one-shot measurement: the hole has to bind to
+  /// where the widget *is*, and the widget is still moving when the sequence
+  /// opens. It stops once the target has settled — a ticker left running
+  /// would keep the app from ever going idle.
+  Ticker? _track;
+  Duration? _stillSince;
 
   OverlayEntry? _entry;
   bool _checked = false;
@@ -95,6 +113,7 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
   @override
   void dispose() {
     _removeEntry();
+    _stopTracking();
     _move.dispose();
     super.dispose();
   }
@@ -139,18 +158,7 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
       // point at. Dropping the tip is the honest outcome: a spotlight over
       // empty space tells the user to look at something that is not there.
       if (rect == null || rect.isEmpty) continue;
-      steps.add(
-        _Step(
-          spot: spot,
-          hole: _Hole(
-            center: rect.center,
-            radius: math.max(
-              spot.minRadius,
-              rect.longestSide / 2 + spot.padding,
-            ),
-          ),
-        ),
-      );
+      steps.add(_Step(spot: spot, hole: _holeFor(spot, rect)));
     }
 
     if (steps.isEmpty) {
@@ -165,6 +173,63 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
       _to = steps.first.hole;
     });
     _entry?.markNeedsBuild();
+    _startTracking();
+  }
+
+  /// The hole a spot asks for around its measured box.
+  _Hole _holeFor(CoachSpot spot, Rect rect) => _Hole(
+    center: rect.center,
+    radius: math.max(spot.minRadius, rect.longestSide / 2 + spot.padding),
+  );
+
+  /// Follows the current target until it holds still.
+  void _startTracking() {
+    _stillSince = null;
+    _track ??= createTicker(_onTrack)..start();
+  }
+
+  /// Stops the tracker. Safe from inside its own callback, where the ticker
+  /// must be stopped before it can be disposed.
+  void _stopTracking() {
+    final ticker = _track;
+    _track = null;
+    _stillSince = null;
+    if (ticker == null) return;
+    ticker.stop();
+    ticker.dispose();
+  }
+
+  void _onTrack(Duration elapsed) {
+    final steps = _steps;
+    if (steps.isEmpty || _entry == null) {
+      _stopTracking();
+      return;
+    }
+
+    final step = steps[_index.clamp(0, steps.length - 1)];
+    final rect = _rectOf(step.spot.target);
+    final hole = rect == null || rect.isEmpty
+        ? null
+        : _holeFor(step.spot, rect);
+    final current = _to;
+
+    if (hole != null &&
+        (current == null ||
+            current.center != hole.center ||
+            current.radius != hole.radius)) {
+      _stillSince = null;
+      _to = hole;
+      // While the spotlight is parked, the pair stays equal so the next step
+      // animates from where the hole actually is.
+      if (_move.isCompleted) _from = hole;
+      _entry?.markNeedsBuild();
+      return;
+    }
+
+    // Unchanged this frame. Once the target has held still long enough that
+    // no entrance can still be running, the tracker lets go.
+    _stillSince ??= elapsed;
+    if (elapsed - _stillSince! >= _settle) _stopTracking();
   }
 
   /// The widget's box in the overlay's coordinate space.
@@ -192,6 +257,7 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
   }
 
   void _removeEntry() {
+    _stopTracking();
     _entry?.remove();
     _entry = null;
   }
@@ -214,11 +280,21 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
       _dismiss();
       return;
     }
+    // The next target is re-measured before the move starts, so a step that
+    // follows a layout change animates to where the widget is now rather than
+    // to where it was when the sequence was measured.
+    final step = _steps[index];
+    final rect = _rectOf(step.spot.target);
+    final hole = rect == null || rect.isEmpty
+        ? step.hole
+        : _holeFor(step.spot, rect);
+
     setState(() {
       _from = _current;
-      _to = _steps[index].hole;
+      _to = hole;
       _index = index;
     });
+    _startTracking();
     if (MediaQuery.disableAnimationsOf(context)) {
       _move.value = 1;
     } else {

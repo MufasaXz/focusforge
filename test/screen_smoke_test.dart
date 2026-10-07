@@ -592,5 +592,63 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('the spotlight follows a target that moves after it opens', (
+      tester,
+    ) async {
+      useTallPhone(tester);
+      final targets = CoachTargets();
+
+      Widget app(double top) => wrap(
+        freshContainer(),
+        CoachMarks(
+          spots: [
+            CoachSpot(
+              target: targets.emptyCta,
+              icon: Icons.play_arrow_rounded,
+              title: 'Start here',
+              body: 'The hole has to stay on the button.',
+            ),
+          ],
+          child: Stack(
+            children: [
+              Positioned(
+                top: top,
+                left: 40,
+                child: SizedBox(
+                  width: 140,
+                  height: 48,
+                  child: FilledButton(
+                    key: targets.emptyCta,
+                    onPressed: () {},
+                    child: const Text('Go'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // The tip opens while the target is near the bottom of the screen —
+      // and then the page slides it up, which is what the dashboard's
+      // entrance does. A hole measured once would stay where the button used
+      // to be, pointing at empty space.
+      await tester.pumpWidget(app(1400));
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpWidget(app(120));
+      await tester.pump();
+      await settle(tester);
+
+      final target = tester.getRect(find.byKey(targets.emptyCta));
+      final bubble = tester.getRect(find.byType(Card));
+      expect(
+        bubble.top,
+        inInclusiveRange(target.bottom, target.bottom + 240),
+        reason: 'the bubble hangs off the hole the button is actually in',
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }
