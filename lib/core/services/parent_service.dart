@@ -70,6 +70,12 @@ enum PairFailure {
   badCode,
   expired,
   alreadyLinked,
+
+  /// The server refused the request itself — the usual cause is a project
+  /// whose security rules have not been published yet, which is a fact the
+  /// user can act on rather than a dead end.
+  refused,
+
   noBackend,
   offline,
   unknown,
@@ -87,6 +93,9 @@ class PairException implements Exception {
       'That code has expired. Ask for a fresh one from the child\'s app.',
     PairFailure.alreadyLinked =>
       'That device is already linked to a parent account.',
+    PairFailure.refused =>
+      'The server refused the change. If this project\'s security rules have '
+          'not been published yet, that is why.',
     PairFailure.noBackend => 'This build has no backend to pair over.',
     PairFailure.offline => 'No connection. Pairing needs one.',
     PairFailure.unknown => 'Something went wrong while pairing.',
@@ -129,15 +138,21 @@ class FirebaseParentService implements ParentService {
     return id;
   }
 
-  /// Firestore's own failures, mapped to something a screen can say. A
-  /// permission denial is the interesting one: it means the rules refused,
-  /// which is a bug or an expired link rather than a network problem.
-  Future<T> _guard<T>(Future<T> Function() body) async {
+  /// Firestore's own failures, mapped to something a screen can say.
+  ///
+  /// A denial means the rules refused. For a pairing attempt that is the
+  /// "already linked" case, which is why it is the default; a rule change or a
+  /// code is denied for a different reason — usually that the project's rules
+  /// have not been published — so those callers name [PairFailure.refused].
+  Future<T> _guard<T>(
+    Future<T> Function() body, {
+    PairFailure denied = PairFailure.alreadyLinked,
+  }) async {
     try {
       return await body();
     } on FirebaseException catch (error) {
       if (error.code == 'permission-denied') {
-        throw PairException(PairFailure.alreadyLinked, error.message);
+        throw PairException(denied, error.message);
       }
       if (error.code == 'unavailable') {
         throw PairException(PairFailure.offline, error.message);
@@ -272,6 +287,7 @@ class FirebaseParentService implements ParentService {
         .collection('remoteRules')
         .doc('current')
         .set(blocks.toJson()),
+    denied: PairFailure.refused,
   );
 
   @override
@@ -289,6 +305,7 @@ class FirebaseParentService implements ParentService {
           : {'codeSalt': code.salt, 'codeHash': code.hash},
       SetOptions(merge: true),
     ),
+    denied: PairFailure.refused,
   );
 
   @override
