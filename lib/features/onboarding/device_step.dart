@@ -8,13 +8,13 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
-/// Screen 3 — whose device is this.
+/// Screen 3 — whose device is this, asked of a parent.
 ///
-/// One question, asked of everyone: are you here to study, or to watch someone
-/// else study? It is separate from the persona answer on purpose — a parent
-/// who studies too, and a student whose phone was set up by a parent, are both
-/// ordinary — and it is the answer that decides which half of Parent control
-/// opens first.
+/// Only a parent's setup reaches this page: a student setting up their own
+/// phone has answered it by being there, and the flow skips straight past. It
+/// is separate from the persona answer on purpose — a parent who studies too
+/// is ordinary — and it is the answer that decides which half of Parent
+/// control opens first.
 ///
 /// The persona is only a hint at the default: choosing "Parent" preselects the
 /// child's side, and tapping Continue without touching anything takes it.

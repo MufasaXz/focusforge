@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
@@ -18,9 +19,10 @@ import 'subjects_step.dart';
 /// The first-run flow — screens 0 through 9 of the plan.
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
-/// widget owns the whole journey: splash, account, persona, whose device,
-/// profile, subjects, blocks, goal, permissions, celebration. The last step
-/// flips `completeOnboarding()` and the router takes it from there.
+/// widget owns the whole journey: splash, account, persona, profile, subjects,
+/// blocks, goal, permissions, celebration — and, for a parent, the question
+/// about whose device this is. The last step flips `completeOnboarding()` and
+/// the router takes it from there.
 ///
 /// A [PageView] rather than an [AnimatedSwitcher] because it keeps each step
 /// alive while the user moves back and forth: returning to the subject picker
@@ -37,6 +39,15 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   static const _stepCount = 9;
   static const _authIndex = 1;
+
+  /// The page that asks whose device this is.
+  ///
+  /// It stays in the [PageView] either way — the flow's indices are what the
+  /// back button and the progress bar are built on — but it is only ever
+  /// visited by a parent. A student setting up their own phone has nothing to
+  /// answer here, and a question with one possible answer is a step that only
+  /// costs time.
+  static const _deviceIndex = 3;
 
   final _controller = PageController();
   int _index = 0;
@@ -55,6 +66,26 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     super.dispose();
   }
 
+  /// Whether this run asks the device question at all.
+  bool get _asksDevice => ref.read(userProvider).persona == Persona.parent;
+
+  /// The page after [index], skipping the device question when the persona
+  /// never asked for it.
+  int _nextFrom(int index) {
+    var next = index + 1;
+    if (next == _deviceIndex && !_asksDevice) next++;
+    return next;
+  }
+
+  /// The page before [index], skipping the same page on the way back. Without
+  /// this the back button would walk a student into a question the flow chose
+  /// not to ask them.
+  int _previousFrom(int index) {
+    var previous = index - 1;
+    if (previous == _deviceIndex && !_asksDevice) previous--;
+    return previous;
+  }
+
   void _go(int index) {
     if (index < 0 || index >= _stepCount || index == _index) return;
     _controller.animateToPage(
@@ -64,9 +95,22 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     );
   }
 
-  void _next() => _go(_index + 1);
+  void _next() => _go(_nextFrom(_index));
 
-  void _back() => _go(_index - 1);
+  void _back() => _go(_previousFrom(_index));
+
+  /// Leaves the persona step.
+  ///
+  /// Choosing anything but "Parent" answers the device question by itself —
+  /// this is the user's own phone — so a parent answer left over from an
+  /// earlier pass is cleared rather than carried into a flow that no longer
+  /// shows the page that set it.
+  void _afterPersona() {
+    if (!_asksDevice && ref.read(userProvider).isGuardian) {
+      unawaited(ref.read(userProvider.notifier).setGuardianMode(false));
+    }
+    _next();
+  }
 
   void _afterSplash() {
     final signedIn = ref.read(authServiceProvider).signedIn;
@@ -75,6 +119,17 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
+    // Watched rather than read: the persona decides whether the device page
+    // is part of this run, so the progress bar has to follow the answer the
+    // moment it changes.
+    final asksDevice =
+        ref.watch(userProvider.select((u) => u.persona)) == Persona.parent;
+    // The header counts the pages the user will actually see. The splash is
+    // not one of them, and neither is the device question when the persona
+    // did not ask for it.
+    final total = _stepCount - 1 - (asksDevice ? 0 : 1);
+    final shown = asksDevice || _index <= _deviceIndex ? _index : _index - 1;
+
     return PopScope(
       canPop: _index == 0,
       onPopInvokedWithResult: (didPop, _) {
@@ -90,8 +145,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                 children: [
                   if (_index > 0)
                     _FlowHeader(
-                      index: _index,
-                      total: _stepCount - 1,
+                      index: shown,
+                      total: total,
                       onBack: _back,
                     ),
                   Expanded(
@@ -102,7 +157,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                       children: [
                         SplashStep(onDone: _afterSplash),
                         AuthScreen(embedded: true, onAuthenticated: _next),
-                        PersonaStep(onNext: _next),
+                        PersonaStep(onNext: _afterPersona),
                         DeviceStep(onNext: _next),
                         ProfileStep(onNext: _next),
                         SubjectsStep(onNext: _next),
