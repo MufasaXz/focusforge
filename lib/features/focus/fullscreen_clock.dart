@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,10 +266,10 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
 /// of a focus the line has met its own start, and a break begins with the
 /// boundary whole and gives it back.
 ///
-/// The path is the window's rounded rectangle, and the drawn part is a slice
-/// of its metric — which is the only way to walk a path that starts somewhere
-/// other than a corner. The start offset is half the top edge, because that is
-/// where a rounded rectangle's path begins drawing the top edge.
+/// The path is built from that start point rather than from a rounded
+/// rectangle: `addRRect` begins at the bottom-left corner, and a slice of its
+/// metric measured from anywhere else would have to carry the distance between
+/// the two. Walking the corners by hand means offset zero *is* the start.
 class _BoundaryProgress extends CustomPainter {
   const _BoundaryProgress({
     required this.progress,
@@ -300,11 +298,19 @@ class _BoundaryProgress extends CustomPainter {
     );
     if (rect.width <= 0 || rect.height <= 0) return;
 
+    const radius = Radius.circular(_radius);
     final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(_radius)));
+      ..moveTo(rect.center.dx, rect.top)
+      ..lineTo(rect.right - _radius, rect.top)
+      ..arcToPoint(Offset(rect.right, rect.top + _radius), radius: radius)
+      ..lineTo(rect.right, rect.bottom - _radius)
+      ..arcToPoint(Offset(rect.right - _radius, rect.bottom), radius: radius)
+      ..lineTo(rect.left + _radius, rect.bottom)
+      ..arcToPoint(Offset(rect.left, rect.bottom - _radius), radius: radius)
+      ..lineTo(rect.left, rect.top + _radius)
+      ..arcToPoint(Offset(rect.left + _radius, rect.top), radius: radius)
+      ..lineTo(rect.center.dx, rect.top);
     final metric = path.computeMetrics().first;
-    final total = metric.length;
-    final start = (rect.width - _radius * 2) / 2;
 
     canvas.drawPath(
       path,
@@ -314,20 +320,11 @@ class _BoundaryProgress extends CustomPainter {
         ..color = track,
     );
 
-    final covered = total * progress.clamp(0.0, 1.0);
+    final covered = metric.length * progress.clamp(0.0, 1.0);
     if (covered <= 0) return;
 
-    // The run wraps past the end of the path once it has gone all the way
-    // round, so it is drawn as two slices rather than one.
-    final head = math.min(covered, total - start);
-    final drawn = Path()
-      ..addPath(metric.extractPath(start, start + head), Offset.zero);
-    if (covered > head) {
-      drawn.addPath(metric.extractPath(0, covered - head), Offset.zero);
-    }
-
     canvas.drawPath(
-      drawn,
+      metric.extractPath(0, covered),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3

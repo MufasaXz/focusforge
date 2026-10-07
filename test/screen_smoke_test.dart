@@ -36,6 +36,7 @@ import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
 import 'package:focusforge/features/dashboard/widgets/study_tracker.dart';
+import 'package:focusforge/features/focus/fullscreen_clock.dart';
 import 'package:focusforge/features/onboarding/coach_marks.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
 
@@ -647,6 +648,73 @@ void main() {
         bubble.top,
         inInclusiveRange(target.bottom, target.bottom + 240),
         reason: 'the bubble hangs off the hole the button is actually in',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Full-screen clock', () {
+    /// The radial wash of phase colour behind the clock.
+    Iterable<DecoratedBox> washes(WidgetTester tester) =>
+        tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).where((d) {
+          final decoration = d.decoration;
+          return decoration is BoxDecoration &&
+              decoration.gradient is RadialGradient;
+        });
+
+    Future<void> pumpClock(
+      WidgetTester tester,
+      ProviderContainer container, {
+      required bool amoled,
+    }) async {
+      useTallPhone(tester);
+      if (amoled) {
+        await container.read(themeSettingsProvider.notifier).setAmoled(true);
+      }
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: const FullscreenClock(),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('the background is the theme surface by default', (
+      tester,
+    ) async {
+      final container = freshContainer();
+      await pumpClock(tester, container, amoled: false);
+
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(
+        scaffold.backgroundColor,
+        isNot(const Color(0xFF000000)),
+        reason: 'the wash is what says which phase is running',
+      );
+      expect(washes(tester), isNotEmpty);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('true black leaves the whole screen off', (tester) async {
+      final container = freshContainer();
+      await pumpClock(tester, container, amoled: true);
+
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(
+        scaffold.backgroundColor,
+        const Color(0xFF000000),
+        reason:
+            'this is the one screen that is left on for an hour, and a tint '
+            'over black is the thing the setting exists to avoid',
+      );
+      expect(
+        washes(tester),
+        isEmpty,
+        reason: 'a gradient over pure black is not pure black',
       );
       expect(tester.takeException(), isNull);
     });
