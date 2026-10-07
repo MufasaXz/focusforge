@@ -187,17 +187,17 @@ class FirebaseParentService implements ParentService {
     // The child's own record names the parent; the parent's list names the
     // child. Both are written before the code is retired, so a half-finished
     // link is a retry rather than a lost pairing.
+    //
+    // The guardian is a *document* at `users/{uid}/guardian`, not a document
+    // in a subcollection of the same name: the rules grant that path and the
+    // `isGuardianOf()` lookup reads it, so a `guardian/link` document is a
+    // write nothing has ever allowed.
     await _guard(
-      () => _db
-          .collection('users')
-          .doc(childUid)
-          .collection('guardian')
-          .doc('link')
-          .set({
-            'parentUid': me,
-            'parentName': parentName,
-            'linkedAt': DateTime.now().millisecondsSinceEpoch,
-          }),
+      () => _db.doc('users/$childUid/guardian').set({
+        'parentUid': me,
+        'parentName': parentName,
+        'linkedAt': DateTime.now().millisecondsSinceEpoch,
+      }),
     );
     await _guard(
       () => _db
@@ -232,22 +232,13 @@ class FirebaseParentService implements ParentService {
 
   @override
   Stream<GuardianLink?> watchGuardian(String uid) => _db
-      .collection('users')
-      .doc(uid)
-      .collection('guardian')
-      .doc('link')
+      .doc('users/$uid/guardian')
       .snapshots()
       .map((doc) => doc.exists ? GuardianLink.fromJson(doc.data()) : null);
 
   @override
-  Future<void> unlink(String uid) => _guard(
-    () => _db
-        .collection('users')
-        .doc(uid)
-        .collection('guardian')
-        .doc('link')
-        .delete(),
-  );
+  Future<void> unlink(String uid) =>
+      _guard(() => _db.doc('users/$uid/guardian').delete());
 
   @override
   Future<void> publishProgress(String uid, ChildProgress progress) => _guard(
