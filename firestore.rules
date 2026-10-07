@@ -7,7 +7,7 @@ rules_version = '2';
 //   pairCodes/{code}                 a six-digit code a child's app shows
 //   users/{uid}                      role, name, the linked parent's name
 //   users/{uid}/children/{childUid}  a parent's list of children
-//   users/{uid}/guardian             a child's record of the parent who linked
+//   users/{uid}/guardian/link        a child's record of the parent who linked
 //   users/{uid}/progress/{doc}       the child's own study summary
 //   users/{uid}/remoteRules/{doc}    the block list a parent set for that child
 //   users/{uid}/catalog/{doc}        the apps on the child's device
@@ -34,8 +34,8 @@ service cloud.firestore {
     // tree from outside it.
     function isGuardianOf(uid) {
       return signedIn() &&
-        exists(/databases/$(database)/documents/users/$(uid)/guardian) &&
-        get(/databases/$(database)/documents/users/$(uid)/guardian).data.parentUid == request.auth.uid;
+        exists(/databases/$(database)/documents/users/$(uid)/guardian/link) &&
+        get(/databases/$(database)/documents/users/$(uid)/guardian/link).data.parentUid == request.auth.uid;
     }
 
     // A pairing code is readable by any signed-in account — that is what
@@ -56,22 +56,25 @@ service cloud.firestore {
         allow read, write: if isSelf(uid);
       }
 
-      // Written once, by the child, when they accept a code. The parent may
-      // read it to show the connection on their own side, and may only create
-      // it while none exists — a second parent cannot take over a device that
-      // is already linked.
+      // Written once, by the parent, when they claim the child's code. The
+      // child reads it back to show the connection on their own side, and may
+      // retire it; the create is refused while a record already exists, so a
+      // second parent cannot take over a device that is already linked.
       //
-      // The read goes through `isGuardianOf`, which tests `exists()` before it
-      // reads `resource.data`. Reaching into `resource.data` on a device that
-      // has never been linked is an *error*, not a false — and an error
-      // anywhere in a rule denies the request, so the `isSelf` that should
-      // have allowed a child to read their own missing record never gets a
-      // chance to.
-      match /guardian {
+      // `match` statements point at *documents*, and `users/{uid}/guardian`
+      // has an odd number of segments — it names a collection, not a document,
+      // so a rule block written there does not cover the `guardian/link`
+      // document the app reads and writes. The read goes through
+      // `isGuardianOf()`, which tests `exists()` before it touches `get()`:
+      // reaching into `resource.data` on a device that has never been linked is
+      // an *error*, not a false, and an error anywhere in a rule denies the
+      // request — so the `isSelf` that should have allowed a child to read
+      // their own missing record would never get a chance to.
+      match /guardian/{doc} {
         allow read: if isSelf(uid) || isGuardianOf(uid);
         allow create: if signedIn() &&
           request.resource.data.parentUid == request.auth.uid &&
-          !exists(/databases/$(database)/documents/users/$(uid)/guardian);
+          !exists(/databases/$(database)/documents/users/$(uid)/guardian/link);
         allow update, delete: if isSelf(uid);
       }
 
