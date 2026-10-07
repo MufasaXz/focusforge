@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
+import '../../core/providers/parent_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/app_catalog.dart';
@@ -21,6 +24,7 @@ import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/sheet_chrome.dart';
+import '../parent/parent_lock.dart';
 import 'breath_gate.dart';
 
 /// Tab 2 — the shielding engine.
@@ -161,6 +165,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                         const SizedBox(width: Gap.md),
                         _ShieldStatusPill(
                           armed: armed,
+                          locked: ref.watch(parentLockedProvider),
                           onTap: _showStatusSheet,
                         ),
                       ],
@@ -228,9 +233,17 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
 /// The header badge. It reads as a status, but it is really a button — the
 /// tappable target is the whole pill, not just the dot.
 class _ShieldStatusPill extends StatelessWidget {
-  const _ShieldStatusPill({required this.armed, required this.onTap});
+  const _ShieldStatusPill({
+    required this.armed,
+    required this.locked,
+    required this.onTap,
+  });
 
   final int armed;
+
+  /// True while a linked parent's code stands in front of rule changes.
+  final bool locked;
+
   final VoidCallback onTap;
 
   @override
@@ -243,7 +256,9 @@ class _ShieldStatusPill extends StatelessWidget {
     return Semantics(
       button: true,
       container: true,
-      label: 'Shield status. $armed rules armed. Double tap for details.',
+      label:
+          'Shield status. $armed rules armed.'
+          '${locked ? ' Locked by a parent.' : ''} Double tap for details.',
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(
@@ -263,6 +278,17 @@ class _ShieldStatusPill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // The lock rides in the pill rather than in a banner: it is
+                  // a property of every rule on the screen, and the header has
+                  // no room for a second row.
+                  if (locked) ...[
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 12,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   Container(
                     width: 7,
                     height: 7,
@@ -390,6 +416,13 @@ class _ShieldStatusSheet extends ConsumerWidget {
                     ? '${strict.durationMinutes} min session'
                     : 'Off',
               ),
+              if (ref.watch(parentLockedProvider))
+                _StatusLine(
+                  icon: Icons.family_restroom_rounded,
+                  color: cs.primary,
+                  label: 'Parent\'s code',
+                  value: 'Asked for before any rule changes',
+                ),
               if (!native || !enabled || inert) ...[
                 const SizedBox(height: Gap.md),
                 // The honest footnote. A rule that cannot fire is worse than
@@ -1005,8 +1038,9 @@ class _AppRuleRow extends ConsumerWidget {
               _ShieldSwitch(
                 value: row.isRestricted,
                 // Always live: an app the engine refuses to cover is filtered
-                // out upstream and never gets a row to begin with.
-                onChanged: (on) => _setRestricted(ref, on),
+                // out upstream and never gets a row to begin with. The rule
+                // change itself may still be behind a parent's code.
+                onChanged: (on) => _setRestricted(context, ref, on),
                 semanticLabel: row.isRestricted
                     ? 'Close ${row.name}'
                     : 'Stop closing ${row.name}',
@@ -1018,24 +1052,30 @@ class _AppRuleRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _setRestricted(WidgetRef ref, bool restricted) async {
+  Future<void> _setRestricted(
+    BuildContext context,
+    WidgetRef ref,
+    bool restricted,
+  ) async {
     HapticFeedback.selectionClick();
-    final notifier = ref.read(whitelistProvider.notifier);
+    await runWithParentUnlock(context, ref, () async {
+      final notifier = ref.read(whitelistProvider.notifier);
 
-    if (!restricted) {
-      final existing = ref
-          .read(whitelistProvider)
-          .where((e) => e.packageId == row.packageId)
-          .firstOrNull;
-      if (existing != null) await notifier.remove(existing.id);
-      return;
-    }
+      if (!restricted) {
+        final existing = ref
+            .read(whitelistProvider)
+            .where((e) => e.packageId == row.packageId)
+            .firstOrNull;
+        if (existing != null) await notifier.remove(existing.id);
+        return;
+      }
 
-    await notifier.addInstalledApp(
-      packageId: row.packageId,
-      name: row.name,
-      tier: WhitelistTier.blocked,
-    );
+      await notifier.addInstalledApp(
+        packageId: row.packageId,
+        name: row.name,
+        tier: WhitelistTier.blocked,
+      );
+    });
   }
 
   String get _meta {
@@ -1257,6 +1297,8 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
       .firstOrNull;
 
   Future<void> _apply() async {
+    if (!await confirmParentUnlock(context, ref)) return;
+    if (!mounted) return;
     final notifier = ref.read(whitelistProvider.notifier);
     await notifier.addInstalledApp(
       packageId: widget.packageId,
@@ -1275,6 +1317,8 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
   }
 
   Future<void> _remove() async {
+    if (!await confirmParentUnlock(context, ref)) return;
+    if (!mounted) return;
     final existing = _existing;
     if (existing != null) {
       await ref.read(whitelistProvider.notifier).remove(existing.id);
@@ -1696,8 +1740,15 @@ class _YoutubeView extends ConsumerWidget {
                       'The Shorts player closes. Ordinary videos keep playing, '
                       'so a lecture link still works.',
                   value: rules.shorts,
-                  onChanged: (v) =>
-                      ref.read(youtubeRulesProvider.notifier).setShorts(v),
+                  onChanged: (v) => unawaited(
+                    runWithParentUnlock(
+                      context,
+                      ref,
+                      () => ref
+                          .read(youtubeRulesProvider.notifier)
+                          .setShorts(v),
+                    ),
+                  ),
                 ),
                 Divider(color: cs.outlineVariant, height: 1),
                 _SurfaceSwitch(
@@ -1707,8 +1758,13 @@ class _YoutubeView extends ConsumerWidget {
                       'Removes the recommendation feed and search results. A '
                       'video has to be opened from a direct link.',
                   value: rules.feed,
-                  onChanged: (v) =>
-                      ref.read(youtubeRulesProvider.notifier).setFeed(v),
+                  onChanged: (v) => unawaited(
+                    runWithParentUnlock(
+                      context,
+                      ref,
+                      () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
+                    ),
+                  ),
                 ),
                 // Only meaningful once something is being closed, and a
                 // switch that arms nothing is the inert control this screen
@@ -1722,9 +1778,15 @@ class _YoutubeView extends ConsumerWidget {
                         'Arms both switches while a focus block runs. '
                         'YouTube is free the rest of the day.',
                     value: rules.focusOnly,
-                    onChanged: (v) => ref
-                        .read(youtubeRulesProvider.notifier)
-                        .setFocusOnly(v),
+                    onChanged: (v) => unawaited(
+                      runWithParentUnlock(
+                        context,
+                        ref,
+                        () => ref
+                            .read(youtubeRulesProvider.notifier)
+                            .setFocusOnly(v),
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -1797,16 +1859,22 @@ class _YoutubeView extends ConsumerWidget {
                 ),
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  final notifier = ref.read(whitelistProvider.notifier);
-                  if (fullyBlocked) {
-                    notifier.remove('pkg:${AppCatalog.youtubePackage}');
-                  } else {
-                    notifier.addInstalledApp(
-                      packageId: AppCatalog.youtubePackage,
-                      name: 'YouTube',
-                      tier: WhitelistTier.blocked,
-                    );
-                  }
+                  unawaited(
+                    runWithParentUnlock(context, ref, () async {
+                      final notifier = ref.read(whitelistProvider.notifier);
+                      if (fullyBlocked) {
+                        await notifier.remove(
+                          'pkg:${AppCatalog.youtubePackage}',
+                        );
+                      } else {
+                        await notifier.addInstalledApp(
+                          packageId: AppCatalog.youtubePackage,
+                          name: 'YouTube',
+                          tier: WhitelistTier.blocked,
+                        );
+                      }
+                    }),
+                  );
                 },
               ),
             ),

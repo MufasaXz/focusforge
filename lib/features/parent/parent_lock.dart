@@ -44,3 +44,17 @@ Future<bool> confirmParentUnlock(
   ref.read(parentLockProvider.notifier).open();
   return true;
 }
+
+/// Runs [action] once the parent's code has been cleared, or not at all.
+///
+/// The shape every rule change uses: the question is asked before the change
+/// rather than instead of it, so a refused unlock leaves the rule exactly as
+/// it was.
+Future<void> runWithParentUnlock(
+  BuildContext context,
+  WidgetRef ref,
+  Future<void> Function() action,
+) async {
+  if (!await confirmParentUnlock(context, ref)) return;
+  await action();
+}
