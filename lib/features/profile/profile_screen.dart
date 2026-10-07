@@ -663,7 +663,15 @@ class _AppearanceCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: Gap.md),
-                  Switch(value: settings.amoled, onChanged: notifier.setAmoled),
+                  // The row's heading is the switch's name; without this it
+                  // is announced as an unlabelled switch next to some text.
+                  Semantics(
+                    label: 'True black',
+                    child: Switch(
+                      value: settings.amoled,
+                      onChanged: notifier.setAmoled,
+                    ),
+                  ),
                 ],
               ),
             ],
