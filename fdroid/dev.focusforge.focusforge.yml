@@ -14,13 +14,17 @@
 # them with the key it holds for this app, and the release build here is
 # configured to succeed without the developer's keystore.
 #
-# The three builds are the same release split per ABI. F-Droid gives each one
-# its own version code through `VercodeOperation`, so 1.0.0+1 becomes 11, 12
-# and 13, and a future 1.0.1+2 would become 21, 22 and 23.
+# The three builds are the same release split per ABI. Flutter already gives
+# each split its own version code — ABI index x 1000 + build number, where
+# armeabi-v7a is 1, arm64-v8a is 2 and x86_64 is 4 (3 was the removed x86) —
+# so 1.0.0+1 is 1001, 2001 and 4001, and `VercodeOperation` maps the build
+# number from the pubspec to the same scheme. `fdroid build` checks the APK
+# against the version code in the metadata, so these must agree.
 #
-# Everything below this line is byte-for-byte what `fdroid rewritemeta` emits,
-# which is what the fdroiddata CI checks. Categories are in alphabetical order
-# and `commit` is the commit the v1.0.0 tag points at, not the tag object.
+# Everything below this line is byte-for-byte what `fdroid rewritemeta` emits
+# on the CI machines, which is what the fdroiddata CI checks. Categories are in
+# alphabetical order and `commit` is the commit the v1.0.0 tag points at, not
+# the tag object.
 
 Categories:
   - System
@@ -38,7 +42,7 @@ Repo: https://github.com/MufasaXz/focusforge
 
 Builds:
   - versionName: 1.0.0
-    versionCode: 11
+    versionCode: 1001
     commit: 70117d42db536ae1e05171c14d01ce40242c7f0a
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
@@ -54,12 +58,11 @@ Builds:
     build:
       - export PATH=$$flutter$$/bin:$PATH
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - flutter build apk --release --split-per-abi 
-        --target-platform=android-arm
+      - flutter build apk --release --split-per-abi --target-platform=android-arm
     ndk: r28c
 
   - versionName: 1.0.0
-    versionCode: 12
+    versionCode: 2001
     commit: 70117d42db536ae1e05171c14d01ce40242c7f0a
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
@@ -75,12 +78,11 @@ Builds:
     build:
       - export PATH=$$flutter$$/bin:$PATH
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - flutter build apk --release --split-per-abi 
-        --target-platform=android-arm64
+      - flutter build apk --release --split-per-abi --target-platform=android-arm64
     ndk: r28c
 
   - versionName: 1.0.0
-    versionCode: 13
+    versionCode: 4001
     commit: 70117d42db536ae1e05171c14d01ce40242c7f0a
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
@@ -96,16 +98,15 @@ Builds:
     build:
       - export PATH=$$flutter$$/bin:$PATH
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - flutter build apk --release --split-per-abi 
-        --target-platform=android-x64
+      - flutter build apk --release --split-per-abi --target-platform=android-x64
     ndk: r28c
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9].*
 VercodeOperation:
-  - 10 * %c + 1
-  - 10 * %c + 2
-  - 10 * %c + 3
+  - 1000 + %c
+  - 2000 + %c
+  - 4000 + %c
 UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
 CurrentVersion: 1.0.0
-CurrentVersionCode: 13
+CurrentVersionCode: 4001
