@@ -108,9 +108,8 @@ class _ClosestBadge extends StatelessWidget {
                         : 'Closest: ${closest.name} — '
                               '${(closest.ratio * 100).round()}% of the way '
                               'there.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: Gap.sm),
                   Semantics(
@@ -140,22 +139,39 @@ class _BadgeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: Gap.md,
-        crossAxisSpacing: Gap.md,
-        // A fixed extent rather than an aspect ratio: the tiles hold two lines
-        // of text, and an aspect ratio would overflow them on narrow phones.
-        mainAxisExtent: 158,
-      ),
-      itemCount: badges.length,
-      itemBuilder: (context, i) => _BadgeTile(badge: badges[i]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Three across on a phone. Wider than that and the tiles stretch into
+        // letterboxes, because the height is fixed by their two lines of text
+        // rather than by their width — so the count follows the width instead.
+        final columns = (constraints.maxWidth / _targetTileWidth).round().clamp(
+          3,
+          6,
+        );
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: Gap.md,
+            crossAxisSpacing: Gap.md,
+            // A fixed extent rather than an aspect ratio: the tiles hold two
+            // lines of text, and an aspect ratio would overflow them on narrow
+            // phones.
+            mainAxisExtent: 158,
+          ),
+          itemCount: badges.length,
+          itemBuilder: (context, i) => _BadgeTile(badge: badges[i]),
+        );
+      },
     );
   }
+
+  /// The width a badge tile wants to be. Roughly what three columns give on a
+  /// phone, which is the proportion the tile was drawn for.
+  static const double _targetTileWidth = 150;
 }
 
 class _BadgeTile extends StatelessWidget {
@@ -208,10 +224,8 @@ class _BadgeTile extends StatelessWidget {
               if (unlocked)
                 Text(
                   _earnedOn(badge.unlockedAt),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
                 )
               else ...[
                 Semantics(
@@ -232,10 +246,8 @@ class _BadgeTile extends StatelessWidget {
                   badge.ratio >= 1
                       ? 'Complete'
                       : '${(badge.ratio * 100).round()}%',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
                 ),
               ],
             ],
@@ -277,91 +289,95 @@ void _openDetail(BuildContext context, Achievement badge) {
             color: cs.surfaceContainerLow.withValues(alpha: 0.9),
             padding: const EdgeInsets.all(Gap.xl),
             child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurfaceVariant,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-              ),
-            ),
-            const SizedBox(height: Gap.xl),
-            Center(
-              child: IconBadge(
-                icon: badge.icon,
-                color: color,
-                size: 64,
-                radius: 20,
-                semanticLabel: badge.name,
-              ),
-            ),
-            const SizedBox(height: Gap.lg),
-            Text(
-              badge.name,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: Gap.sm),
-            Text(
-              badge.description,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: Gap.xl),
-            if (unlocked)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_rounded, size: 18, color: cs.tertiary),
-                  const SizedBox(width: Gap.sm),
-                  Text(
-                    isUnknownUnlockTime(badge.unlockedAt)
-                        ? 'Earned earlier'
-                        : 'Earned on ${_formatDate(badge.unlockedAt!)}',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.tertiary),
-                  ),
-                ],
-              )
-            else ...[
-              Semantics(
-                label: '${badge.name} progress',
-                value: '${(badge.ratio * 100).round()} percent',
-                child: LinearProgressIndicator(
-                  value: badge.ratio,
-                  color: color,
-                  backgroundColor: cs.surfaceContainerHighest,
-                  minHeight: 7,
-                ),
-              ),
-              const SizedBox(height: Gap.md),
-              Row(
-                children: [
-                  Text(
-                    '${_formatAmount(capped)} of ${_formatAmount(badge.target)}',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${_formatAmount(remaining)} to go',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
                       color: cs.onSurfaceVariant,
+                      borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                   ),
+                ),
+                const SizedBox(height: Gap.xl),
+                Center(
+                  child: IconBadge(
+                    icon: badge.icon,
+                    color: color,
+                    size: 64,
+                    radius: 20,
+                    semanticLabel: badge.name,
+                  ),
+                ),
+                const SizedBox(height: Gap.lg),
+                Text(
+                  badge.name,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: Gap.sm),
+                Text(
+                  badge.description,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: Gap.xl),
+                if (unlocked)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 18,
+                        color: cs.tertiary,
+                      ),
+                      const SizedBox(width: Gap.sm),
+                      Text(
+                        isUnknownUnlockTime(badge.unlockedAt)
+                            ? 'Earned earlier'
+                            : 'Earned on ${_formatDate(badge.unlockedAt!)}',
+                        style: Theme.of(context).textTheme.labelLarge
+                            ?.copyWith(color: cs.tertiary),
+                      ),
+                    ],
+                  )
+                else ...[
+                  Semantics(
+                    label: '${badge.name} progress',
+                    value: '${(badge.ratio * 100).round()} percent',
+                    child: LinearProgressIndicator(
+                      value: badge.ratio,
+                      color: color,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      minHeight: 7,
+                    ),
+                  ),
+                  const SizedBox(height: Gap.md),
+                  Row(
+                    children: [
+                      Text(
+                        '${_formatAmount(capped)} of ${_formatAmount(badge.target)}',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_formatAmount(remaining)} to go',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-            ],
-            const SizedBox(height: Gap.xl),
-            AppActionButton(
-              label: 'Close',
-              icon: Icons.close_rounded,
-              onTap: () => Navigator.of(context).pop(),
-            ),
-          ],
+                const SizedBox(height: Gap.xl),
+                AppActionButton(
+                  label: 'Close',
+                  icon: Icons.close_rounded,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
           ),
         ),

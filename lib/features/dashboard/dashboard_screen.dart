@@ -99,9 +99,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final heatmapWeeks = ref.watch(heatmapWeeksProvider);
 
     // A tablet has room for two columns; a phone does not, and two narrow
-    // columns are worse than one. Measured rather than taken from the window,
-    // because the rail already took its width off the top.
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    // columns are worse than one. Threshold on the window rather than on the
+    // column this screen is handed: the shell caps the column at
+    // [AppShell.maxWideContentWidth] and the rail takes its width first, so
+    // the two agree within a breakpoint's width of each other, and the window
+    // is the number that does not change under a `LayoutBuilder` that a
+    // scroll view can defer.
+    final wide = MediaQuery.sizeOf(context).width >= Layout.wide;
 
     // The first-run tips, built from what is actually on screen. A tip whose
     // subject is not rendered — the ring before the first session, the streak

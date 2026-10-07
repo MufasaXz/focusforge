@@ -21,8 +21,7 @@ class AppTheme {
   static ThemeData dark({
     AppPalette palette = AppPalette.ember,
     bool amoled = false,
-  }) =>
-      _build(Brightness.dark, palette, amoled);
+  }) => _build(Brightness.dark, palette, amoled);
 
   static ThemeData _build(
     Brightness brightness,
@@ -171,13 +170,13 @@ class AppTheme {
   /// moves. The tonal ladder is kept, compressed into 0–#1A1A1A, so a card
   /// still separates from the page it sits on.
   static ColorScheme _trueBlack(ColorScheme cs) => cs.copyWith(
-        surface: const Color(0xFF000000),
-        surfaceContainerLowest: const Color(0xFF000000),
-        surfaceContainerLow: const Color(0xFF060606),
-        surfaceContainer: const Color(0xFF0C0C0C),
-        surfaceContainerHigh: const Color(0xFF131313),
-        surfaceContainerHighest: const Color(0xFF1A1A1A),
-      );
+    surface: const Color(0xFF000000),
+    surfaceContainerLowest: const Color(0xFF000000),
+    surfaceContainerLow: const Color(0xFF060606),
+    surfaceContainer: const Color(0xFF0C0C0C),
+    surfaceContainerHigh: const Color(0xFF131313),
+    surfaceContainerHighest: const Color(0xFF1A1A1A),
+  );
 }
 
 /// Corner radii. Named by role rather than by size, so a card and a hero can
@@ -203,6 +202,26 @@ class Gap {
   static const double lg = 16;
   static const double xl = 24;
   static const double xxl = 32;
+}
+
+/// Widths that keep a large screen from being filled just because it is there.
+///
+/// A tablet is the same app with more room, not a different one: the extra
+/// width is worth spending on a second column, and worth refusing when there
+/// is no second column to spend it on.
+class Layout {
+  const Layout._();
+
+  /// Past this, a single column of content starts to read as a stretched
+  /// phone layout — a label and its trailing value a head-turn apart, a line
+  /// of body text the eye cannot track back from.
+  static const double readable = 760;
+
+  /// Where a screen that has a second column starts using it.
+  ///
+  /// Above Material's compact/medium breakpoint, so a tablet in portrait
+  /// still gets the single column it has room for.
+  static const double wide = 900;
 }
 
 /// How the app moves.

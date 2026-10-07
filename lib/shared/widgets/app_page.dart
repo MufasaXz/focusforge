@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,64 +35,100 @@ class AppPage extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        // `canPop` is false when the route was reached by deep link; falling
-        // back to the profile root keeps the button from being a dead end.
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Back',
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go('/profile');
-              }
-            },
-          ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            if (subtitle != null)
-              Text(
-                subtitle!,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // How far the capped column is inset from the page's own edges. Zero
+        // on a phone, where the cap does not bind.
+        final inset = math.max(
+          0.0,
+          (constraints.maxWidth - Layout.readable) / 2,
+        );
+
+        return Scaffold(
+          // The bar spans the page — chrome that stops short of the edge looks
+          // broken — but its contents start and end where the content below
+          // them does, so the title sits over the cards rather than off to one
+          // side of them.
+          appBar: AppBar(
+            titleSpacing: 0,
+            leadingWidth: _leadingWidth + inset,
+            // `canPop` is false when the route was reached by deep link;
+            // falling back to the profile root keeps the button from being a
+            // dead end.
+            leading: Padding(
+              padding: EdgeInsets.only(left: inset),
+              child: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Back',
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/profile');
+                    }
+                  },
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-          ],
-        ),
-        actions: [?trailing, const SizedBox(width: Gap.sm)],
-      ),
-      body: Column(
-        children: [
-          if (actions.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.lg, 0),
-              child: Column(children: actions),
             ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                Gap.lg,
-                Gap.lg,
-                Gap.lg,
-                bottomPadding + MediaQuery.paddingOf(context).bottom,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+            actions: [
+              ?trailing,
+              SizedBox(width: Gap.sm + inset),
+            ],
+          ),
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Layout.readable),
+              child: Column(
+                children: [
+                  if (actions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Gap.lg,
+                        Gap.md,
+                        Gap.lg,
+                        0,
+                      ),
+                      child: Column(children: actions),
+                    ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        Gap.lg,
+                        Gap.lg,
+                        Gap.lg,
+                        bottomPadding + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [child],
+                    ),
+                  ),
+                ],
               ),
-              children: [child],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+
+  /// Material's own width for the app bar's leading slot.
+  static const double _leadingWidth = 56;
 }
 
 /// A labelled group of rows inside an [AppPage] — the settings idiom.

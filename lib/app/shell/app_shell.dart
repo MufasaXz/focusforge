@@ -129,8 +129,7 @@ class _AppShellState extends ConsumerState<AppShell>
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final shielded = ref.watch(activeShieldCountProvider) > 0;
-    final wide =
-        MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
+    final wide = MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
 
     final destinations = [
       const NavigationDestination(
@@ -185,8 +184,9 @@ class _AppShellState extends ConsumerState<AppShell>
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: cs.surface,
-        systemNavigationBarIconBrightness:
-            isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
       child: wide
@@ -223,7 +223,21 @@ class _AppShellState extends ConsumerState<AppShell>
                         constraints: const BoxConstraints(
                           maxWidth: AppShell.maxWideContentWidth,
                         ),
-                        child: body,
+                        // The branch body is its own semantics container, and
+                        // that is load-bearing rather than tidiness: every
+                        // route carries a [ModalBarrier], and a barrier wraps
+                        // [BlockSemantics], which drops the semantics of
+                        // everything painted before it. The rail is painted
+                        // before the body, so without this boundary the whole
+                        // navigation disappears from the screen reader the
+                        // moment a real screen is on the other side of it.
+                        // The bottom bar has no such problem — a Scaffold
+                        // paints it after the body.
+                        child: Semantics(
+                          container: true,
+                          explicitChildNodes: true,
+                          child: body,
+                        ),
                       ),
                     ),
                   ),
@@ -279,14 +293,16 @@ class _CoachAnchor extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => KeyedSubtree(key: anchorKey, child: child);
+  Widget build(BuildContext context) =>
+      KeyedSubtree(key: anchorKey, child: child);
 }
 
 /// Shield destination glyph with an M3 [Badge] while any shield is armed.
 ///
 /// A dot rather than a count: the number belongs on the Shield screen, where
 /// there is room to say what it counts.
-class _ShieldIcon extends StatelessWidget {  const _ShieldIcon({required this.shielded, required this.icon});
+class _ShieldIcon extends StatelessWidget {
+  const _ShieldIcon({required this.shielded, required this.icon});
 
   final bool shielded;
   final IconData icon;

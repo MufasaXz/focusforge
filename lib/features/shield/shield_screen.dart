@@ -86,25 +86,31 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
     return Stack(
       children: [
         Positioned.fill(
-          // The entrance waits for the branch to be on screen; see
-          // [_TabEntrance].
-          child: _TabEntrance(
-            // Each segment owns its own scroll view. The app list is the whole
-            // device — hundreds of rows on a real phone — and a single
-            // `ListView` holding all of them would build every row, every
-            // toggle and every icon before the first one was painted. Only the
-            // app list needs that; the other two stay as they were.
-            child: switch (_segment) {
-              0 => _AppsView(topPadding: headerHeight + Gap.md),
-              1 => _SegmentScroll(
-                topPadding: headerHeight + Gap.md,
-                child: const _YoutubeView(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Layout.readable),
+              // The entrance waits for the branch to be on screen; see
+              // [_TabEntrance].
+              child: _TabEntrance(
+                // Each segment owns its own scroll view. The app list is the
+                // whole device — hundreds of rows on a real phone — and a
+                // single `ListView` holding all of them would build every row,
+                // every toggle and every icon before the first one was
+                // painted. Only the app list needs that; the other two stay as
+                // they were.
+                child: switch (_segment) {
+                  0 => _AppsView(topPadding: headerHeight + Gap.md),
+                  1 => _SegmentScroll(
+                    topPadding: headerHeight + Gap.md,
+                    child: const _YoutubeView(),
+                  ),
+                  _ => _SegmentScroll(
+                    topPadding: headerHeight + Gap.md,
+                    child: const _ActivityView(),
+                  ),
+                },
               ),
-              _ => _SegmentScroll(
-                topPadding: headerHeight + Gap.md,
-                child: const _ActivityView(),
-              ),
-            },
+            ),
           ),
         ),
         Positioned(
@@ -113,7 +119,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
           right: 0,
           // A solid surface, not a frosted bar: M3 expresses layering through
           // surface tone, and a backdrop filter here would be spent on chrome
-          // that never moves.
+          // that never moves. The band is full width; its contents are not.
           child: Container(
             color: cs.surface,
             padding: EdgeInsets.fromLTRB(
@@ -122,52 +128,62 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
               Gap.lg + 4,
               Gap.lg,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: Layout.readable),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Shield',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(fontSize: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shield',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(fontSize: 24),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Close what pulls you away',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Close what pulls you away',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                        ),
+                        const SizedBox(width: Gap.md),
+                        _ShieldStatusPill(
+                          armed: armed,
+                          onTap: _showStatusSheet,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Gap.lg),
+                    // `double.infinity` makes the button fill the column: the
+                    // M3 segmented button otherwise shrink-wraps its segments.
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<int>(
+                        segments: [
+                          for (var i = 0; i < _segmentOptions.length; i++)
+                            ButtonSegment(
+                              value: i,
+                              label: Text(_segmentOptions[i]),
+                            ),
                         ],
+                        selected: {_segment},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (selection) =>
+                            setState(() => _segment = selection.first),
                       ),
                     ),
-                    const SizedBox(width: Gap.md),
-                    _ShieldStatusPill(armed: armed, onTap: _showStatusSheet),
                   ],
                 ),
-                const SizedBox(height: Gap.lg),
-                // `double.infinity` makes the button fill the header: the M3
-                // segmented button otherwise shrink-wraps its segments.
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<int>(
-                    segments: [
-                      for (var i = 0; i < _segmentOptions.length; i++)
-                        ButtonSegment(
-                          value: i,
-                          label: Text(_segmentOptions[i]),
-                        ),
-                    ],
-                    selected: {_segment},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (selection) =>
-                        setState(() => _segment = selection.first),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -100,6 +100,137 @@ class ProfileScreen extends ConsumerWidget {
       ),
     ];
 
+    final wide = MediaQuery.sizeOf(context).width >= Layout.wide;
+
+    // Stagger plays once per element lifetime. The tab's branch is built the
+    // first time it is shown (go_router does not preload branches), so the
+    // entrance lands on the first visit and never on a rebuild.
+    //
+    // Two counters when the columns are side by side, one when they are
+    // stacked: the entrance is a single sweep down the page, so the numbering
+    // has to follow the order the eye reads rather than the order the code
+    // builds. Side by side, that is the left column first.
+    var index = 0;
+    var prefIndex = 0;
+    Widget stagger(Widget child) => Stagger(index: index++, child: child);
+    Widget prefStagger(Widget child) =>
+        Stagger(index: wide ? prefIndex++ : index++, child: child);
+
+    // Identity and progress in one column, everything that is a setting in the
+    // other. Stacked — which is every phone — it is the same page it has
+    // always been, in the same order.
+    final identity = <Widget>[
+      stagger(
+        _HeroCard(
+          user: user,
+          stats: stats,
+          streak: streak,
+          unlocked: unlocked,
+          totalBadges: achievements.length,
+        ),
+      ),
+      const SizedBox(height: Gap.lg),
+      if (user.isAnonymous) ...[
+        stagger(const _AnonymousCard()),
+        const SizedBox(height: Gap.lg),
+      ],
+      stagger(
+        SectionHeader(
+          title: 'Weekly study goals',
+          icon: Icons.flag_outlined,
+          trailing: Text(
+            'Tap to edit',
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: t.onSurfaceVariant),
+          ),
+        ),
+      ),
+      stagger(
+        EdgeFade(
+          trailing: 32,
+          child: SizedBox(
+            height: 118,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: subjects.length,
+              separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
+              itemBuilder: (context, i) => _SubjectGoalCard(
+                subject: subjects[i],
+                onTap: () => showSubjectTargetSheet(context, subjects[i]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+
+    final prefs = <Widget>[
+      prefStagger(
+        const SectionHeader(title: 'Appearance', icon: Icons.palette_outlined),
+      ),
+      prefStagger(const _AppearanceCard()),
+      const SizedBox(height: Gap.xl),
+      prefStagger(
+        const SectionHeader(title: 'Focus clock', icon: Icons.timer_outlined),
+      ),
+      prefStagger(const _ClockFaceCard()),
+      const SizedBox(height: Gap.xl),
+      prefStagger(
+        const SectionHeader(title: 'Settings', icon: Icons.settings_outlined),
+      ),
+      prefStagger(
+        Card.filled(
+          // Without this the tile ripples paint square corners over the
+          // card's rounded ones.
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < settings.length; i++) ...[
+                if (i > 0) Divider(color: t.outlineVariant, height: 1),
+                _SettingTile(
+                  spec: settings[i],
+                  onTap: () => context.goNamed(settings[i].routeName!),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: Gap.xl),
+      prefStagger(
+        const SectionHeader(title: 'Developer', icon: Icons.build_outlined),
+      ),
+      prefStagger(
+        Card.filled(
+          clipBehavior: Clip.antiAlias,
+          child: _SettingTile(
+            spec: const _SettingSpec(
+              icon: Icons.restart_alt_outlined,
+              label: 'Replay onboarding',
+              subtitle: 'Run the first-launch flow again',
+            ),
+            onTap: () async {
+              await ref.read(userProvider.notifier).replayOnboarding();
+              // The router has no refresh listenable, so it only re-evaluates
+              // its redirect on a navigation — nudge it once the flag flips.
+              if (context.mounted) context.goNamed(AppRoutes.onboarding);
+            },
+          ),
+        ),
+      ),
+      prefStagger(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, Gap.sm, 6, 0),
+          child: Text(
+            'Onboarding starts over from the first screen. Nothing already '
+            'logged is deleted.',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: t.onSurfaceVariant),
+          ),
+        ),
+      ),
+    ];
+
     return _TabEntrance(
       // The entrance waits for the branch to be on screen; see [_TabEntrance].
       child: ListView(
@@ -110,150 +241,20 @@ class ProfileScreen extends ConsumerWidget {
           kNavBarClearance,
         ),
         children: [
-          // Stagger plays once per element lifetime. The tab's branch is built
-          // the first time it is shown (go_router does not preload branches), so
-          // the entrance lands on the first visit and never on a rebuild.
-          // Hero ---------------------------------------------------------------
-          Stagger(
-            index: 0,
-            child: _HeroCard(
-              user: user,
-              stats: stats,
-              streak: streak,
-              unlocked: unlocked,
-              totalBadges: achievements.length,
-            ),
-          ),
-          const SizedBox(height: Gap.lg),
-
-          if (user.isAnonymous) ...[
-            const Stagger(index: 1, child: _AnonymousCard()),
-            const SizedBox(height: Gap.lg),
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Column(children: identity)),
+                const SizedBox(width: Gap.xl),
+                Expanded(child: Column(children: prefs)),
+              ],
+            )
+          else ...[
+            ...identity,
+            const SizedBox(height: Gap.xl),
+            ...prefs,
           ],
-
-          // Study goals ---------------------------------------------------------
-          Stagger(
-            index: 2,
-            child: SectionHeader(
-              title: 'Weekly study goals',
-              icon: Icons.flag_outlined,
-              trailing: Text(
-                'Tap to edit',
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: t.onSurfaceVariant),
-              ),
-            ),
-          ),
-          Stagger(
-            index: 3,
-            child: EdgeFade(
-              trailing: 32,
-              child: SizedBox(
-                height: 118,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: subjects.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
-                  itemBuilder: (context, i) => _SubjectGoalCard(
-                    subject: subjects[i],
-                    onTap: () => showSubjectTargetSheet(context, subjects[i]),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: Gap.xl),
-
-          // Appearance ----------------------------------------------------------
-          const Stagger(
-            index: 4,
-            child: SectionHeader(
-              title: 'Appearance',
-              icon: Icons.palette_outlined,
-            ),
-          ),
-          const Stagger(index: 5, child: _AppearanceCard()),
-          const SizedBox(height: Gap.xl),
-
-          // Focus clock ----------------------------------------------------------
-          const Stagger(
-            index: 6,
-            child: SectionHeader(
-              title: 'Focus clock',
-              icon: Icons.timer_outlined,
-            ),
-          ),
-          const Stagger(index: 7, child: _ClockFaceCard()),
-          const SizedBox(height: Gap.xl),
-
-          // Settings -------------------------------------------------------------
-          const Stagger(
-            index: 8,
-            child: SectionHeader(
-              title: 'Settings',
-              icon: Icons.settings_outlined,
-            ),
-          ),
-          Stagger(
-            index: 9,
-            child: Card.filled(
-              // Without this the tile ripples paint square corners over the
-              // card's rounded ones.
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (var i = 0; i < settings.length; i++) ...[
-                    if (i > 0) Divider(color: t.outlineVariant, height: 1),
-                    _SettingTile(
-                      spec: settings[i],
-                      onTap: () => context.goNamed(settings[i].routeName!),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: Gap.xl),
-
-          // Developer ------------------------------------------------------------
-          const Stagger(
-            index: 10,
-            child: SectionHeader(
-              title: 'Developer',
-              icon: Icons.build_outlined,
-            ),
-          ),
-          Stagger(
-            index: 11,
-            child: Card.filled(
-              clipBehavior: Clip.antiAlias,
-              child: _SettingTile(
-                spec: const _SettingSpec(
-                  icon: Icons.restart_alt_outlined,
-                  label: 'Replay onboarding',
-                  subtitle: 'Run the first-launch flow again',
-                ),
-                onTap: () async {
-                  await ref.read(userProvider.notifier).replayOnboarding();
-                  // The router has no refresh listenable, so it only re-evaluates
-                  // its redirect on a navigation — nudge it once the flag flips.
-                  if (context.mounted) context.goNamed(AppRoutes.onboarding);
-                },
-              ),
-            ),
-          ),
-          Stagger(
-            index: 12,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, Gap.sm, 6, 0),
-              child: Text(
-                'Onboarding starts over from the first screen. Nothing already '
-                'logged is deleted.',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: t.onSurfaceVariant),
-              ),
-            ),
-          ),
         ],
       ),
     );
