@@ -58,9 +58,14 @@ void main() {
 
   group('ClockFace', () {
     test('an unknown or missing name falls back to the shipped face', () {
-      expect(ClockFace.fromName(null), ClockFace.digits);
-      expect(ClockFace.fromName(''), ClockFace.digits);
-      expect(ClockFace.fromName('sundial'), ClockFace.digits);
+      expect(ClockFace.fromName(null), ClockFace.minimal);
+      expect(ClockFace.fromName(''), ClockFace.minimal);
+      expect(ClockFace.fromName('sundial'), ClockFace.minimal);
+      expect(
+        ClockFace.fromName('digits'),
+        ClockFace.minimal,
+        reason: 'a face that has been retired reads as the fallback',
+      );
     });
 
     test('round-trips by name', () {
@@ -79,7 +84,7 @@ void main() {
     const remaining = Duration(minutes: 24, seconds: 51);
 
     testWidgets('the faces that draw text show every figure', (tester) async {
-      for (final face in [ClockFace.digits, ClockFace.minimal]) {
+      for (final face in [ClockFace.minimal, ClockFace.neon]) {
         await tester.pumpWidget(
           wrap(
             ClockDisplay(
@@ -285,6 +290,39 @@ void main() {
         }
       }
     });
+
+    testWidgets('the analog face is a square dial, not a row of figures', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          const ClockDisplay(
+            remaining: Duration(minutes: 25),
+            face: ClockFace.analog,
+            accent: Colors.orange,
+            height: 48,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final paint = tester.widget<CustomPaint>(
+        find
+            .descendant(
+              of: find.byType(ClockDisplay),
+              matching: find.byType(CustomPaint),
+            )
+            .first,
+      );
+      final size = paint.size;
+      expect(size.width, size.height, reason: 'a dial is round');
+      expect(
+        size.width,
+        greaterThan(48),
+        reason: 'the hands need more room than the figures did',
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('the clock face page', () {
@@ -346,7 +384,7 @@ void main() {
       ];
       expect(
         chosen,
-        [ClockFace.digits],
+        [ClockFace.minimal],
         reason:
             'exactly one face is the current one, and a cold install '
             'wears the shipped one',
@@ -405,7 +443,7 @@ void main() {
 
       expect(
         container.read(clockFaceProvider),
-        ClockFace.digits,
+        ClockFace.minimal,
         reason: 'a cold install gets the face the app shipped with',
       );
 
@@ -424,7 +462,7 @@ void main() {
       expect(reopened.read(clockFaceProvider), ClockFace.flip);
 
       reopened.read(clockFaceProvider.notifier).hydrate('sundial');
-      expect(reopened.read(clockFaceProvider), ClockFace.digits);
+      expect(reopened.read(clockFaceProvider), ClockFace.minimal);
     });
   });
 }

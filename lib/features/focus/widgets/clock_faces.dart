@@ -43,11 +43,6 @@ class ClockDisplay extends StatelessWidget {
     final text = formatClock(remaining);
 
     switch (face) {
-      case ClockFace.digits:
-        return AnimatedDigits(
-          text: text,
-          style: _baseStyle(context).copyWith(fontSize: height),
-        );
       case ClockFace.flip:
         return _FlipBoard(text: text, accent: accent, height: height);
       case ClockFace.segments:
@@ -59,19 +54,16 @@ class ClockDisplay extends StatelessWidget {
           height: height,
           progress: progress,
         );
+      case ClockFace.analog:
+        return _AnalogClock(
+          remaining: remaining,
+          accent: accent,
+          height: height,
+        );
       case ClockFace.neon:
         return _NeonClock(text: text, accent: accent, height: height);
     }
   }
-
-  TextStyle _baseStyle(BuildContext context) => Theme.of(context)
-      .textTheme
-      .displayLarge!
-      .copyWith(
-        height: 1.02,
-        letterSpacing: -height * 0.042,
-        fontWeight: FontWeight.w600,
-      );
 }
 
 // ---------------------------------------------------------------------------
@@ -713,4 +705,131 @@ class _MinimalClock extends StatelessWidget {
       ],
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Analog — a dial with hands
+// ---------------------------------------------------------------------------
+
+/// The time that is left, on a dial: an hour hand, a minute hand and a second
+/// hand, all reading the one value the engine has.
+///
+/// The hands run *down*, so the dial unwinds as the segment empties and every
+/// hand meets at twelve when the block is done. A dial that swept forward
+/// would be saying the session had just started; this one says how much of it
+/// is left, which is the question the screen exists to answer.
+class _AnalogClock extends StatelessWidget {
+  const _AnalogClock({
+    required this.remaining,
+    required this.accent,
+    required this.height,
+  });
+
+  final Duration remaining;
+  final Color accent;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return CustomPaint(
+      // A dial is square, and a little larger than the figures it replaces:
+      // the hands need room the glyphs did not.
+      size: Size.square(height * 1.22),
+      painter: _AnalogPainter(
+        remaining: remaining,
+        accent: accent,
+        ink: cs.onSurface,
+        marks: cs.onSurfaceVariant,
+      ),
+    );
+  }
+}
+
+class _AnalogPainter extends CustomPainter {
+  const _AnalogPainter({
+    required this.remaining,
+    required this.accent,
+    required this.ink,
+    required this.marks,
+  });
+
+  final Duration remaining;
+  final Color accent;
+  final Color ink;
+  final Color marks;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = s / 2;
+
+    // The dial: a hairline circle with sixty marks around it, every fifth one
+    // long. It is what makes the hands' positions readable as positions.
+    canvas.drawCircle(
+      center,
+      radius - s * 0.012,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.014
+        ..color = marks.withValues(alpha: 0.30),
+    );
+
+    final mark = Paint()..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 60; i++) {
+      final major = i % 5 == 0;
+      final angle = i * math.pi / 30 - math.pi / 2;
+      final outer = radius - s * 0.05;
+      final inner = outer - (major ? s * 0.075 : s * 0.035);
+      canvas.drawLine(
+        center + Offset(math.cos(angle) * inner, math.sin(angle) * inner),
+        center + Offset(math.cos(angle) * outer, math.sin(angle) * outer),
+        mark
+          ..strokeWidth = major ? s * 0.02 : s * 0.008
+          ..color = marks.withValues(alpha: major ? 0.55 : 0.25),
+      );
+    }
+
+    // Each hand reads the remainder of its own cycle — the hour of a twelve-
+    // hour one, the minute of an hour, the second of a minute — so all three
+    // meet at twelve exactly when the segment runs out.
+    final seconds = remaining.inSeconds;
+    double turns(int cycle) => (seconds % cycle) / cycle;
+
+    void hand(
+      double ofTurn,
+      double length,
+      double width,
+      Color color,
+      double tail,
+    ) {
+      final angle = ofTurn * 2 * math.pi - math.pi / 2;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      canvas.drawLine(
+        center - direction * tail,
+        center + direction * length,
+        Paint()
+          ..strokeWidth = width
+          ..strokeCap = StrokeCap.round
+          ..color = color,
+      );
+    }
+
+    hand(turns(43200), radius * 0.44, s * 0.045, ink, 0);
+    hand(turns(3600), radius * 0.66, s * 0.030, ink, 0);
+    // The second hand is the accent, with a tail past the pin, the way a real
+    // one is read at a glance.
+    hand(turns(60), radius * 0.76, s * 0.012, accent, radius * 0.16);
+
+    canvas.drawCircle(center, s * 0.036, Paint()..color = ink);
+    canvas.drawCircle(center, s * 0.017, Paint()..color = accent);
+  }
+
+  @override
+  bool shouldRepaint(_AnalogPainter old) =>
+      old.remaining != remaining ||
+      old.accent != accent ||
+      old.ink != ink ||
+      old.marks != marks;
 }

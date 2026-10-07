@@ -238,82 +238,85 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         // control the user has to be careful with.
                         child: GestureDetector(
                           onDoubleTap: () => showFullscreenClock(context),
-                          child: ProgressRing(
-                            value: timer.progressFor(preset),
-                            size: 252,
-                            stroke: 12,
-                            ticks: 60,
-                            // The second horizon: how far through the set of focus
-                            // blocks this session is. The inner arc answers "how
-                            // much longer", which is a different question from "how
-                            // many more", and a timer that shows only one of them
-                            // makes the other a mental sum.
-                            outer: preset.segments <= 0
-                                ? null
-                                : (timer.completedFocusSegments %
-                                          preset.segments) /
-                                      preset.segments,
-                            colors: [
-                              accent,
-                              Color.lerp(accent, t.secondary, 0.7)!,
-                            ],
-                            semanticLabel:
-                                '${timer.phase.label}, $clock remaining, '
-                                '${timer.running ? 'running' : 'paused'}',
-                            child: ExcludeSemantics(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // The ring label carries the time for screen
-                                  // readers, so the figures themselves are silent.
-                                  SizedBox(
-                                    width: 214,
-                                    height: 78,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: ClockDisplay(
-                                        remaining: timer.remaining,
-                                        face: face,
-                                        accent: accent,
-                                        height: 72,
-                                        progress: timer.progressFor(preset),
-                                      ),
+                          // The flip board is a wide rectangle, and a dial
+                          // around it both fights its shape and shrinks it:
+                          // the face picked to be big ends up the smallest
+                          // thing on the page. It takes the width instead,
+                          // and the ring stays with the faces that fit it.
+                          child: face == ClockFace.flip
+                              ? Semantics(
+                                  label:
+                                      '${timer.phase.label}, $clock remaining, '
+                                      '${timer.running ? 'running' : 'paused'}',
+                                  child: ExcludeSemantics(
+                                    child: _FlipClock(
+                                      remaining: timer.remaining,
+                                      accent: accent,
+                                      phase: timer.phase,
+                                      segments: preset.segments,
+                                      cycleDone: cycleDone,
+                                      currentDot: currentDot,
                                     ),
                                   ),
-                                  const SizedBox(height: Gap.xs),
-                                  Text(
-                                    timer.phase.label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: accent,
-                                          fontSize: 12.5,
-                                          letterSpacing: 0.3,
+                                )
+                              : ProgressRing(
+                                  value: timer.progressFor(preset),
+                                  size: 252,
+                                  stroke: 12,
+                                  ticks: 60,
+                                  // The second horizon: how far through the set of
+                                  // focus blocks this session is. The inner arc
+                                  // answers "how much longer", which is a different
+                                  // question from "how many more", and a timer that
+                                  // shows only one of them makes the other a mental
+                                  // sum.
+                                  outer: preset.segments <= 0
+                                      ? null
+                                      : (timer.completedFocusSegments %
+                                                preset.segments) /
+                                            preset.segments,
+                                  colors: [
+                                    accent,
+                                    Color.lerp(accent, t.secondary, 0.7)!,
+                                  ],
+                                  semanticLabel:
+                                      '${timer.phase.label}, $clock remaining, '
+                                      '${timer.running ? 'running' : 'paused'}',
+                                  child: ExcludeSemantics(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // The ring label carries the time for
+                                        // screen readers, so the figures
+                                        // themselves are silent.
+                                        SizedBox(
+                                          width: 214,
+                                          height: 78,
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: ClockDisplay(
+                                              remaining: timer.remaining,
+                                              face: face,
+                                              accent: accent,
+                                              height: 72,
+                                              progress: timer.progressFor(
+                                                preset,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                  ),
-                                  const SizedBox(height: Gap.md),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      for (
-                                        var i = 0;
-                                        i < preset.segments;
-                                        i++
-                                      ) ...[
-                                        if (i > 0) const SizedBox(width: 6),
-                                        _SegmentDot(
-                                          done: i < cycleDone,
-                                          current: i == currentDot,
-                                          color: accent,
+                                        const SizedBox(height: Gap.xs),
+                                        _ClockCaption(
+                                          phase: timer.phase,
+                                          accent: accent,
+                                          segments: preset.segments,
+                                          cycleDone: cycleDone,
+                                          currentDot: currentDot,
                                         ),
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                ),
                         ),
                       ),
                       // The gesture is not visible, so it is said out loud
@@ -704,6 +707,111 @@ Color _onPhaseColor(ColorScheme t, TimerPhase phase) => switch (phase) {
   TimerPhase.shortBreak => t.onTertiary,
   TimerPhase.longBreak => t.onSecondary,
 };
+
+/// The flip board with the width to itself.
+///
+/// No dial. The board is a wide rectangle and the ring is a circle, so framing
+/// one with the other left the figures smaller than they are on any other
+/// face — the one face that reads best at size was the one drawn smallest. It
+/// is sized from the width it is given instead, which on a phone is the whole
+/// column.
+class _FlipClock extends StatelessWidget {
+  const _FlipClock({
+    required this.remaining,
+    required this.accent,
+    required this.phase,
+    required this.segments,
+    required this.cycleDone,
+    required this.currentDot,
+  });
+
+  final Duration remaining;
+  final Color accent;
+  final TimerPhase phase;
+  final int segments;
+  final int cycleDone;
+  final int currentDot;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The board is about 2.8 figure-heights wide, so this is the tallest
+        // it can stand and still fit the column it was handed. The bounds keep
+        // it legible on the narrowest phone and from spilling off a tablet.
+        final height = (constraints.maxWidth / 2.8).clamp(96.0, 168.0);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClockDisplay(
+              remaining: remaining,
+              face: ClockFace.flip,
+              accent: accent,
+              height: height,
+            ),
+            const SizedBox(height: Gap.lg),
+            _ClockCaption(
+              phase: phase,
+              accent: accent,
+              segments: segments,
+              cycleDone: cycleDone,
+              currentDot: currentDot,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The line under the clock: which segment is running, and how far through the
+/// set of them the session is.
+class _ClockCaption extends StatelessWidget {
+  const _ClockCaption({
+    required this.phase,
+    required this.accent,
+    required this.segments,
+    required this.cycleDone,
+    required this.currentDot,
+  });
+
+  final TimerPhase phase;
+  final Color accent;
+  final int segments;
+  final int cycleDone;
+  final int currentDot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          phase.label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: accent,
+            fontSize: 12.5,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: Gap.md),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < segments; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              _SegmentDot(
+                done: i < cycleDone,
+                current: i == currentDot,
+                color: accent,
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
 
 class _SegmentDot extends StatelessWidget {
   const _SegmentDot({

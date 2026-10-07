@@ -66,13 +66,13 @@ enum AppPalette {
 ///
 /// A display preference, not a theme: it changes one widget on one screen, and
 /// it is stored by name for the same reason the palette is — the value has to
-/// survive reordering of this enum. `digits` is the face the app shipped with,
-/// so it is also the fallback for an unreadable stored value.
+/// survive reordering of this enum. `minimal` is the fallback for a stored
+/// value this build cannot read, including a face that has since been retired.
 enum ClockFace {
-  digits('Digits', 'Rolling figures', Icons.timer_outlined),
   flip('Flip', 'Split-flap cards', Icons.view_agenda_rounded),
   segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
   minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded),
+  analog('Analog', 'Hour, minute and second hands', Icons.access_time_rounded),
   neon('Neon', 'Lit figures with a glow', Icons.lightbulb_outline_rounded);
 
   const ClockFace(this.label, this.blurb, this.icon);
@@ -81,8 +81,10 @@ enum ClockFace {
   final String blurb;
   final IconData icon;
 
-  static ClockFace fromName(String? name) =>
-      values.firstWhere((v) => v.name == name, orElse: () => ClockFace.digits);
+  static ClockFace fromName(String? name) => values.firstWhere(
+    (v) => v.name == name,
+    orElse: () => ClockFace.minimal,
+  );
 }
 
 /// Everything the appearance section can change, in one value.
