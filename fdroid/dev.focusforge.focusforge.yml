@@ -1,0 +1,56 @@
+# F-Droid build metadata for FocusForge — the reference copy.
+#
+# What actually matters is the file in the F-Droid data repository, at
+# metadata/dev.focusforge.focusforge.yml. This copy lives next to the code it
+# describes so the two cannot drift.
+#
+# It builds the `fdroid` branch, which carries no Firebase and no Google Play
+# Services; the main branch keeps the Firebase account backend for the Play
+# build. That is why `UpdateCheckMode` watches `v*` tags: those are only ever
+# pushed on this branch. A `v*` tag on main would point the update check at a
+# commit F-Droid cannot build.
+#
+# The app is unsigned in the output path below on purpose — F-Droid signs the
+# APK with the key it holds for this app, and the release build here is
+# configured to succeed without the developer's keystore.
+
+Categories:
+  - Time
+  - System
+License: MIT
+AuthorName: MufasaXz
+AuthorEmail: sudeepyadav7272@gmail.com
+SourceCode: https://github.com/MufasaXz/focusforge
+IssueTracker: https://github.com/MufasaXz/focusforge/issues
+
+AutoName: FocusForge
+
+RepoType: git
+Repo: https://github.com/MufasaXz/focusforge
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 1
+    commit: 2c410e331822189b638dfde852d501ec60c94d6c
+    output: build/app/outputs/apk/release/app-release-unsigned.apk
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - git -C $$flutter$$ checkout -f 3.47.6
+      - export PATH=$$flutter$$/bin:$PATH
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - flutter config --no-analytics
+      - flutter pub get
+    scandelete:
+      - .pub-cache
+    build:
+      - export PATH=$$flutter$$/bin:$PATH
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - flutter build apk --release
+    ndk: r28c
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9].*
+UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1
