@@ -6,20 +6,23 @@ import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
 import '../../../shared/widgets/icon_badge.dart';
 
-/// This week's leading subject, as one row.
+/// The leading subject over [range], as one row.
 ///
 /// A row rather than a chart: the breakdown beside it already carries the
 /// split, and the question this answers — "what have I actually been studying"
 /// — is a single name. Nothing here opens anything, so it carries no chevron;
 /// an arrow that leads nowhere is a promise the row cannot keep.
 class TopSubjectCard extends ConsumerWidget {
-  const TopSubjectCard({super.key});
+  const TopSubjectCard({super.key, required this.range});
+
+  final StudyRange range;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final top = ref.watch(topSubjectProvider);
+    final top = ref.watch(topSubjectProvider(range));
+    final span = range == StudyRange.week ? 'week' : 'month';
 
     return Card.filled(
       child: Padding(
@@ -35,7 +38,7 @@ class TopSubjectCard extends ConsumerWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      'Nothing logged this week yet — finish a session and '
+                      'Nothing logged this $span yet — finish a session and '
                       'your leading subject lands here.',
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -44,7 +47,7 @@ class TopSubjectCard extends ConsumerWidget {
               )
             : Semantics(
                 label:
-                    'Top subject this week: ${top.name}, '
+                    'Top subject this $span: ${top.name}, '
                     '${spokenHours(top.minutes / 60)} across '
                     '${top.sessions} ${top.sessions == 1 ? 'session' : 'sessions'}',
                 child: ExcludeSemantics(

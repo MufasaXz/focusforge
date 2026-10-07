@@ -400,19 +400,30 @@ class TopSubjectSummary {
   final int sessions;
 }
 
-/// This week's leading subject, or null when the week has nothing on it.
+/// The leading subject over [range], or null when the span has nothing on it.
 ///
-/// The week is Monday-aligned, like the tracker and the heatmap, so "top
-/// subject" means the same span everywhere the app says "this week". The
-/// subject is looked up live, so a rename or a recolour shows here too — and a
-/// subject that has since been deleted keeps the name it was studied under
-/// rather than vanishing from the week it was part of.
-final topSubjectProvider = Provider<TopSubjectSummary?>((ref) {
+/// The week is Monday-aligned and the month starts on the 1st, so "top
+/// subject" means the same span as the chart above it: switching the tracker
+/// to Month asks the same question of the same dates. The subject is looked up
+/// live, so a rename or a recolour shows here too — and a subject that has
+/// since been deleted keeps the name it was studied under rather than
+/// vanishing from the span it was part of.
+final topSubjectProvider = Provider.family<TopSubjectSummary?, StudyRange>((
+  ref,
+  range,
+) {
   final now = DateTime.now();
-  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final start = switch (range) {
+    StudyRange.week => DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - 1),
+    ),
+    StudyRange.month => DateTime(now.year, now.month),
+  };
   final sessions = ref
       .watch(sessionsProvider)
-      .where((s) => s.completed && !s.startedAt.isBefore(monday))
+      .where((s) => s.completed && !s.startedAt.isBefore(start))
       .toList(growable: false);
   if (sessions.isEmpty) return null;
 

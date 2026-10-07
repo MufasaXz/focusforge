@@ -191,30 +191,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onDayTap: (day) => _openDay(day),
         ),
         const SizedBox(height: Gap.xl),
-        const SectionHeader(
-          title: 'Top subject',
-          icon: Icons.workspace_premium_rounded,
-        ),
-        const SizedBox(height: Gap.md),
-        const TopSubjectCard(),
-        const SizedBox(height: Gap.xl),
-        const SectionHeader(
-          title: 'Focus heatmap',
-          icon: Icons.calendar_month_rounded,
-        ),
-        const SizedBox(height: Gap.md),
-        Card.filled(
-          child: Padding(
-            padding: const EdgeInsets.all(Gap.lg),
-            child: FocusHeatmap(
-              weeks: heatmapWeeks,
-              // The same sheet the tracker's bars open: a day is a day, and
-              // which of the two views it was reached from is not a fact
-              // about the day.
-              onDayTap: (date) => showDaySummarySheet(context, date),
+        // Both of these are month-shaped reads: the grid covers five weeks and
+        // the card names the leader of the span the chart is showing. They
+        // answer "how has this month gone", which the week view never asks, so
+        // they appear with the month rather than padding the week's page.
+        if (_range == StudyRange.month) ...[
+          const SectionHeader(
+            title: 'Top subject',
+            icon: Icons.workspace_premium_rounded,
+          ),
+          const SizedBox(height: Gap.md),
+          TopSubjectCard(range: _range),
+          const SizedBox(height: Gap.xl),
+          const SectionHeader(
+            title: 'Focus heatmap',
+            icon: Icons.calendar_month_rounded,
+          ),
+          const SizedBox(height: Gap.md),
+          Card.filled(
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.lg),
+              child: FocusHeatmap(
+                weeks: heatmapWeeks,
+                // The same sheet the tracker's bars open: a day is a day, and
+                // which of the two views it was reached from is not a fact
+                // about the day.
+                onDayTap: (date) => showDaySummarySheet(context, date),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     ];
 
@@ -722,7 +728,8 @@ class _NoSessions extends StatelessWidget {
         title: 'No sessions yet',
         subtitle:
             'Finish your first focus block and this page fills in — '
-            'the daily ring, the weekly chart and the heatmap.',
+            'the daily ring and the weekly chart, then the month view behind '
+            'them.',
         action: FilledButton.icon(
           key: ctaKey,
           onPressed: onStart,
