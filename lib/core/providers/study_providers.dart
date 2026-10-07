@@ -380,6 +380,72 @@ final currentStreakProvider = Provider<int>((ref) {
   return streak;
 });
 
+/// The subject that has taken the most time this week.
+@immutable
+class TopSubjectSummary {
+  const TopSubjectSummary({
+    required this.name,
+    required this.color,
+    required this.icon,
+    required this.minutes,
+    required this.sessions,
+  });
+
+  final String name;
+  final Color color;
+  final IconData icon;
+  final int minutes;
+
+  /// How many finished blocks went into it.
+  final int sessions;
+}
+
+/// This week's leading subject, or null when the week has nothing on it.
+///
+/// The week is Monday-aligned, like the tracker and the heatmap, so "top
+/// subject" means the same span everywhere the app says "this week". The
+/// subject is looked up live, so a rename or a recolour shows here too — and a
+/// subject that has since been deleted keeps the name it was studied under
+/// rather than vanishing from the week it was part of.
+final topSubjectProvider = Provider<TopSubjectSummary?>((ref) {
+  final now = DateTime.now();
+  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final sessions = ref
+      .watch(sessionsProvider)
+      .where((s) => s.completed && !s.startedAt.isBefore(monday))
+      .toList(growable: false);
+  if (sessions.isEmpty) return null;
+
+  final minutes = <String, int>{};
+  final counts = <String, int>{};
+  for (final session in sessions) {
+    final id = session.subjectId;
+    minutes[id] = (minutes[id] ?? 0) + session.minutes;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+
+  // A tie keeps the subject that got there first — `reduce` only replaces on a
+  // strictly greater value, and the map is in the log's own order.
+  final topId = minutes.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+
+  final subject = ref
+      .watch(subjectsProvider)
+      .where((s) => s.id == topId)
+      .firstOrNull;
+  final label = sessions
+      .where((s) => s.subjectId == topId && s.label.isNotEmpty)
+      .map((s) => s.label)
+      .firstOrNull;
+
+  return TopSubjectSummary(
+    name: subject?.name ?? label ?? 'Unassigned',
+    color: subject?.color ?? _unassignedSubjectColor,
+    icon: subject?.icon ?? Icons.menu_book_rounded,
+    minutes: minutes[topId] ?? 0,
+    sessions: counts[topId] ?? 0,
+  );
+});
+
 /// Average hours across the days that actually have time on them.
 ///
 /// Dividing by seven would make a strong week look weak just because the user
