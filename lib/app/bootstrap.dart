@@ -6,6 +6,7 @@ import '../core/models/shield.dart';
 import '../core/models/user.dart';
 import '../core/providers/app_providers.dart';
 import '../core/providers/audio_providers.dart';
+import '../core/providers/parent_providers.dart';
 import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
@@ -42,7 +43,9 @@ Future<ProviderContainer> bootstrap() async {
   );
 
   // -- Account & preferences -------------------------------------------------
-  container.read(themeSettingsProvider.notifier).hydrate(
+  container
+      .read(themeSettingsProvider.notifier)
+      .hydrate(
         store.getString(StoreKeys.theme),
         store.getString(StoreKeys.palette),
         store.getBool(StoreKeys.amoled),
@@ -113,11 +116,24 @@ Future<ProviderContainer> bootstrap() async {
       .read(breathEventsProvider.notifier)
       .hydrate(store.getList(StoreKeys.breathEvents));
 
-  // Reading this installs the timer → engine bridge and pushes the whole
-  // config once. The engine outlives the app and can be holding rules from
-  // before it was closed — including a focus window that has since ended — so
-  // the launch push is what reconciles the two sides rather than a nicety.
-  container.read(shieldFocusWindowProvider);
+  // -- Parent control --------------------------------------------------------
+  //
+  // The security code is a hash on this device, set by a parent; hydrating it
+  // here is what lets the Parent control page know whether one is armed before
+  // it offers to turn the link off.
+  container
+      .read(securityCodeProvider.notifier)
+      .hydrate(store.getString(StoreKeys.parentSecurity));
+
+  // Reading the bridge installs the timer → engine and parent → engine paths
+  // and pushes the whole config once. The engine outlives the app and can be
+  // holding rules from before it was closed — including a focus window that
+  // has since ended — so the launch push is what reconciles the two sides
+  // rather than a nicety.
+  container.read(shieldSyncBridgeProvider);
+  // And a linked child publishes its summary for the parent to read. Nothing
+  // is sent while no parent is linked.
+  container.read(parentProgressPublisherProvider);
 
   // -- Social ----------------------------------------------------------------
   container
