@@ -9,12 +9,15 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
+import '../../core/models/parent.dart';
 import '../../core/models/shield.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/providers/parent_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/app_catalog.dart';
 import '../../core/services/native_shield_service.dart';
+import '../../core/services/parent_service.dart';
 import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
@@ -25,6 +28,8 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/sheet_chrome.dart';
 import '../parent/parent_lock.dart';
+import '../parent/widgets/child_switcher.dart';
+import '../settings/settings_support.dart';
 import 'breath_gate.dart';
 
 /// Tab 2 — the shielding engine.
@@ -36,6 +41,11 @@ import 'breath_gate.dart';
 /// state would be a switch that lies — every mutation has to reach its
 /// notifier, because that is what persists the rule and pushes it to the
 /// native service.
+///
+/// On a parent's device the tab is about their child instead: the app list is
+/// the child's, published by their phone, and a switch here writes a rule that
+/// phone picks up. The child's own screen is unchanged — it still manages the
+/// apps on the device in your hand.
 ///
 /// The header is a solid surface pinned over the list: content scrolls
 /// underneath it, and the tonal edge keeps the two apart. No blur here — the
@@ -51,6 +61,10 @@ class ShieldScreen extends ConsumerStatefulWidget {
 class _ShieldScreenState extends ConsumerState<ShieldScreen>
     with WidgetsBindingObserver {
   static const _segmentOptions = ['Apps', 'YouTube', 'Activity'];
+
+  /// A parent's tab has no Activity segment: the interceptions it reports are
+  /// this device's, and this device is not the one being shielded.
+  static const _parentSegments = ['Apps', 'YouTube'];
 
   int _segment = 0;
 
@@ -87,7 +101,27 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final topInset = MediaQuery.paddingOf(context).top;
-    final headerHeight = 172 + topInset;
+
+    final user = ref.watch(userProvider);
+    final isParent = user.isGuardian;
+    final children =
+        ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
+    final child = isParent ? ref.watch(activeChildProvider) : null;
+    final childBlocks = child == null
+        ? null
+        : ref.watch(childBlocksProvider(child.uid)).valueOrNull;
+
+    // The segments follow the role, and the selection is clamped so switching
+    // roles with Activity showing cannot index past the shorter list.
+    final segments = isParent ? _parentSegments : _segmentOptions;
+    final segment = _segment.clamp(0, segments.length - 1);
+
+    // The switcher rides in the pinned header rather than in each segment's
+    // list: whose apps these are is a fact about the whole tab, and it has to
+    // stay on screen while the user scrolls their child's app list.
+    final showSwitcher = isParent && children.isNotEmpty;
+    final headerHeight = 172 + topInset + (showSwitcher ? 56 : 0);
+
     final armed = ref.watch(activeShieldCountProvider);
 
     return Stack(
@@ -105,13 +139,29 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                 // every toggle and every icon before the first one was
                 // painted. Only the app list needs that; the other two stay as
                 // they were.
-                child: switch (_segment) {
-                  0 => _AppsView(topPadding: headerHeight + Gap.md),
-                  1 => _SegmentScroll(
+                child: switch ((isParent, segment)) {
+                  (true, _) when child == null => _SegmentScroll(
+                    topPadding: headerHeight + Gap.md,
+                    child: const _NoChildrenYet(),
+                  ),
+                  (true, 0) => _ChildAppsView(
+                    childUid: child!.uid,
+                    childName: child.name,
+                    topPadding: headerHeight + Gap.md,
+                  ),
+                  (true, _) => _SegmentScroll(
+                    topPadding: headerHeight + Gap.md,
+                    child: _ChildYoutubeView(
+                      childUid: child!.uid,
+                      childName: child.name,
+                    ),
+                  ),
+                  (false, 0) => _AppsView(topPadding: headerHeight + Gap.md),
+                  (false, 1) => _SegmentScroll(
                     topPadding: headerHeight + Gap.md,
                     child: const _YoutubeView(),
                   ),
-                  _ => _SegmentScroll(
+                  (false, _) => _SegmentScroll(
                     topPadding: headerHeight + Gap.md,
                     child: const _ActivityView(),
                   ),
@@ -156,7 +206,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Close what pulls you away',
+                                isParent
+                                    ? 'Close what pulls them away'
+                                    : 'Close what pulls you away',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -164,9 +216,24 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                         ),
                         const SizedBox(width: Gap.md),
                         _ShieldStatusPill(
-                          armed: armed,
-                          locked: ref.watch(parentLockedProvider),
-                          onTap: _showStatusSheet,
+                          armed: isParent
+                              ? (childBlocks?.apps.length ?? 0)
+                              : armed,
+                          label: isParent
+                              ? childBlocks == null
+                                    ? 'Reading…'
+                                    : childBlocks.apps.isEmpty
+                                    ? 'Nothing blocked'
+                                    : '${childBlocks.apps.length} blocked'
+                              : null,
+                          locked: !isParent && ref.watch(parentLockedProvider),
+                          // A parent's badge is the way into the child's
+                          // dashboard; their own device has nothing to unlock.
+                          onTap: isParent
+                              ? child == null
+                                    ? null
+                                    : () => _openChild(child)
+                              : _showStatusSheet,
                         ),
                       ],
                     ),
@@ -177,18 +244,46 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                       width: double.infinity,
                       child: SegmentedButton<int>(
                         segments: [
-                          for (var i = 0; i < _segmentOptions.length; i++)
-                            ButtonSegment(
-                              value: i,
-                              label: Text(_segmentOptions[i]),
-                            ),
+                          for (var i = 0; i < segments.length; i++)
+                            ButtonSegment(value: i, label: Text(segments[i])),
                         ],
-                        selected: {_segment},
+                        selected: {segment},
                         showSelectedIcon: false,
                         onSelectionChanged: (selection) =>
                             setState(() => _segment = selection.first),
                       ),
                     ),
+                    if (showSwitcher) ...[
+                      const SizedBox(height: Gap.md),
+                      SizedBox(
+                        height: 36,
+                        child: children.length > 1
+                            ? const ChildChips()
+                            : Row(
+                                children: [
+                                  Icon(
+                                    Icons.smartphone_rounded,
+                                    size: 15,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: Gap.sm),
+                                  Expanded(
+                                    child: Text(
+                                      '${children.first.name}\'s phone',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -196,6 +291,14 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// The selected child's own page, from the badge.
+  void _openChild(ChildLink child) {
+    context.pushNamed(
+      AppRoutes.parentChild,
+      pathParameters: {'uid': child.uid},
     );
   }
 
@@ -236,7 +339,8 @@ class _ShieldStatusPill extends StatelessWidget {
   const _ShieldStatusPill({
     required this.armed,
     required this.locked,
-    required this.onTap,
+    this.label,
+    this.onTap,
   });
 
   final int armed;
@@ -244,21 +348,29 @@ class _ShieldStatusPill extends StatelessWidget {
   /// True while a linked parent's code stands in front of rule changes.
   final bool locked;
 
-  final VoidCallback onTap;
+  /// Overrides the count wording — a parent's pill counts their child's blocks
+  /// rather than this device's rules, and "armed" would be the wrong word for
+  /// a list that is enforced somewhere else.
+  final String? label;
+
+  /// Null when there is nothing to open, which is also what makes the pill a
+  /// plain badge rather than a control.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final on = armed > 0;
     final color = on ? cs.tertiary : cs.onSurfaceVariant;
-    final label = on ? '$armed armed' : 'Nothing armed';
+    final text = label ?? (on ? '$armed armed' : 'Nothing armed');
 
     return Semantics(
-      button: true,
+      button: onTap != null,
       container: true,
       label:
-          'Shield status. $armed rules armed.'
-          '${locked ? ' Locked by a parent.' : ''} Double tap for details.',
+          'Shield status. $text.'
+          '${locked ? ' Locked by a parent.' : ''}'
+          '${onTap == null ? '' : ' Double tap for details.'}',
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(
@@ -299,7 +411,7 @@ class _ShieldStatusPill extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    label,
+                    text,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: cs.onSurface,
                       fontWeight: FontWeight.w600,
@@ -702,6 +814,690 @@ class _AppsViewState extends ConsumerState<_AppsView> {
         icon: Icons.android_rounded,
         usedMinutes: row.usedMinutes,
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The parent's shield: the selected child's phone
+// ---------------------------------------------------------------------------
+
+/// A parent with no children linked yet.
+///
+/// The tab cannot show another device's apps until there is another device, and
+/// saying so is more useful than an empty list that looks like a failed read.
+class _NoChildrenYet extends StatelessWidget {
+  const _NoChildrenYet();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.xl),
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            children: [
+              Icon(
+                Icons.child_care_rounded,
+                size: 48,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(height: Gap.lg),
+              Text(
+                'No child linked yet',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                'This tab closes apps on your child\'s phone. Open Profile → '
+                'Parent control and add a child with the six digits their '
+                'phone shows; their app list arrives here.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The selected child's apps, with this parent's rules on them.
+///
+/// The list is the child's, not this device's: their phone publishes it, and a
+/// switch here writes a rule their phone picks up. A parent choosing from the
+/// apps on their own phone would be choosing apps their child may not have.
+class _ChildAppsView extends ConsumerStatefulWidget {
+  const _ChildAppsView({
+    required this.childUid,
+    required this.childName,
+    required this.topPadding,
+  });
+
+  final String childUid;
+  final String childName;
+  final double topPadding;
+
+  @override
+  ConsumerState<_ChildAppsView> createState() => _ChildAppsViewState();
+}
+
+class _ChildAppsViewState extends ConsumerState<_ChildAppsView> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final query = _search.text.trim().toLowerCase();
+
+    // `valueOrNull` on both reads: a denied or offline stream is a state this
+    // list has to draw, and `value` would throw out of the build instead.
+    final catalogRead = ref.watch(childCatalogProvider(widget.childUid));
+    final blocksRead = ref.watch(childBlocksProvider(widget.childUid));
+    final catalog = catalogRead.valueOrNull ?? const <CatalogApp>[];
+    final blocks = blocksRead.valueOrNull ?? const RemoteBlocks();
+    final loading = catalogRead.isLoading || blocksRead.isLoading;
+
+    final visible = query.isEmpty
+        ? catalog
+        : [
+            for (final app in catalog)
+              if (app.name.toLowerCase().contains(query) ||
+                  app.packageId.toLowerCase().contains(query))
+                app,
+          ];
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            widget.topPadding,
+            Gap.lg + 4,
+            0,
+          ),
+          sliver: SliverList.list(
+            children: [
+              _EnforceRow(
+                childUid: widget.childUid,
+                childName: widget.childName,
+                blocks: blocks,
+              ),
+              const SizedBox(height: Gap.lg),
+              _SearchField(
+                controller: _search,
+                onChanged: () => setState(() {}),
+              ),
+              const SizedBox(height: Gap.xl),
+              _ListHeading(
+                title: query.isEmpty ? 'Their apps' : 'Results',
+                note: loading && catalog.isEmpty
+                    ? 'Reading their device…'
+                    : catalog.isEmpty
+                    ? null
+                    : '${blocks.apps.length} blocked',
+                icon: Icons.apps_rounded,
+              ),
+              const SizedBox(height: Gap.sm),
+            ],
+          ),
+        ),
+        if (loading && catalog.isEmpty)
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverToBoxAdapter(child: SkeletonList(count: 6)),
+          )
+        else if (catalog.isEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverToBoxAdapter(
+              child: _NoChildApps(
+                name: widget.childName,
+                failed: catalogRead.hasError,
+              ),
+            ),
+          )
+        else if (visible.isEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverToBoxAdapter(
+              child: _NoMatches(query: _search.text.trim()),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg + 4),
+            sliver: SliverList.separated(
+              itemCount: visible.length,
+              separatorBuilder: (_, _) => Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.35),
+              ),
+              itemBuilder: (context, i) => _ChildAppRow(
+                childUid: widget.childUid,
+                app: visible[i],
+                block: blocks.apps
+                    .where((a) => a.packageId == visible[i].packageId)
+                    .firstOrNull,
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            Gap.xl,
+            Gap.lg + 4,
+            kNavBarClearance,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Text(
+              'A switch here writes a rule for ${widget.childName}\'s phone. '
+              'It applies the next time their device is online.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Whether any of it is closed at all.
+///
+/// Its own row rather than a corner of the list: a parent who set rules while
+/// "watching only" is looking at a list that promises nothing, and the one
+/// switch that changes that has to be visible without scrolling for it.
+class _EnforceRow extends ConsumerWidget {
+  const _EnforceRow({
+    required this.childUid,
+    required this.childName,
+    required this.blocks,
+  });
+
+  final String childUid;
+  final String childName;
+  final RemoteBlocks blocks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    return Card.filled(
+      clipBehavior: Clip.antiAlias,
+      color: blocks.enforced ? null : cs.errorContainer,
+      child: SwitchListTile.adaptive(
+        value: blocks.enforced,
+        secondary: Icon(
+          blocks.enforced
+              ? Icons.shield_rounded
+              : Icons.visibility_outlined,
+          color: blocks.enforced ? cs.tertiary : cs.onErrorContainer,
+        ),
+        title: Text(
+          blocks.enforced ? 'Closed on their phone' : 'Watching only',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        subtitle: Text(
+          blocks.enforced
+              ? 'Rules below apply on $childName\'s device'
+              : 'Nothing is closed on $childName\'s device yet',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: blocks.enforced ? cs.onSurfaceVariant : cs.onErrorContainer,
+          ),
+        ),
+        onChanged: (value) => unawaited(
+          _publishBlocks(
+            ref,
+            childUid,
+            blocks.copyWith(enforced: value),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One app on the child's device, with the parent's rule on it.
+class _ChildAppRow extends ConsumerWidget {
+  const _ChildAppRow({
+    required this.childUid,
+    required this.app,
+    required this.block,
+  });
+
+  final String childUid;
+  final CatalogApp app;
+  final RemoteBlock? block;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final blocked = block != null;
+    final focusOnly = block?.focusOnly ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Gap.md),
+      child: Row(
+        children: [
+          AppIconAvatar(
+            packageId: app.packageId,
+            fallbackIcon: Icons.android_rounded,
+            fallbackColor: blocked ? cs.tertiary : cs.primary,
+            size: 40,
+            radius: 12,
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  app.name,
+                  style: tt.bodyLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  !blocked
+                      ? 'Open'
+                      : focusOnly
+                      ? 'Closes while they focus'
+                      : 'Closes when opened',
+                  style: tt.labelSmall?.copyWith(
+                    color: blocked ? cs.tertiary : cs.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Gap.sm),
+          // The second state a switch cannot show: blocked all day, or only
+          // while a focus block runs. It appears only once a rule exists, so
+          // the row never offers a choice that means nothing yet.
+          if (blocked) ...[
+            IconButton(
+              tooltip: focusOnly
+                  ? 'Block all day instead'
+                  : 'Block only while they focus',
+              icon: Icon(
+                focusOnly
+                    ? Icons.hourglass_bottom_rounded
+                    : Icons.calendar_today_rounded,
+                size: 18,
+                color: cs.onSurfaceVariant,
+              ),
+              onPressed: () => unawaited(_setFocusOnly(context, ref)),
+            ),
+          ],
+          _ShieldSwitch(
+            value: blocked,
+            onChanged: (on) => unawaited(_setBlocked(context, ref, on)),
+            semanticLabel: blocked
+                ? 'Stop blocking ${app.name}'
+                : 'Block ${app.name}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _setBlocked(
+    BuildContext context,
+    WidgetRef ref,
+    bool blocked,
+  ) async {
+    HapticFeedback.selectionClick();
+    final current =
+        ref.read(childBlocksProvider(childUid)).valueOrNull ??
+        const RemoteBlocks();
+    final next = blocked
+        ? [
+            ...current.apps,
+            RemoteBlock(packageId: app.packageId, name: app.name),
+          ]
+        : [
+            for (final a in current.apps)
+              if (a.packageId != app.packageId) a,
+          ];
+    // Blocking turns enforcement on. A parent who switches an app closed
+    // means it to close, and a rule that lands in a watching-only list is a
+    // rule that does nothing on the phone it was written for.
+    final updated = current.copyWith(
+      apps: next,
+      enforced: blocked ? true : current.enforced,
+    );
+    await _publishBlocks(ref, childUid, updated);
+  }
+
+  Future<void> _setFocusOnly(BuildContext context, WidgetRef ref) async {
+    final current =
+        ref.read(childBlocksProvider(childUid)).valueOrNull ??
+        const RemoteBlocks();
+    await _publishBlocks(
+      ref,
+      childUid,
+      current.copyWith(
+        apps: [
+          for (final a in current.apps)
+            if (a.packageId == app.packageId)
+              RemoteBlock(
+                packageId: a.packageId,
+                name: a.name,
+                focusOnly: !a.focusOnly,
+              )
+            else
+              a,
+        ],
+      ),
+    );
+  }
+}
+
+/// Writes a block list for a child, with the failures said out loud.
+Future<void> _publishBlocks(
+  WidgetRef ref,
+  String childUid,
+  RemoteBlocks blocks,
+) async {
+  try {
+    await ref.read(parentServiceProvider).publishBlocks(childUid, blocks);
+  } on PairException catch (error) {
+    final context = ref.context;
+    if (context.mounted) showAppSnack(context, error.friendly);
+  }
+}
+
+/// Their phone has not sent its app list — or the read was refused.
+class _NoChildApps extends StatelessWidget {
+  const _NoChildApps({required this.name, required this.failed});
+
+  final String name;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.xl),
+      child: Card.filled(
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xl),
+          child: Column(
+            children: [
+              Icon(
+                failed ? Icons.cloud_off_rounded : Icons.apps_rounded,
+                size: 48,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(height: Gap.md),
+              Text(
+                failed
+                    ? 'Can\'t read their app list'
+                    : 'No app list from $name\'s phone yet',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                failed
+                    ? 'The list could not be read just now. Nothing has '
+                          'changed on their device.'
+                    : 'Their phone publishes the apps it has while FocusForge '
+                          'is open and linked. It arrives here as soon as it '
+                          'does.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The child's YouTube, closed the same three ways this device's can be.
+///
+/// The surfaces are written into the child's block list rather than into this
+/// device's rules: their engine reads the parent's YouTube rules ahead of
+/// whatever is set locally, which is what makes this a control over their
+/// phone and not over this one.
+class _ChildYoutubeView extends ConsumerWidget {
+  const _ChildYoutubeView({required this.childUid, required this.childName});
+
+  final String childUid;
+  final String childName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final read = ref.watch(childBlocksProvider(childUid));
+    final blocks = read.valueOrNull ?? const RemoteBlocks();
+    final rules = blocks.youtube;
+    final wholeApp = blocks.apps
+        .where((a) => a.packageId == AppCatalog.youtubePackage)
+        .firstOrNull;
+
+    if (read.hasError && read.valueOrNull == null) {
+      return _NoChildApps(name: childName, failed: true);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Stagger(
+          index: 0,
+          child: Card.filled(
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.lg),
+              child: Row(
+                children: [
+                  AppIconAvatar(
+                    packageId: AppCatalog.youtubePackage,
+                    fallbackIcon: Icons.smart_display_rounded,
+                    fallbackColor: cs.error,
+                    size: 48,
+                    radius: 14,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('YouTube'),
+                        const SizedBox(height: 2),
+                        Text(
+                          rules.any
+                              ? 'Partly closed — the rest still works'
+                              : 'Everything still works',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
+        Stagger(
+          index: 1,
+          child: SectionHeader(title: 'Surfaces', icon: Icons.tune_rounded),
+        ),
+        Stagger(
+          index: 2,
+          child: Card.filled(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                _SurfaceSwitch(
+                  icon: Icons.slow_motion_video_rounded,
+                  title: 'Block Shorts',
+                  body:
+                      'The Shorts player closes on $childName\'s phone. '
+                      'Ordinary videos keep playing, so a lecture link still '
+                      'works.',
+                  value: rules.shorts,
+                  onChanged: (v) => unawaited(
+                    _publishBlocks(
+                      ref,
+                      childUid,
+                      blocks.copyWith(youtube: rules.copyWith(shorts: v)),
+                    ),
+                  ),
+                ),
+                Divider(color: cs.outlineVariant, height: 1),
+                _SurfaceSwitch(
+                  icon: Icons.dynamic_feed_rounded,
+                  title: 'Block home & search',
+                  body:
+                      'Removes the recommendation feed and search results on '
+                      'their phone. A video has to be opened from a direct '
+                      'link.',
+                  value: rules.feed,
+                  onChanged: (v) => unawaited(
+                    _publishBlocks(
+                      ref,
+                      childUid,
+                      blocks.copyWith(youtube: rules.copyWith(feed: v)),
+                    ),
+                  ),
+                ),
+                if (rules.any) ...[
+                  Divider(color: cs.outlineVariant, height: 1),
+                  _SurfaceSwitch(
+                    icon: Icons.center_focus_strong_rounded,
+                    title: 'Only while focusing',
+                    body:
+                        'Arms both switches while a focus block runs on their '
+                        'device. YouTube is free the rest of the day.',
+                    value: rules.focusOnly,
+                    onChanged: (v) => unawaited(
+                      _publishBlocks(
+                        ref,
+                        childUid,
+                        blocks.copyWith(youtube: rules.copyWith(focusOnly: v)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
+        Stagger(
+          index: 3,
+          child: SectionHeader(
+            title: 'Or the whole app',
+            icon: Icons.block_rounded,
+          ),
+        ),
+        Stagger(
+          index: 4,
+          child: Card.filled(
+            clipBehavior: Clip.antiAlias,
+            child: ListTile(
+              leading: Icon(
+                wholeApp == null
+                    ? Icons.lock_outline_rounded
+                    : Icons.lock_open_rounded,
+                color: cs.onSurfaceVariant,
+              ),
+              title: Text(
+                wholeApp == null
+                    ? 'Block all of YouTube'
+                    : 'Stop blocking YouTube',
+              ),
+              subtitle: Text(
+                wholeApp == null
+                    ? 'Closes the app on their phone, Shorts and lectures '
+                          'alike'
+                    : 'Removes it from their blocked list',
+              ),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                unawaited(
+                  _publishBlocks(
+                    ref,
+                    childUid,
+                    blocks.copyWith(
+                      apps: wholeApp == null
+                          ? [
+                              ...blocks.apps,
+                              const RemoteBlock(
+                                packageId: AppCatalog.youtubePackage,
+                                name: 'YouTube',
+                              ),
+                            ]
+                          : [
+                              for (final a in blocks.apps)
+                                if (a.packageId != AppCatalog.youtubePackage) a,
+                            ],
+                      enforced: wholeApp == null ? true : blocks.enforced,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: Gap.lg),
+        Stagger(
+          index: 5,
+          child: Card.outlined(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.item),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      'Shorts are recognised by the names YouTube gives its '
+                      'own screens on $childName\'s phone, and the block '
+                      'applies the next time their device is online.',
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
