@@ -262,10 +262,9 @@ class PrivacyScreen extends ConsumerWidget {
     // crosses an async gap before the reset needs the container.
     final container = ProviderScope.containerOf(context, listen: false);
 
-    // The credential goes first and can refuse — offline, or when Firebase
-    // wants a fresh sign-in. Report that and keep every local record: wiping
-    // them under a credential that still exists is the half-deletion this
-    // ordering exists to prevent.
+    // The credential goes first and can refuse. Report that and keep every
+    // local record: wiping them under a credential that still exists is the
+    // half-deletion this ordering exists to prevent.
     try {
       await ref.read(authServiceProvider).deleteAccount();
     } on AuthException catch (e) {

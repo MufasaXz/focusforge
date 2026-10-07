@@ -203,7 +203,12 @@ void main() {
     await tester.tap(find.text('Link an account'));
     await settle(tester);
 
-    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(
+      find.text('Continue with Google'),
+      findsNothing,
+      reason: 'the on-device backend has no OAuth client, so the row would be '
+          'an inert control — this branch does not render it at all',
+    );
     expect(find.text('Continue with Email'), findsOneWidget);
     expect(
       storedIsAnonymous(),
@@ -214,38 +219,6 @@ void main() {
       auth.calls,
       isEmpty,
       reason: 'no credential has been presented yet',
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the Google path runs a real link and clears the flag', (
-    tester,
-  ) async {
-    final container = freshContainer();
-    useTallPhone(tester);
-    await tester.pumpWidget(harness(container));
-    await settle(tester);
-
-    await tester.tap(find.text('Link an account'));
-    await settle(tester);
-    await tester.tap(find.text('Continue with Google'));
-    await settle(tester);
-
-    expect(
-      auth.calls,
-      ['google'],
-      reason: 'the row that was tapped is the provider that gets linked',
-    );
-    expect(container.read(userProvider).isAnonymous, isFalse);
-    expect(
-      storedIsAnonymous(),
-      isFalse,
-      reason: 'the link has to survive the app being closed',
-    );
-    expect(
-      find.text('Local account'),
-      findsNothing,
-      reason: 'the card goes away once there is a credential behind it',
     );
     expect(tester.takeException(), isNull);
   });
@@ -278,6 +251,11 @@ void main() {
 
     expect(container.read(userProvider).isAnonymous, isFalse);
     expect(storedIsAnonymous(), isFalse);
+    expect(
+      find.text('Local account'),
+      findsNothing,
+      reason: 'the card goes away once there is a credential behind it',
+    );
     expect(
       auth.calls,
       isEmpty,

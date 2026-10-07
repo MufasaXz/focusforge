@@ -9,13 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Accounts that survive a reinstall, and the seam for the future
-  # study-groups/leaderboard backend (auth profiles only, never usage data).
-  firebase_core: ^3.8.0
-  firebase_auth: ^5.4.0
+  # No Firebase and no Google sign-in on this branch: F-Droid's inclusion
+  # policy forbids proprietary Google libraries outright, and the app's
+  # account seam already has a complete on-device implementation — see
+  # `LocalAuthService` in lib/core/services/auth_service.dart. The main
+  # branch keeps the Firebase backend for the Play build.
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
-  google_sign_in: ^6.2.2
   shared_preferences: ^2.3.4
   # Permissions — real system dialogs, not local state.
   #

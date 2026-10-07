@@ -7,17 +7,21 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Processes google-services.json into Firebase resources. Applied after the
-    // Flutter plugin so the Android plugin it hooks into is already present.
-    id("com.google.gms.google-services")
 }
 
 // Release signing material lives outside version control — see android/key.properties.
+// On F-Droid's build machines that file does not exist, so its absence is a
+// supported state rather than an error: the release build then produces an
+// unsigned APK, which F-Droid signs with the key it holds for this app. The
+// signing config is therefore only created when there is something to put in
+// it — an empty one fails AGP's own signing validation and takes the build
+// down with it.
 val keystoreProperties = Properties()
 run {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { keystoreProperties.load(it) }
 }
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "dev.focusforge.focusforge"
@@ -38,28 +42,37 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            if (keystoreProperties.getProperty("storeFile") != null) {
+        if (hasReleaseKey) {
+            create("release") {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
                 storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
+                // All three schemes on purpose:
+                //  v1 (JAR)      — required by Android 6 and below (minSdk is 24, so
+                //                  it is only a compatibility belt-and-braces here).
+                //  v2 (APK Sig)  — Android 7+; whole-file integrity, faster verify.
+                //  v3 (APK Sig)  — Android 9+; adds key rotation support.
+                // AGP disables v1 by default once minSdk >= 24, so it is forced on.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
-            // All three schemes on purpose:
-            //  v1 (JAR)      — required by Android 6 and below (minSdk is 24, so
-            //                  it is only a compatibility belt-and-braces here).
-            //  v2 (APK Sig)  — Android 7+; whole-file integrity, faster verify.
-            //  v3 (APK Sig)  — Android 9+; adds key rotation support.
-            // AGP disables v1 by default once minSdk >= 24, so it is forced on.
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = true
         }
+    }
+
+    // The dependency-metadata block AGP stamps into the APK is rejected by
+    // F-Droid, which requires it off — and it is of no use to anyone else.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }

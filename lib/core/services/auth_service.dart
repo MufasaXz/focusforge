@@ -52,10 +52,11 @@ class AuthException implements Exception {
 ///
 /// The surface is deliberately shaped like `firebase_auth` — a `changes`
 /// stream, an anonymous-first flow, and a `linkWith…` upgrade path — so the
-/// backend behind it is an implementation detail. `bootstrap()` picks one
-/// before the first frame: the Firebase-backed service when
-/// `Firebase.initializeApp()` succeeds, [LocalAuthService] when it does not
-/// (offline, web, or a build with no Firebase project).
+/// backend behind it is an implementation detail. On this branch there is
+/// exactly one backend, [LocalAuthService], because F-Droid's inclusion
+/// policy forbids proprietary Google libraries; the main branch swaps in a
+/// Firebase-backed implementation of the same contract, and `bootstrap()`
+/// picks between them there.
 ///
 /// Whichever backend runs, the profile record lives in [LocalStore]. Only the
 /// credential is remote; how the app is used never leaves the device.
@@ -118,11 +119,11 @@ abstract class AuthService {
 /// The on-device implementation of [AuthService].
 ///
 /// "Accounts" are rows in [LocalStore]: nothing leaves the device, which is
-/// also the app's stated privacy position for anonymous users. This is what
-/// `bootstrap()` falls back to whenever Firebase cannot initialise — offline,
-/// on web, or in a build with no Firebase project — and its surface is
-/// deliberately shaped like `firebase_auth` so the two implementations are
-/// interchangeable.
+/// also the app's stated privacy position for anonymous users. This is the
+/// only backend on the F-Droid branch, and the fallback on the main branch
+/// whenever Firebase cannot initialise — offline, on web, or in a build with
+/// no Firebase project. Its surface is deliberately shaped like
+/// `firebase_auth` so the two implementations are interchangeable.
 class LocalAuthService extends AuthService {
   LocalAuthService(this._store);
 
@@ -141,14 +142,16 @@ class LocalAuthService extends AuthService {
   @override
   Stream<UserProfile?> get changes => _controller.stream;
 
-  /// Every id the UI knows. The local backend mints a record for all of them,
-  /// so no sign-in option is ever disabled.
+  /// Every id this backend can honour. Email and the anonymous "local" path
+  /// are both minted on the device, so neither option is ever disabled.
   ///
-  /// Apple is deliberately absent: the app no longer offers it, and a provider
-  /// listed here but not on any screen is a row waiting to be re-added by
-  /// accident.
+  /// Google is absent because there is no OAuth client behind it on this
+  /// branch: a button that claims a Google round-trip and then writes a local
+  /// row is a lie the screen has no way to tell. Apple is absent for the same
+  /// reason it always was — the app does not offer it, and a provider listed
+  /// here but not on any screen is a row waiting to be re-added by accident.
   @override
-  Set<String> get supportedProviders => const {'google', 'email', 'local'};
+  Set<String> get supportedProviders => const {'email', 'local'};
 
   /// Reads the persisted session. Called once during bootstrap.
   @override

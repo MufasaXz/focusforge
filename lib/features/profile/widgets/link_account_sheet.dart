@@ -7,17 +7,18 @@ import '../../../core/models/user.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../shared/widgets/email_auth_sheet.dart';
-import '../../../shared/widgets/form_controls.dart';
 import '../../../shared/widgets/provider_marks.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Opens the sheet that puts a real credential behind a device-only account.
+/// Opens the sheet that puts a credential behind a device-only account.
 ///
 /// Returns the profile the credential produced, or null if the user backed
 /// out. The sheet runs the sign-in itself rather than handing the choice back:
-/// the profile screen only decides *when* it opens, and the two paths — a
-/// Google round-trip and an email form — are the same two the sign-in screen
-/// offers.
+/// the profile screen only decides *when* it opens, and the one path this
+/// branch offers — the email form — is the same one the sign-in screen shows.
+/// There is no Google row here because the on-device backend has no OAuth
+/// client behind it, and a disabled button that can never become live is an
+/// inert control rather than an explanation.
 ///
 /// This is the fix for a card that used to report success on tap. Linking is a
 /// sign-in; a button that says "linked" without ever asking for a credential
@@ -46,25 +47,6 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
 
   AuthService get _auth => ref.read(authServiceProvider);
 
-  Future<void> _run(String id, Future<UserProfile> Function() action) async {
-    if (_busy != null) return;
-    setState(() => _busy = id);
-    try {
-      final profile = await action();
-      if (!mounted) return;
-      Navigator.of(context).pop(profile);
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = null);
-      showAppSnack(
-        context,
-        e.friendly,
-        icon: Icons.error_outline_rounded,
-        danger: true,
-      );
-    }
-  }
-
   Future<void> _email() async {
     final profile = await showModalBottomSheet<UserProfile>(
       context: context,
@@ -80,8 +62,6 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final providers = ref.watch(authServiceProvider).supportedProviders;
-    final googleLive = providers.contains('google');
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -114,18 +94,6 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
-            ProviderRow(
-              label: 'Continue with Google',
-              leading: const GoogleMark(),
-              busy: _busy == 'google',
-              onTap: googleLive
-                  ? () => _run(
-                      'google',
-                      () => _auth.linkAccount(provider: 'google'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: Gap.md),
             ProviderRow(
               label: 'Continue with Email',
               leading: const MailMark(),

@@ -1,5 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/models/shield.dart';
@@ -10,7 +8,6 @@ import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
 import '../core/services/auth_service.dart';
-import '../core/services/firebase_auth_service.dart';
 import '../core/services/local_store.dart';
 import 'router.dart';
 
@@ -32,7 +29,7 @@ Future<ProviderContainer> bootstrap() async {
   // Pick the account backend before the container exists: the override below
   // is what the `changes` bridge and every screen will read, and the choice
   // must be settled before the first frame.
-  final authService = await _openAuthService(store);
+  final authService = _openAuthService(store);
 
   final container = ProviderContainer(
     overrides: [
@@ -151,35 +148,15 @@ Future<ProviderContainer> bootstrap() async {
   return container;
 }
 
-/// Opens the best available account backend.
+/// Opens the account backend.
 ///
-/// Firebase is an upgrade, never a requirement: a user with no network, a
-/// build without the native config, or a platform Firebase does not support
-/// must still get a working app. `initializeApp()` is therefore wrapped in a
-/// catch-all — it can throw an [Error] (for example [UnimplementedError] on a
-/// platform with no Firebase implementation), not just an [Exception] — and
-/// every failure falls back to the on-device implementation.
-///
-/// Web is skipped outright: the Firebase project has no web app registered,
-/// so `initializeApp()` would throw and take the web preview build down. The
-/// reason is logged once so a developer can see which backend is live.
-Future<AuthService> _openAuthService(LocalStore store) async {
-  if (kIsWeb) {
-    debugPrint('[auth] web build: using the local account store.');
-    return LocalAuthService(store);
-  }
-
-  try {
-    await Firebase.initializeApp();
-    debugPrint('[auth] Firebase initialised: using FirebaseAuthService.');
-    return FirebaseAuthService(store);
-  } catch (error) {
-    debugPrint(
-      '[auth] Firebase unavailable ($error): using the local account store.',
-    );
-    return LocalAuthService(store);
-  }
-}
+/// This branch of the app ships the on-device implementation only. F-Droid
+/// forbids proprietary Google libraries, so there is no remote backend to
+/// pick and nothing to initialise: accounts are rows in [LocalStore], and
+/// the credential is local too. The seam is kept — [AuthService] and its
+/// contract — so the Firebase-backed implementation on the main branch is a
+/// drop-in, and every screen keeps talking to the same interface.
+AuthService _openAuthService(LocalStore store) => LocalAuthService(store);
 
 /// Puts every persisted notifier back to its cold-start value and wipes the
 /// store — the memory half of "Delete account".

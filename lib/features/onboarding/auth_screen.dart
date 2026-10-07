@@ -24,6 +24,10 @@ import 'onboarding_chrome.dart';
 /// detail, and the providers it can actually honour — `supportedProviders` —
 /// decide which rows are live and what the caption promises.
 ///
+/// On this branch there is no Google row at all: the backend is the
+/// on-device one, which has no OAuth client to drive, and a greyed-out button
+/// that can never become live is an inert control rather than an explanation.
+///
 /// It is also routed at `/auth` on its own, so it must stand up without the
 /// onboarding flow around it — hence [embedded], which suppresses the scaffold
 /// the flow already provides.
@@ -43,10 +47,6 @@ class AuthScreen extends ConsumerStatefulWidget {
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   /// Which action is in flight, so only that button spins.
   String? _busy;
-
-  /// The provider that just succeeded, so its row can hold a tick for the beat
-  /// between the call returning and the screen changing.
-  String? _done;
 
   AuthService get _auth => ref.read(authServiceProvider);
 
@@ -84,9 +84,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         await ref.read(userProvider.notifier).save(profile);
       }
       if (!mounted) return;
-      // A held tick, not an instant cut: the user pressed a button and the
-      // screen changed under them, so the beat is what connects the two.
-      setState(() => _done = id);
+      // A held beat, not an instant cut: the user pressed a button and the
+      // screen changed under them, so the pause is what connects the two.
       HapticFeedback.lightImpact();
       await Future<void>.delayed(const Duration(milliseconds: 420));
       if (!mounted) return;
@@ -168,8 +167,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Widget _content(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final providers = ref.watch(authServiceProvider).supportedProviders;
-    final googleLive = providers.contains('google');
     final bottomInset = widget.embedded
         ? MediaQuery.paddingOf(context).bottom
         : 0.0;
@@ -206,24 +203,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           Stagger(
             index: 3,
             child: ProviderRow(
-              label: 'Continue with Google',
-              leading: const GoogleMark(),
-              busy: _busy == 'google',
-              done: _done == 'google',
-              // A disabled row that still explains itself beats a row that
-              // vanishes on some builds and not others.
-              onTap: googleLive
-                  ? () => _run(
-                      'google',
-                      () => _auth.linkAccount(provider: 'google'),
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: Gap.md),
-          Stagger(
-            index: 4,
-            child: ProviderRow(
               label: 'Continue with Email',
               leading: const MailMark(),
               busy: _busy == 'email',
@@ -232,7 +211,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
           const SizedBox(height: Gap.lg),
           Stagger(
-            index: 5,
+            index: 4,
             child: GhostAction(
               label: 'Skip for now',
               icon: Icons.arrow_forward_rounded,
@@ -241,14 +220,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
           const SizedBox(height: Gap.sm),
           Stagger(
-            index: 6,
+            index: 5,
             child: Text(
-              googleLive
-                  ? 'No account is required. Skipping keeps everything on '
-                        'this device.'
-                  : 'Google sign-in is not available in this build. Use email '
-                        'or skip — you can link a real account later without '
-                        'losing anything.',
+              'No account is required. Skipping keeps everything on '
+              'this device.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
@@ -256,7 +231,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
           const SizedBox(height: Gap.md),
           Stagger(
-            index: 7,
+            index: 6,
             child: Text(
               'By continuing you agree to our Terms & Privacy Policy.',
               textAlign: TextAlign.center,

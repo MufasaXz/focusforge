@@ -150,12 +150,13 @@ included — and can be switched off.
 Screen time, sessions, shield rules and statistics live in local storage on the
 phone. Nothing is uploaded, and the app does not need an account.
 
-Linking an account is optional, and the only thing a remote service ever holds
-is a credential: an opaque ID, an email address if you gave one, and which
-provider you used. No usage data, no screen time, no app lists.
+Accounts are optional and local too: an account is a row in the app's own
+storage. There is no server, so there is nothing to link to — this branch of
+the app has no Firebase and no Google Play Services, which is what makes it
+eligible for F-Droid.
 
 You can export everything as JSON, or delete it outright. Deleting an account
-removes the credential *and* wipes the local store.
+wipes the local store with it.
 
 </details>
 
@@ -206,6 +207,9 @@ your device**, there are three ways through:
    does not go through the package installer's scanner at all.
 
 Devices without Google services have no such block.
+
+F-Droid builds come from this branch: it carries no Firebase and no Google
+Play Services, which is what the repository's inclusion policy requires.
 
 ## Contributing
 
