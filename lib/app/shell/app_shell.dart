@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -108,8 +109,11 @@ class _AppShellState extends ConsumerState<AppShell>
     );
   }
 
-  void _select(int i) {
-    if (i == widget.navigationShell.currentIndex) return;
+  void _select(int displayIndex) {
+    final branches = _visibleBranches;
+    if (displayIndex < 0 || displayIndex >= branches.length) return;
+    final branch = branches[displayIndex];
+    if (branch == widget.navigationShell.currentIndex) return;
     // A tab change is the one navigation this app has, and it is silent
     // otherwise: the bar is at the far edge of the screen from where the
     // content lands. The lightest haptic is enough to say it registered.
@@ -117,11 +121,21 @@ class _AppShellState extends ConsumerState<AppShell>
     // `initialLocation: true` when re-tapping a tab pops it back to its root,
     // which is the behaviour every bottom-nav app is expected to have.
     widget.navigationShell.goBranch(
-      i,
-      initialLocation: i == widget.navigationShell.currentIndex,
+      branch,
+      initialLocation: branch == widget.navigationShell.currentIndex,
     );
     _fade.forward(from: 0);
   }
+
+  /// The branches this device's bar offers, in bar order.
+  ///
+  /// A parent's app is three destinations: the dashboard, the shield and
+  /// their profile. The Focus branch still exists and is still reachable —
+  /// the dashboard's own call to action starts a session — but a parent's
+  /// device is not the one being studied, and a tab for it is a tab that
+  /// never gets used.
+  List<int> get _visibleBranches =>
+      ref.read(userProvider).isGuardian ? const [0, 1, 3] : const [0, 1, 2, 3];
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +145,9 @@ class _AppShellState extends ConsumerState<AppShell>
     final shielded = ref.watch(activeShieldCountProvider) > 0;
     final wide = MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
 
-    final destinations = [
+    // Keyed by branch index, so the bar's order and the router's branches stay
+    // one list rather than two that have to agree.
+    final all = [
       const NavigationDestination(
         icon: Icon(Icons.dashboard_outlined),
         selectedIcon: Icon(Icons.dashboard),
@@ -162,6 +178,16 @@ class _AppShellState extends ConsumerState<AppShell>
         label: 'You',
       ),
     ];
+
+    final branches = ref.watch(userProvider.select((u) => u.isGuardian))
+        ? const [0, 1, 3]
+        : const [0, 1, 2, 3];
+    final destinations = [for (final branch in branches) all[branch]];
+    // The Focus branch can be current while it is not a destination, because
+    // the dashboard sends a session there. Home stands in for it rather than
+    // leaving the bar with nothing selected.
+    final current = branches.indexOf(widget.navigationShell.currentIndex);
+    final selectedIndex = current < 0 ? 0 : current;
 
     // The branch fade, shared by both shapes.
     final body = AnimatedBuilder(
@@ -202,7 +228,7 @@ class _AppShellState extends ConsumerState<AppShell>
                   SafeArea(
                     right: false,
                     child: NavigationRail(
-                      selectedIndex: widget.navigationShell.currentIndex,
+                      selectedIndex: selectedIndex,
                       onDestinationSelected: _select,
                       labelType: NavigationRailLabelType.all,
                       backgroundColor: cs.surfaceContainerLow,
@@ -270,7 +296,7 @@ class _AppShellState extends ConsumerState<AppShell>
                       filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                       child: NavigationBar(
                         backgroundColor: cs.surface.withValues(alpha: 0.85),
-                        selectedIndex: widget.navigationShell.currentIndex,
+                        selectedIndex: selectedIndex,
                         onDestinationSelected: _select,
                         destinations: destinations,
                       ),

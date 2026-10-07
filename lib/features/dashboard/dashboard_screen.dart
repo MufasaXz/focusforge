@@ -137,14 +137,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'Build your streak',
           body: 'Study every day and the flame keeps growing.',
         ),
-      CoachSpot(
-        target: targets.focusTab,
-        icon: Icons.timer_rounded,
-        title: 'Your timer lives here',
-        body:
-            'The Focus tab starts a Pomodoro and runs the shield while it '
-            'counts down.',
-      ),
+      // A parent's bar has no Focus destination, so the tip that points at it
+      // would spotlight an empty corner of the screen.
+      if (!user.isGuardian)
+        CoachSpot(
+          target: targets.focusTab,
+          icon: Icons.timer_rounded,
+          title: 'Your timer lives here',
+          body:
+              'The Focus tab starts a Pomodoro and runs the shield while it '
+              'counts down.',
+        ),
       CoachSpot(
         target: targets.shieldTab,
         icon: Icons.shield_outlined,
