@@ -13,10 +13,14 @@
 # The app is unsigned in the output path below on purpose — F-Droid signs the
 # APK with the key it holds for this app, and the release build here is
 # configured to succeed without the developer's keystore.
+#
+# Everything below this line is byte-for-byte what `fdroid rewritemeta` emits,
+# which is what the fdroiddata CI checks. Categories are in alphabetical order
+# and `commit` is the commit the v1.0.0 tag points at, not the tag object.
 
 Categories:
-  - Time
   - System
+  - Timer
 License: MIT
 AuthorName: MufasaXz
 AuthorEmail: sudeepyadav7272@gmail.com
@@ -31,7 +35,7 @@ Repo: https://github.com/MufasaXz/focusforge
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: 2c410e331822189b638dfde852d501ec60c94d6c
+    commit: 70117d42db536ae1e05171c14d01ce40242c7f0a
     output: build/app/outputs/apk/release/app-release-unsigned.apk
     srclibs:
       - flutter@stable
