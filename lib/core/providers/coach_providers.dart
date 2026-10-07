@@ -27,6 +27,9 @@ class CoachTargets {
   /// tips had to move to the root overlay: the nav bar is a sibling of the tab
   /// body, so a spotlight drawn inside the dashboard could never reach it.
   final GlobalKey focusTab = GlobalKey(debugLabel: 'coach.focusTab');
+
+  /// The Shield destination, next to it in the same bar.
+  final GlobalKey shieldTab = GlobalKey(debugLabel: 'coach.shieldTab');
 }
 
 final coachTargetsProvider = Provider<CoachTargets>(

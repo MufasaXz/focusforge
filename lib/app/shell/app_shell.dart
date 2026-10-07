@@ -138,7 +138,10 @@ class _AppShellState extends ConsumerState<AppShell>
         label: 'Home',
       ),
       NavigationDestination(
-        icon: _ShieldIcon(shielded: shielded, icon: Icons.shield_outlined),
+        icon: _CoachAnchor(
+          anchorKey: ref.watch(coachTargetsProvider).shieldTab,
+          child: _ShieldIcon(shielded: shielded, icon: Icons.shield_outlined),
+        ),
         selectedIcon: _ShieldIcon(shielded: shielded, icon: Icons.shield),
         label: 'Shield',
       ),

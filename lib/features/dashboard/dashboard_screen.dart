@@ -145,6 +145,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             'The Focus tab starts a Pomodoro and runs the shield while it '
             'counts down.',
       ),
+      CoachSpot(
+        target: targets.shieldTab,
+        icon: Icons.shield_outlined,
+        title: 'Start blocking apps like this',
+        body:
+            'The Shield tab lists the apps you can close. Switch one on, and '
+            'it stops opening until you switch it off.',
+      ),
     ];
 
     final greeting = _Greeting(
