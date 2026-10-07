@@ -559,11 +559,22 @@ class TimerNotifier extends Notifier<TimerState> {
       _pendingRecovery = null;
       unawaited(_appendRecovered(pending));
     });
-    final preset = SeedData.presets[0];
+    final preset = ref.read(presetsProvider).first;
     return TimerState(remaining: preset.focusDuration);
   }
 
-  PomodoroPreset get preset => SeedData.presets[state.presetIndex];
+  /// The presets as they stand right now, custom plan included.
+  ///
+  /// Read rather than watched: the timer holds an index into this list and
+  /// rebuilds when the state changes, not when the list does. Watching would
+  /// rebuild every listener of [timerProvider] the moment the user saved a
+  /// plan, for a list the timer only consults on a phase change.
+  List<PomodoroPreset> get _presets => ref.read(presetsProvider);
+
+  PomodoroPreset get preset {
+    final presets = _presets;
+    return presets[state.presetIndex.clamp(0, presets.length - 1)];
+  }
 
   Duration _durationFor(TimerPhase phase) => switch (phase) {
     TimerPhase.focus => preset.focusDuration,
@@ -615,11 +626,12 @@ class TimerNotifier extends Notifier<TimerState> {
   void hydrate(Map<String, dynamic>? stored) {
     if (stored == null) return;
 
+    final presets = _presets;
     final presetIndex = _intOr(
       stored['presetIndex'],
       0,
-    ).clamp(0, SeedData.presets.length - 1).toInt();
-    final preset = SeedData.presets[presetIndex];
+    ).clamp(0, presets.length - 1).toInt();
+    final preset = presets[presetIndex];
     final subjectId = _stringOrNull(stored['subjectId']);
     final segments = _intOr(stored['completedFocusSegments'], 0);
     final phase =
@@ -721,9 +733,10 @@ class TimerNotifier extends Notifier<TimerState> {
   }
 
   void setPreset(int index) {
-    if (index < 0 || index >= SeedData.presets.length) return;
+    final presets = _presets;
+    if (index < 0 || index >= presets.length) return;
     _ticker?.cancel();
-    final preset = SeedData.presets[index];
+    final preset = presets[index];
     // Switching pace is not a reason to lose the chosen subject.
     state = TimerState(
       presetIndex: index,
@@ -921,4 +934,38 @@ final goalProgressProvider = Provider<double>((ref) {
 
 // -- Presets -----------------------------------------------------------------
 
-final presetsProvider = Provider<List<PomodoroPreset>>((_) => SeedData.presets);
+/// The plan the user set by hand, or null while they are on a shipped preset.
+class CustomPlanNotifier extends Notifier<CustomPlan?> {
+  @override
+  CustomPlan? build() => null;
+
+  /// Reads the stored plan. An unreadable one leaves the user on the shipped
+  /// presets rather than opening the timer on a plan they cannot see.
+  void hydrate(Map<String, dynamic>? stored) {
+    if (stored == null) return;
+    state = CustomPlan.fromJson(stored);
+  }
+
+  Future<void> set(CustomPlan plan) async {
+    state = plan;
+    await ref
+        .read(localStoreProvider)
+        .setMap(StoreKeys.customPlan, plan.toJson());
+  }
+}
+
+final customPlanProvider = NotifierProvider<CustomPlanNotifier, CustomPlan?>(
+  CustomPlanNotifier.new,
+);
+
+/// Every preset on offer: the shipped ones, plus the user's own plan once they
+/// have set one.
+///
+/// The custom plan is always last, which is what keeps its index stable for as
+/// long as it exists — the timer stores an index, not a preset, so a plan that
+/// moved around the list would be a plan the timer could come back to wearing
+/// the wrong numbers.
+final presetsProvider = Provider<List<PomodoroPreset>>((ref) {
+  final custom = ref.watch(customPlanProvider);
+  return [...SeedData.presets, if (custom != null) custom.toPreset()];
+});

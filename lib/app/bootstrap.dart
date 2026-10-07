@@ -83,6 +83,12 @@ Future<ProviderContainer> bootstrap() async {
   container
       .read(sessionsProvider.notifier)
       .hydrate(store.getList(StoreKeys.sessions));
+  // The custom plan goes in before the timer: the timer stores an index into
+  // the preset list, and a plan hydrated after it would leave the index
+  // pointing one slot past the end of a list that had not grown yet.
+  container
+      .read(customPlanProvider.notifier)
+      .hydrate(store.getMap(StoreKeys.customPlan));
   // The timer snapshot carries the deadline of a segment that was running
   // when the process died. Hydrating it after the session log means a block
   // that finished while the app was away is recovered into the full log.

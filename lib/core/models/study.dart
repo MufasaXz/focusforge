@@ -150,6 +150,83 @@ class PomodoroPreset {
   Duration get longBreakDuration => Duration(minutes: longBreak);
 }
 
+/// A plan the user set by hand.
+///
+/// Only two numbers are asked for — how long they mean to study, and how long
+/// one block runs — and the rest is derived. That is the point: a break length
+/// is not something anyone has an opinion about, it is a fraction of the
+/// block, and the number of blocks is what the goal divides into. Asking for
+/// all five would be asking the user to do arithmetic the app can do, and
+/// getting it wrong would mean a plan that quietly misses the goal.
+@immutable
+class CustomPlan {
+  const CustomPlan({required this.goalMinutes, required this.focusMinutes});
+
+  /// The focus time the session is aiming at.
+  final int goalMinutes;
+
+  /// How long one focus block runs.
+  final int focusMinutes;
+
+  /// Blocks the goal divides into, rounded up: a plan that stops short of the
+  /// goal is not the plan that was asked for. The cap keeps a 5-minute block
+  /// against an 8-hour goal from becoming a hundred-block marathon.
+  int get blocks => (goalMinutes / focusMinutes).ceil().clamp(1, 24);
+
+  /// The break after each block. A fifth of the block is the classic ratio;
+  /// the bounds keep a very short block from getting a break too short to
+  /// stand up in, and a very long one from getting half an hour.
+  int get shortBreak => (focusMinutes / 5).round().clamp(3, 20);
+
+  /// The break at the end of a cycle — roughly three short ones, which is the
+  /// ratio every shipped preset uses.
+  int get longBreak => (focusMinutes * 0.6).round().clamp(10, 45);
+
+  /// Blocks before a long break. Shorter blocks run in longer sets, so a long
+  /// break still lands about every two hours whatever the block length is.
+  int get cadence => (90 / focusMinutes).round().clamp(2, 6);
+
+  /// The focus time the plan actually reaches: the goal rounded up to whole
+  /// blocks, which is what the user will really have studied.
+  int get plannedMinutes => blocks * focusMinutes;
+
+  PomodoroPreset toPreset() => PomodoroPreset(
+    name: 'Custom',
+    icon: Icons.tune_rounded,
+    focus: focusMinutes,
+    shortBreak: shortBreak,
+    longBreak: longBreak,
+    segments: cadence,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'goalMinutes': goalMinutes,
+    'focusMinutes': focusMinutes,
+  };
+
+  /// Reads a stored plan, or null when there is nothing usable there.
+  ///
+  /// Both numbers are required and both are clamped into the range the sliders
+  /// offer: a stored plan outside it would open the sheet with its controls
+  /// pinned at an end that does not describe it.
+  static CustomPlan? fromJson(Map<String, dynamic> j) {
+    final goal = _intOr(j['goalMinutes'], 0);
+    final focus = _intOr(j['focusMinutes'], 0);
+    if (goal <= 0 || focus <= 0) return null;
+    return CustomPlan(
+      goalMinutes: goal.clamp(minGoal, maxGoal),
+      focusMinutes: focus.clamp(minFocus, maxFocus),
+    );
+  }
+
+  /// The range the sheet's sliders span, named here so the stored value and
+  /// the controls can never disagree about it.
+  static const int minGoal = 30;
+  static const int maxGoal = 8 * 60;
+  static const int minFocus = 10;
+  static const int maxFocus = 120;
+}
+
 /// A bundled looping ambience. [asset] is the path inside `assets/audio`.
 @immutable
 class AmbientSound {

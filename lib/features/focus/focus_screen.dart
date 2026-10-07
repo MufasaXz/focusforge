@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
-import '../../core/models/study.dart';
+import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -18,6 +18,7 @@ import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
 import 'ambient_mixer.dart';
+import 'custom_plan_sheet.dart';
 import 'fullscreen_clock.dart';
 import 'subject_picker.dart';
 import 'widgets/clock_faces.dart';
@@ -177,34 +178,17 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 listBottom,
               ),
               children: [
-                // Stagger plays once per element lifetime, and this branch is
-                // built the first time the tab is shown (go_router does not
-                // preload branches) — so the entrance lands on first visit, not
-                // on every timer rebuild.
-                Stagger(
-                  index: 0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Focus Engine',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Deep work, measured',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: t.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: Gap.xl),
+                // No headline. The screen opens on the preset and the subject
+                // tags and then the clock, which is what the tab is for; a
+                // title over it only spent height on words the rail already
+                // says. Stagger plays once per element lifetime, and this
+                // branch is built the first time the tab is shown (go_router
+                // does not preload branches) — so the entrance lands on first
+                // visit, not on every timer rebuild.
 
                 // Preset ------------------------------------------------------
                 Stagger(
-                  index: 1,
+                  index: 0,
                   child: Center(
                     child: Semantics(
                       button: true,
@@ -237,12 +221,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(height: Gap.lg),
 
                 // Subject tags ------------------------------------------------
-                Stagger(index: 2, child: SubjectPicker(accent: accent)),
+                Stagger(index: 1, child: SubjectPicker(accent: accent)),
                 const SizedBox(height: Gap.xl),
 
                 // Timer -------------------------------------------------------
                 Stagger(
-                  index: 3,
+                  index: 2,
                   child: Column(
                     children: [
                       Center(
@@ -256,8 +240,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           onDoubleTap: () => showFullscreenClock(context),
                           child: ProgressRing(
                             value: timer.progressFor(preset),
-                            size: 218,
-                            stroke: 11,
+                            size: 252,
+                            stroke: 12,
                             ticks: 60,
                             // The second horizon: how far through the set of focus
                             // blocks this session is. The inner arc answers "how
@@ -283,15 +267,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                   // The ring label carries the time for screen
                                   // readers, so the figures themselves are silent.
                                   SizedBox(
-                                    width: 184,
-                                    height: 66,
+                                    width: 214,
+                                    height: 78,
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: ClockDisplay(
                                         remaining: timer.remaining,
                                         face: face,
                                         accent: accent,
-                                        height: 60,
+                                        height: 72,
                                         progress: timer.progressFor(preset),
                                       ),
                                     ),
@@ -335,7 +319,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       // The gesture is not visible, so it is said out loud
                       // once. It sits under the ring rather than inside it:
                       // the ring's own content is the clock, and a caption in
-                      // there would have to shrink the figures to fit.
+                      // there would have to shrink the figures to fit. The
+                      // space above it is deliberate — butted against the
+                      // ring's box the caption reads as part of the dial.
+                      const SizedBox(height: Gap.md),
                       Text(
                         'Double-tap the clock for full screen',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -349,19 +336,19 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(height: Gap.xl),
 
                 // Ambient mixer ------------------------------------------------
-                const Stagger(index: 4, child: AmbientMixerSection()),
+                const Stagger(index: 3, child: AmbientMixerSection()),
                 const SizedBox(height: Gap.xl),
 
                 // Today --------------------------------------------------------
                 const Stagger(
-                  index: 6,
+                  index: 4,
                   child: SectionHeader(
                     title: 'Today',
                     icon: Icons.today_outlined,
                   ),
                 ),
                 Stagger(
-                  index: 7,
+                  index: 5,
                   child: Row(
                     children: [
                       Expanded(
@@ -628,38 +615,65 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     .withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(Radii.hero),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(sheetContext)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        borderRadius: BorderRadius.circular(Radii.pill),
+              // The rows are ListTiles, and a ListTile paints its ink on the
+              // nearest Material ancestor. Without this one the nearest is
+              // above the decorated container, so the splash lands under the
+              // sheet's own background and never shows.
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(sheetContext)
+                              .colorScheme
+                              .onSurfaceVariant,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: Gap.lg),
-                  Text(
-                    'Pomodoro presets',
-                    style: Theme.of(sheetContext).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  for (var i = 0; i < presets.length; i++)
-                    _PresetRow(
-                      preset: presets[i],
-                      selected: i == current,
-                      onTap: () {
-                        ref.read(timerProvider.notifier).setPreset(i);
-                        Navigator.of(sheetContext).pop();
+                    const SizedBox(height: Gap.lg),
+                    Text(
+                      'Pomodoro presets',
+                      style: Theme.of(sheetContext).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    // The shipped presets, then the user's own plan as one row
+                    // that both selects and edits it. The custom preset is
+                    // deliberately not listed as an ordinary row as well: the
+                    // same plan under two rows would leave the user guessing
+                    // which one is the one they set.
+                    for (var i = 0; i < SeedData.presets.length; i++)
+                      _PresetRow(
+                        preset: presets[i],
+                        selected: i == current,
+                        onTap: () {
+                          ref.read(timerProvider.notifier).setPreset(i);
+                          Navigator.of(sheetContext).pop();
+                        },
+                      ),
+                    _CustomPlanRow(
+                      plan: ref.read(customPlanProvider),
+                      selected: current >= SeedData.presets.length,
+                      onTap: () async {
+                        final plan = await showCustomPlanSheet(sheetContext);
+                        if (plan == null) return;
+                        await ref.read(customPlanProvider.notifier).set(plan);
+                        ref
+                            .read(timerProvider.notifier)
+                            .setPreset(ref.read(presetsProvider).length - 1);
+                        if (sheetContext.mounted) {
+                          Navigator.of(sheetContext).pop();
+                        }
                       },
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -717,6 +731,59 @@ class _SegmentDot extends StatelessWidget {
   }
 }
 
+/// The user's own plan, as a row in the preset sheet.
+///
+/// It reads as a preset and behaves as an editor: the numbers it was built
+/// from are not on the row, so there is nothing here to change except by
+/// opening the sheet behind it.
+class _CustomPlanRow extends StatelessWidget {
+  const _CustomPlanRow({
+    required this.plan,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CustomPlan? plan;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).colorScheme;
+    final summary = plan == null
+        ? 'Set your own goal and block length'
+        : '${formatMinutes(plan!.goalMinutes)} goal · ${plan!.blocks} × '
+              '${plan!.focusMinutes}m · ${plan!.shortBreak}m break';
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Custom plan. $summary. Opens the editor',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: ListTile(
+        onTap: onTap,
+        selected: selected,
+        leading: IconBadge(
+          icon: Icons.tune_rounded,
+          color: t.primary,
+          size: 38,
+          radius: 11,
+        ),
+        title: const Text('Custom plan'),
+        subtitle: Text(
+          summary,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: selected
+            ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
+            : Icon(Icons.edit_outlined, size: 18, color: t.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
 class _PresetRow extends StatelessWidget {
   const _PresetRow({
     required this.preset,
@@ -761,8 +828,7 @@ class _PresetRow extends StatelessWidget {
   }
 }
 
-class _InfoCapsule extends StatelessWidget {
-  const _InfoCapsule({
+class _InfoCapsule extends StatelessWidget {  const _InfoCapsule({
     required this.icon,
     required this.color,
     required this.value,
