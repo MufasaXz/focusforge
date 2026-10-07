@@ -1,0 +1,84 @@
+rules_version = '2';
+
+// FocusForge parent control.
+//
+// The shape of the data is what these rules protect:
+//
+//   pairCodes/{code}                 a six-digit code a child's app shows
+//   users/{uid}                      role, name, the linked parent's name
+//   users/{uid}/children/{childUid}  a parent's list of children
+//   users/{uid}/guardian             a child's record of the parent who linked
+//   users/{uid}/progress/{doc}       the child's own study summary
+//   users/{uid}/remoteRules/{doc}    the block list a parent set for that child
+//
+// Two rules do the real work: a document under a user's tree is readable by
+// that user and by their linked guardian, and writable by exactly one of them
+// — the child owns their progress, the parent owns the rules they set. Nothing
+// here lets one account read another account's tree, and a pairing code is
+// only ever claimable by the child who minted it.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // True when the caller is the parent the child's own record names. The
+    // lookup is one document read, and it is the only way in to a child's
+    // tree from outside it.
+    function isGuardianOf(uid) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(uid)/guardian) &&
+        get(/databases/$(database)/documents/users/$(uid)/guardian).data.parentUid == request.auth.uid;
+    }
+
+    // A pairing code is readable by any signed-in account — that is what
+    // claiming one means — but only its owner can write or retire it.
+    match /pairCodes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.childUid == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.childUid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isGuardianOf(uid);
+      allow write: if isSelf(uid);
+
+      // The parent's own list. Nobody else reads it: a child has no reason to
+      // enumerate their parent's other children.
+      match /children/{childUid} {
+        allow read, write: if isSelf(uid);
+      }
+
+      // Written once, by the child, when they accept a code. The parent may
+      // read it to show the connection on their own side, and may only create
+      // it while none exists — a second parent cannot take over a device that
+      // is already linked.
+      match /guardian {
+        allow read: if isSelf(uid) || (signedIn() && resource.data.parentUid == request.auth.uid);
+        allow create: if signedIn() &&
+          request.resource.data.parentUid == request.auth.uid &&
+          !exists(/databases/$(database)/documents/users/$(uid)/guardian);
+        allow update, delete: if isSelf(uid);
+      }
+
+      // The child's progress: the child writes it, the guardian reads it.
+      match /progress/{doc} {
+        allow read: if isSelf(uid) || isGuardianOf(uid);
+        allow write: if isSelf(uid);
+      }
+
+      // The rules a parent set for this child: the guardian writes them, the
+      // child's app reads and applies them. The child cannot write them, which
+      // is the point.
+      match /remoteRules/{doc} {
+        allow read: if isSelf(uid) || isGuardianOf(uid);
+        allow write: if isGuardianOf(uid);
+      }
+    }
+  }
+}
