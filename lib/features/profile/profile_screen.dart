@@ -91,8 +91,12 @@ class ProfileScreen extends ConsumerWidget {
     final unlocked = ref.watch(unlockedCountProvider);
     final me = ref.watch(myRankProvider);
     final strict = ref.watch(strictModeProvider);
-    final guardian = ref.watch(guardianProvider).value;
-    final children = ref.watch(childrenProvider).value ?? const <ChildLink>[];
+    // `valueOrNull`: a stream that errors — no rules published yet, no
+    // connection — must leave this row without a trailing value rather than
+    // throw out of the build and blank the whole tab.
+    final guardian = ref.watch(guardianProvider).valueOrNull;
+    final children =
+        ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
 
     final standings = ref.watch(leaderboardProvider);
     final rankIndex = standings.indexWhere((e) => e.isMe);
