@@ -17,7 +17,6 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
-import '../focus/widgets/clock_faces.dart';
 import 'widgets/avatar_sheet.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/subject_target_sheet.dart';
@@ -81,6 +80,15 @@ class ProfileScreen extends ConsumerWidget {
         routeName: AppRoutes.strictMode,
         trailing: strict.enabled ? 'On' : 'Off',
         trailingColor: strict.enabled ? t.error : null,
+      ),
+      _SettingSpec(
+        icon: Icons.timer_outlined,
+        label: 'Clock face',
+        routeName: AppRoutes.clockFace,
+        // Named rather than counted: "5 options" says nothing about which one
+        // is running, and this row is the only place the current one is
+        // visible without opening the page.
+        trailing: ref.watch(clockFaceProvider).label,
       ),
       _SettingSpec(
         icon: Icons.notifications_active_outlined,
@@ -169,11 +177,6 @@ class ProfileScreen extends ConsumerWidget {
         const SectionHeader(title: 'Appearance', icon: Icons.palette_outlined),
       ),
       prefStagger(const _AppearanceCard()),
-      const SizedBox(height: Gap.xl),
-      prefStagger(
-        const SectionHeader(title: 'Focus clock', icon: Icons.timer_outlined),
-      ),
-      prefStagger(const _ClockFaceCard()),
       const SizedBox(height: Gap.xl),
       prefStagger(
         const SectionHeader(title: 'Settings', icon: Icons.settings_outlined),
@@ -685,184 +688,6 @@ class _AppearanceCard extends ConsumerWidget {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The clock the focus timer wears, with a live preview of each face.
-///
-/// The preview is the face itself, drawn small, rather than a name beside a
-/// swatch: the four differ in a way words are bad at describing, and a picker
-/// that has to explain itself has already failed.
-class _ClockFaceCard extends ConsumerWidget {
-  const _ClockFaceCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = Theme.of(context).colorScheme;
-    final face = ref.watch(clockFaceProvider);
-    // The previews draw the timer's own value rather than a sample: it is the
-    // one number that is real here, and a face that looks right at a made-up
-    // time is no guarantee it looks right at the one on the clock. They do
-    // not tick — nothing on this page is running — but they never disagree
-    // with what the timer would show either.
-    final timer = ref.watch(timerProvider);
-    final preset = ref.watch(presetsProvider)[timer.presetIndex];
-
-    return Card.filled(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconBadge(
-                  icon: face.icon,
-                  color: t.primary,
-                  size: 36,
-                  radius: 10,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(
-                    'Focus clock',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-                Text(
-                  face.label,
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: t.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Two up where there is room for two legible previews, one up
-                // on a phone. The preview needs the width more than the copy
-                // does — a flip card scaled to 40dp is a grey smudge.
-                final twoUp = constraints.maxWidth >= 420;
-                final width = twoUp
-                    ? (constraints.maxWidth - Gap.md) / 2
-                    : constraints.maxWidth;
-                return Wrap(
-                  spacing: Gap.md,
-                  runSpacing: Gap.md,
-                  children: [
-                    for (final option in ClockFace.values)
-                      SizedBox(
-                        width: width,
-                        child: _ClockFaceOption(
-                          face: option,
-                          remaining: timer.remaining,
-                          progress: timer.progressFor(preset),
-                          selected: option == face,
-                          onTap: () =>
-                              ref.read(clockFaceProvider.notifier).set(option),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ClockFaceOption extends StatelessWidget {
-  const _ClockFaceOption({
-    required this.face,
-    required this.remaining,
-    required this.progress,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ClockFace face;
-  final Duration remaining;
-  final double progress;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${face.label} clock, ${face.blurb}',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: Pressable(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.all(Gap.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.item),
-            color: selected
-                ? t.primary.withValues(alpha: 0.12)
-                : t.surfaceContainerHighest,
-            border: Border.all(
-              color: selected ? t.primary : t.outlineVariant,
-              width: selected ? 1.4 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 42,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: ClockDisplay(
-                      remaining: remaining,
-                      face: face,
-                      accent: t.primary,
-                      height: 30,
-                      progress: progress,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      face.label,
-                      style: Theme.of(context).textTheme.labelLarge
-                          ?.copyWith(color: selected ? t.primary : t.onSurface),
-                    ),
-                  ),
-                  if (selected)
-                    Icon(
-                      Icons.check_circle_rounded,
-                      size: 16,
-                      color: t.primary,
-                    ),
-                ],
-              ),
-              Text(
-                face.blurb,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: t.onSurfaceVariant),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -63,40 +63,33 @@ class AmbientMixerSection extends ConsumerWidget {
         const SizedBox(height: Gap.md),
         Card.filled(
           child: Padding(
-            padding: const EdgeInsets.all(Gap.lg),
+            padding: const EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, Gap.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Three across where the tiles still read, two on a phone.
-                    // A fixed two would leave a tablet with two wide bars and
-                    // a column of unused space beside them.
-                    final columns = constraints.maxWidth >= 520 ? 3 : 2;
-                    return GridView.count(
-                      crossAxisCount: columns,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: Gap.md,
-                      crossAxisSpacing: Gap.md,
-                      childAspectRatio: columns == 3 ? 2.9 : 2.6,
-                      children: [
-                        for (final sound in catalogue)
-                          _AmbientTile(
-                            tile: sound,
-                            active: active.contains(sound.id),
-                            onTap: () {
-                              unawaited(HapticFeedback.selectionClick());
-                              unawaited(
-                                ref
-                                    .read(activeSoundsProvider.notifier)
-                                    .toggle(sound),
-                              );
-                            },
-                          ),
-                      ],
-                    );
-                  },
+                // A row of small pills rather than a grid of cards. Six sounds
+                // is a short list and each one is one bit of state, so a
+                // labelled tile per sound was six cards of furniture around
+                // six taps. The name is not gone — it is on the tile's
+                // semantics, and on the level slider the moment it is playing.
+                Wrap(
+                  spacing: Gap.sm,
+                  runSpacing: Gap.sm,
+                  children: [
+                    for (final sound in catalogue)
+                      _AmbientTile(
+                        tile: sound,
+                        active: active.contains(sound.id),
+                        onTap: () {
+                          unawaited(HapticFeedback.selectionClick());
+                          unawaited(
+                            ref
+                                .read(activeSoundsProvider.notifier)
+                                .toggle(sound),
+                          );
+                        },
+                      ),
+                  ],
                 ),
                 const SizedBox(height: Gap.md),
                 // The instruction is the empty state: it says what the grid
@@ -192,8 +185,13 @@ class AmbientMixerSection extends ConsumerWidget {
   }
 }
 
-/// One track in the grid. A tile, not a switch: the whole thing is the target,
+/// One track. A stadium the size of its icon: the whole thing is the target,
 /// and its state is carried by the colour, the border and the meter.
+///
+/// The corners are half-circles rather than a fixed radius, which is what
+/// [StadiumBorder] means and what makes a shape this short read as a capsule
+/// instead of a rounded rectangle — at this height a 12dp radius is most of
+/// the tile, and the two look different.
 class _AmbientTile extends StatelessWidget {
   const _AmbientTile({
     required this.tile,
@@ -208,58 +206,55 @@ class _AmbientTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
+    final ink = active ? tile.color : t.onSurfaceVariant;
 
     return Semantics(
       button: true,
       selected: active,
+      // The name lives here now that it is not on the tile: a screen reader
+      // still has to be able to tell the six of them apart.
       label: '${tile.name} ambience, ${active ? 'on' : 'off'}',
       excludeSemantics: true,
       onTap: onTap,
-      child: Pressable(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.tile),
-            color: active
-                ? tile.color.withValues(alpha: 0.20)
-                : t.surfaceContainer,
-            border: Border.all(
+      // The tile has no room for its name, so the name is one long press away
+      // — and on the web, one hover. A row of six unlabelled glyphs is fine
+      // once you know them and a guessing game before that.
+      child: Tooltip(
+        message: tile.name,
+        waitDuration: const Duration(milliseconds: 420),
+        child: Pressable(
+          onTap: onTap,
+          scale: 0.92,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            width: active ? 74 : 52,
+            height: 40,
+            decoration: ShapeDecoration(
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: active
+                      ? tile.color.withValues(alpha: 0.72)
+                      : t.outlineVariant,
+                  width: active ? 1.3 : 1,
+                ),
+              ),
               color: active
-                  ? tile.color.withValues(alpha: 0.72)
-                  : t.outlineVariant,
-              width: active ? 1.3 : 1,
+                  ? tile.color.withValues(alpha: 0.20)
+                  : t.surfaceContainer,
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                tile.icon,
-                size: 17,
-                color: active ? tile.color : t.onSurfaceVariant,
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(
-                  tile.name,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: active ? t.onSurface : t.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (active)
-                _Equalizer(color: tile.color)
-              else
-                Icon(
-                  Icons.add_rounded,
-                  size: 15,
-                  color: t.onSurfaceVariant.withValues(alpha: 0.5),
-                ),
-            ],
+            child: Center(
+              child: active
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(tile.icon, size: 16, color: ink),
+                        const SizedBox(width: 6),
+                        _Equalizer(color: tile.color),
+                      ],
+                    )
+                  : Icon(tile.icon, size: 18, color: ink),
+            ),
           ),
         ),
       ),

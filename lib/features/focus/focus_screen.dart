@@ -39,7 +39,7 @@ class FocusScreen extends ConsumerStatefulWidget {
 
 class _FocusScreenState extends ConsumerState<FocusScreen> {
   /// Space the pinned dock occupies, plus the clearance above it.
-  static const double _dockHeight = 96;
+  static const double _dockHeight = 78;
 
   /// How wide the dock and the completion banner are allowed to get.
   ///
@@ -47,7 +47,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   /// once the rail is beside it — a stadium-shaped control a thousand pixels
   /// wide puts Reset and Skip a hand apart, and the banner reads as a bar
   /// rather than as a card. Centred, so the pair stays under the timer.
-  static const double _dockWidth = 520;
+  static const double _dockWidth = 460;
 
   StreamSubscription<int>? _completions;
   Timer? _celebrationTimer;
@@ -256,7 +256,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           onDoubleTap: () => showFullscreenClock(context),
                           child: ProgressRing(
                             value: timer.progressFor(preset),
-                            size: 208,
+                            size: 218,
                             stroke: 11,
                             ticks: 60,
                             // The second horizon: how far through the set of focus
@@ -283,15 +283,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                   // The ring label carries the time for screen
                                   // readers, so the figures themselves are silent.
                                   SizedBox(
-                                    width: 168,
-                                    height: 58,
+                                    width: 184,
+                                    height: 66,
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: ClockDisplay(
                                         remaining: timer.remaining,
                                         face: face,
                                         accent: accent,
-                                        height: 52,
+                                        height: 60,
                                         progress: timer.progressFor(preset),
                                       ),
                                     ),
@@ -449,28 +449,26 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.lg,
-                    vertical: Gap.md,
+                    horizontal: Gap.sm,
+                    vertical: Gap.sm,
                   ),
+                  // Centred rather than spread. The bar keeps its full width —
+                  // it is a surface the thumb lands on, and a shrink-wrapped
+                  // pill floating over the page reads as a tooltip — but the
+                  // three controls sit together in the middle of it, because
+                  // Reset and Skip are one gesture away from the play button,
+                  // not a reach away from it.
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Semantics(
-                          button: true,
-                          label: 'Reset timer',
-                          excludeSemantics: true,
-                          onTap: () => ref.read(timerProvider.notifier).reset(),
-                          child: TextButton.icon(
-                            onPressed: () =>
-                                ref.read(timerProvider.notifier).reset(),
-                            icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: const Text('Reset'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: t.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
+                      _DockAction(
+                        icon: Icons.refresh_rounded,
+                        label: 'Reset',
+                        semanticLabel: 'Reset timer',
+                        color: t.onSurfaceVariant,
+                        onTap: () => ref.read(timerProvider.notifier).reset(),
                       ),
+                      const SizedBox(width: Gap.sm),
                       Semantics(
                         button: true,
                         label: timer.running
@@ -483,8 +481,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           scale: 0.92,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 260),
-                            width: 64,
-                            height: 64,
+                            width: 52,
+                            height: 52,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: accent,
@@ -493,29 +491,19 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               timer.running
                                   ? Icons.pause_rounded
                                   : Icons.play_arrow_rounded,
-                              size: 32,
+                              size: 27,
                               color: _onPhaseColor(t, timer.phase),
                             ),
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: Semantics(
-                          button: true,
-                          label: 'Skip to next phase',
-                          excludeSemantics: true,
-                          onTap: () => ref.read(timerProvider.notifier).skip(),
-                          child: TextButton.icon(
-                            onPressed: () =>
-                                ref.read(timerProvider.notifier).skip(),
-                            icon: const Icon(Icons.skip_next_rounded, size: 16),
-                            label: const Text('Skip'),
-                            iconAlignment: IconAlignment.end,
-                            style: TextButton.styleFrom(
-                              foregroundColor: t.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
+                      const SizedBox(width: Gap.sm),
+                      _DockAction(
+                        icon: Icons.skip_next_rounded,
+                        label: 'Skip',
+                        semanticLabel: 'Skip to next phase',
+                        color: t.onSurfaceVariant,
+                        onTap: () => ref.read(timerProvider.notifier).skip(),
                       ),
                     ],
                   ),
@@ -810,6 +798,63 @@ class _InfoCapsule extends StatelessWidget {
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Reset or Skip: a small icon-and-word target beside the play button.
+///
+/// A plain [TextButton] in an `Expanded` was the obvious thing and the wrong
+/// one — it filled a third of the bar each, so the two labels sat a hand apart
+/// with the play button marooned in the middle. These are the size of what
+/// they do.
+class _DockAction extends StatelessWidget {
+  const _DockAction({
+    required this.icon,
+    required this.label,
+    required this.semanticLabel,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String semanticLabel;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.94,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.sm + 2,
+            vertical: Gap.sm + 2,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 19, color: color),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),

@@ -1,26 +1,34 @@
-// The focus clock: the four faces it can be drawn in, and the preference that
+// The focus clock: the five faces it can be drawn in, and the preference that
 // chooses between them.
 //
 // WHAT INVARIANT: every face renders the same value, none of them throws at
 // any size, and the chosen face is the one a later launch reads back.
 //
-// WHY IT MATTERS: two of the four faces paint their figures rather than
+// WHY IT MATTERS: three of the five faces paint their figures rather than
 // laying out text, so a mistake in them is invisible to the model tests and to
 // `find.text` — it shows up as a blank rectangle on the timer, or as a layout
-// exception only when the timer is at 100 minutes. The preference is read
-// before the first frame, so an unreadable stored value has to land on the
-// shipped face rather than on nothing.
+// exception only when the timer is at 100 minutes. The flip board in
+// particular draws two halves of one card, and where those halves land is
+// geometry no other test can see. The preference is read before the first
+// frame, so an unreadable stored value has to land on the shipped face rather
+// than on nothing.
+
+import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/utils/format.dart';
 import 'package:focusforge/features/focus/widgets/clock_faces.dart';
+import 'package:focusforge/features/settings/clock_face_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -120,6 +128,61 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the flip board stacks its halves instead of piling them up', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          const ClockDisplay(
+            remaining: remaining,
+            face: ClockFace.flip,
+            accent: Colors.orange,
+            height: 48,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Each half is a clip the size of half a card. A Stack aligns whatever
+      // is not positioned to its top-left, so if the halves are not anchored
+      // both land in the top half and the card's bottom stays blank — which
+      // is exactly what the eye reads as "the flip clock is broken".
+      final clips = <Rect>[
+        for (final box in tester.renderObjectList<RenderBox>(
+          find.byType(ClipRRect),
+        ))
+          box.localToGlobal(Offset.zero) & box.size,
+      ];
+      expect(clips, isNotEmpty);
+
+      // Grouped by column: one card is two clips, one above the other.
+      final byColumn = <double, List<Rect>>{};
+      for (final rect in clips) {
+        byColumn.putIfAbsent(rect.left, () => []).add(rect);
+      }
+
+      for (final column in byColumn.values) {
+        // A card at rest draws three: the top half, the bottom half, and the
+        // half that does the flipping, parked exactly on top of the bottom
+        // one so it can turn from there. Two distinct bands, then.
+        final bands = column.toSet().toList()
+          ..sort((a, b) => a.top.compareTo(b.top));
+        expect(bands, hasLength(2), reason: 'a card is a top and a bottom');
+        final card = bands.first.expandToInclude(bands.last);
+        expect(
+          bands.first.bottom,
+          closeTo(card.center.dy, 0.5),
+          reason: 'the top half has to stop at the hinge',
+        );
+        expect(
+          bands.last.top,
+          closeTo(card.center.dy, 0.5),
+          reason: 'the bottom half has to start at the hinge',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a figure that changes flips and lands on the new one', (
       tester,
     ) async {
@@ -171,6 +234,115 @@ void main() {
             reason: '${face.name} at ${height.toInt()}dp',
           );
         }
+      }
+    });
+  });
+
+  group('the clock face page', () {
+    /// The page reads the router for its back button, so it cannot be pumped
+    /// on its own — the route is scaffolding and the page is the subject.
+    Widget page(ProviderContainer container) {
+      final router = GoRouter(
+        initialLocation: '/clock',
+        routes: [
+          GoRoute(
+            path: '/clock',
+            builder: (context, state) => const ClockFaceScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      return UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      );
+    }
+
+    ProviderContainer container() {
+      final scope = ProviderContainer(
+        overrides: [localStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(scope.dispose);
+      return scope;
+    }
+
+    testWidgets('every face is offered, and the running one is marked', (
+      tester,
+    ) async {
+      await tester.pumpWidget(page(container()));
+      await tester.pumpAndSettle();
+
+      for (final face in ClockFace.values) {
+        expect(
+          find.text(face.label),
+          findsOneWidget,
+          reason: 'a face that is not on the page cannot be chosen',
+        );
+      }
+      // The shipped face is the one the timer is wearing. Asked of the
+      // semantics rather than of the check mark: the check is built into every
+      // row and scaled away, so its presence finds all five.
+      final chosen = [
+        for (final face in ClockFace.values)
+          if (tester
+                  .getSemantics(find.text(face.label))
+                  .getSemanticsData()
+                  .flagsCollection
+                  .isSelected ==
+              Tristate.isTrue)
+            face,
+      ];
+      expect(
+        chosen,
+        [ClockFace.digits],
+        reason:
+            'exactly one face is the current one, and a cold install '
+            'wears the shipped one',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tapping a face selects it and writes the choice', (
+      tester,
+    ) async {
+      final scope = container();
+      await tester.pumpWidget(page(scope));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(ClockFace.segments.label));
+      await tester.pumpAndSettle();
+
+      expect(scope.read(clockFaceProvider), ClockFace.segments);
+      expect(
+        store.getString(StoreKeys.clockFace),
+        'segments',
+        reason: 'the choice has to survive the app being closed',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a preview draws the timer\'s own value, not a sample', (
+      tester,
+    ) async {
+      final scope = container();
+      await tester.pumpWidget(page(scope));
+      await tester.pumpAndSettle();
+
+      final timer = scope.read(timerProvider);
+      final glyphs = formatClock(timer.remaining)
+          .replaceAll(':', '')
+          .split('')
+          .toSet();
+
+      for (final glyph in glyphs) {
+        expect(
+          find.text(glyph),
+          findsWidgets,
+          reason: 'the previews have to show what the timer would show',
+        );
       }
     });
   });

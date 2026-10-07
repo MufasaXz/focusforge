@@ -21,9 +21,9 @@ enum ThemePreference {
   /// and an unreadable stored value land in the same place — the device
   /// setting — rather than one of them snapping to light.
   static ThemePreference fromName(String? name) => values.firstWhere(
-        (v) => v.name == name,
-        orElse: () => ThemePreference.system,
-      );
+    (v) => v.name == name,
+    orElse: () => ThemePreference.system,
+  );
 }
 
 /// A named seed pair the whole palette derives from.
@@ -58,10 +58,8 @@ enum AppPalette {
   /// The stored palette, or [AppPalette.ember] when there is none — the same
   /// fallback a cold install gets, so an unreadable value cannot land the app
   /// on a colour the user never chose.
-  static AppPalette fromName(String? name) => values.firstWhere(
-        (v) => v.name == name,
-        orElse: () => AppPalette.ember,
-      );
+  static AppPalette fromName(String? name) =>
+      values.firstWhere((v) => v.name == name, orElse: () => AppPalette.ember);
 }
 
 /// How the focus timer draws the time that is left.
@@ -74,7 +72,8 @@ enum ClockFace {
   digits('Digits', 'Rolling figures', Icons.timer_outlined),
   flip('Flip', 'Split-flap cards', Icons.view_agenda_rounded),
   segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
-  minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded);
+  minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded),
+  neon('Neon', 'Lit figures with a glow', Icons.lightbulb_outline_rounded);
 
   const ClockFace(this.label, this.blurb, this.icon);
 
@@ -82,10 +81,8 @@ enum ClockFace {
   final String blurb;
   final IconData icon;
 
-  static ClockFace fromName(String? name) => values.firstWhere(
-    (v) => v.name == name,
-    orElse: () => ClockFace.digits,
-  );
+  static ClockFace fromName(String? name) =>
+      values.firstWhere((v) => v.name == name, orElse: () => ClockFace.digits);
 }
 
 /// Everything the appearance section can change, in one value.
@@ -111,12 +108,11 @@ class ThemeSettings {
     ThemePreference? mode,
     AppPalette? palette,
     bool? amoled,
-  }) =>
-      ThemeSettings(
-        mode: mode ?? this.mode,
-        palette: palette ?? this.palette,
-        amoled: amoled ?? this.amoled,
-      );
+  }) => ThemeSettings(
+    mode: mode ?? this.mode,
+    palette: palette ?? this.palette,
+    amoled: amoled ?? this.amoled,
+  );
 }
 
 /// Who is using the app. Persona drives the defaults offered during onboarding
@@ -144,7 +140,13 @@ enum Persona {
     Color(0xFF8FE39B),
   );
 
-  const Persona(this.label, this.icon, this.blurb, this.subjectPrompt, this.color);
+  const Persona(
+    this.label,
+    this.icon,
+    this.blurb,
+    this.subjectPrompt,
+    this.color,
+  );
 
   final String label;
   final IconData icon;
@@ -152,10 +154,8 @@ enum Persona {
   final String subjectPrompt;
   final Color color;
 
-  static Persona fromName(String? name) => values.firstWhere(
-        (v) => v.name == name,
-        orElse: () => Persona.student,
-      );
+  static Persona fromName(String? name) =>
+      values.firstWhere((v) => v.name == name, orElse: () => Persona.student);
 }
 
 /// The signed-in (or local-only) account.
@@ -234,52 +234,51 @@ class UserProfile {
     int? dailyGoalMinutes,
     bool clearAvatar = false,
     DateTime? createdAt,
-  }) =>
-      UserProfile(
-        uid: uid ?? this.uid,
-        displayName: displayName ?? this.displayName,
-        persona: persona ?? this.persona,
-        timezone: timezone ?? this.timezone,
-        onboardingComplete: onboardingComplete ?? this.onboardingComplete,
-        isAnonymous: isAnonymous ?? this.isAnonymous,
-        // A null icon means "use my initials", which is a real choice rather
-        // than a missing value — so clearing it has to be asked for
-        // explicitly, or `copyWith` could never take the glyph away.
-        avatarIcon: clearAvatar ? null : (avatarIcon ?? this.avatarIcon),
-        avatarColor: avatarColor ?? this.avatarColor,
-        dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  }) => UserProfile(
+    uid: uid ?? this.uid,
+    displayName: displayName ?? this.displayName,
+    persona: persona ?? this.persona,
+    timezone: timezone ?? this.timezone,
+    onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+    isAnonymous: isAnonymous ?? this.isAnonymous,
+    // A null icon means "use my initials", which is a real choice rather
+    // than a missing value — so clearing it has to be asked for
+    // explicitly, or `copyWith` could never take the glyph away.
+    avatarIcon: clearAvatar ? null : (avatarIcon ?? this.avatarIcon),
+    avatarColor: avatarColor ?? this.avatarColor,
+    dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
+    createdAt: createdAt ?? this.createdAt,
+  );
 
   Map<String, dynamic> toJson() => {
-        'uid': uid,
-        'displayName': displayName,
-        'persona': persona.name,
-        'timezone': timezone,
-        'onboardingComplete': onboardingComplete,
-        'isAnonymous': isAnonymous,
-        'avatarIcon': avatarIcon,
-        'avatarColor': avatarColor,
-        'dailyGoalMinutes': dailyGoalMinutes,
-        'createdAt': createdAt?.millisecondsSinceEpoch,
-      };
+    'uid': uid,
+    'displayName': displayName,
+    'persona': persona.name,
+    'timezone': timezone,
+    'onboardingComplete': onboardingComplete,
+    'isAnonymous': isAnonymous,
+    'avatarIcon': avatarIcon,
+    'avatarColor': avatarColor,
+    'dailyGoalMinutes': dailyGoalMinutes,
+    'createdAt': createdAt?.millisecondsSinceEpoch,
+  };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
-        uid: j['uid'] as String? ?? '',
-        displayName: j['displayName'] as String? ?? '',
-        persona: Persona.fromName(j['persona'] as String?),
-        timezone: j['timezone'] as String? ?? 'UTC',
-        onboardingComplete: j['onboardingComplete'] as bool? ?? false,
-        isAnonymous: j['isAnonymous'] as bool? ?? true,
-        // Guarded rather than cast: this runs inside bootstrap, where one
-        // malformed entry must not abort the launch.
-        avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
-        avatarColor: j['avatarColor'] is int ? j['avatarColor'] as int : null,
-        dailyGoalMinutes: j['dailyGoalMinutes'] as int? ?? 180,
-        createdAt: j['createdAt'] == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(j['createdAt'] as int),
-      );
+    uid: j['uid'] as String? ?? '',
+    displayName: j['displayName'] as String? ?? '',
+    persona: Persona.fromName(j['persona'] as String?),
+    timezone: j['timezone'] as String? ?? 'UTC',
+    onboardingComplete: j['onboardingComplete'] as bool? ?? false,
+    isAnonymous: j['isAnonymous'] as bool? ?? true,
+    // Guarded rather than cast: this runs inside bootstrap, where one
+    // malformed entry must not abort the launch.
+    avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
+    avatarColor: j['avatarColor'] is int ? j['avatarColor'] as int : null,
+    dailyGoalMinutes: j['dailyGoalMinutes'] as int? ?? 180,
+    createdAt: j['createdAt'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(j['createdAt'] as int),
+  );
 }
 
 /// Totals and level — everything the Profile hero card needs.
@@ -315,36 +314,33 @@ class GamificationStats {
     double? totalFocusHours,
     int? totalSessions,
     List<String>? badges,
-  }) =>
-      GamificationStats(
-        xp: xp ?? this.xp,
-        level: level ?? this.level,
-        totalFocusHours: totalFocusHours ?? this.totalFocusHours,
-        totalSessions: totalSessions ?? this.totalSessions,
-        badges: badges ?? this.badges,
-      );
+  }) => GamificationStats(
+    xp: xp ?? this.xp,
+    level: level ?? this.level,
+    totalFocusHours: totalFocusHours ?? this.totalFocusHours,
+    totalSessions: totalSessions ?? this.totalSessions,
+    badges: badges ?? this.badges,
+  );
 
   /// Adds XP and rolls the level over as many times as the total allows.
   GamificationStats withXp(int delta) {
     var next = copyWith(xp: xp + delta);
     while (next.xp >= next.xpForNext) {
-      next = next.copyWith(
-        xp: next.xp - next.xpForNext,
-        level: next.level + 1,
-      );
+      next = next.copyWith(xp: next.xp - next.xpForNext, level: next.level + 1);
     }
     return next;
   }
 
   Map<String, dynamic> toJson() => {
-        'xp': xp,
-        'level': level,
-        'totalFocusHours': totalFocusHours,
-        'totalSessions': totalSessions,
-        'badges': badges,
-      };
+    'xp': xp,
+    'level': level,
+    'totalFocusHours': totalFocusHours,
+    'totalSessions': totalSessions,
+    'badges': badges,
+  };
 
-  factory GamificationStats.fromJson(Map<String, dynamic> j) => GamificationStats(
+  factory GamificationStats.fromJson(Map<String, dynamic> j) =>
+      GamificationStats(
         xp: j['xp'] as int? ?? 0,
         level: j['level'] as int? ?? 1,
         totalFocusHours: (j['totalFocusHours'] as num?)?.toDouble() ?? 0,

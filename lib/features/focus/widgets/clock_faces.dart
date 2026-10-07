@@ -59,6 +59,8 @@ class ClockDisplay extends StatelessWidget {
           height: height,
           progress: progress,
         );
+      case ClockFace.neon:
+        return _NeonClock(text: text, accent: accent, height: height);
     }
   }
 
@@ -218,6 +220,10 @@ class _FlipCardState extends State<_FlipCard>
           // First half: the old top falls. Second half: the new bottom rises.
           final falling = t < 0.5;
 
+          // Every child is positioned, and that is load-bearing: a Stack
+          // aligns its non-positioned children to the top-left, so both halves
+          // would land in the top half of the card and the bottom would stay
+          // blank. The halves are anchored to the edge they belong to.
           return DecoratedBox(
             decoration: BoxDecoration(
               color: background,
@@ -226,37 +232,53 @@ class _FlipCardState extends State<_FlipCard>
             child: Stack(
               children: [
                 // The halves the flap will uncover.
-                _Half(
-                  glyph: _current,
-                  style: widget.style,
+                _HalfSlot(
                   top: true,
-                  width: widget.width,
                   height: widget.height,
-                ),
-                _Half(
-                  glyph: falling ? _outgoing : _current,
-                  style: widget.style,
-                  top: false,
-                  width: widget.width,
-                  height: widget.height,
-                ),
-                if (falling)
-                  _FlippingHalf(
-                    glyph: _outgoing,
+                  child: _Half(
+                    glyph: _current,
                     style: widget.style,
                     top: true,
                     width: widget.width,
                     height: widget.height,
-                    angle: -math.pi / 2 * (t / 0.5),
-                  )
-                else
-                  _FlippingHalf(
-                    glyph: _current,
+                  ),
+                ),
+                _HalfSlot(
+                  top: false,
+                  height: widget.height,
+                  child: _Half(
+                    glyph: falling ? _outgoing : _current,
                     style: widget.style,
                     top: false,
                     width: widget.width,
                     height: widget.height,
-                    angle: math.pi / 2 * (1 - (t - 0.5) / 0.5),
+                  ),
+                ),
+                if (falling)
+                  _HalfSlot(
+                    top: true,
+                    height: widget.height,
+                    child: _FlippingHalf(
+                      glyph: _outgoing,
+                      style: widget.style,
+                      top: true,
+                      width: widget.width,
+                      height: widget.height,
+                      angle: -math.pi / 2 * (t / 0.5),
+                    ),
+                  )
+                else
+                  _HalfSlot(
+                    top: false,
+                    height: widget.height,
+                    child: _FlippingHalf(
+                      glyph: _current,
+                      style: widget.style,
+                      top: false,
+                      width: widget.width,
+                      height: widget.height,
+                      angle: math.pi / 2 * (1 - (t - 0.5) / 0.5),
+                    ),
                   ),
                 // The hinge line, drawn over both halves.
                 Positioned(
@@ -272,6 +294,35 @@ class _FlipCardState extends State<_FlipCard>
       ),
     );
   }
+}
+
+/// Pins one half of a card to the top or the bottom of it.
+///
+/// A half is half a card tall and carries a full-height glyph inside it, so it
+/// only reads correctly when it is anchored to the edge whose half it shows.
+class _HalfSlot extends StatelessWidget {
+  const _HalfSlot({
+    required this.top,
+    required this.height,
+    required this.child,
+  });
+
+  final bool top;
+
+  /// The full card's height. The slot takes half of it.
+  final double height;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+    left: 0,
+    right: 0,
+    top: top ? 0 : null,
+    bottom: top ? null : 0,
+    height: height / 2,
+    child: child,
+  );
 }
 
 /// Half a card, unrotated.
@@ -506,6 +557,55 @@ class _SegmentPainter extends CustomPainter {
       old.lit != lit ||
       old.unlit != unlit ||
       old.colon != colon;
+}
+
+// ---------------------------------------------------------------------------
+// Neon — lit figures with a glow
+// ---------------------------------------------------------------------------
+
+/// Figures in the phase colour with a halo around them: the tube-clock look.
+///
+/// The glow is the effect and the legibility is the constraint, so the two
+/// are set separately rather than by tinting the figures with the accent. In
+/// the dark scheme the accent is bright enough to read as the tube itself; in
+/// the light one the accent on a pale surface is a smudge at this size, so the
+/// figures step towards the ink and keep the accent only in the halo.
+class _NeonClock extends StatelessWidget {
+  const _NeonClock({
+    required this.text,
+    required this.accent,
+    required this.height,
+  });
+
+  final String text;
+  final Color accent;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+
+    final ink = dark ? accent : Color.lerp(accent, cs.onSurface, 0.42)!;
+    final halo = accent.withValues(alpha: dark ? 0.55 : 0.28);
+
+    return AnimatedDigits(
+      text: text,
+      style: theme.textTheme.displayLarge!.copyWith(
+        fontSize: height,
+        height: 1.02,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -height * 0.03,
+        color: ink,
+        shadows: [
+          Shadow(color: halo, blurRadius: height * 0.22),
+          Shadow(color: halo, blurRadius: height * 0.5),
+          if (dark) Shadow(color: halo, blurRadius: height * 0.95),
+        ],
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

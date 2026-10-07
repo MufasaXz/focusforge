@@ -9,6 +9,7 @@ import '../features/onboarding/auth_screen.dart';
 import '../features/onboarding/onboarding_flow.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/about_screen.dart';
+import '../features/settings/clock_face_screen.dart';
 import '../features/settings/achievements_screen.dart';
 import '../features/settings/leaderboard_screen.dart';
 import '../features/settings/notifications_screen.dart';
@@ -40,6 +41,7 @@ class AppRoutes {
   static const notifications = 'notifications';
   static const privacy = 'privacy';
   static const about = 'about';
+  static const clockFace = 'clock-face';
 
   static const paths = <String, String>{
     dashboard: '/dashboard',
@@ -55,6 +57,7 @@ class AppRoutes {
     strictMode: '/profile/strict-mode',
     notifications: '/profile/notifications',
     privacy: '/profile/privacy',
+    clockFace: '/profile/clock-face',
     about: '/profile/about',
   };
 }
@@ -77,7 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final onboarded = ref.read(userProvider).onboardingComplete;
       final location = state.matchedLocation;
-      final inOnboarding = location.startsWith('/onboarding') ||
+      final inOnboarding =
+          location.startsWith('/onboarding') ||
           location == AppRoutes.paths[AppRoutes.auth];
 
       if (!onboarded && !inOnboarding) {
@@ -186,6 +190,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'privacy',
                     name: AppRoutes.privacy,
                     builder: (context, state) => const PrivacyScreen(),
+                  ),
+                  GoRoute(
+                    path: 'clock-face',
+                    name: AppRoutes.clockFace,
+                    builder: (context, state) => const ClockFaceScreen(),
                   ),
                   GoRoute(
                     path: 'about',

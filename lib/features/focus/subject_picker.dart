@@ -39,10 +39,10 @@ class SubjectPicker extends ConsumerWidget {
           children: [
             Text(
               'Studying',
-              style: tt.labelMedium?.copyWith(
+              style: tt.labelSmall?.copyWith(
                 color: cs.onSurfaceVariant,
-                letterSpacing: 1.1,
-                fontSize: 10.5,
+                letterSpacing: 1.0,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -53,6 +53,7 @@ class SubjectPicker extends ConsumerWidget {
               child: Text(
                 selected == null ? 'Not tagged' : selected.name,
                 style: tt.labelSmall?.copyWith(
+                  fontSize: 11.5,
                   color: selected == null
                       ? cs.onSurfaceVariant
                       : selected.color,
@@ -68,11 +69,14 @@ class SubjectPicker extends ConsumerWidget {
               ),
           ],
         ),
-        const SizedBox(height: Gap.sm),
+        const SizedBox(height: Gap.xs + 2),
         EdgeFade(
           trailing: 28,
           child: SizedBox(
-            height: 44,
+            // Deliberately short. The chips are a tag row under the timer, not
+            // a second control competing with it: every dp they take is a dp
+            // the ring loses, and the ring is the thing being looked at.
+            height: 32,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               // One chip per subject, then the add chip.
@@ -146,7 +150,7 @@ class _SubjectChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+          padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.pill),
             color: selected
@@ -156,7 +160,7 @@ class _SubjectChip extends StatelessWidget {
               color: selected
                   ? subject.color.withValues(alpha: 0.75)
                   : cs.outlineVariant,
-              width: selected ? 1.4 : 1,
+              width: selected ? 1.3 : 1,
             ),
           ),
           child: Row(
@@ -165,28 +169,28 @@ class _SubjectChip extends StatelessWidget {
               // The dot is the subject's identity in every other view — the
               // breakdown, the day sheet — so it leads here too.
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: subject.color,
                 ),
               ),
-              const SizedBox(width: Gap.sm),
+              const SizedBox(width: 6),
               Text(
                 subject.name,
-                style: tt.labelMedium?.copyWith(
-                  fontSize: 12.5,
+                style: tt.labelSmall?.copyWith(
+                  fontSize: 11.5,
                   color: selected ? cs.onSurface : cs.onSurfaceVariant,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
               if (subject.minutesToday > 0) ...[
-                const SizedBox(width: Gap.sm),
+                const SizedBox(width: 6),
                 Text(
                   '${subject.minutesToday}m',
                   style: tt.labelSmall?.copyWith(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     color: selected
                         ? subject.color
                         : cs.onSurfaceVariant.withValues(alpha: 0.8),
@@ -224,16 +228,19 @@ class _AddChip extends StatelessWidget {
           radius: Radii.pill,
           color: cs.outline,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+            padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_rounded, size: 16, color: cs.primary),
-                const SizedBox(width: 6),
+                Icon(Icons.add_rounded, size: 14, color: cs.primary),
+                const SizedBox(width: Gap.xs + 1),
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.labelMedium
-                      ?.copyWith(fontSize: 12.5, color: cs.primary),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: cs.primary,
+                  ),
                 ),
               ],
             ),
@@ -325,6 +332,7 @@ class _ClearTag extends StatelessWidget {
           child: Text(
             'Clear',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontSize: 10.5,
               color: cs.onSurfaceVariant,
               decoration: TextDecoration.underline,
               decorationColor: cs.onSurfaceVariant,
