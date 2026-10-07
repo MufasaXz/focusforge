@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed.dart';
+import '../services/leaderboard_service.dart';
 import '../services/local_store.dart';
 import 'app_providers.dart';
+import 'parent_providers.dart';
 import 'shield_providers.dart';
 import 'study_providers.dart';
 
@@ -462,24 +464,19 @@ final weekSessionCountProvider = Provider<int>((ref) {
 
 /// The board for the selected scope.
 ///
-/// One row: the user's, measured over the current Monday-aligned week. There
-/// is no backend to supply friends or global standings, and the screen says so
-/// rather than filling the gaps with invented names — a fabricated rival is
-/// the one kind of demo data a user cannot tell from a real one.
-///
-/// Empty at zero rather than a row reading 0h: a fresh install has not earned
-/// a standing, and showing one would be the first thing it has to unlearn.
+/// Real rows from the backend, mine marked. Empty when nothing has been
+/// published — a board with nobody on it is a real state, and inventing a
+/// rival is the one kind of demo data a user cannot tell from a real one.
 final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
-  final myHours = ref.watch(leaderboardWeekHoursProvider);
-  if (myHours <= 0) return const [];
-
-  final displayName = ref.watch(userProvider).displayName.trim();
+  final rows = ref.watch(weekBoardProvider).value ?? const <BoardRow>[];
+  final myUid = ref.watch(accountUidProvider);
   return [
-    LeaderboardEntry(
-      name: displayName.isEmpty ? 'You' : displayName,
-      hours: myHours,
-      isMe: true,
-    ),
+    for (final row in rows)
+      LeaderboardEntry(
+        name: row.name,
+        hours: row.minutes / 60,
+        isMe: myUid != null && row.uid == myUid,
+      ),
   ];
 });
 
@@ -487,6 +484,89 @@ final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
 final myRankProvider = Provider<LeaderboardEntry?>(
   (ref) => ref.watch(leaderboardProvider).where((e) => e.isMe).firstOrNull,
 );
+
+/// The backend the board is read from and written to.
+final leaderboardServiceProvider = Provider<LeaderboardService>((ref) {
+  final service = FirebaseLeaderboardService.isSupported
+      ? FirebaseLeaderboardService()
+      : const UnavailableLeaderboardService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+/// Whether the user has chosen to appear on the board.
+///
+/// Off by default, and off means nothing is written: publishing a study
+/// record under someone's name is not something to opt out of afterwards.
+class BoardOptInNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  LocalStore get _store => ref.read(localStoreProvider);
+
+  void hydrate(bool? stored) => state = stored ?? false;
+
+  Future<void> set(bool value) async {
+    state = value;
+    await _store.setBool(StoreKeys.boardOptIn, value);
+  }
+}
+
+final boardOptInProvider = NotifierProvider<BoardOptInNotifier, bool>(
+  BoardOptInNotifier.new,
+);
+
+/// This week's board key. Fixed for the run — a week that turns over while the
+/// app is open is a detail the next launch handles.
+final currentWeekKeyProvider = Provider<String>(
+  (ref) => weekKey(DateTime.now()),
+);
+
+/// This week's rows, best first.
+final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
+  final service = ref.watch(leaderboardServiceProvider);
+  if (!service.available) return Stream.value(const <BoardRow>[]);
+  return service.watch(ref.watch(currentWeekKeyProvider));
+});
+
+/// Keeps this device's row in step with the week it has actually studied.
+///
+/// Publishing is not a one-off: the row is rewritten as sessions land, and
+/// withdrawn the moment the switch goes off, so leaving the board is
+/// immediate rather than at the end of the week.
+final leaderboardPublisherProvider = Provider<void>((ref) {
+  Future<void> publish() async {
+    final service = ref.read(leaderboardServiceProvider);
+    final uid = ref.read(accountUidProvider);
+    if (!service.available || uid == null) return;
+    if (!ref.read(boardOptInProvider)) return;
+
+    final minutes = (ref.read(leaderboardWeekHoursProvider) * 60).round();
+    // A row reading 0m is not a standing; it is an absence with a name on it.
+    if (minutes <= 0) return;
+
+    final name = ref.read(userProvider).displayName.trim();
+    await service.publish(
+      week: ref.read(currentWeekKeyProvider),
+      uid: uid,
+      name: name.isEmpty ? 'A student' : name,
+      minutes: minutes,
+    );
+  }
+
+  Future<void> withdraw() async {
+    final service = ref.read(leaderboardServiceProvider);
+    final uid = ref.read(accountUidProvider);
+    if (!service.available || uid == null) return;
+    await service.withdraw(ref.read(currentWeekKeyProvider), uid);
+  }
+
+  ref.listen(sessionsProvider, (previous, next) => unawaited(publish()));
+  ref.listen(boardOptInProvider, (previous, next) {
+    unawaited(next ? publish() : withdraw());
+  });
+  unawaited(publish());
+});
 
 // -- Notifications -----------------------------------------------------------
 

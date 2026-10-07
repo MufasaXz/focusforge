@@ -190,4 +190,7 @@ class StoreKeys {
   /// A hash rather than the code: this device belongs to the child, and a
   /// stored plaintext PIN is a PIN the child can read out of a backup.
   static const parentSecurity = 'parent.security';
+
+  /// Whether this device's week appears on the weekly board.
+  static const boardOptIn = 'leaderboard.optIn';
 }

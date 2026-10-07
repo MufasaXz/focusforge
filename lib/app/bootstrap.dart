@@ -144,6 +144,13 @@ Future<ProviderContainer> bootstrap() async {
   container
       .read(notificationsProvider.notifier)
       .hydrate(store.getMap(StoreKeys.notifications));
+  // Opting in is the whole of "appear on the board": nothing is published
+  // until it is on, and reading it back is what keeps this device's row in
+  // step with the week it has actually studied.
+  container
+      .read(boardOptInProvider.notifier)
+      .hydrate(store.getBool(StoreKeys.boardOptIn));
+  container.read(leaderboardPublisherProvider);
 
   // -- Audio -----------------------------------------------------------------
   container
