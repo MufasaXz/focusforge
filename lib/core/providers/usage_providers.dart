@@ -104,7 +104,6 @@ class ShieldAppRow {
     required this.name,
     required this.isSystem,
     required this.usedMinutes,
-    required this.isProtected,
     required this.rule,
   });
 
@@ -112,10 +111,6 @@ class ShieldAppRow {
   final String name;
   final bool isSystem;
   final int usedMinutes;
-
-  /// The engine will not cover this whatever the rule says — the launcher, the
-  /// keyboard, the status bar, the settings app, this app.
-  final bool isProtected;
 
   /// The user's rule for this app, or null when there is none.
   final WhitelistEntry? rule;
@@ -131,12 +126,17 @@ class ShieldAppRow {
 /// on screen, "add an app" stops being a step and a rule becomes something you
 /// switch on a row that is already there.
 ///
-/// System apps are left out. They are most of the list — every service, every
-/// overlay, every vendor stub — and they are not what anyone opens the Shield
-/// tab to close, so they buried the handful of apps the user actually chose to
-/// install. The one exception is a system app that already carries a rule:
-/// hiding it would leave a restriction running with nothing on screen that
-/// could turn it off.
+/// Two kinds of package never reach the list. System apps are most of the
+/// device — every service, every overlay, every vendor stub — and they are not
+/// what anyone opens the Shield tab to close, so they buried the handful of
+/// apps the user actually chose to install; the one exception is a system app
+/// that already carries a rule, because hiding it would leave a restriction
+/// running with nothing on screen that could turn it off. And the packages the
+/// engine refuses to cover — the keyboard, the launcher, the status bar, the
+/// settings app, this app — are dropped outright rather than listed with an
+/// inert switch: a control that cannot do anything is worse than no row. That
+/// set is asked of the engine itself, so the list and the enforcement cannot
+/// drift apart.
 final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
   final apps = ref.watch(installedAppsProvider).valueOrNull;
   if (apps == null) return const [];
@@ -152,30 +152,14 @@ final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
 
   return [
     for (final app in apps)
-      if (!app.isSystem || rules.containsKey(app.packageId))
+      if (!protectedSet.contains(app.packageId) &&
+          (!app.isSystem || rules.containsKey(app.packageId)))
         ShieldAppRow(
           packageId: app.packageId,
           name: app.name,
           isSystem: app.isSystem,
           usedMinutes: usage[app.packageId] ?? 0,
-          isProtected: protectedSet.contains(app.packageId),
           rule: rules[app.packageId],
         ),
   ];
-});
-
-/// The handful of apps worth putting at the top of the list.
-///
-/// Ranked by what the user actually spends time in, because two hundred rows
-/// in alphabetical order bury the four that matter. Only apps with real usage
-/// today qualify, and an app that is already restricted is left out — the
-/// suggestion is about what is not handled yet, and repeating a decision the
-/// user has already made is not a suggestion.
-final mostUsedAppsProvider = Provider<List<ShieldAppRow>>((ref) {
-  final candidates = [
-    for (final row in ref.watch(shieldAppRowsProvider))
-      if (!row.isRestricted && !row.isProtected && row.usedMinutes > 0) row,
-  ]..sort((a, b) => b.usedMinutes.compareTo(a.usedMinutes));
-
-  return candidates.take(6).toList(growable: false);
 });

@@ -289,7 +289,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the apps the user actually opens are suggested first', (
+    testWidgets('usage shows on the row, not in a suggestion strip', (
       tester,
     ) async {
       useTallPhone(tester);
@@ -300,54 +300,56 @@ void main() {
             name: 'Busy App',
             isSystem: false,
           ),
-          InstalledApp(
-            packageId: 'com.example.quiet',
-            name: 'Quiet App',
-            isSystem: false,
-          ),
         ],
-        usage: const {'com.example.busy': 90, 'com.example.quiet': 3},
+        usage: const {'com.example.busy': 90},
         usageAccess: true,
       );
 
       await tester.pumpWidget(wrap(container, const ShieldScreen()));
       await settle(tester);
 
-      expect(find.text('Most used today'), findsOneWidget);
-      expect(find.text('From your own usage'), findsOneWidget);
-      // The busy app is suggested *and* listed, so it appears twice; the quiet
-      // one has real usage too, so it is suggested as well.
-      expect(find.text('Busy App'), findsNWidgets(2));
-      expect(find.text('1h 30m'), findsOneWidget);
+      expect(find.text('Busy App'), findsOneWidget);
+      expect(find.text('1h 30m today'), findsOneWidget);
+      expect(
+        find.text('Most used today'),
+        findsNothing,
+        reason: 'the list is the whole page; nothing is lifted above it',
+      );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('an app the engine will never cover says so', (tester) async {
+    testWidgets('an app the engine will never cover is left out of the list', (
+      tester,
+    ) async {
       useTallPhone(tester);
-      // A launcher the user installed themselves: not a system app, and still
-      // one the engine refuses to cover, because locking someone out of their
-      // home screen is not a restriction anyone asked for. The protected rows
-      // that *are* system apps never reach the list — that is the test above.
+      // The keyboard, the launcher, the settings app, the status bar and this
+      // app are what the engine refuses to cover. They are dropped from the
+      // list rather than shown with a switch that could never act — and the
+      // set is asked of the engine itself, not guessed at here.
       final container = freshContainer(
         apps: const [
+          InstalledApp(
+            packageId: 'com.example.social',
+            name: 'Social App',
+            isSystem: false,
+          ),
           InstalledApp(
             packageId: 'com.example.launcher',
             name: 'Third-party Launcher',
             isSystem: false,
           ),
         ],
-        // Straight from the engine: this is the list the running service
-        // refuses to cover, not a copy the screen keeps.
         protectedPackages: const {'com.example.launcher'},
       );
 
       await tester.pumpWidget(wrap(container, const ShieldScreen()));
       await settle(tester);
 
+      expect(find.text('Social App'), findsOneWidget);
       expect(
-        find.text('Android needs this — it cannot be closed'),
-        findsOneWidget,
-        reason: 'the row must not offer a switch the engine will ignore',
+        find.text('Third-party Launcher'),
+        findsNothing,
+        reason: 'a row whose switch can never act is not a row',
       );
       expect(tester.takeException(), isNull);
     });

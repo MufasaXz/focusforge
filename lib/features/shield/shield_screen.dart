@@ -66,7 +66,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
   ///
   /// Everything read from the platform is re-read here: the grant happens in
   /// Android's settings while this app is not running, so a value cached
-  /// before the trip would still say "off" after it.
+  /// before the trip would still say "off" after it. The protected set is
+  /// re-read with them, because the trip may also have changed the keyboard
+  /// or the launcher — and those are exactly the packages the list drops.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
@@ -74,6 +76,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
     ref.invalidate(usageAccessProvider);
     ref.invalidate(appUsageTodayProvider);
     ref.invalidate(installedAppsProvider);
+    ref.invalidate(protectedPackagesProvider);
   }
 
   @override
@@ -545,7 +548,6 @@ class _AppsViewState extends ConsumerState<_AppsView> {
     final query = _search.text.trim().toLowerCase();
 
     final all = ref.watch(shieldAppRowsProvider);
-    final mostUsed = ref.watch(mostUsedAppsProvider);
     final loading = ref.watch(installedAppsProvider).isLoading;
 
     final native = NativeShieldService.isSupported;
@@ -558,10 +560,6 @@ class _AppsViewState extends ConsumerState<_AppsView> {
         : all
               .where((r) => r.name.toLowerCase().contains(query))
               .toList(growable: false);
-
-    // Suggestions are a starting point, not a section to scroll past. While
-    // the user is searching they are noise.
-    final showSuggestions = query.isEmpty && mostUsed.isNotEmpty;
 
     return CustomScrollView(
       slivers: [
@@ -600,21 +598,9 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                 onChanged: () => setState(() {}),
               ),
               const SizedBox(height: Gap.xl),
-              if (showSuggestions) ...[
-                _ListHeading(
-                  title: 'Most used today',
-                  note: 'From your own usage',
-                  icon: Icons.local_fire_department_rounded,
-                ),
-                const SizedBox(height: Gap.sm),
-                _SuggestionRow(rows: mostUsed, onTap: (row) => _openRule(row)),
-                const SizedBox(height: Gap.xl),
-              ],
               _ListHeading(
                 title: query.isEmpty ? 'All apps' : 'Results',
-                note: loading
-                    ? 'Reading the device…'
-                    : '${visible.length} ${visible.length == 1 ? 'app' : 'apps'}',
+                note: loading ? 'Reading the device…' : null,
                 icon: Icons.apps_rounded,
               ),
               const SizedBox(height: Gap.sm),
@@ -1018,12 +1004,9 @@ class _AppRuleRow extends ConsumerWidget {
               const SizedBox(width: Gap.sm),
               _ShieldSwitch(
                 value: row.isRestricted,
-                // A switch that cannot do anything is worse than no switch:
-                // the engine will never cover the launcher or the keyboard, so
-                // those rows say so and leave the control inert.
-                onChanged: row.isProtected
-                    ? null
-                    : (on) => _setRestricted(ref, on),
+                // Always live: an app the engine refuses to cover is filtered
+                // out upstream and never gets a row to begin with.
+                onChanged: (on) => _setRestricted(ref, on),
                 semanticLabel: row.isRestricted
                     ? 'Close ${row.name}'
                     : 'Stop closing ${row.name}',
@@ -1056,7 +1039,6 @@ class _AppRuleRow extends ConsumerWidget {
   }
 
   String get _meta {
-    if (row.isProtected) return 'Android needs this — it cannot be closed';
     return switch (row.rule?.tier) {
       WhitelistTier.blocked => 'Closes when opened',
       WhitelistTier.budgeted =>
@@ -1070,9 +1052,6 @@ class _AppRuleRow extends ConsumerWidget {
   }
 
   String get _semanticLabel {
-    if (row.isProtected) {
-      return '${row.name}, protected by Android, cannot be closed';
-    }
     return switch (row.rule?.tier) {
       WhitelistTier.blocked => '${row.name}, closes when opened',
       WhitelistTier.budgeted =>
@@ -1220,75 +1199,6 @@ class _ShieldSwitchState extends State<_ShieldSwitch>
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-/// The apps worth suggesting, as a horizontal strip.
-///
-/// A strip rather than a list because this is a shortcut past the list, not a
-/// section of it: the user who knows which app they want should not have to
-/// scroll past a second list to reach the first one.
-class _SuggestionRow extends StatelessWidget {
-  const _SuggestionRow({required this.rows, required this.onTap});
-
-  final List<ShieldAppRow> rows;
-  final ValueChanged<ShieldAppRow> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return SizedBox(
-      height: 104,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        itemCount: rows.length,
-        separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
-        itemBuilder: (context, i) {
-          final row = rows[i];
-          return Pressable(
-            onTap: () => onTap(row),
-            child: Container(
-              width: 116,
-              padding: const EdgeInsets.all(Gap.md),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(Radii.card),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppIconAvatar(
-                    packageId: row.packageId,
-                    fallbackIcon: Icons.android_rounded,
-                    fallbackColor: cs.primary,
-                    size: 32,
-                    radius: 10,
-                  ),
-                  const Spacer(),
-                  Text(
-                    row.name,
-                    style: tt.labelMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    formatMinutes(row.usedMinutes),
-                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
