@@ -480,13 +480,13 @@ void main() {
         findsWidgets,
         reason: 'the ring, the breakdown and the day all agree',
       );
-      expect(find.text('THIS WEEK'), findsOneWidget);
+      expect(find.text('WEEKLY PROGRESS'), findsOneWidget);
 
       // The tracker opens on the week; the month is the other window onto the
       // same log.
       await tester.tap(find.text('Month'));
       await settle(tester);
-      expect(find.text('THIS MONTH'), findsOneWidget);
+      expect(find.text('MONTHLY PROGRESS'), findsOneWidget);
       await tester.tap(find.text('Week'));
       await settle(tester);
 

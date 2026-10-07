@@ -176,7 +176,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(height: Gap.xl),
         SectionHeader(
-          title: _range == StudyRange.week ? 'This week' : 'This month',
+          title: _range == StudyRange.week
+              ? 'Weekly progress'
+              : 'Monthly progress',
           icon: Icons.bar_chart_rounded,
         ),
         const SizedBox(height: Gap.md),

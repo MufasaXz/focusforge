@@ -481,8 +481,10 @@ final heatmapWeeksProvider = Provider<List<List<HeatCell>>>((ref) {
   });
 });
 
+/// The three-letter weekday the chart's axis uses. Long enough to tell Tuesday
+/// from Thursday, which a single letter cannot.
 String _weekdayLetter(int weekday) =>
-    const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][weekday - 1];
+    const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekday - 1];
 
 // -- Timer -------------------------------------------------------------------
 
