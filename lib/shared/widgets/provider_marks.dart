@@ -92,6 +92,10 @@ class _GooglePainter extends CustomPainter {
       ..strokeWidth = stroke;
 
     // Angles run clockwise from due east, the same convention `drawArc` uses.
+    // The spans are the mark's own: the mouth is the gap the bar turns into
+    // the G's tongue, and it sits on the upper right, just above the
+    // horizontal — not at three o'clock, and nowhere near as wide as a
+    // quarter.
     void arc(double fromDegrees, double sweepDegrees, Color color) {
       canvas.drawArc(
         ring,
@@ -102,20 +106,22 @@ class _GooglePainter extends CustomPainter {
       );
     }
 
-    arc(0, 45, _blue); // lower right, into the bar
-    arc(45, 90, _green); // the bottom
-    arc(135, 75, _yellow); // the left
-    arc(-150, 100, _red); // the top, leaving the mouth open
-    // Nothing is drawn from -50° to 0°: that gap is the bite.
+    arc(-153, 105, _red); // the top, from the left shoulder over to two
+    arc(-10, 59, _blue); // the right, from just above the bar down to 4:30
+    arc(49, 104, _green); // the bottom
+    arc(153, 54, _yellow); // the left, closing back onto the red
+    // Nothing is drawn from -48° to -10°: that gap is the mouth.
 
-    // The bar, level with the middle and running out to the ring's edge. It
-    // is what closes the gap into a G rather than a C.
+    // The bar, straddling the middle — it sits half above the centre line and
+    // half below, the way the mark draws it — and running out to the ring's
+    // edge, where it meets the blue. It is what closes the mouth into a G
+    // rather than a C.
     canvas.drawRect(
       Rect.fromLTRB(
         center.dx,
-        center.dy,
+        center.dy - stroke * 0.45,
         center.dx + radius + stroke / 2,
-        center.dy + stroke,
+        center.dy + stroke * 0.5,
       ),
       Paint()..color = _blue,
     );
