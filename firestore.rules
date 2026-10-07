@@ -60,8 +60,15 @@ service cloud.firestore {
       // read it to show the connection on their own side, and may only create
       // it while none exists — a second parent cannot take over a device that
       // is already linked.
+      //
+      // The read goes through `isGuardianOf`, which tests `exists()` before it
+      // reads `resource.data`. Reaching into `resource.data` on a device that
+      // has never been linked is an *error*, not a false — and an error
+      // anywhere in a rule denies the request, so the `isSelf` that should
+      // have allowed a child to read their own missing record never gets a
+      // chance to.
       match /guardian {
-        allow read: if isSelf(uid) || (signedIn() && resource.data.parentUid == request.auth.uid);
+        allow read: if isSelf(uid) || isGuardianOf(uid);
         allow create: if signedIn() &&
           request.resource.data.parentUid == request.auth.uid &&
           !exists(/databases/$(database)/documents/users/$(uid)/guardian);
