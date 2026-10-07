@@ -87,11 +87,16 @@ reproduce. Screenshots help enormously for anything visual.
 
 ## Scope
 
-The app is complete as a front end. The one thing missing is the native shield
-engine — the Android `AccessibilityService` that actually intercepts app
-launches. The interface it plugs into (`ShieldPlatformService`) is defined and
-exercised, so that work is additive rather than a rewrite. Anything else that
-needs native platform channels or a backend is worth an issue before you start.
+The shield is a native Android `AccessibilityService`
+(`android/app/src/main/kotlin/dev/focusforge/focusforge/shield/`): it draws its
+own pause screen as an overlay and re-reads its rules from storage when the
+service starts, so it keeps working while the Flutter engine is not running.
+Dart only carries configuration down and events up, through
+`ShieldPlatformService` — `RecordingShieldService` stands in wherever there is
+no engine, which is what the widget tests use.
+
+Blocking is therefore Android-only. Anything else that needs a new platform
+channel or a backend is worth an issue before you start.
 
 ## Code of conduct
 
