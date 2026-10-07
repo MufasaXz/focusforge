@@ -29,7 +29,7 @@ import 'widgets/subject_target_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
 /// so the version is a constant — keep it in step with `pubspec.yaml`.
-const _appVersion = '0.1.0';
+const _appVersion = '1.0.1';
 
 /// Opens a settings destination, asking for an account first when the row is
 /// locked.
