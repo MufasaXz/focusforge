@@ -20,7 +20,7 @@ class AboutScreen extends StatelessWidget {
 
   /// Kept in step with `pubspec.yaml` by hand. There is no `package_info`
   /// dependency by design, and one hardcoded string is cheaper than a plugin.
-  static const _version = '1.0.1';
+  static const _version = '1.0.2';
 
   @override
   Widget build(BuildContext context) {
