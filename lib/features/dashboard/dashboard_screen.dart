@@ -23,6 +23,7 @@ import 'widgets/goal_ring.dart';
 import 'widgets/screen_time_card.dart';
 import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
+import 'widgets/top_subject_card.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
@@ -187,6 +188,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           days: days,
           onDayTap: (day) => _openDay(day),
         ),
+        const SizedBox(height: Gap.xl),
+        const SectionHeader(
+          title: 'Top subject',
+          icon: Icons.workspace_premium_rounded,
+        ),
+        const SizedBox(height: Gap.md),
+        const TopSubjectCard(),
         const SizedBox(height: Gap.xl),
         const SectionHeader(
           title: 'Focus heatmap',
