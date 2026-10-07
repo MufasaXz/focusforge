@@ -1,0 +1,25 @@
+FocusForge is a study companion that keeps the distracting apps closed while you work.
+
+Start a focus session and the shield holds back the apps you chose: they open to a calm block screen instead of the feed. Session presets cover short sprints to deep-work blocks, with an ambient sound mixer, per-subject tracking and a daily goal.
+
+Everything runs on the device. Screen time, sessions, rules and statistics are stored locally and nothing is uploaded; there is no server, and no account is required.
+
+Shield
+* Block apps while a session runs, with a short grace period for when you really need one
+* Surface rules for YouTube: keep lectures, lose Shorts, the home feed and search
+* A Deep Breath Gate — a few seconds of breathing before "open anyway"
+* Strict Mode silences calls and notifications for the length of a block
+
+Focus
+* Flip-board, analog and minimal clock faces, with a full-screen clock that fills its own boundary as the session completes
+* Focus/break cycles with configurable lengths
+* An ambient sound mixer
+
+Progress
+* Daily goal and streaks
+* Per-subject breakdown with hand-drawn charts
+* Achievements, all computed on the device
+
+This build has no proprietary components: no Firebase, no Google Play Services, no trackers and no ads.
+
+The shield uses Android's accessibility service to notice which app came to the foreground, and reads view ids inside YouTube only while a YouTube rule is on. Nothing it sees is stored or transmitted. Usage access is optional and powers the screen-time numbers.
