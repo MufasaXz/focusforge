@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/parent_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
@@ -99,7 +100,7 @@ void main() {
 
     // Reading the bridge is the launch push: the engine is told where things
     // stand before anything has changed.
-    container.read(shieldFocusWindowProvider);
+    container.read(shieldSyncBridgeProvider);
     expect(engine.lastApplied, isNotNull);
     expect(engine.lastApplied!.focusUntil, isNull);
 
