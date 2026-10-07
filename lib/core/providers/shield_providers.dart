@@ -71,25 +71,26 @@ void syncShield(
   List<WhitelistEntry>? whitelist,
   YoutubeRules? youtube,
   StrictModeConfig? strictMode,
+  RemoteBlocks? remote,
 }) {
   final service = ref.read(shieldServiceProvider);
   // The explicit type is load-bearing: `??` whose result is a method-chain
   // receiver has no context type, so Dart would infer the `ref.read` result as
   // nullable.
   final List<WhitelistEntry> apps = whitelist ?? ref.read(whitelistProvider);
-  final RemoteBlocks remote = ref.read(remoteBlocksProvider);
+  final RemoteBlocks blocks = remote ?? ref.read(remoteBlocksProvider);
   final YoutubeRules localYoutube = youtube ?? ref.read(youtubeRulesProvider);
   // A parent's surface rules win while they are in force: they were set on
   // another device and the child cannot see or edit them here.
-  final YoutubeRules surfaces = remote.youtube.any
-      ? remote.youtube
+  final YoutubeRules surfaces = blocks.youtube.any
+      ? blocks.youtube
       : localYoutube;
   final config = ShieldConfig(
     whitelist: apps,
     youtube: surfaces,
     strictMode: strictMode ?? ref.read(strictModeProvider),
     focusUntil: focusWindowEnd(ref.read(timerProvider)),
-    remote: remote.apps,
+    remote: blocks.apps,
   );
   // Fire and forget — a slow channel must never stall a toggle.
   unawaited(service.applyConfig(config));
@@ -121,7 +122,10 @@ class RemoteBlocksNotifier extends Notifier<RemoteBlocks> {
     // Nothing on either side is not a change worth a channel call.
     if (wasEmpty && isEmpty) return;
     state = next;
-    syncShield(ref);
+    // The new value is passed rather than re-read: this notifier reading its
+    // own provider is the self-dependency syncShield's contract exists to
+    // avoid.
+    syncShield(ref, remote: next);
   }
 }
 
