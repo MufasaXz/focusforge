@@ -254,7 +254,8 @@ class _BlocksSection extends ConsumerWidget {
                       ? 'Closed on their device now'
                       : 'Watching only — nothing is closed',
                 ),
-                onChanged: (value) => unawaited(_setEnforced(ref, value)),
+                onChanged: (value) =>
+                    unawaited(_setEnforced(ref, childUid, value)),
               ),
               Divider(height: 1, color: cs.outlineVariant),
               for (final app in blocks.apps)
@@ -276,7 +277,7 @@ class _BlocksSection extends ConsumerWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
                     tooltip: 'Remove ${app.name}',
-                    onPressed: () => unawaited(_removeApp(ref, app)),
+                    onPressed: () => unawaited(_removeApp(ref, childUid, app)),
                   ),
                 ),
               if (blocks.apps.isEmpty)
@@ -295,7 +296,7 @@ class _BlocksSection extends ConsumerWidget {
                 ),
                 title: const Text('Add apps to block'),
                 subtitle: const Text('From the apps on their device'),
-                onTap: () => unawaited(_addApps(context, ref)),
+                onTap: () => unawaited(_addApps(context, ref, childUid)),
               ),
             ],
           ),
@@ -314,9 +315,7 @@ class _BlocksSection extends ConsumerWidget {
   }
 }
 
-Future<void> _setEnforced(WidgetRef ref, bool value) async {
-  final childUid = ref.read(selectedChildProvider);
-  if (childUid == null) return;
+Future<void> _setEnforced(WidgetRef ref, String childUid, bool value) async {
   final current =
       ref.read(childBlocksProvider(childUid)).value ?? const RemoteBlocks();
   await ref
@@ -324,9 +323,11 @@ Future<void> _setEnforced(WidgetRef ref, bool value) async {
       .publishBlocks(childUid, current.copyWith(enforced: value));
 }
 
-Future<void> _removeApp(WidgetRef ref, RemoteBlock app) async {
-  final childUid = ref.read(selectedChildProvider);
-  if (childUid == null) return;
+Future<void> _removeApp(
+  WidgetRef ref,
+  String childUid,
+  RemoteBlock app,
+) async {
   final current =
       ref.read(childBlocksProvider(childUid)).value ?? const RemoteBlocks();
   await ref.read(parentServiceProvider).publishBlocks(
@@ -345,9 +346,7 @@ Future<void> _removeApp(WidgetRef ref, RemoteBlock app) async {
 /// The list comes from the child's device because that is the only place that
 /// knows what is installed. A parent choosing from a canned catalogue of
 /// famous apps would be choosing a name, not an app.
-Future<void> _addApps(BuildContext context, WidgetRef ref) async {
-  final childUid = ref.read(selectedChildProvider);
-  if (childUid == null) return;
+Future<void> _addApps(BuildContext context, WidgetRef ref, String childUid) async {
   final catalog = ref.read(childCatalogProvider(childUid)).value;
   if (catalog == null || catalog.isEmpty) {
     showAppSnack(
