@@ -20,6 +20,8 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import '../settings/account_gate.dart';
+import '../settings/settings_support.dart';
 import 'widgets/avatar_sheet.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/link_account_sheet.dart';
@@ -28,6 +30,45 @@ import 'widgets/subject_target_sheet.dart';
 /// Shown on the About row. There is no `package_info` dependency in this app,
 /// so the version is a constant — keep it in step with `pubspec.yaml`.
 const _appVersion = '0.1.0';
+
+/// Opens a settings destination, asking for an account first when the row is
+/// locked.
+///
+/// A locked row used to navigate to a screen whose whole content was "sign
+/// in", which is a detour to reach a question that could be asked here. The
+/// answer doubles as the navigation: link, then land where the tap was going.
+Future<void> _openSetting(
+  BuildContext context,
+  WidgetRef ref,
+  _SettingSpec spec,
+) async {
+  final route = spec.routeName;
+  if (route == null) return;
+
+  if (spec.locked) {
+    final wants = await showAccountGateDialog(
+      context,
+      feature: spec.label,
+      message:
+          '${spec.label} compares you with other people, so it needs a real '
+          'account. Linking one is instant and keeps everything you have '
+          'already logged on this device.',
+    );
+    if (!wants || !context.mounted) return;
+
+    final profile = await showLinkAccountSheet(context);
+    if (profile == null || !context.mounted) return;
+    await ref.read(userProvider.notifier).save(profile);
+    if (!context.mounted) return;
+    final name = profile.displayName.trim();
+    showAppSnack(
+      context,
+      name.isEmpty ? 'Signed in.' : 'Signed in as $name.',
+    );
+  }
+
+  if (context.mounted) context.goNamed(route);
+}
 
 /// `5h` for whole hours, `5.5h` otherwise — a raw double would render `5.0h`.
 String _hours(double h) =>
@@ -210,7 +251,7 @@ class ProfileScreen extends ConsumerWidget {
                 if (i > 0) Divider(color: t.outlineVariant, height: 1),
                 _SettingTile(
                   spec: settings[i],
-                  onTap: () => context.goNamed(settings[i].routeName!),
+                  onTap: () => unawaited(_openSetting(context, ref, settings[i])),
                 ),
               ],
             ],

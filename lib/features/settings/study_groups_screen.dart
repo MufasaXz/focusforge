@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/social_providers.dart';
-import '../../core/services/auth_service.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
+import 'account_gate.dart';
 import 'settings_support.dart';
 
 /// Study Groups — the one social feature behind a real account.
@@ -39,78 +37,36 @@ class StudyGroupsScreen extends ConsumerWidget {
 // Signed-out gate
 // ---------------------------------------------------------------------------
 
-class _SignInGate extends ConsumerStatefulWidget {
+/// The same gate the weekly board uses, so "you need an account" is one
+/// screen in two places rather than two that drifted apart.
+class _SignInGate extends StatelessWidget {
   const _SignInGate();
 
   @override
-  ConsumerState<_SignInGate> createState() => _SignInGateState();
-}
-
-class _SignInGateState extends ConsumerState<_SignInGate> {
-  bool _linking = false;
-
-  Future<void> _link() async {
-    setState(() => _linking = true);
-    try {
-      final auth = ref.read(authServiceProvider);
-      // bootstrap() hydrates the store directly, so the service has no live
-      // session yet. Restoring first is what lets linkAccount() upgrade the
-      // existing uid in place instead of minting a fresh anonymous profile.
-      await auth.restore();
-      final profile = await auth.linkAccount(
-        provider: 'email',
-        displayName: ref.read(userProvider).displayName,
-      );
-      await ref.read(userProvider.notifier).save(profile);
-      if (!mounted) return;
-      showAppSnack(context, 'Account linked. Study groups are unlocked.');
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      showAppSnack(context, e.friendly);
-    } finally {
-      if (mounted) setState(() => _linking = false);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        EmptyState(
-          icon: Icons.groups_outlined,
-          title: 'Sign in to use study groups',
-          subtitle:
-              'Groups compare your week with other people, so they need a real '
-              'account. Linking one is instant and keeps every session you have '
-              'already logged.',
-          action: AppActionButton(
-            label: _linking ? 'Linking…' : 'Link my account',
-            icon: Icons.link_rounded,
-            onTap: _linking ? null : _link,
-          ),
+    return const AccountGate(
+      title: 'Sign in to use study groups',
+      subtitle:
+          'Groups compare your week with other people, so they need a real '
+          'account. Linking one is instant and keeps every session you have '
+          'already logged.',
+      unlocked: 'Study groups are unlocked.',
+      sectionTitle: 'What groups add',
+      items: [
+        GateItem(
+          Icons.flag_outlined,
+          'Weekly group targets',
+          'Pool your hours toward a shared goal',
         ),
-        AppSection(
-          title: 'What groups add',
-          children: [
-            const ListTile(
-              leading: Icon(Icons.flag_outlined),
-              title: Text('Weekly group targets'),
-              subtitle: Text('Pool your hours toward a shared goal'),
-            ),
-            const Divider(height: 1, indent: 56),
-            const ListTile(
-              leading: Icon(Icons.leaderboard_outlined),
-              title: Text('A private leaderboard'),
-              subtitle: Text('Only the people in the group see the standings'),
-            ),
-            const Divider(height: 1, indent: 56),
-            const ListTile(
-              leading: Icon(Icons.timer_outlined),
-              title: Text('Shared focus sessions'),
-              subtitle: Text('Study alongside your group in real time'),
-            ),
-          ],
+        GateItem(
+          Icons.leaderboard_outlined,
+          'A private leaderboard',
+          'Only the people in the group see the standings',
+        ),
+        GateItem(
+          Icons.timer_outlined,
+          'Shared focus sessions',
+          'Study alongside your group in real time',
         ),
       ],
     );
