@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,6 +89,10 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
       TimerPhase.shortBreak => cs.tertiary,
       TimerPhase.longBreak => cs.secondary,
     };
+    // Pure black means pure black here too: this is the one screen that is
+    // left on for an hour, and a tint over black is exactly what the setting
+    // exists to avoid.
+    final amoled = ref.watch(themeSettingsProvider).amoled;
 
     final size = MediaQuery.sizeOf(context);
     // Everything scales off the shorter side, so landscape is not a portrait
@@ -94,19 +100,40 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
     final side = size.shortestSide;
     final landscape = size.width > size.height;
 
+    // The session, drawn around the edge of the window: a line that starts at
+    // the middle of the top edge and walks the boundary as the segment runs.
+    // A focus fills it — by the end it has closed the loop — while a break
+    // starts with the whole boundary lit and drains back into the start.
+    final boundary = timer.phase.isBreak
+        ? 1 - timer.progressFor(preset)
+        : timer.progressFor(preset);
+
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: amoled ? const Color(0xFF000000) : cs.surface,
       body: Stack(
         children: [
           // A wash of the phase colour rather than a flat fill: the phase is
-          // readable from across the room without a label.
+          // readable from across the room without a label. Skipped on a black
+          // screen, where the wash is the thing the setting is about.
+          if (!amoled)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.1,
+                    colors: [accent.withValues(alpha: 0.16), cs.surface],
+                  ),
+                ),
+              ),
+            ),
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 1.1,
-                  colors: [accent.withValues(alpha: 0.16), cs.surface],
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _BoundaryProgress(
+                  progress: boundary,
+                  color: accent,
+                  track: cs.onSurface.withValues(alpha: 0.10),
                 ),
               ),
             ),
@@ -232,4 +259,84 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
       ),
     );
   }
+}
+
+/// The segment, drawn around the window's own edge.
+///
+/// The run starts at the middle of the top edge and travels clockwise, so the
+/// covered length is a distance the eye can read without a number: at the end
+/// of a focus the line has met its own start, and a break begins with the
+/// boundary whole and gives it back.
+///
+/// The path is the window's rounded rectangle, and the drawn part is a slice
+/// of its metric — which is the only way to walk a path that starts somewhere
+/// other than a corner. The start offset is half the top edge, because that is
+/// where a rounded rectangle's path begins drawing the top edge.
+class _BoundaryProgress extends CustomPainter {
+  const _BoundaryProgress({
+    required this.progress,
+    required this.color,
+    required this.track,
+  });
+
+  /// 0 to 1 of the boundary that is covered.
+  final double progress;
+  final Color color;
+  final Color track;
+
+  /// The line's distance from the window edge, and the radius of the corners
+  /// it turns. A hairline at the very edge is half off the glass on a phone
+  /// with rounded corners.
+  static const _inset = 10.0;
+  static const _radius = 26.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(
+      _inset,
+      _inset,
+      size.width - _inset * 2,
+      size.height - _inset * 2,
+    );
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(_radius)));
+    final metric = path.computeMetrics().first;
+    final total = metric.length;
+    final start = (rect.width - _radius * 2) / 2;
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = track,
+    );
+
+    final covered = total * progress.clamp(0.0, 1.0);
+    if (covered <= 0) return;
+
+    // The run wraps past the end of the path once it has gone all the way
+    // round, so it is drawn as two slices rather than one.
+    final head = math.min(covered, total - start);
+    final drawn = Path()
+      ..addPath(metric.extractPath(start, start + head), Offset.zero);
+    if (covered > head) {
+      drawn.addPath(metric.extractPath(0, covered - head), Offset.zero);
+    }
+
+    canvas.drawPath(
+      drawn,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BoundaryProgress old) =>
+      old.progress != progress || old.color != color || old.track != track;
 }
