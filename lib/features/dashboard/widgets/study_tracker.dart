@@ -41,9 +41,6 @@ class StudyTracker extends StatefulWidget {
 
 class _StudyTrackerState extends State<StudyTracker>
     with SingleTickerProviderStateMixin {
-  /// Height reserved for the day labels under the bars.
-  static const _axisHeight = 22.0;
-
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: Motion.deliberate,
@@ -90,68 +87,38 @@ class _StudyTrackerState extends State<StudyTracker>
       child: ExcludeSemantics(
         child: SizedBox(
           height: widget.height,
-          child: Stack(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Scale gridlines.
-              Positioned.fill(
-                bottom: _axisHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      Container(
-                        height: 1,
-                        // A whisper of a rule. At full outlineVariant the grid
-                        // competes with the bars it is meant to sit behind.
-                        color: cs.outlineVariant.withValues(alpha: 0.3),
-                      ),
-                  ],
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < days.length; i++)
-                    Expanded(
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _select(i),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              // A month is thirty bars wide on a phone; the
-                              // outer ones keep a hairline so the row does not
-                              // look clipped, the rest share the space evenly.
-                              horizontal: days.length > 10
-                                  ? 0.5
-                                  : (i == 0 || i == days.length - 1 ? 1 : 4),
-                            ),
-                            child: _Bar(
-                              day: days[i],
-                              maxHours: maxHours,
-                              highlighted: _selected == i || days[i].isToday,
-                              animation: CurvedAnimation(
-                                parent: _c,
-                                // Staggered left-to-right so the chart grows
-                                // rather than popping in all at once.
-                                curve: Interval(
-                                  (i / days.length) * 0.55,
-                                  (i / days.length) * 0.55 + 0.45,
-                                  curve: Motion.decelerate,
-                                ),
-                              ),
-                              accent: cs.primary,
-                              muted: cs.onSurface,
-                              label: Theme.of(context).textTheme.labelSmall!,
-                              dense: days.length > 10,
-                            ),
+              for (var i = 0; i < days.length; i++)
+                Expanded(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _select(i),
+                      child: _Bar(
+                        day: days[i],
+                        maxHours: maxHours,
+                        highlighted: _selected == i || days[i].isToday,
+                        animation: CurvedAnimation(
+                          parent: _c,
+                          // Staggered left-to-right so the chart grows rather
+                          // than popping in all at once.
+                          curve: Interval(
+                            (i / days.length) * 0.55,
+                            (i / days.length) * 0.55 + 0.45,
+                            curve: Motion.decelerate,
                           ),
                         ),
+                        accent: cs.primary,
+                        muted: cs.onSurface,
+                        label: Theme.of(context).textTheme.labelSmall!,
+                        dense: days.length > 10,
                       ),
                     ),
-                ],
-              ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -179,11 +146,11 @@ class _StudyTrackerState extends State<StudyTracker>
 
 /// One day's bar.
 ///
-/// The treatment is lifted from a chart that got the details right: a faint
-/// full-height track behind every bar so an empty day still reads as a slot
-/// rather than as a gap in the row, a vertical gradient that darkens as the
-/// bar rises, and a short white highlight across the top edge that gives the
-/// fill a lit surface instead of a flat sticker.
+/// A slot and a fill: a faint full-height track so an empty day still reads as
+/// a day rather than as a gap in the row, and inside it a narrower capsule
+/// carrying a vertical gradient — deep at the foot, bright at the head. The
+/// inset is what makes the fill read as a measure rather than as a painted
+/// bar, and it is the one detail the whole chart's character hangs on.
 class _Bar extends StatelessWidget {
   const _Bar({
     required this.day,
@@ -221,78 +188,77 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final radius = BorderRadius.circular(dense ? 6 : 16);
-    final fill = highlighted ? accent : muted.withValues(alpha: 0.30);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final radius = BorderRadius.circular(dense ? 4 : Radii.pill);
+
+    // The gradient runs between two of the scheme's own hues rather than
+    // between a hue and its own shadow, so the fill carries the app's colour
+    // in both themes instead of going muddy in one of them.
+    final head = accent.withValues(alpha: highlighted ? 1 : 0.82);
+    final foot = Color.lerp(
+      accent,
+      cs.tertiary,
+      0.6,
+    )!.withValues(alpha: highlighted ? 1 : 0.82);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(
-          child: AnimatedBuilder(
-            animation: animation,
-            builder: (context, _) {
-              final v = (_visual * animation.value).clamp(0.0, 1.0);
-              return Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  // The track. Fixed height, so the row never looks ragged
-                  // while the bars are still growing.
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: radius,
-                        color: muted.withValues(alpha: 0.04),
-                      ),
-                    ),
-                  ),
-                  if (v > 0)
-                    FractionallySizedBox(
-                      heightFactor: v.clamp(0.04, 1.0),
-                      child: AnimatedContainer(
-                        duration: Motion.base,
-                        curve: Motion.emphasized,
-                        width: double.infinity,
+          // The bar is given room inside its slot: a slot filled edge to edge
+          // turns seven days into one band, and the inset the fill carries
+          // only reads when the slot is wider than it. The label below keeps
+          // the whole slot, so "Wed" is not squeezed into the bar's width. A
+          // month is thirty slots on the same width and cannot afford the gap.
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: dense ? 0.5 : 9),
+            child: AnimatedBuilder(
+              animation: animation,
+              builder: (context, _) {
+                final v = (_visual * animation.value).clamp(0.0, 1.0);
+                return Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    // The track. Fixed height, so the row never looks ragged
+                    // while the bars are still growing.
+                    //
+                    // Weighted per theme: a wash of the on-colour is a slot on
+                    // white and a smudge on black, and the same 5% that reads as
+                    // one disappears as the other.
+                    Positioned.fill(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: radius,
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              fill,
-                              Color.alphaBlend(
-                                fill.withValues(alpha: 0.62),
-                                cs.surface,
-                              ),
-                            ],
-                          ),
+                          color: muted.withValues(alpha: dark ? 0.12 : 0.05),
                         ),
-                        // The lit top edge.
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: FractionallySizedBox(
-                            heightFactor: 0.06,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.vertical(
-                                  top: radius.topLeft,
-                                ),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.30),
-                                    Colors.transparent,
-                                  ],
-                                ),
+                      ),
+                    ),
+                    if (v > 0)
+                      FractionallySizedBox(
+                        heightFactor: v.clamp(0.05, 1.0),
+                        child: AnimatedContainer(
+                          duration: Motion.base,
+                          curve: Motion.emphasized,
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: dense ? 1 : 3,
+                          ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: radius,
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [foot, head],
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: Gap.sm),
@@ -302,26 +268,31 @@ class _Bar extends StatelessWidget {
         if (day.label.isEmpty)
           const SizedBox(height: 19)
         else
-          AnimatedContainer(
-            duration: Motion.base,
-            curve: Motion.emphasized,
-            padding: EdgeInsets.symmetric(
-              horizontal: dense ? 4 : 8,
-              vertical: 2,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Radii.pill),
-              color: highlighted ? accent : Colors.transparent,
-            ),
-            child: AnimatedDefaultTextStyle(
+          // Free of the slot's width: a three-letter weekday is wider than a
+          // month's bar, and a label that wrapped to two lines would take the
+          // whole row's baseline with it.
+          UnconstrainedBox(
+            child: AnimatedContainer(
               duration: Motion.base,
               curve: Motion.emphasized,
-              style: label.copyWith(
-                color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,
-                fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
-                fontSize: 11,
+              padding: EdgeInsets.symmetric(
+                horizontal: dense ? 4 : 7,
+                vertical: 2,
               ),
-              child: Text(day.label),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Radii.pill),
+                color: highlighted ? accent : Colors.transparent,
+              ),
+              child: AnimatedDefaultTextStyle(
+                duration: Motion.base,
+                curve: Motion.emphasized,
+                style: label.copyWith(
+                  color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,
+                  fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 11,
+                ),
+                child: Text(day.label, maxLines: 1, softWrap: false),
+              ),
             ),
           ),
       ],
