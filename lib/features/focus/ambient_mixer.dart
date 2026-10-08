@@ -37,59 +37,60 @@ class AmbientMixerSection extends ConsumerWidget {
         SectionHeader(
           title: 'Ambient mix',
           icon: Icons.graphic_eq_outlined,
-          trailing: active.isEmpty
-              ? null
-              : Semantics(
-                  button: true,
-                  label: 'Stop all ambient sounds',
-                  excludeSemantics: true,
-                  onTap: () => unawaited(
-                    ref.read(activeSoundsProvider.notifier).clear(),
-                  ),
-                  child: FilterChip(
-                    onSelected: (_) => unawaited(
+          trailing: SizedBox(
+            height: 48,
+            child: active.isEmpty
+                ? null
+                : TextButton.icon(
+                    onPressed: () => unawaited(
                       ref.read(activeSoundsProvider.notifier).clear(),
                     ),
-                    showCheckmark: false,
-                    avatar: Icon(
-                      Icons.stop_circle_outlined,
-                      size: 15,
-                      color: t.onSurfaceVariant,
-                    ),
-                    label: Text('Stop all', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                    label: const Text('Stop all'),
                   ),
-                ),
+          ),
         ),
-        const SizedBox(height: Gap.md),
         Card.filled(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, Gap.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // A row of small pills rather than a grid of cards. Six sounds
-                // is a short list and each one is one bit of state, so a
-                // labelled tile per sound was six cards of furniture around
-                // six taps. The name is not gone — it is on the tile's
-                // semantics, and on the level slider the moment it is playing.
-                Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: Gap.sm,
-                  children: [
-                    for (final sound in catalogue)
-                      _AmbientTile(
-                        tile: sound,
-                        active: active.contains(sound.id),
-                        onTap: () {
-                          unawaited(HapticFeedback.selectionClick());
-                          unawaited(
-                            ref
-                                .read(activeSoundsProvider.notifier)
-                                .toggle(sound),
-                          );
-                        },
-                      ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final largeText =
+                        MediaQuery.textScalerOf(context).scale(14) > 19;
+                    final columns = largeText
+                        ? 1
+                        : constraints.maxWidth < 280
+                        ? 2
+                        : 3;
+                    final width =
+                        (constraints.maxWidth - Gap.sm * (columns - 1)) /
+                        columns;
+                    return Wrap(
+                      spacing: Gap.sm,
+                      runSpacing: Gap.sm,
+                      children: [
+                        for (final sound in catalogue)
+                          SizedBox(
+                            width: width,
+                            child: _AmbientTile(
+                              tile: sound,
+                              active: active.contains(sound.id),
+                              onTap: () {
+                                unawaited(HapticFeedback.selectionClick());
+                                unawaited(
+                                  ref
+                                      .read(activeSoundsProvider.notifier)
+                                      .toggle(sound),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: Gap.md),
                 // The instruction is the empty state: it says what the grid
@@ -124,61 +125,69 @@ class AmbientMixerSection extends ConsumerWidget {
                 ),
                 // The mix. Sized rather than switched, so adding a second
                 // track slides the card open instead of jumping.
-                AnimatedSize(
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : Motion.base,
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: playing.isEmpty
-                      ? const SizedBox(width: double.infinity)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: Gap.md),
-                            Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: t.outlineVariant,
-                            ),
-                            const SizedBox(height: Gap.md),
-                            Row(
-                              children: [
-                                Text(
-                                  'Levels',
-                                  style: Theme.of(context).textTheme.labelMedium
-                                      ?.copyWith(
-                                        color: t.onSurfaceVariant,
-                                        letterSpacing: 1.1,
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  playing.length == 1
-                                      ? '1 playing'
-                                      : '${playing.length} playing',
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(color: t.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                            for (final sound in playing)
-                              _VolumeRow(
-                                sound: sound,
-                                value:
-                                    (volumes[sound.id] ??
-                                            AmbientMixer.defaultVolume)
-                                        .clamp(0.0, 1.0),
-                                onChanged: (v) => unawaited(
-                                  ref
-                                      .read(volumesProvider.notifier)
-                                      .set(sound.id, v),
-                                ),
+                Builder(
+                  builder: (context) {
+                    final mix = playing.isEmpty
+                        ? const SizedBox(width: double.infinity)
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(height: Gap.md),
+                              Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: t.outlineVariant,
                               ),
-                          ],
-                        ),
+                              const SizedBox(height: Gap.md),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Levels',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: t.onSurfaceVariant,
+                                          letterSpacing: 1.1,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    playing.length == 1
+                                        ? '1 playing'
+                                        : '${playing.length} playing',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(color: t.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                              for (final sound in playing)
+                                _VolumeRow(
+                                  sound: sound,
+                                  value:
+                                      (volumes[sound.id] ??
+                                              AmbientMixer.defaultVolume)
+                                          .clamp(0.0, 1.0),
+                                  onChanged: (v) => unawaited(
+                                    ref
+                                        .read(volumesProvider.notifier)
+                                        .set(sound.id, v),
+                                  ),
+                                ),
+                            ],
+                          );
+                    if (MediaQuery.disableAnimationsOf(context)) return mix;
+                    return AnimatedSize(
+                      duration: Motion.base,
+                      curve: Motion.decelerate,
+                      alignment: Alignment.topCenter,
+                      child: mix,
+                    );
+                  },
                 ),
               ],
             ),
@@ -189,13 +198,7 @@ class AmbientMixerSection extends ConsumerWidget {
   }
 }
 
-/// One track. A stadium the size of its icon: the whole thing is the target,
-/// and its state is carried by the colour, the border and the meter.
-///
-/// The corners are half-circles rather than a fixed radius, which is what
-/// [StadiumBorder] means and what makes a shape this short read as a capsule
-/// instead of a rounded rectangle — at this height a 12dp radius is most of
-/// the tile, and the two look different.
+/// A named track with stable dimensions when its playback state changes.
 class _AmbientTile extends StatelessWidget {
   const _AmbientTile({
     required this.tile,
@@ -216,52 +219,57 @@ class _AmbientTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      // The name lives here now that it is not on the tile: a screen reader
-      // still has to be able to tell the six of them apart.
       label: '${tile.name} ambience, ${active ? 'on' : 'off'}',
       excludeSemantics: true,
       onTap: onTap,
-      // The tile has no room for its name, so the name is one long press away
-      // — and on the web, one hover. A row of six unlabelled glyphs is fine
-      // once you know them and a guessing game before that.
-      child: Tooltip(
-        message: tile.name,
-        waitDuration: const Duration(milliseconds: 420),
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.92,
-          child: AnimatedContainer(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : Motion.base,
-            curve: Curves.easeOutCubic,
-            width: active ? 74 : 52,
-            height: 48,
-            decoration: ShapeDecoration(
-              shape: StadiumBorder(
-                side: BorderSide(
-                  color: active
-                      ? color.withValues(alpha: 0.72)
-                      : t.outlineVariant,
-                  width: active ? 1.3 : 1,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.97,
+        child: AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : Motion.base,
+          curve: Motion.decelerate,
+          constraints: const BoxConstraints(minHeight: 68),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.sm,
+            vertical: Gap.md,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(
+              active ? Radii.tile : Radii.card,
+            ),
+            border: Border.all(
+              color: active ? color : t.outlineVariant.withValues(alpha: 0.5),
+            ),
+            color: active
+                ? color.withValues(alpha: 0.12)
+                : t.surfaceContainerLow,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 20,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(tile.icon, size: 20, color: ink),
+                    if (active) ...[
+                      const SizedBox(width: Gap.sm),
+                      _Equalizer(color: color),
+                    ],
+                  ],
                 ),
               ),
-              color: active
-                  ? color.withValues(alpha: 0.20)
-                  : t.surfaceContainer,
-            ),
-            child: Center(
-              child: active
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(tile.icon, size: 16, color: ink),
-                        const SizedBox(width: 6),
-                        _Equalizer(color: color),
-                      ],
-                    )
-                  : Icon(tile.icon, size: 18, color: ink),
-            ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                tile.name,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(color: t.onSurface),
+              ),
+            ],
           ),
         ),
       ),

@@ -37,6 +37,7 @@ class SetupChoiceCard extends StatelessWidget {
       onTap();
     }
 
+    final radius = selected ? Radii.item : Radii.hero;
     return Semantics(
       label: '$title. $description',
       checked: selected,
@@ -47,16 +48,18 @@ class SetupChoiceCard extends StatelessWidget {
         duration: duration,
         curve: Motion.decelerate,
         decoration: BoxDecoration(
-          color: selected ? cs.surfaceContainerLow : cs.surface,
-          borderRadius: BorderRadius.circular(Radii.card),
+          color: selected
+              ? accent.withValues(alpha: 0.10)
+              : cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(
             color: selected ? accent : cs.outlineVariant,
-            width: selected ? 1.5 : 1,
+            width: 1,
           ),
         ),
         child: Material(
           type: MaterialType.transparency,
-          borderRadius: BorderRadius.circular(Radii.card),
+          borderRadius: BorderRadius.circular(radius),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: select,
@@ -67,8 +70,8 @@ class SetupChoiceCard extends StatelessWidget {
                   IconBadge(
                     icon: icon,
                     color: accent,
-                    size: 40,
-                    radius: Radii.tile,
+                    size: 48,
+                    radius: selected ? Radii.tile : 20,
                   ),
                   const SizedBox(width: Gap.md),
                   Expanded(
@@ -85,6 +88,16 @@ class SetupChoiceCard extends StatelessWidget {
                   AnimatedSwitcher(
                     duration: duration,
                     switchInCurve: Motion.decelerate,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.8,
+                          end: 1,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
                     child: Icon(
                       selected
                           ? Icons.check_circle_rounded

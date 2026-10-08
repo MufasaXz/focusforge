@@ -186,6 +186,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final canGrow = planned + nudge <= TimerNotifier.maxSegment;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final compactDock = MediaQuery.sizeOf(context).width < 360;
+    final labelledPlay =
+        MediaQuery.sizeOf(context).width >= 390 &&
+        MediaQuery.textScalerOf(context).scale(14) <= 19;
 
     // The dock floats above the nav-bar band; the scroll view has to clear both,
     // plus the home-indicator inset the nav bar itself grows by.
@@ -571,10 +574,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                       MediaQuery.disableAnimationsOf(context)
                                       ? Duration.zero
                                       : Motion.base,
-                                  width: 52,
+                                  width: labelledPlay ? 104 : 52,
                                   height: 52,
                                   decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(
+                                      timer.running ? 26 : 16,
+                                    ),
                                     color: accent,
                                   ),
                                   child: AnimatedSwitcher(
@@ -595,13 +600,34 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                             child: child,
                                           ),
                                         ),
-                                    child: Icon(
-                                      timer.running
-                                          ? Icons.pause_rounded
-                                          : Icons.play_arrow_rounded,
+                                    child: Row(
                                       key: ValueKey(timer.running),
-                                      size: 27,
-                                      color: _onPhaseColor(t, timer.phase),
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          timer.running
+                                              ? Icons.pause_rounded
+                                              : Icons.play_arrow_rounded,
+                                          size: labelledPlay ? 22 : 27,
+                                          color: _onPhaseColor(t, timer.phase),
+                                        ),
+                                        if (labelledPlay) ...[
+                                          const SizedBox(width: Gap.xs),
+                                          Text(
+                                            timer.running ? 'Pause' : 'Start',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  color: _onPhaseColor(
+                                                    t,
+                                                    timer.phase,
+                                                  ),
+                                                ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -1205,6 +1231,7 @@ class _DockAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 19;
     return Semantics(
       button: true,
       label: semanticLabel,
@@ -1221,15 +1248,16 @@ class _DockAction extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 19, color: color),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
+              if (!largeText) const SizedBox(height: 3),
+              if (!largeText)
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

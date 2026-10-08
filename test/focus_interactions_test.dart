@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/audio_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/widgets/session_shortcut.dart';
@@ -15,6 +16,7 @@ import 'package:focusforge/features/dashboard/widgets/day_summary_sheet.dart';
 import 'package:focusforge/features/dashboard/widgets/study_tracker.dart';
 import 'package:focusforge/core/data/seed.dart';
 import 'package:focusforge/features/focus/focus_screen.dart';
+import 'package:focusforge/features/focus/ambient_mixer.dart';
 import 'package:focusforge/shared/widgets/pressable.dart';
 import 'package:focusforge/shared/widgets/stagger.dart';
 
@@ -70,6 +72,55 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('the named primary control starts and pauses the same block', (
+    tester,
+  ) async {
+    phone(tester, width: 390);
+    final scope = container();
+    await tester.pumpWidget(wrap(scope, const FocusScreen()));
+    await settle(tester);
+    await tester.tap(find.text('Start'));
+    await tester.pump();
+    expect(scope.read(timerProvider).running, isTrue);
+    final started = scope.read(timerProvider).segmentStartedAt;
+    await tester.tap(find.text('Pause'));
+    await tester.pump();
+    expect(scope.read(timerProvider).running, isFalse);
+    expect(scope.read(timerProvider).segmentStartedAt, started);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sound choices keep their names and placement when restored', (
+    tester,
+  ) async {
+    phone(tester, width: 320);
+    final scope = container();
+    await tester.pumpWidget(wrap(scope, const AmbientMixerSection()));
+    await settle(tester);
+    final rainBefore = tester.getRect(find.text('Rain').first);
+    final forestBefore = tester.getRect(find.text('Forest'));
+    scope.read(activeSoundsProvider.notifier).hydrate({'rain'}, {});
+    await settle(tester);
+    expect(tester.getRect(find.text('Rain').first), rainBefore);
+    expect(tester.getRect(find.text('Forest')), forestBefore);
+    expect(find.byType(Slider), findsOneWidget);
+    await tester.tap(find.text('Stop all'));
+    await settle(tester);
+    expect(scope.read(activeSoundsProvider), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('focus controls fit a narrow phone with large text', (
+    tester,
+  ) async {
+    phone(tester, width: 320);
+    await tester.pumpWidget(
+      wrap(container(), const FocusScreen(), textScale: 2),
+    );
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Home starts the selected plan and resumes without resetting it',

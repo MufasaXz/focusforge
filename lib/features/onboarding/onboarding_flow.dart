@@ -307,7 +307,7 @@ class _FlowHeader extends StatelessWidget {
                       value: value,
                       color: cs.primary,
                       backgroundColor: cs.surfaceContainerHighest,
-                      minHeight: 4,
+                      minHeight: 6,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                   ),
