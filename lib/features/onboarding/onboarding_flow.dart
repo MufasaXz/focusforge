@@ -16,11 +16,11 @@ import 'profile_step.dart';
 import 'splash_step.dart';
 import 'subjects_step.dart';
 
-/// The first-run flow — screens 0 through 9 of the plan.
+/// First-run setup, with only the steps needed by this device.
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
 /// widget owns the whole journey: splash, account, persona, profile, subjects,
-/// blocks, goal, permissions, celebration — and, for a parent, the question
+/// goal, permissions, celebration — and, for a parent, the question
 /// about whose device this is. The last step flips `completeOnboarding()` and
 /// the router takes it from there.
 ///
@@ -37,20 +37,14 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 }
 
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
-  static const _stepCount = 9;
   static const _authIndex = 1;
 
-  /// The page that asks whose device this is.
-  ///
-  /// It stays in the [PageView] either way — the flow's indices are what the
-  /// back button and the progress bar are built on — but it is only ever
-  /// visited by a parent. A student setting up their own phone has nothing to
-  /// answer here, and a question with one possible answer is a step that only
-  /// costs time.
+  /// A parent chooses between studying here and managing a child's phone.
   static const _deviceIndex = 3;
 
   final _controller = PageController();
   int _index = 0;
+  bool _moving = false;
 
   @override
   void initState() {
@@ -69,39 +63,59 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   /// Whether this run asks the device question at all.
   bool get _asksDevice => ref.read(userProvider).persona == Persona.parent;
 
-  /// The page after [index], skipping the device question when the persona
-  /// never asked for it.
-  int _nextFrom(int index) {
-    var next = index + 1;
-    if (next == _deviceIndex && !_asksDevice) next++;
-    return next;
+  List<int> get _steps {
+    final user = ref.read(userProvider);
+    final guardian = user.persona == Persona.parent && user.isGuardian;
+    return [
+      0,
+      1,
+      2,
+      if (_asksDevice) _deviceIndex,
+      4,
+      if (!guardian) ...[5, 6, 7],
+      8,
+    ];
   }
 
-  /// The page before [index], skipping the same page on the way back. Without
-  /// this the back button would walk a student into a question the flow chose
-  /// not to ask them.
-  int _previousFrom(int index) {
-    var previous = index - 1;
-    if (previous == _deviceIndex && !_asksDevice) previous--;
-    return previous;
-  }
-
-  void _go(int index) {
-    if (index < 0 || index >= _stepCount || index == _index) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _controller.jumpToPage(index);
+  Future<void> _go(int step) async {
+    final page = _steps.indexOf(step);
+    if (_moving || page < 0 || step == _index || !_controller.hasClients) {
       return;
     }
-    _controller.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    _moving = true;
+    try {
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _controller.jumpToPage(page);
+      } else {
+        await _controller.animateToPage(
+          page,
+          duration: const Duration(milliseconds: 300),
+          curve: Motion.emphasized,
+        );
+      }
+    } finally {
+      _moving = false;
+    }
   }
 
-  void _next() => _go(_nextFrom(_index));
+  void _next() {
+    final steps = _steps;
+    final next = steps.indexOf(_index) + 1;
+    if (next < steps.length) unawaited(_go(steps[next]));
+  }
 
-  void _back() => _go(_previousFrom(_index));
+  void _advanceFrom(int step) {
+    // A save may finish after Back. It may persist the draft, but it must
+    // not advance whichever step is visible now.
+    if (_index == step) _next();
+  }
+
+  void _back() {
+    final steps = _steps;
+    final previous = steps.indexOf(_index) - 1;
+    if (previous >= 0) unawaited(_go(steps[previous]));
+  }
 
   /// Leaves the persona step.
   ///
@@ -110,6 +124,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   /// earlier pass is cleared rather than carried into a flow that no longer
   /// shows the page that set it.
   void _afterPersona() {
+    if (_index != 2) return;
     if (!_asksDevice && ref.read(userProvider).isGuardian) {
       unawaited(ref.read(userProvider.notifier).setGuardianMode(false));
     }
@@ -117,8 +132,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   }
 
   void _afterSplash() {
+    if (_index != 0) return;
     final signedIn = ref.read(authServiceProvider).signedIn;
-    _go(signedIn ? _authIndex + 1 : _authIndex);
+    unawaited(_go(signedIn ? _authIndex + 1 : _authIndex));
   }
 
   @override
@@ -126,13 +142,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     // Watched rather than read: the persona decides whether the device page
     // is part of this run, so the progress bar has to follow the answer the
     // moment it changes.
-    final asksDevice =
-        ref.watch(userProvider.select((u) => u.persona)) == Persona.parent;
-    // The header counts the pages the user will actually see. The splash is
-    // not one of them, and neither is the device question when the persona
-    // did not ask for it.
-    final total = _stepCount - 1 - (asksDevice ? 0 : 1);
-    final shown = asksDevice || _index <= _deviceIndex ? _index : _index - 1;
+    ref.watch(userProvider.select((u) => (u.persona, u.isGuardian)));
+    final steps = _steps;
+    final total = steps.length - 1;
+    final shown = steps.indexOf(_index);
 
     return PopScope(
       canPop: _index == 0,
@@ -148,23 +161,34 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
               child: Column(
                 children: [
                   if (_index > 0)
-                    _FlowHeader(index: shown, total: total, onBack: _back),
+                    _FlowHeader(
+                      index: shown,
+                      total: total,
+                      title: _stageName(_index),
+                      onBack: _back,
+                    ),
                   Expanded(
-                    child: PageView(
+                    child: PageView.builder(
                       controller: _controller,
                       physics: const NeverScrollableScrollPhysics(),
-                      onPageChanged: (index) => setState(() => _index = index),
-                      children: [
-                        SplashStep(onDone: _afterSplash),
-                        AuthScreen(embedded: true, onAuthenticated: _next),
-                        PersonaStep(onNext: _afterPersona),
-                        DeviceStep(onNext: _next),
-                        ProfileStep(onNext: _next),
-                        SubjectsStep(onNext: _next),
-                        GoalStep(onNext: _next),
-                        PermissionsStep(onNext: _next),
-                        const CompleteStep(),
-                      ],
+                      itemCount: steps.length,
+                      findChildIndexCallback: (key) {
+                        final step = (key as ValueKey<int>).value;
+                        final index = steps.indexOf(step);
+                        return index < 0 ? null : index;
+                      },
+                      onPageChanged: (page) =>
+                          setState(() => _index = steps[page]),
+                      itemBuilder: (context, page) {
+                        final step = steps[page];
+                        return _KeepStep(
+                          key: ValueKey(step),
+                          child: TickerMode(
+                            enabled: _index == step,
+                            child: _buildStep(step),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -175,6 +199,57 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ),
     );
   }
+
+  Widget _buildStep(int step) => switch (step) {
+    0 => SplashStep(onDone: _afterSplash),
+    1 => AuthScreen(embedded: true, onAuthenticated: () => _advanceFrom(1)),
+    2 => PersonaStep(onNext: _afterPersona),
+    3 => DeviceStep(onNext: () => _advanceFrom(3)),
+    4 => ProfileStep(onNext: () => _advanceFrom(4)),
+    // Rebuild persona-specific recommendations when that answer changes.
+    5 => SubjectsStep(
+      key: ValueKey(ref.read(userProvider).persona),
+      onNext: () => _advanceFrom(5),
+    ),
+    6 => GoalStep(
+      key: ValueKey(ref.read(userProvider).persona),
+      onNext: () => _advanceFrom(6),
+    ),
+    7 => PermissionsStep(onNext: () => _advanceFrom(7)),
+    _ => const CompleteStep(),
+  };
+
+  static String _stageName(int step) => const [
+    'Welcome',
+    'Account',
+    'Your focus',
+    'This device',
+    'Profile',
+    'Subjects',
+    'Daily goal',
+    'Permissions',
+    'Ready',
+  ][step];
+}
+
+class _KeepStep extends StatefulWidget {
+  const _KeepStep({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<_KeepStep> createState() => _KeepStepState();
+}
+
+class _KeepStepState extends State<_KeepStep>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
 
 /// Back affordance plus a progress bar. The user should always know how much
@@ -183,11 +258,13 @@ class _FlowHeader extends StatelessWidget {
   const _FlowHeader({
     required this.index,
     required this.total,
+    required this.title,
     required this.onBack,
   });
 
   final int index;
   final int total;
+  final String title;
   final VoidCallback onBack;
 
   @override
@@ -195,6 +272,7 @@ class _FlowHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    final reduce = MediaQuery.disableAnimationsOf(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.sm, Gap.sm, Gap.lg, Gap.sm),
       child: Row(
@@ -206,20 +284,37 @@ class _FlowHeader extends StatelessWidget {
           ),
           const SizedBox(width: Gap.sm),
           Expanded(
-            child: Semantics(
-              label: 'Setup progress',
-              value: '${(index / total * 100).round()} percent',
-              child: LinearProgressIndicator(
-                value: index / total,
-                color: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
-                minHeight: 5,
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(title, style: theme.textTheme.labelMedium),
+                    ),
+                    Text('$index of $total', style: theme.textTheme.labelSmall),
+                  ],
+                ),
+                const SizedBox(height: Gap.sm),
+                Semantics(
+                  label: 'Setup progress, $title',
+                  value: 'Step $index of $total',
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(end: index / total),
+                    duration: reduce ? Duration.zero : Motion.base,
+                    curve: Motion.decelerate,
+                    builder: (context, value, _) => LinearProgressIndicator(
+                      value: value,
+                      color: cs.primary,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      minHeight: 4,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: Gap.md),
-          Text('$index/$total', style: theme.textTheme.labelSmall),
         ],
       ),
     );

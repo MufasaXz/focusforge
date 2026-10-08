@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +19,7 @@ import 'onboarding_chrome.dart';
 ///
 /// It reflects the user's own choices back at them — persona, subjects, blocks,
 /// goal — because the fastest way to make a setup feel worth it is to show
-/// that it actually configured something. "Let's Go" is the only action: it
+/// that it actually configured something. The final action
 /// flips the onboarding flag and hands over to the dashboard, which is what
 /// the router has been waiting for.
 class CompleteStep extends ConsumerStatefulWidget {
@@ -29,24 +31,42 @@ class CompleteStep extends ConsumerStatefulWidget {
 
 class _CompleteStepState extends ConsumerState<CompleteStep> {
   bool _finishing = false;
+  bool _celebrated = false;
+  Timer? _celebration;
 
   @override
-  void initState() {
-    super.initState();
-    // Timed to the last tile landing rather than to the page transition: the
-    // staggered entrance runs to about 735ms (a 275ms delay for the last item
-    // plus its 460ms travel), and a burst that arrives before the page has
-    // finished composing reads as an interruption.
-    Future<void>.delayed(const Duration(milliseconds: 620), () {
-      if (mounted) ConfettiBurst.fire(context);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!TickerMode.valuesOf(context).enabled ||
+        MediaQuery.disableAnimationsOf(context)) {
+      _celebration?.cancel();
+      _celebration = null;
+      return;
+    }
+    if (_celebrated || _celebration != null) return;
+    _celebration = Timer(const Duration(milliseconds: 560), () {
+      if (!mounted) return;
+      _celebrated = true;
+      ConfettiBurst.fire(context);
     });
+  }
+
+  @override
+  void dispose() {
+    _celebration?.cancel();
+    super.dispose();
   }
 
   Future<void> _finish() async {
     if (_finishing) return;
     setState(() => _finishing = true);
     final guardian = ref.read(userProvider).isGuardian;
-    await ref.read(userProvider.notifier).completeOnboarding();
+    try {
+      await ref.read(userProvider.notifier).completeOnboarding();
+    } catch (_) {
+      if (mounted) setState(() => _finishing = false);
+      rethrow;
+    }
     if (!mounted) return;
     // A parent's device has one thing left to do, and it needs the child's
     // phone in hand. Landing them on the page that asks for the code is the
@@ -77,57 +97,64 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
       subtitle: guardian
           ? 'Next: link your child\'s phone.'
           : 'Here is what FocusForge will do for you.',
-      primaryLabel: "Let's Go",
+      primaryLabel: guardian ? 'Link a child’s phone' : 'Open FocusForge',
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
         Stagger(
           index: 2,
-          child: Row(
-            children: [
-              Expanded(
-                child: _StatTile(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columns =
+                  constraints.maxWidth < 300 ||
+                      MediaQuery.textScalerOf(context).scale(14) > 20
+                  ? 1
+                  : 2;
+              final width =
+                  (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
+              final tiles = [
+                _StatTile(
                   icon: persona.icon,
                   color: harmonize(persona.color, cs.primary),
                   value: persona.label,
                   label: 'Profile',
                 ),
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.menu_book_rounded,
-                  color: cs.secondary,
-                  value: '$subjectCount',
-                  label: subjectCount == 1 ? 'Subject' : 'Subjects',
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: Gap.sm),
-        Stagger(
-          index: 3,
-          child: Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.timer_outlined,
-                  color: cs.secondary,
-                  value: formatMinutes(preset.focus),
-                  label: 'Focus block',
-                ),
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.timer_rounded,
-                  color: cs.tertiary,
-                  value: formatMinutes(goal),
-                  label: 'Daily goal',
-                ),
-              ),
-            ],
+                if (guardian)
+                  _StatTile(
+                    icon: Icons.family_restroom_rounded,
+                    color: cs.tertiary,
+                    value: 'Parent control',
+                    label: 'This phone',
+                  )
+                else ...[
+                  _StatTile(
+                    icon: Icons.menu_book_rounded,
+                    color: cs.secondary,
+                    value: '$subjectCount',
+                    label: subjectCount == 1 ? 'Subject' : 'Subjects',
+                  ),
+                  _StatTile(
+                    icon: Icons.timer_outlined,
+                    color: cs.secondary,
+                    value: formatMinutes(preset.focus),
+                    label: 'Focus block',
+                  ),
+                  _StatTile(
+                    icon: Icons.timer_rounded,
+                    color: cs.tertiary,
+                    value: formatMinutes(goal),
+                    label: 'Daily goal',
+                  ),
+                ],
+              ];
+              return Wrap(
+                spacing: Gap.sm,
+                runSpacing: Gap.sm,
+                children: [
+                  for (final tile in tiles) SizedBox(width: width, child: tile),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: Gap.xl),
@@ -140,13 +167,19 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               padding: const EdgeInsets.symmetric(vertical: Gap.xs),
               child: Column(
                 children: [
-                  const _Tip(
-                    icon: Icons.timer_outlined,
-                    text: 'Tap Focus to start your first session.',
+                  _Tip(
+                    icon: guardian
+                        ? Icons.phonelink_rounded
+                        : Icons.timer_outlined,
+                    text: guardian
+                        ? 'Install FocusForge on your child’s phone too.'
+                        : 'Start or resume a session from Home.',
                   ),
-                  const _Tip(
+                  _Tip(
                     icon: Icons.insights_outlined,
-                    text: 'The dashboard fills in as you study.',
+                    text: guardian
+                        ? 'Open Parent control there to get their pairing code.'
+                        : 'Tap a chart day to see your completed sessions.',
                     divider: true,
                   ),
                   _Tip(

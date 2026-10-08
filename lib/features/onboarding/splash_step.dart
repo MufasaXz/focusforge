@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,27 +10,25 @@ import '../../shared/widgets/app_mark.dart';
 ///
 /// It is on screen for less than two seconds, so it does one job: put the mark
 /// and the promise in front of the user while the app finds its footing. The
-/// mesh canvas is supplied by [OnboardingFlow]; this step only owns the
-/// entrance — logo scaling up from 0.8, tagline 400ms behind it, and a row of
-/// dots so the pause reads as loading rather than a frozen frame.
+/// entrance gives the mark a brief settling motion before the account screen.
 class SplashStep extends StatefulWidget {
   const SplashStep({super.key, required this.onDone});
 
   /// Fired once, after the entrance has had time to land.
   final VoidCallback onDone;
 
-  /// How long the splash holds before handing over. The plan says two seconds;
-  /// this is slightly under so the first interactive screen arrives sooner.
-  static const hold = Duration(milliseconds: 1600);
+  /// A brief introduction before the first interactive screen.
+  static const hold = Duration(milliseconds: 1100);
 
   @override
   State<SplashStep> createState() => _SplashStepState();
 }
 
 class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
+  Timer? _handoff;
   late final AnimationController _intro = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1400),
+    duration: const Duration(milliseconds: 700),
   )..forward();
 
   late final AnimationController _dots = AnimationController(
@@ -40,7 +39,17 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    final visible = TickerMode.valuesOf(context).enabled;
+    if (!visible) {
+      _handoff?.cancel();
+      _handoff = null;
+    } else {
+      _handoff ??= Timer(SplashStep.hold, () {
+        _handoff = null;
+        if (mounted) widget.onDone();
+      });
+    }
+    if (MediaQuery.disableAnimationsOf(context) || !visible) {
       _intro.value = 1;
       _dots.stop();
       _dots.value = 0.5;
@@ -50,15 +59,8 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   }
 
   @override
-  void initState() {
-    super.initState();
-    Future<void>.delayed(SplashStep.hold, () {
-      if (mounted) widget.onDone();
-    });
-  }
-
-  @override
   void dispose() {
+    _handoff?.cancel();
     _intro.dispose();
     _dots.dispose();
     super.dispose();
@@ -78,45 +80,59 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
       end: 1,
     ).animate(CurvedAnimation(parent: _intro, curve: Curves.easeOutBack));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Gap.xl),
-      child: Column(
-        children: [
-          const Spacer(flex: 3),
-          FadeTransition(
-            opacity: _fade(0, 0.55),
-            child: ScaleTransition(
-              scale: logoScale,
-              // The app's own mark, not a stock glyph — the first thing the
-              // user sees should be the thing they tapped to get here.
-              child: const AppMark(size: 108, semanticLabel: 'FocusForge'),
-            ),
-          ),
-          const SizedBox(height: Gap.xl),
-          FadeTransition(
-            opacity: _fade(0.15, 0.7),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                'FocusForge',
-                style: Theme.of(context).textTheme.displayLarge,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.xl),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FadeTransition(
+                    opacity: _fade(0, 0.55),
+                    child: ScaleTransition(
+                      scale: logoScale,
+                      // The app's own mark, not a stock glyph — the first thing the
+                      // user sees should be the thing they tapped to get here.
+                      child: const AppMark(
+                        size: 108,
+                        semanticLabel: 'FocusForge',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.xl),
+                  FadeTransition(
+                    opacity: _fade(0.15, 0.7),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'FocusForge',
+                        style: Theme.of(context).textTheme.displayLarge,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  FadeTransition(
+                    opacity: _fade(0.4, 1),
+                    child: Text(
+                      'Forge your focus',
+                      style: Theme.of(context).textTheme.bodyLarge
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.xxl),
+                  FadeTransition(
+                    opacity: _fade(0.6, 1),
+                    child: _loadingDots(context),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: Gap.sm),
-          FadeTransition(
-            opacity: _fade(0.4, 1),
-            child: Text(
-              'Forge your focus',
-              style: Theme.of(context).textTheme.bodyLarge
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          const Spacer(flex: 2),
-          FadeTransition(opacity: _fade(0.6, 1), child: _loadingDots(context)),
-          const Spacer(flex: 1),
-        ],
-      ),
+        );
+      },
     );
   }
 

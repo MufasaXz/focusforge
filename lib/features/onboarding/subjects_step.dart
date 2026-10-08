@@ -196,7 +196,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
       if (!_selected.contains(template.name)) continue;
       await _persistTarget(template, _targets[template.name] ?? _defaultWeekly);
     }
-    widget.onNext();
+    if (mounted) widget.onNext();
   }
 
   @override
@@ -215,7 +215,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
       primaryEnabled: _selected.isNotEmpty,
       primaryLabel: _selected.isEmpty
           ? 'Pick at least one'
-          : 'Continue with ${_selected.length}',
+          : 'Continue with ${_selected.length} ${_selected.length == 1 ? 'subject' : 'subjects'}',
       onPrimary: _commit,
       children: [
         Stagger(
@@ -233,7 +233,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
                     size: 18,
                     color: _selected.contains(template.name)
                         ? cs.onSurface
-                        : template.color,
+                        : harmonize(template.color, cs.primary),
                   ),
                   label: Text(template.name),
                 ),
@@ -259,8 +259,8 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
-                  'Most ${_persona.label.toLowerCase()}s aim for '
-                  '${formatMinutes(recommended)} of focus a day.',
+                  'Suggested starting point: ${formatMinutes(recommended)} '
+                  'of focus a day. Adjust it to suit your routine.',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),
@@ -315,6 +315,10 @@ class _TargetSlider extends StatelessWidget {
     final label = value == value.roundToDouble()
         ? '${value.round()}h'
         : '${value.toStringAsFixed(1)}h';
+    final accent = harmonize(
+      template.color,
+      Theme.of(context).colorScheme.primary,
+    );
 
     return Card.outlined(
       clipBehavior: Clip.antiAlias,
@@ -330,7 +334,7 @@ class _TargetSlider extends StatelessWidget {
               children: [
                 IconBadge(
                   icon: template.icon,
-                  color: template.color,
+                  color: accent,
                   size: 30,
                   radius: Radii.tile,
                 ),
@@ -344,7 +348,7 @@ class _TargetSlider extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(color: template.color),
+                      ?.copyWith(color: accent),
                 ),
                 const SizedBox(width: Gap.sm),
               ],

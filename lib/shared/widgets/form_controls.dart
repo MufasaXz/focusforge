@@ -47,32 +47,37 @@ class PrimaryAction extends StatelessWidget {
           minimumSize: const Size.fromHeight(52),
           textStyle: theme.textTheme.labelLarge?.copyWith(fontSize: 15),
         ),
-        child: busy
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: cs.onSurfaceVariant,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Flexible so the label gives way before the row does: at a
-                  // large text scale, or with a longer label than the one
-                  // shipped, the button truncates instead of painting an
-                  // overflow stripe.
-                  Flexible(
-                    child: Text(label, overflow: TextOverflow.ellipsis),
+        child: AnimatedSwitcher(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : Motion.quick,
+          switchInCurve: Motion.decelerate,
+          child: busy
+              ? SizedBox(
+                  key: const ValueKey('busy'),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cs.onSurfaceVariant,
                   ),
-                  if (icon != null) ...[
-                    const SizedBox(width: Gap.sm),
-                    Icon(icon, size: 18),
+                )
+              : Row(
+                  key: const ValueKey('label'),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Flexible so the label gives way before the row does: at a
+                    // large text scale, the label wraps and the button grows
+                    // rather than clipping its action.
+                    Flexible(child: Text(label, textAlign: TextAlign.center)),
+                    if (icon != null) ...[
+                      const SizedBox(width: Gap.sm),
+                      Icon(icon, size: 18),
+                    ],
                   ],
-                ],
-              ),
+                ),
+        ),
       ),
     );
   }

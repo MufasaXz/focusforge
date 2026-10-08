@@ -32,6 +32,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
   static const _manager = PermissionManager();
 
   final _status = <AppPermission, PermissionOutcome>{};
+  AppPermission? _requesting;
 
   @override
   void initState() {
@@ -62,9 +63,14 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
   }
 
   Future<void> _enable(AppPermission permission) async {
+    if (_requesting != null) return;
+    setState(() => _requesting = permission);
     final outcome = await _manager.request(permission);
     if (!mounted) return;
-    setState(() => _status[permission] = outcome);
+    setState(() {
+      _status[permission] = outcome;
+      _requesting = null;
+    });
 
     // A settings page leaves the user somewhere that cannot explain itself.
     // Say what to do while they are still looking at this screen.
@@ -81,27 +87,52 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final permissions = _permissions
+        .where((p) => _manager.supports(p.kind))
+        .toList();
+    final granted = permissions
+        .where((p) => _status[p.kind] == PermissionOutcome.granted)
+        .length;
 
     return StepScaffold(
-      title: 'Almost ready',
+      title: 'Choose your permissions',
       subtitle:
-          'FocusForge needs a few permissions to protect your focus. '
-          'Here is exactly why, in plain language.',
+          'Enable the features you want. The focus timer works without '
+          'these, and you can return to permissions later.',
       onPrimary: widget.onNext,
+      primaryEnabled: _requesting == null,
+      primaryLabel: permissions.isEmpty || granted == permissions.length
+          ? 'Review setup'
+          : 'Continue for now',
       footnote:
-          'Nothing is granted until the system dialog says so — and you '
-          'can change any of this later in Settings.',
+          'Optional. Access is confirmed by your device, and you can revoke '
+          'it in system settings.',
       children: [
-        for (var i = 0; i < _permissions.length; i++)
+        if (permissions.isEmpty)
+          const Text('No extra permissions are needed on this device.')
+        else ...[
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              '$granted of ${permissions.length} enabled',
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: cs.primary),
+            ),
+          ),
+          const SizedBox(height: Gap.lg),
+        ],
+        for (var i = 0; i < permissions.length; i++)
           Stagger(
             index: 2 + i,
             child: Padding(
               padding: const EdgeInsets.only(bottom: Gap.md),
               child: _PermissionCard(
-                permission: _permissions[i],
-                status:
-                    _status[_permissions[i].kind] ?? PermissionOutcome.denied,
-                onEnable: () => _enable(_permissions[i].kind),
+                permission: permissions[i],
+                status: _status[permissions[i].kind],
+                busy: _requesting == permissions[i].kind,
+                onEnable: _requesting == null
+                    ? () => _enable(permissions[i].kind)
+                    : null,
                 onOpenSettings: _openSettings,
               ),
             ),
@@ -116,8 +147,9 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
-                  'Your data stays on this device. FocusForge does not upload '
-                  'usage history, messages or personal data — ever.',
+                  'Your detailed study log stays on this device. If you pair '
+                  'a parent account, study summaries and app rules are shared '
+                  'with that parent.',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),
@@ -154,21 +186,18 @@ const _permissions = <_Permission>[
     title: 'Accessibility Service',
     icon: Icons.visibility_rounded,
     why:
-        'Lets FocusForge see which app came to the foreground so it can hide '
-        'the addictive parts — Reels, Shorts, the Watch tab — without blocking '
-        'the whole app.',
+        'Lets Shield block selected apps and distracting feeds such as '
+        'Reels and Shorts.',
     privacy:
-        'We never read your messages, passwords or personal data. The '
-        'service only checks which app is on screen.',
+        'Shield checks the foreground app and supported screen elements '
+        'to apply your rules. It does not save messages or passwords.',
     platform: 'Android',
   ),
   _Permission(
     kind: AppPermission.notifications,
     title: 'Notifications',
     icon: Icons.notifications_active_rounded,
-    why:
-        'Reminds you when a focus block starts, and delivers your daily '
-        'summary and streak alerts.',
+    why: 'Allows FocusForge to show notifications on this device.',
     privacy:
         'Notifications are generated on-device. Nothing is pushed from a '
         'server.',
@@ -188,12 +217,10 @@ const _permissions = <_Permission>[
     kind: AppPermission.doNotDisturb,
     title: 'Do Not Disturb',
     icon: Icons.do_not_disturb_on_rounded,
-    why:
-        'Lets Strict Mode silence calls and notifications for the length of a '
-        'session, so a deep-work block is not interrupted by a badge.',
+    why: 'Allows FocusForge to manage your device’s Do Not Disturb mode.',
     privacy:
-        'FocusForge only turns DND on while a session is running, and always '
-        'turns it back off.',
+        'This grants notification-policy access; it does not grant access '
+        'to the contents of your notifications.',
     platform: 'Android',
   ),
 ];
@@ -204,12 +231,14 @@ class _PermissionCard extends StatelessWidget {
     required this.status,
     required this.onEnable,
     required this.onOpenSettings,
+    required this.busy,
   });
 
   final _Permission permission;
-  final PermissionOutcome status;
-  final VoidCallback onEnable;
+  final PermissionOutcome? status;
+  final VoidCallback? onEnable;
   final VoidCallback onOpenSettings;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -278,6 +307,7 @@ class _PermissionCard extends StatelessWidget {
             const SizedBox(height: Gap.md),
             _Action(
               status: status,
+              busy: busy,
               title: permission.title,
               onEnable: onEnable,
               onOpenSettings: onOpenSettings,
@@ -299,17 +329,37 @@ class _Action extends StatelessWidget {
     required this.title,
     required this.onEnable,
     required this.onOpenSettings,
+    required this.busy,
   });
 
-  final PermissionOutcome status;
+  final PermissionOutcome? status;
   final String title;
-  final VoidCallback onEnable;
+  final VoidCallback? onEnable;
   final VoidCallback onOpenSettings;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    if (status == null || busy) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+          ),
+          const SizedBox(width: Gap.sm),
+          Expanded(
+            child: Text(
+              busy ? 'Opening permission…' : 'Checking access…',
+              style: theme.textTheme.labelMedium,
+            ),
+          ),
+        ],
+      );
+    }
 
     if (status == PermissionOutcome.granted) {
       return Semantics(

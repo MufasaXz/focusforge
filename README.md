@@ -207,6 +207,18 @@ flutter run                 # desktop, device or emulator
 flutter build apk --release # installable Android build
 ```
 
+The current Android release configuration is **1.0.1 (build 6)**. The release
+task also copies the signed APK to
+`build/app/outputs/flutter-apk/focusforge-1.0.1.apk`.
+
+First-run setup has named progress stages, larger Inter Display headings and
+short transitions that respect reduced motion. Choices and profile drafts stay
+in place when you go back. Short screens and the keyboard use a scrollable
+layout so actions remain reachable. Parent devices skip study goals and local
+Shield permissions and finish at phone pairing; devices used for studying keep
+the subject and daily-goal steps. Permissions are optional and show their
+current system status before asking.
+
 Requires **Flutter 3.47+** (Dart 3.13+). App blocking needs Android; everything
 else runs anywhere Flutter does.
 

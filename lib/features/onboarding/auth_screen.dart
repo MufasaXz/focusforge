@@ -68,7 +68,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _run(String id, Future<UserProfile?> Function() action) async {
     if (_busy != null) return;
-    setState(() => _busy = id);
+    setState(() {
+      _busy = id;
+      _done = null;
+    });
     try {
       await _syncSession();
       final profile = await action();
@@ -88,7 +91,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       // screen changed under them, so the beat is what connects the two.
       setState(() => _done = id);
       HapticFeedback.lightImpact();
-      await Future<void>.delayed(const Duration(milliseconds: 420));
+      if (!MediaQuery.disableAnimationsOf(context)) {
+        await Future<void>.delayed(Motion.quick);
+      }
       if (!mounted) return;
       _finish();
     } on AuthException catch (e) {
@@ -99,6 +104,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         icon: Icons.error_outline_rounded,
         danger: true,
       );
+    } catch (_) {
+      if (mounted) {
+        showAppSnack(
+          context,
+          'Could not continue. Please try again.',
+          danger: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = null);
     }
@@ -122,6 +135,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   /// account would silently discard all of it. With a session in hand, skip
   /// simply moves on.
   Future<void> _skip() async {
+    if (_busy != null) return;
     if (ref.read(userProvider).uid.isNotEmpty) {
       _finish();
       return;
@@ -130,23 +144,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _email() async {
-    // Same staleness guard as [_run]: the sheet talks to the service
-    // directly, so the service has to be current before it opens.
-    await _syncSession();
-    if (!mounted) return;
-    final profile = await showModalBottomSheet<UserProfile>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (_) => EmailAuthSheet(service: _auth),
-    );
-    if (profile == null || !mounted) return;
-    await ref.read(userProvider.notifier).save(profile);
-    if (!mounted) return;
-    HapticFeedback.lightImpact();
-    await Future<void>.delayed(const Duration(milliseconds: 320));
-    if (mounted) _finish();
+    if (_busy != null) return;
+    setState(() => _busy = 'email');
+    try {
+      await _syncSession();
+      if (!mounted) return;
+      final profile = await showModalBottomSheet<UserProfile>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (_) => EmailAuthSheet(service: _auth),
+      );
+      if (profile == null || !mounted) return;
+      await ref.read(userProvider.notifier).save(profile);
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      _finish();
+    } catch (_) {
+      if (mounted) {
+        showAppSnack(
+          context,
+          'Could not open sign-in. Please try again.',
+          danger: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
   }
 
   @override
@@ -174,99 +199,112 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ? MediaQuery.paddingOf(context).bottom
         : 0.0;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(Gap.xl, 0, Gap.xl, Gap.lg + bottomInset),
-      child: Column(
-        children: [
-          const Spacer(flex: 2),
-          Stagger(
-            index: 0,
-            child: const AppMark(size: 64, semanticLabel: 'FocusForge'),
-          ),
-          const SizedBox(height: Gap.xl),
-          Stagger(
-            index: 1,
-            child: Text(
-              'Welcome to FocusForge',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final breathingRoom = (constraints.maxHeight * 0.1).clamp(24.0, 72.0);
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              Gap.xl,
+              breathingRoom,
+              Gap.xl,
+              Gap.xl + bottomInset,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Stagger(
+                  index: 0,
+                  child: const Center(
+                    child: AppMark(size: 64, semanticLabel: 'FocusForge'),
+                  ),
+                ),
+                const SizedBox(height: Gap.xl),
+                Stagger(
+                  index: 1,
+                  child: Text(
+                    'Welcome to FocusForge',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
+                ),
+                const SizedBox(height: Gap.sm),
+                Stagger(
+                  index: 2,
+                  child: Text(
+                    'A quieter space to study, one block at a time.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                SizedBox(height: breathingRoom),
+                Stagger(
+                  index: 3,
+                  child: ProviderRow(
+                    label: 'Continue with Google',
+                    leading: const GoogleMark(),
+                    busy: _busy == 'google',
+                    done: _done == 'google',
+                    // A disabled row that still explains itself beats a row that
+                    // vanishes on some builds and not others.
+                    onTap: googleLive && _busy == null
+                        ? () => _run(
+                            'google',
+                            () => _auth.linkAccount(provider: 'google'),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: Gap.md),
+                Stagger(
+                  index: 4,
+                  child: ProviderRow(
+                    label: 'Continue with Email',
+                    leading: const MailMark(),
+                    busy: _busy == 'email',
+                    onTap: _busy == null ? _email : null,
+                  ),
+                ),
+                const SizedBox(height: Gap.lg),
+                Stagger(
+                  index: 5,
+                  child: GhostAction(
+                    label: 'Skip for now',
+                    icon: Icons.arrow_forward_rounded,
+                    onTap: _busy == null ? _skip : null,
+                  ),
+                ),
+                const SizedBox(height: Gap.sm),
+                Stagger(
+                  index: 6,
+                  child: Text(
+                    googleLive
+                        ? 'No account is required. Skipping keeps everything on '
+                              'this device.'
+                        : 'Google sign-in is not available in this build. Use email '
+                              'or skip — you can link a real account later without '
+                              'losing anything.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(height: Gap.md),
+                Stagger(
+                  index: 7,
+                  child: Text(
+                    'Your study log stays on this device.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: Gap.sm),
-          Stagger(
-            index: 2,
-            child: Text(
-              'Your focus starts here',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          const Spacer(flex: 3),
-          Stagger(
-            index: 3,
-            child: ProviderRow(
-              label: 'Continue with Google',
-              leading: const GoogleMark(),
-              busy: _busy == 'google',
-              done: _done == 'google',
-              // A disabled row that still explains itself beats a row that
-              // vanishes on some builds and not others.
-              onTap: googleLive
-                  ? () => _run(
-                      'google',
-                      () => _auth.linkAccount(provider: 'google'),
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: Gap.md),
-          Stagger(
-            index: 4,
-            child: ProviderRow(
-              label: 'Continue with Email',
-              leading: const MailMark(),
-              busy: _busy == 'email',
-              onTap: _email,
-            ),
-          ),
-          const SizedBox(height: Gap.lg),
-          Stagger(
-            index: 5,
-            child: GhostAction(
-              label: 'Skip for now',
-              icon: Icons.arrow_forward_rounded,
-              onTap: _busy == null ? _skip : null,
-            ),
-          ),
-          const SizedBox(height: Gap.sm),
-          Stagger(
-            index: 6,
-            child: Text(
-              googleLive
-                  ? 'No account is required. Skipping keeps everything on '
-                        'this device.'
-                  : 'Google sign-in is not available in this build. Use email '
-                        'or skip — you can link a real account later without '
-                        'losing anything.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          const SizedBox(height: Gap.md),
-          Stagger(
-            index: 7,
-            child: Text(
-              'By continuing you agree to our Terms & Privacy Policy.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          const Spacer(flex: 1),
-        ],
-      ),
+        );
+      },
     );
   }
 }

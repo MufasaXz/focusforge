@@ -84,7 +84,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
     if (profile.timezone != _timezone) {
       await notifier.save(profile.copyWith(timezone: _timezone));
     }
-    widget.onNext();
+    if (mounted) widget.onNext();
   }
 
   @override
@@ -110,7 +110,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
             hint: 'Your name',
             icon: Icons.badge_outlined,
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _commit(),
+            onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           ),
         ),
         const SizedBox(height: Gap.sm),

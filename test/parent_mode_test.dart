@@ -1,6 +1,6 @@
 // The device question and the parent's navigation bar.
 //
-// WHAT INVARIANT: "Whose device is this?" is a parent's question. A student's
+// WHAT INVARIANT: "How will you use this phone?" is a parent's question. A student's
 // setup goes from the persona straight to the profile, forward and back, and
 // never inherits a parent answer from an earlier pass through the flow. And a
 // parent's app is three destinations — Home, Shield, You — while everyone
@@ -28,6 +28,10 @@ import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/onboarding/onboarding_flow.dart';
+import 'package:focusforge/features/onboarding/complete_step.dart';
+import 'package:focusforge/features/onboarding/subjects_step.dart';
+import 'package:focusforge/features/onboarding/permissions_step.dart';
+import 'package:focusforge/features/onboarding/profile_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +55,7 @@ void main() {
     return container;
   }
 
-  /// The splash holds for 1.6 s and loops a ticker, so nothing here can use
+  /// The splash holds for 1.1 s and loops a ticker, so nothing here can use
   /// `pumpAndSettle` while it is on screen — the frames never stop.
   Future<void> pastSplash(WidgetTester tester) async {
     await tester.pump(const Duration(seconds: 2));
@@ -60,6 +64,7 @@ void main() {
   }
 
   Future<void> tapAndSettle(WidgetTester tester, String label) async {
+    await tester.ensureVisible(find.text(label));
     await tester.tap(find.text(label));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
@@ -96,7 +101,7 @@ void main() {
     await tapAndSettle(tester, 'Student');
     await tapAndSettle(tester, 'Continue');
 
-    expect(find.text('Whose device is this?'), findsNothing);
+    expect(find.text('How will you use this phone?'), findsNothing);
     expect(find.text('Set up your profile'), findsOneWidget);
     expect(container.read(userProvider).isGuardian, isFalse);
 
@@ -105,7 +110,7 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('Whose device is this?'), findsNothing);
+    expect(find.text('How will you use this phone?'), findsNothing);
     expect(find.text('I am a...'), findsOneWidget);
     await drain(tester);
   });
@@ -127,12 +132,93 @@ void main() {
     await tapAndSettle(tester, 'Continue');
 
     // The page is the question; the answer is what Continue on it records.
-    expect(find.text('Whose device is this?'), findsOneWidget);
+    expect(find.text('How will you use this phone?'), findsOneWidget);
     expect(container.read(userProvider).isGuardian, isFalse);
 
     await tapAndSettle(tester, 'Continue');
     expect(container.read(userProvider).isGuardian, isTrue);
     expect(find.text('Set up your profile'), findsOneWidget);
+    await drain(tester);
+  });
+
+  testWidgets('a profile draft survives going back to the persona', (
+    tester,
+  ) async {
+    final container = freshContainer();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const OnboardingFlow(),
+        ),
+      ),
+    );
+    await reachPersona(tester);
+    await tapAndSettle(tester, 'Continue');
+    final name = find.descendant(
+      of: find.byType(ProfileStep),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(name, 'Aarav');
+    await tester.tap(find.byTooltip('Back'));
+    await drain(tester);
+    await tapAndSettle(tester, 'Continue');
+    expect(tester.widget<TextField>(name).controller!.text, 'Aarav');
+    await drain(tester);
+  });
+
+  testWidgets('guardian setup goes from profile to pairing review', (
+    tester,
+  ) async {
+    final container = freshContainer();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const OnboardingFlow(),
+        ),
+      ),
+    );
+    await reachPersona(tester);
+    await tapAndSettle(tester, 'Parent');
+    await tapAndSettle(tester, 'Continue');
+    await tapAndSettle(tester, 'Continue');
+    expect(container.read(userProvider).isGuardian, isTrue);
+    await tapAndSettle(tester, 'Continue');
+    expect(find.byType(CompleteStep), findsOneWidget);
+    expect(find.byType(SubjectsStep), findsNothing);
+    expect(find.byType(PermissionsStep), findsNothing);
+    expect(find.text('Link a child’s phone'), findsOneWidget);
+    expect(find.text('5 of 5'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await drain(tester);
+    expect(find.text('Set up your profile'), findsOneWidget);
+    await drain(tester);
+  });
+
+  testWidgets('a parent studying here keeps the study setup', (tester) async {
+    final container = freshContainer();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const OnboardingFlow(),
+        ),
+      ),
+    );
+    await reachPersona(tester);
+    await tapAndSettle(tester, 'Parent');
+    await tapAndSettle(tester, 'Continue');
+    await tapAndSettle(tester, 'Focus on this phone');
+    await tapAndSettle(tester, 'Continue');
+    expect(container.read(userProvider).isGuardian, isFalse);
+    await tapAndSettle(tester, 'Continue');
+    expect(find.byType(SubjectsStep), findsOneWidget);
+    expect(find.text('5 of 8'), findsOneWidget);
     await drain(tester);
   });
 
@@ -167,7 +253,7 @@ void main() {
     await tapAndSettle(tester, 'Student');
     await tapAndSettle(tester, 'Continue');
 
-    expect(find.text('Whose device is this?'), findsNothing);
+    expect(find.text('How will you use this phone?'), findsNothing);
     expect(container.read(userProvider).isGuardian, isFalse);
     await drain(tester);
   });

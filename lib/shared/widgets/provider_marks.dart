@@ -34,11 +34,8 @@ class MailMark extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Icon(
-    Icons.mail_rounded,
-    size: size,
-    color: const Color(0xFFEA4335),
-  );
+  Widget build(BuildContext context) =>
+      Icon(Icons.mail_rounded, size: size, color: const Color(0xFFEA4335));
 }
 
 /// A provider mark in its rounded square: the box every account screen draws
@@ -171,6 +168,7 @@ class _ProviderRowState extends State<ProviderRow> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
     return Listener(
       // A raw pointer listener rather than a gesture recogniser: it does not
@@ -179,8 +177,8 @@ class _ProviderRowState extends State<ProviderRow> {
       onPointerUp: _live ? (_) => setState(() => _pressed = false) : null,
       onPointerCancel: _live ? (_) => setState(() => _pressed = false) : null,
       child: AnimatedScale(
-        scale: _pressed ? 0.975 : 1,
-        duration: const Duration(milliseconds: 110),
+        scale: _pressed && !reduce ? 0.975 : 1,
+        duration: reduce ? Duration.zero : const Duration(milliseconds: 110),
         curve: Curves.easeOut,
         child: Card.outlined(
           clipBehavior: Clip.antiAlias,
@@ -196,7 +194,7 @@ class _ProviderRowState extends State<ProviderRow> {
             // rather than hidden, and the disabled palette says so.
             enabled: _live,
             leading: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
+              duration: reduce ? Duration.zero : Motion.base,
               child: widget.done
                   ? ProviderBadge(
                       key: const ValueKey('done'),

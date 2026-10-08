@@ -46,7 +46,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
   /// another screen does not silently discard the number.
   Future<void> _commit() async {
     await ref.read(dailyGoalProvider.notifier).set(_minutes.round());
-    widget.onNext();
+    if (mounted) widget.onNext();
   }
 
   @override
@@ -63,16 +63,22 @@ class _GoalStepState extends ConsumerState<GoalStep> {
       children: [
         Stagger(
           index: 2,
-          child: Center(
-            child: ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (rect) =>
-                  LinearGradient(colors: [cs.primary, cs.secondary])
-                      .createShader(rect),
-              child: Text(
-                formatMinutes(_minutes.round()),
-                style: Theme.of(context).textTheme.displayLarge
-                    ?.copyWith(fontSize: 68, height: 1.05, letterSpacing: -2),
+          child: Semantics(
+            label: 'Daily goal',
+            value: formatMinutes(_minutes.round()),
+            excludeSemantics: true,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  formatMinutes(_minutes.round()),
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontSize: 64,
+                    height: 1.1,
+                    letterSpacing: -1.5,
+                    color: cs.primary,
+                  ),
+                ),
               ),
             ),
           ),
@@ -96,6 +102,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
             max: _max,
             divisions: ((_max - _min) / 15).round(),
             label: formatMinutes(_minutes.round()),
+            semanticFormatterCallback: (value) => formatMinutes(value.round()),
             onChanged: (v) => setState(() => _minutes = v),
             onChangeEnd: (v) =>
                 ref.read(dailyGoalProvider.notifier).set(v.round()),
@@ -121,46 +128,52 @@ class _GoalStepState extends ConsumerState<GoalStep> {
         ),
         Stagger(
           index: 7,
-          child: Row(
-            children: [
-              for (var i = 0; i < suggestions.length; i++) ...[
-                if (i > 0) const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: FilterChip(
-                    selected: _minutes.round() == suggestions[i],
-                    onSelected: (_) =>
-                        setState(() => _minutes = suggestions[i].toDouble()),
-                    // A two-line label; a checkmark would crowd it out.
-                    showCheckmark: false,
-                    padding: const EdgeInsets.symmetric(vertical: Gap.sm),
-                    // The chip is stretched by its [Expanded] parent; a chip
-                    // lays its label out from the start edge, so the label
-                    // itself has to claim the full width for the two lines to
-                    // stay centred.
-                    label: SizedBox(
-                      width: double.infinity,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_label(i), textAlign: TextAlign.center),
-                          const SizedBox(height: 2),
-                          Text(
-                            formatMinutes(suggestions[i]),
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: _minutes.round() == suggestions[i]
-                                      ? cs.onSecondaryContainer
-                                      : cs.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked =
+                  constraints.maxWidth < 340 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 20;
+              final chips = [
+                for (var i = 0; i < suggestions.length; i++)
+                  SizedBox(
+                    width: stacked
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - Gap.sm * 2) / 3,
+                    child: FilterChip(
+                      selected: _minutes.round() == suggestions[i],
+                      onSelected: (_) {
+                        setState(() => _minutes = suggestions[i].toDouble());
+                        ref
+                            .read(dailyGoalProvider.notifier)
+                            .set(suggestions[i]);
+                      },
+                      showCheckmark: false,
+                      padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+                      label: SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_label(i), textAlign: TextAlign.center),
+                            const SizedBox(height: Gap.xs),
+                            Text(
+                              formatMinutes(suggestions[i]),
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: _minutes.round() == suggestions[i]
+                                        ? cs.onSecondaryContainer
+                                        : cs.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ],
+              ];
+              return Wrap(spacing: Gap.sm, runSpacing: Gap.sm, children: chips);
+            },
           ),
         ),
         const SizedBox(height: Gap.xl),
