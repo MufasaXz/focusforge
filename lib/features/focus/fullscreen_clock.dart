@@ -14,12 +14,17 @@ import 'widgets/clock_faces.dart';
 /// A pushed route rather than an overlay: the system back gesture has to close
 /// it, and a route is what the navigator can pop.
 Future<void> showFullscreenClock(BuildContext context) {
+  final reduce = MediaQuery.disableAnimationsOf(context);
   return Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
       opaque: true,
       barrierColor: Colors.black,
-      transitionDuration: const Duration(milliseconds: 320),
-      reverseTransitionDuration: const Duration(milliseconds: 240),
+      transitionDuration: reduce
+          ? Duration.zero
+          : const Duration(milliseconds: 320),
+      reverseTransitionDuration: reduce
+          ? Duration.zero
+          : const Duration(milliseconds: 240),
       pageBuilder: (_, _, _) => const FullscreenClock(),
       transitionsBuilder: (context, animation, _, child) {
         final t = Curves.easeOutCubic.transform(animation.value);
@@ -210,7 +215,7 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                   const SizedBox(height: Gap.sm),
                   Text(
                     timer.running
-                        ? 'Focusing — ${formatClock(timer.remaining)} left'
+                        ? '${timer.phase.isBreak ? 'Resting' : 'Focusing'} — ${formatClock(timer.remaining)} left'
                         : 'Paused at ${formatClock(timer.remaining)}',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),

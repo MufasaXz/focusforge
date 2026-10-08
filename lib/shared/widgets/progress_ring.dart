@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
+
 /// Circular progress ring: a tonal track, a sweep-gradient arc and a leading
 /// cap dot.
 ///
@@ -64,6 +66,16 @@ class ProgressRing extends StatefulWidget {
 }
 
 class _ProgressRingState extends State<ProgressRing> {
+  Duration _duration = Motion.deliberate;
+
+  @override
+  void didUpdateWidget(covariant ProgressRing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Live timer updates arrive every 250ms. A long entrance on every tick
+    // would leave the arc chasing a value that has already changed again.
+    if (oldWidget.value != widget.value) _duration = Motion.base;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -75,7 +87,7 @@ class _ProgressRingState extends State<ProgressRing> {
       label: widget.semanticLabel ?? '${(value * 100).round()} percent',
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: value),
-        duration: reduce ? Duration.zero : const Duration(milliseconds: 1500),
+        duration: reduce ? Duration.zero : _duration,
         curve: Curves.easeOutCubic,
         builder: (context, animated, _) => SizedBox(
           width: widget.size,

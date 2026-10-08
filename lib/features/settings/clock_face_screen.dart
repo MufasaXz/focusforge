@@ -95,7 +95,9 @@ class _FaceCard extends StatelessWidget {
         onTap: onTap,
         scale: 0.98,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : Motion.base,
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(Gap.lg),
           decoration: BoxDecoration(
@@ -152,7 +154,9 @@ class _FaceCard extends StatelessWidget {
                   // and a switch beside each of five rows says four of them are
                   // off rather than that one of them is on.
                   AnimatedScale(
-                    duration: const Duration(milliseconds: 220),
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : Motion.base,
                     curve: Curves.easeOutBack,
                     scale: selected ? 1 : 0,
                     child: Icon(

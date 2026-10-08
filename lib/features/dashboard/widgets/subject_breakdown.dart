@@ -58,6 +58,15 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
   int? _selected;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+      _pop.value = _selected == null ? 0 : 1;
+    }
+  }
+
+  @override
   void dispose() {
     _c.dispose();
     _pop.dispose();
@@ -65,6 +74,11 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
   }
 
   void _select(int? index) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      setState(() => _selected = index == _selected ? null : index);
+      _pop.value = _selected == null ? 0 : 1;
+      return;
+    }
     if (index == _selected) {
       setState(() => _selected = null);
       _pop.reverse();
@@ -86,9 +100,8 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
           Expanded(
             child: Text(
               'No subjects yet — add one from the Focus tab.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ],
@@ -399,16 +412,16 @@ class _Legend extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(Radii.pill),
         child: AnimatedContainer(
-          duration: Motion.quick,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : Motion.quick,
           curve: Motion.standard,
           padding: const EdgeInsets.symmetric(
             horizontal: Gap.sm,
             vertical: Gap.xs,
           ),
           decoration: BoxDecoration(
-            color: selected
-                ? cs.surfaceContainerHighest
-                : Colors.transparent,
+            color: selected ? cs.surfaceContainerHighest : Colors.transparent,
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
           child: Row(

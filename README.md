@@ -76,6 +76,9 @@ running.
   a block into your log when a session finished while the app was not alive to
   watch it.
 - **Subjects**, so every session lands against the right one.
+- **Protected session controls.** Resetting, skipping or changing plans asks
+  before discarding an unfinished focus block. Choosing the current preset
+  leaves the timer running.
 - **A six-channel ambient mixer** — rain, forest, café, waves, fireplace, brown
   noise — real loops you can layer, and they keep playing under the session.
 
@@ -92,6 +95,7 @@ running.
   middle of the top edge and walks the boundary as the segment runs. A focus
   closes the loop on the last second; a break opens with the boundary whole and
   gives it back.
+- **A visible Full screen button** opens the same view with a tap or keyboard.
 - **True black reaches it too**, and the wash of phase colour is dropped there,
   because this is the one screen left on for an hour.
 
@@ -107,6 +111,13 @@ the heatmap can never tell different stories.
 - A weekly bar chart, and a five-level focus heatmap
 - Per-app screen time with a shield switch on each row
 - A subject breakdown, and where today actually went
+- Start or resume your chosen plan from Home, with its current subject and
+  remaining time. Opening a running timer keeps its deadline.
+- Tap a day for its subject totals and a chronological session log, including
+  start times and focused minutes. The week chart also works with a keyboard
+  and screen reader.
+
+Pull to refresh updates device usage without hiding the saved study log.
 
 </details>
 
@@ -141,6 +152,13 @@ by default and can be pinned to light or dark; **true black** ships on, so a
 dark system gets the pure `#000000` surface family without anyone opening a
 setting. It leaves every accent alone — the whole app, the full-screen clock
 included — and can be switched off.
+
+Session entrances, the week chart and focus controls honour reduced motion;
+the ambient meters stay still. With motion enabled, entrances travel the same
+small distance regardless of the card's height and wait for their tab to open.
+The timer arc follows live updates with a short transition, and play/pause
+changes settle in place. Display and headline styles use the bundled Inter
+Display cut; supporting text uses Inter, with theme-aware contrast in both modes.
 
 </details>
 

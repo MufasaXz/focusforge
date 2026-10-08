@@ -95,7 +95,9 @@ class AmbientMixerSection extends ConsumerWidget {
                 // The instruction is the empty state: it says what the grid
                 // does, and it leaves the moment there is a mix to look at.
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.base,
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   child: playing.isEmpty
@@ -123,7 +125,9 @@ class AmbientMixerSection extends ConsumerWidget {
                 // The mix. Sized rather than switched, so adding a second
                 // track slides the card open instead of jumping.
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 260),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.base,
                   curve: Curves.easeOutCubic,
                   alignment: Alignment.topCenter,
                   child: playing.isEmpty
@@ -206,7 +210,8 @@ class _AmbientTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    final ink = active ? tile.color : t.onSurfaceVariant;
+    final color = harmonize(tile.color, t.primary);
+    final ink = active ? color : t.onSurfaceVariant;
 
     return Semantics(
       button: true,
@@ -226,21 +231,23 @@ class _AmbientTile extends StatelessWidget {
           onTap: onTap,
           scale: 0.92,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 240),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : Motion.base,
             curve: Curves.easeOutCubic,
             width: active ? 74 : 52,
-            height: 40,
+            height: 48,
             decoration: ShapeDecoration(
               shape: StadiumBorder(
                 side: BorderSide(
                   color: active
-                      ? tile.color.withValues(alpha: 0.72)
+                      ? color.withValues(alpha: 0.72)
                       : t.outlineVariant,
                   width: active ? 1.3 : 1,
                 ),
               ),
               color: active
-                  ? tile.color.withValues(alpha: 0.20)
+                  ? color.withValues(alpha: 0.20)
                   : t.surfaceContainer,
             ),
             child: Center(
@@ -250,7 +257,7 @@ class _AmbientTile extends StatelessWidget {
                       children: [
                         Icon(tile.icon, size: 16, color: ink),
                         const SizedBox(width: 6),
-                        _Equalizer(color: tile.color),
+                        _Equalizer(color: color),
                       ],
                     )
                   : Icon(tile.icon, size: 18, color: ink),
@@ -281,7 +288,19 @@ class _EqualizerState extends State<_Equalizer>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat();
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled) {
+      _pulse.stop();
+      _pulse.value = 0;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat();
+    }
+  }
 
   /// Each bar's phase offset, so the three do not move as one block.
   static const _offsets = [0.0, 0.45, 0.2];

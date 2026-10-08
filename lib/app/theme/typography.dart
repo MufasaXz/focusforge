@@ -34,12 +34,37 @@ class AppType {
         color: cs.onSurface,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
+      displaySmall: TextStyle(
+        fontFamily: _display,
+        fontSize: 36,
+        height: 44 / 36,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.6,
+        color: cs.onSurface,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+      headlineLarge: TextStyle(
+        fontFamily: _display,
+        fontSize: 32,
+        height: 40 / 32,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.5,
+        color: cs.onSurface,
+      ),
       headlineMedium: TextStyle(
         fontFamily: _display,
         fontSize: 28,
         height: 36 / 28,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.4,
+        color: cs.onSurface,
+      ),
+      headlineSmall: TextStyle(
+        fontFamily: _display,
+        fontSize: 24,
+        height: 32 / 24,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.3,
         color: cs.onSurface,
       ),
       titleLarge: TextStyle(
@@ -107,7 +132,7 @@ class AppType {
         height: 16 / 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.4,
-        color: cs.outline,
+        color: cs.onSurfaceVariant,
       ),
     );
   }

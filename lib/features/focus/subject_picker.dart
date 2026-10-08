@@ -56,7 +56,7 @@ class SubjectPicker extends ConsumerWidget {
                   fontSize: 11.5,
                   color: selected == null
                       ? cs.onSurfaceVariant
-                      : selected.color,
+                      : harmonize(selected.color, cs.primary),
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -73,10 +73,12 @@ class SubjectPicker extends ConsumerWidget {
         EdgeFade(
           trailing: 28,
           child: SizedBox(
-            // Deliberately short. The chips are a tag row under the timer, not
-            // a second control competing with it: every dp they take is a dp
-            // the ring loses, and the ring is the thing being looked at.
-            height: 32,
+            // The pill stays 32dp; transparent padding makes its hit target
+            // 48dp without increasing the visual weight of the tag row.
+            height: (MediaQuery.textScalerOf(context).scale(11.5) + 24).clamp(
+              48.0,
+              double.infinity,
+            ),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               // One chip per subject, then the add chip.
@@ -147,57 +149,66 @@ class _SubjectChip extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.94,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.pill),
-            color: selected
-                ? subject.color.withValues(alpha: 0.20)
-                : cs.surfaceContainer,
-            border: Border.all(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+          child: AnimatedContainer(
+            constraints: const BoxConstraints(minWidth: 48),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : Motion.base,
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Radii.pill),
               color: selected
-                  ? subject.color.withValues(alpha: 0.75)
-                  : cs.outlineVariant,
-              width: selected ? 1.3 : 1,
+                  ? harmonize(subject.color, cs.primary).withValues(alpha: 0.20)
+                  : cs.surfaceContainer,
+              border: Border.all(
+                color: selected
+                    ? harmonize(
+                        subject.color,
+                        cs.primary,
+                      ).withValues(alpha: 0.75)
+                    : cs.outlineVariant,
+                width: selected ? 1.3 : 1,
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // The dot is the subject's identity in every other view — the
-              // breakdown, the day sheet — so it leads here too.
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: subject.color,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                subject.name,
-                style: tt.labelSmall?.copyWith(
-                  fontSize: 11.5,
-                  color: selected ? cs.onSurface : cs.onSurfaceVariant,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-              if (subject.minutesToday > 0) ...[
-                const SizedBox(width: 6),
-                Text(
-                  '${subject.minutesToday}m',
-                  style: tt.labelSmall?.copyWith(
-                    fontSize: 10,
-                    color: selected
-                        ? subject.color
-                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The dot is the subject's identity in every other view — the
+                // breakdown, the day sheet — so it leads here too.
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: harmonize(subject.color, cs.primary),
                   ),
                 ),
+                const SizedBox(width: 6),
+                Text(
+                  subject.name,
+                  style: tt.labelSmall?.copyWith(
+                    fontSize: 11.5,
+                    color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+                if (subject.minutesToday > 0) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '${subject.minutesToday}m',
+                    style: tt.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: selected
+                          ? harmonize(subject.color, cs.primary)
+                          : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -224,25 +235,28 @@ class _AddChip extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.94,
-        child: DottedBorderBox(
-          radius: Radii.pill,
-          color: cs.outline,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_rounded, size: 14, color: cs.primary),
-                const SizedBox(width: Gap.xs + 1),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: cs.primary,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+          child: DottedBorderBox(
+            radius: Radii.pill,
+            color: cs.outline,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 14, color: cs.primary),
+                  const SizedBox(width: Gap.xs + 1),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: cs.primary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -324,7 +338,9 @@ class _ClearTag extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.9,
-        child: Padding(
+        child: Container(
+          alignment: Alignment.center,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           padding: const EdgeInsets.symmetric(
             horizontal: Gap.sm,
             vertical: Gap.xs,

@@ -42,6 +42,7 @@ class _PressableState extends State<Pressable> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final enabled = widget.onTap != null || widget.onLongPress != null;
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
     Color? wash;
     if (enabled && _focused) {
@@ -52,7 +53,9 @@ class _PressableState extends State<Pressable> {
           : Colors.black.withValues(alpha: 0.05);
     }
 
-    final scale = _down
+    final scale = reduce
+        ? 1.0
+        : _down
         ? widget.scale
         : _focused
         ? 1.02
@@ -111,7 +114,9 @@ class _PressableState extends State<Pressable> {
             scale: scale,
             // Fast in, springy out — the asymmetry is what makes it feel like a
             // physical control rather than a CSS transition.
-            duration: Duration(milliseconds: _down ? 90 : 340),
+            duration: reduce
+                ? Duration.zero
+                : Duration(milliseconds: _down ? 90 : 340),
             curve: _down ? Curves.easeOutCubic : Curves.easeOutBack,
             child: child,
           ),

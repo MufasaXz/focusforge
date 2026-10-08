@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
 import '../../../core/utils/format.dart';
+import '../../../shared/widgets/pressable.dart';
 
 /// The study tracker: one bar per day, over a week or a month.
 ///
@@ -49,13 +50,23 @@ class _StudyTrackerState extends State<StudyTracker>
   int? _selected;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _c.value = 1;
+  }
+
+  @override
   void didUpdateWidget(covariant StudyTracker oldWidget) {
     super.didUpdateWidget(oldWidget);
     // A different window is a different chart, so it draws itself again and
     // the highlight from the old one would point at a day that has moved.
     if (!identical(oldWidget.days, widget.days)) {
       _selected = null;
-      _c.forward(from: 0);
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _c.value = 1;
+      } else {
+        _c.forward(from: 0);
+      }
     }
   }
 
@@ -84,50 +95,53 @@ class _StudyTrackerState extends State<StudyTracker>
     return Semantics(
       container: true,
       label: _summary(days),
-      child: ExcludeSemantics(
-        child: SizedBox(
-          height: widget.height,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (var i = 0; i < days.length; i++)
-                Expanded(
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _select(i),
-                      child: _Bar(
-                        day: days[i],
-                        maxHours: maxHours,
-                        highlighted: _selected == i || days[i].isToday,
-                        animation: CurvedAnimation(
-                          parent: _c,
-                          // Staggered left-to-right so the chart grows rather
-                          // than popping in all at once.
-                          curve: Interval(
-                            (i / days.length) * 0.55,
-                            (i / days.length) * 0.55 + 0.45,
-                            curve: Motion.decelerate,
-                          ),
+      child: SizedBox(
+        height: widget.height,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < days.length; i++)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: _selected == i,
+                  label:
+                      '${days[i].date == null ? days[i].label : formatDate(days[i].date!)}. '
+                      '${spokenHours(days[i].hours)} focused. View day summary',
+                  excludeSemantics: true,
+                  onTap: () => _select(i),
+                  child: Pressable(
+                    scale: 1,
+                    onTap: () => _select(i),
+                    child: _Bar(
+                      day: days[i],
+                      maxHours: maxHours,
+                      highlighted: _selected == i || days[i].isToday,
+                      animation: CurvedAnimation(
+                        parent: _c,
+                        // Staggered left-to-right so the chart grows rather
+                        // than popping in all at once.
+                        curve: Interval(
+                          (i / days.length) * 0.55,
+                          (i / days.length) * 0.55 + 0.45,
+                          curve: Motion.decelerate,
                         ),
-                        accent: cs.primary,
-                        muted: cs.onSurface,
-                        label: Theme.of(context).textTheme.labelSmall!,
-                        dense: days.length > 10,
                       ),
+                      accent: cs.primary,
+                      muted: cs.onSurface,
+                      label: Theme.of(context).textTheme.labelSmall!,
+                      dense: days.length > 10,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  /// The whole chart is one spoken sentence — a screen reader user hears the
-  /// window's numbers rather than a run of unlabelled bars.
+  /// A window overview before the individually operable day summaries.
   String _summary(List<DayBar> days) {
     final parts = [
       for (final day in days)
@@ -237,7 +251,9 @@ class _Bar extends StatelessWidget {
                       FractionallySizedBox(
                         heightFactor: v.clamp(0.05, 1.0),
                         child: AnimatedContainer(
-                          duration: Motion.base,
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : Motion.base,
                           curve: Motion.emphasized,
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(
@@ -273,7 +289,9 @@ class _Bar extends StatelessWidget {
           // whole row's baseline with it.
           UnconstrainedBox(
             child: AnimatedContainer(
-              duration: Motion.base,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : Motion.base,
               curve: Motion.emphasized,
               padding: EdgeInsets.symmetric(
                 horizontal: dense ? 4 : 7,
@@ -284,7 +302,9 @@ class _Bar extends StatelessWidget {
                 color: highlighted ? accent : Colors.transparent,
               ),
               child: AnimatedDefaultTextStyle(
-                duration: Motion.base,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : Motion.base,
                 curve: Motion.emphasized,
                 style: label.copyWith(
                   color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,

@@ -88,6 +88,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   void _go(int index) {
     if (index < 0 || index >= _stepCount || index == _index) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.jumpToPage(index);
+      return;
+    }
     _controller.animateToPage(
       index,
       duration: const Duration(milliseconds: 420),
@@ -144,11 +148,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
               child: Column(
                 children: [
                   if (_index > 0)
-                    _FlowHeader(
-                      index: shown,
-                      total: total,
-                      onBack: _back,
-                    ),
+                    _FlowHeader(index: shown, total: total, onBack: _back),
                   Expanded(
                     child: PageView(
                       controller: _controller,

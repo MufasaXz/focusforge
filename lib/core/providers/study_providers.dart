@@ -297,16 +297,26 @@ class DaySummary {
   bool get isEmpty => slices.isEmpty;
 }
 
-/// The subjects studied on one day, and for how long.
+/// Completed blocks on a calendar day, in the order they were started.
 ///
 /// Keyed on the date rather than on an index into the chart, so the sheet that
 /// shows it is describing a day rather than a bar — the bars are a window onto
 /// the log and the window can change under it.
+final daySessionsProvider = Provider.family<List<FocusSession>, DateTime>((
+  ref,
+  day,
+) {
+  final sessions =
+      ref
+          .watch(sessionsProvider)
+          .where((s) => s.completed && _sameDay(s.startedAt, day))
+          .toList()
+        ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
+  return List.unmodifiable(sessions);
+});
+
 final daySummaryProvider = Provider.family<DaySummary, DateTime>((ref, day) {
-  final sessions = ref
-      .watch(sessionsProvider)
-      .where((s) => s.completed && _sameDay(s.startedAt, day))
-      .toList(growable: false);
+  final sessions = ref.watch(daySessionsProvider(day));
 
   if (sessions.isEmpty) return DaySummary.empty(_dateOnly(day));
 

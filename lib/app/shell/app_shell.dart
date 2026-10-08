@@ -13,6 +13,7 @@ import '../../core/providers/study_providers.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../features/shield/breath_gate.dart';
 import '../router.dart';
+import '../theme/app_theme.dart';
 
 /// Root shell: the four tab branches and the frosted navigation bar.
 ///
@@ -53,7 +54,7 @@ class _AppShellState extends ConsumerState<AppShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _fade = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 380),
+    duration: Motion.base,
     value: 1,
   );
 
@@ -113,18 +114,21 @@ class _AppShellState extends ConsumerState<AppShell>
     final branches = _visibleBranches;
     if (displayIndex < 0 || displayIndex >= branches.length) return;
     final branch = branches[displayIndex];
-    if (branch == widget.navigationShell.currentIndex) return;
+    if (branch == widget.navigationShell.currentIndex) {
+      // Re-tapping the active destination returns to its root.
+      widget.navigationShell.goBranch(branch, initialLocation: true);
+      return;
+    }
     // A tab change is the one navigation this app has, and it is silent
     // otherwise: the bar is at the far edge of the screen from where the
     // content lands. The lightest haptic is enough to say it registered.
     unawaited(HapticFeedback.selectionClick());
-    // `initialLocation: true` when re-tapping a tab pops it back to its root,
-    // which is the behaviour every bottom-nav app is expected to have.
-    widget.navigationShell.goBranch(
-      branch,
-      initialLocation: branch == widget.navigationShell.currentIndex,
-    );
-    _fade.forward(from: 0);
+    widget.navigationShell.goBranch(branch);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _fade.value = 1;
+    } else {
+      _fade.forward(from: 0);
+    }
   }
 
   /// The branches this device's bar offers, in bar order.
@@ -144,6 +148,7 @@ class _AppShellState extends ConsumerState<AppShell>
     final isDark = theme.brightness == Brightness.dark;
     final shielded = ref.watch(activeShieldCountProvider) > 0;
     final wide = MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
     // Keyed by branch index, so the bar's order and the router's branches stay
     // one list rather than two that have to agree.
@@ -193,11 +198,11 @@ class _AppShellState extends ConsumerState<AppShell>
     final body = AnimatedBuilder(
       animation: _fade,
       builder: (context, child) {
-        final t = Curves.easeOutCubic.transform(_fade.value);
+        final t = reduce ? 1.0 : Motion.decelerate.transform(_fade.value);
         return Opacity(
           opacity: 0.001 + 0.999 * t,
           child: Transform.translate(
-            offset: Offset(0, 14 * (1 - t)),
+            offset: Offset(0, 6 * (1 - t)),
             child: child,
           ),
         );

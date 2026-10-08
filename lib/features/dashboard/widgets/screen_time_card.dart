@@ -54,10 +54,10 @@ class ScreenTimeCard extends ConsumerWidget {
       );
     }
 
-    if (screenTime.hasError) {
+    if (access.hasError || screenTime.hasError) {
       return const _Notice(
         icon: Icons.error_outline_rounded,
-        body: 'The usage service did not answer. Reopen the app to try again.',
+        body: 'The usage service did not answer. Pull down to try again.',
       );
     }
 
@@ -96,19 +96,16 @@ class _Rows extends StatelessWidget {
           children: [
             Text(
               formatMinutes(total),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
-              ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5),
             ),
             const SizedBox(width: Gap.sm),
             Padding(
               padding: const EdgeInsets.only(bottom: 3),
               child: Text(
                 'across ${rows.length} ${rows.length == 1 ? 'app' : 'apps'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
           ],
@@ -122,9 +119,8 @@ class _Rows extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(
             'and ${rows.length - shown.length} more',
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ],
@@ -173,9 +169,8 @@ class _Row extends StatelessWidget {
                       const SizedBox(width: Gap.sm),
                       Text(
                         formatMinutes(row.minutes),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -223,9 +218,8 @@ class _Notice extends StatelessWidget {
             padding: const EdgeInsets.only(top: Gap.xs),
             child: Text(
               body,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),

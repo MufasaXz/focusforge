@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/models/study.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
 import '../../../shared/widgets/icon_badge.dart';
+import '../../../shared/widgets/sheet_chrome.dart';
 
 /// What one day actually consisted of.
 ///
@@ -14,6 +16,7 @@ import '../../../shared/widgets/icon_badge.dart';
 Future<void> showDaySummarySheet(BuildContext context, DateTime day) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (_) => DaySummarySheet(day: day),
@@ -30,47 +33,39 @@ class DaySummarySheet extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final summary = ref.watch(daySummaryProvider(day));
+    final sessions = ref.watch(daySessionsProvider(day));
+    final subjects = {for (final s in ref.watch(subjectsProvider)) s.id: s};
     final isToday = _isToday(day);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(Radii.hero),
-        ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       ),
-      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, 0),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                  ),
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isToday ? 'Today' : formatDate(day),
-                          style: tt.titleLarge,
-                        ),
-                        if (isToday) ...[
-                          const SizedBox(height: 2),
+      child: SheetSurface(
+        padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, 0),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SheetHandle(),
+                const SizedBox(height: Gap.xl),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isToday
+                                ? 'Today'
+                                : formatDate(day).split(',').first,
+                            style: tt.titleLarge,
+                          ),
+                          const SizedBox(height: Gap.xs),
                           Text(
                             formatDate(day),
                             style: tt.labelSmall?.copyWith(
@@ -78,48 +73,126 @@ class DaySummarySheet extends ConsumerWidget {
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
+                    const SizedBox(width: Gap.sm),
+                    SheetCloseButton(onTap: () => Navigator.of(context).pop()),
+                  ],
+                ),
+                const SizedBox(height: Gap.xl),
+                if (summary.isEmpty)
+                  _NothingStudied(day: day)
+                else ...[
+                  Wrap(
+                    spacing: Gap.md,
+                    runSpacing: Gap.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        formatMinutes(summary.totalMinutes),
+                        style: tt.headlineMedium?.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      Text(
+                        summary.sessions == 1
+                            ? '1 completed session'
+                            : '${summary.sessions} completed sessions',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  if (!summary.isEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatMinutes(summary.totalMinutes),
-                          style: tt.headlineSmall?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          summary.sessions == 1
-                              ? '1 session'
-                              : '${summary.sessions} sessions',
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: Gap.xl),
+                  for (final slice in summary.slices) ...[
+                    _SliceRow(slice: slice, total: summary.totalMinutes),
+                    const SizedBox(height: Gap.lg),
+                  ],
+                  const SizedBox(height: Gap.sm),
+                  const Divider(),
+                  const SizedBox(height: Gap.lg),
+                  Semantics(
+                    header: true,
+                    child: Text('Sessions', style: tt.titleSmall),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  for (var i = 0; i < sessions.length; i++)
+                    _SessionRow(
+                      session: sessions[i],
+                      subject: subjects[sessions[i].subjectId],
                     ),
+                ],
+                const SizedBox(height: Gap.lg),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Start times and durations from the log. End times are not inferred because
+/// a paused block may span much longer than its focused minutes.
+class _SessionRow extends StatelessWidget {
+  const _SessionRow({required this.session, required this.subject});
+
+  final FocusSession session;
+  final Subject? subject;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final name =
+        subject?.name ?? (session.label.isEmpty ? 'Unassigned' : session.label);
+    final time = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(session.startedAt),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+    final color = subject == null
+        ? cs.primary
+        : harmonize(subject!.color, cs.primary);
+
+    return Semantics(
+      label:
+          '$name, started at $time, ${formatMinutes(session.minutes)} focused',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.md),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline_rounded, size: 18, color: color),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: tt.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: Gap.xs),
+                  Text(
+                    time,
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ],
               ),
-              const SizedBox(height: Gap.xl),
-              if (summary.isEmpty)
-                _NothingStudied(day: day)
-              else ...[
-                for (final slice in summary.slices) ...[
-                  _SliceRow(
-                    slice: slice,
-                    total: summary.totalMinutes,
-                  ),
-                  const SizedBox(height: Gap.lg),
-                ],
-                const SizedBox(height: Gap.sm),
-              ],
-              const SizedBox(height: Gap.lg),
-            ],
-          ),
+            ),
+            const SizedBox(width: Gap.md),
+            Text(
+              formatMinutes(session.minutes),
+              style: tt.titleSmall?.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -176,14 +249,11 @@ class _SliceRow extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: Gap.sm),
-                      SizedBox(
-                        width: 34,
-                        child: Text(
-                          '${(share * 100).round()}%',
-                          textAlign: TextAlign.end,
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                      Text(
+                        '${(share * 100).round()}%',
+                        textAlign: TextAlign.end,
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                     ],

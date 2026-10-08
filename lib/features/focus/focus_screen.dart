@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +15,7 @@ import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
+import '../../shared/widgets/sheet_chrome.dart';
 import '../../shared/widgets/stagger.dart';
 import 'ambient_mixer.dart';
 import 'custom_plan_sheet.dart';
@@ -52,7 +52,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
 
   /// The ±5 controls that flank the bar: square, so the pair reads as one
   /// frame around it whatever the bar's own width ends up being.
-  static const double _nudgeSize = 44;
+  static const double _nudgeSize = 48;
 
   StreamSubscription<int>? _completions;
   Timer? _celebrationTimer;
@@ -60,6 +60,52 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   /// Bumped per celebration so the banner's switcher key is always fresh.
   int _celebrationId = 0;
   _Completion? _celebration;
+  bool _changingTimer = false;
+
+  /// A stray tap must not erase an unfinished focus block. The engine keeps
+  /// running while the question is open; if it finishes, the answer expires.
+  Future<void> _changeTimer({
+    required String title,
+    required String confirmLabel,
+    required VoidCallback apply,
+  }) async {
+    if (_changingTimer) return;
+    final before = ref.read(timerProvider);
+    if (before.phase == TimerPhase.focus &&
+        (before.running || before.segmentStartedAt != null)) {
+      _changingTimer = true;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(title),
+          content: const Text(
+            'This focus block is unfinished. Its time will not be saved '
+            'to your study log. Completed blocks stay saved.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Keep session'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      );
+      _changingTimer = false;
+      if (!mounted || confirmed != true) return;
+      final current = ref.read(timerProvider);
+      if (current.phase != before.phase ||
+          current.completedFocusSegments != before.completedFocusSegments ||
+          current.segmentStartedAt != before.segmentStartedAt ||
+          current.presetIndex != before.presetIndex) {
+        return;
+      }
+    }
+    if (mounted) apply();
+  }
 
   @override
   void initState() {
@@ -124,10 +170,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final preset = presets[timer.presetIndex];
     final streak = ref.watch(currentStreakProvider);
     final minutesToday = ref.watch(focusMinutesTodayProvider);
+    final now = DateTime.now();
     final sessionsToday = ref
-        .watch(sessionsProvider.notifier)
-        .forDay(DateTime.now())
-        .where((s) => s.completed)
+        .watch(daySessionsProvider(DateTime(now.year, now.month, now.day)))
         .length;
 
     final accent = _phaseColor(t, timer.phase);
@@ -140,6 +185,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final canShrink = planned - nudge >= TimerNotifier.minSegment;
     final canGrow = planned + nudge <= TimerNotifier.maxSegment;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final compactDock = MediaQuery.sizeOf(context).width < 360;
 
     // The dock floats above the nav-bar band; the scroll view has to clear both,
     // plus the home-indicator inset the nav bar itself grows by.
@@ -340,18 +386,17 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           ),
                         ),
                       ),
-                      // The gesture is not visible, so it is said out loud
-                      // once. It sits under the ring rather than inside it:
-                      // the ring's own content is the clock, and a caption in
-                      // there would have to shrink the figures to fit. The
-                      // space above it is deliberate — butted against the
-                      // ring's box the caption reads as part of the dial.
+                      // A visible, keyboard-accessible alternative to the
+                      // clock's double tap, kept outside its figures.
                       const SizedBox(height: Gap.md),
-                      Text(
-                        'Double-tap the clock for full screen',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 10.5,
-                          color: t.onSurfaceVariant.withValues(alpha: 0.75),
+                      TextButton.icon(
+                        onPressed: () => showFullscreenClock(context),
+                        icon: const Icon(Icons.open_in_full_rounded, size: 15),
+                        label: const Text('Full screen'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: t.onSurfaceVariant,
+                          minimumSize: const Size(48, 48),
+                          textStyle: Theme.of(context).textTheme.labelSmall,
                         ),
                       ),
                     ],
@@ -421,7 +466,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               child: IgnorePointer(
                 ignoring: _celebration == null,
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 340),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 340),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (child, animation) => FadeTransition(
@@ -477,8 +524,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       shape: const StadiumBorder(),
                       clipBehavior: Clip.antiAlias,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Gap.sm,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compactDock ? Gap.xs : Gap.sm,
                           vertical: Gap.sm,
                         ),
                         // Centred rather than spread. The bar keeps its full
@@ -496,10 +543,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               label: 'Reset',
                               semanticLabel: 'Reset timer',
                               color: t.onSurfaceVariant,
-                              onTap: () =>
-                                  ref.read(timerProvider.notifier).reset(),
+                              onTap: () => _changeTimer(
+                                title: 'Reset this focus block?',
+                                confirmLabel: 'Reset block',
+                                apply: () =>
+                                    ref.read(timerProvider.notifier).reset(),
+                              ),
                             ),
-                            const SizedBox(width: Gap.sm),
+                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
                             Semantics(
                               button: true,
                               label: timer.running
@@ -511,31 +562,58 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 onTap: toggleTimer,
                                 scale: 0.92,
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 260),
+                                  duration:
+                                      MediaQuery.disableAnimationsOf(context)
+                                      ? Duration.zero
+                                      : Motion.base,
                                   width: 52,
                                   height: 52,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: accent,
                                   ),
-                                  child: Icon(
-                                    timer.running
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                    size: 27,
-                                    color: _onPhaseColor(t, timer.phase),
+                                  child: AnimatedSwitcher(
+                                    duration:
+                                        MediaQuery.disableAnimationsOf(context)
+                                        ? Duration.zero
+                                        : Motion.quick,
+                                    switchInCurve: Motion.decelerate,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    transitionBuilder: (child, animation) =>
+                                        FadeTransition(
+                                          opacity: animation,
+                                          child: ScaleTransition(
+                                            scale: Tween<double>(
+                                              begin: 0.8,
+                                              end: 1,
+                                            ).animate(animation),
+                                            child: child,
+                                          ),
+                                        ),
+                                    child: Icon(
+                                      timer.running
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      key: ValueKey(timer.running),
+                                      size: 27,
+                                      color: _onPhaseColor(t, timer.phase),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: Gap.sm),
+                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
                             _DockAction(
                               icon: Icons.skip_next_rounded,
                               label: 'Skip',
                               semanticLabel: 'Skip to next phase',
                               color: t.onSurfaceVariant,
-                              onTap: () =>
-                                  ref.read(timerProvider.notifier).skip(),
+                              onTap: () => _changeTimer(
+                                title: 'Skip this focus block?',
+                                confirmLabel: 'Skip block',
+                                apply: () =>
+                                    ref.read(timerProvider.notifier).skip(),
+                              ),
                             ),
                           ],
                         ),
@@ -653,6 +731,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       // Root navigator: the sheet has to float over the nav bar, not under it.
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.fromLTRB(
           Gap.lg,
@@ -660,41 +739,21 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           Gap.lg,
           Gap.lg + MediaQuery.paddingOf(sheetContext).bottom,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(Radii.hero),
-          // One of the three sanctioned blur sites: a modal sheet floats over
-          // the page it was opened from.
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              padding: const EdgeInsets.all(Gap.lg),
-              decoration: BoxDecoration(
-                color: Theme.of(sheetContext).colorScheme.surfaceContainerLow
-                    .withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(Radii.hero),
-              ),
-              // The rows are ListTiles, and a ListTile paints its ink on the
-              // nearest Material ancestor. Without this one the nearest is
-              // above the decorated container, so the splash lands under the
-              // sheet's own background and never shows.
-              child: Material(
-                type: MaterialType.transparency,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.85 - Gap.xxl,
+          ),
+          child: SheetSurface(
+            borderRadius: BorderRadius.circular(Radii.hero),
+            padding: const EdgeInsets.all(Gap.lg),
+            child: Material(
+              type: MaterialType.transparency,
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Theme.of(sheetContext)
-                              .colorScheme
-                              .onSurfaceVariant,
-                          borderRadius: BorderRadius.circular(Radii.pill),
-                        ),
-                      ),
-                    ),
+                    const SheetHandle(),
                     const SizedBox(height: Gap.lg),
                     Text(
                       'Pomodoro presets',
@@ -711,8 +770,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         preset: presets[i],
                         selected: i == current,
                         onTap: () {
-                          ref.read(timerProvider.notifier).setPreset(i);
                           Navigator.of(sheetContext).pop();
+                          if (i == ref.read(timerProvider).presetIndex) return;
+                          _changeTimer(
+                            title: 'Change the focus plan?',
+                            confirmLabel: 'Change plan',
+                            apply: () =>
+                                ref.read(timerProvider.notifier).setPreset(i),
+                          );
                         },
                       ),
                     _CustomPlanRow(
@@ -720,14 +785,31 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       selected: current >= SeedData.presets.length,
                       onTap: () async {
                         final plan = await showCustomPlanSheet(sheetContext);
-                        if (plan == null) return;
-                        await ref.read(customPlanProvider.notifier).set(plan);
-                        ref
-                            .read(timerProvider.notifier)
-                            .setPreset(ref.read(presetsProvider).length - 1);
+                        if (plan == null || !mounted) return;
                         if (sheetContext.mounted) {
                           Navigator.of(sheetContext).pop();
                         }
+                        final previous = ref.read(customPlanProvider);
+                        if (ref.read(timerProvider).presetIndex >=
+                                SeedData.presets.length &&
+                            previous?.goalMinutes == plan.goalMinutes &&
+                            previous?.focusMinutes == plan.focusMinutes) {
+                          return;
+                        }
+                        _changeTimer(
+                          title: 'Change the focus plan?',
+                          confirmLabel: 'Change plan',
+                          apply: () {
+                            unawaited(
+                              ref.read(customPlanProvider.notifier).set(plan),
+                            );
+                            ref
+                                .read(timerProvider.notifier)
+                                .setPreset(
+                                  ref.read(presetsProvider).length - 1,
+                                );
+                          },
+                        );
                       },
                     ),
                   ],
@@ -943,7 +1025,9 @@ class _SegmentDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : Motion.base,
       width: current ? 18 : 7,
       height: 7,
       decoration: BoxDecoration(
@@ -1124,12 +1208,11 @@ class _DockAction extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.94,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.sm + 2,
-            vertical: Gap.sm + 2,
-          ),
+        child: SizedBox(
+          width: 48,
+          height: 52,
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 19, color: color),

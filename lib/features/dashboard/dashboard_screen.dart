@@ -10,11 +10,11 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/parent_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
-import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
 import '../parent/widgets/child_study_card.dart';
@@ -23,6 +23,7 @@ import 'widgets/focus_heatmap.dart';
 import 'widgets/day_summary_sheet.dart';
 import 'widgets/goal_ring.dart';
 import 'widgets/screen_time_card.dart';
+import 'widgets/session_shortcut.dart';
 import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
 import 'widgets/top_subject_card.dart';
@@ -34,9 +35,7 @@ import 'widgets/top_subject_card.dart';
 /// from the Riverpod stores, so a session finished on the Focus tab is
 /// reflected the moment this screen rebuilds.
 ///
-/// Pull-to-refresh re-reads those stores behind a short skeleton frame: the
-/// read itself is synchronous, so without the hold the refresh would resolve
-/// in a single frame and read as a flicker rather than as loading.
+/// Refresh re-reads device usage while the local study log stays on screen.
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -45,24 +44,23 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  bool _refreshing = false;
-
   /// Which window the tracker is showing. Local state rather than a provider:
   /// it is a way of looking at the log, not a fact about the user, and it
   /// should start on the week every time the app opens.
   StudyRange _range = StudyRange.week;
 
   Future<void> _refresh() async {
-    if (_refreshing) return;
-    setState(() => _refreshing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 420));
-    if (!mounted) return;
-    // No network yet — a refresh is re-reading the local stores. These reads
-    // are the no-op that keeps the call honest once a repository lands here.
-    ref.read(sessionsProvider);
-    ref.read(subjectsProvider);
-    ref.read(statsProvider);
-    setState(() => _refreshing = false);
+    ref.read(timerProvider.notifier).sync();
+    ref.invalidate(usageAccessProvider);
+    ref.invalidate(appUsageTodayProvider);
+    ref.invalidate(installedAppsProvider);
+    // Each card owns its error state. Keep the saved study log visible even
+    // if the platform cannot answer a usage read.
+    await Future.wait([
+      ref.read(usageAccessProvider.future),
+      ref.read(appUsageTodayProvider.future),
+      ref.read(installedAppsProvider.future),
+    ]).then<void>((_) {}, onError: (Object _, StackTrace _) {});
   }
 
   /// The Focus tab is branch 2 of the shell. Falling back to a route push
@@ -188,6 +186,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           totalHours: stats.totalFocusHours,
           level: stats.level,
           ringKey: targets.ring,
+          onFocus: user.isGuardian ? null : _startFocusing,
         ),
         const SizedBox(height: Gap.xl),
         SectionHeader(
@@ -273,20 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onRefresh: _refresh,
         color: cs.primary,
         backgroundColor: cs.surface,
-        child: _refreshing
-            ? ListView(
-                padding: _padding(context),
-                children: const [
-                  SkeletonCard(height: 330, radius: Radii.hero),
-                  SizedBox(height: Gap.xl),
-                  SkeletonCard(height: 230),
-                  SizedBox(height: Gap.xl),
-                  SkeletonCard(height: 310),
-                  SizedBox(height: Gap.xl),
-                  SkeletonList(count: 3, itemHeight: 72),
-                ],
-              )
-            : wide
+        child: wide
             ? SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: _padding(context),
@@ -413,7 +399,9 @@ class _Greeting extends StatelessWidget {
           TweenAnimationBuilder<double>(
             key: ValueKey<int>(streak),
             tween: Tween<double>(begin: 0.72, end: 1),
-            duration: const Duration(milliseconds: 520),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 520),
             curve: Curves.easeOutBack,
             builder: (context, scale, child) =>
                 Transform.scale(scale: scale, child: child),
@@ -454,6 +442,7 @@ class _DailyOverview extends ConsumerWidget {
     required this.totalHours,
     required this.level,
     this.ringKey,
+    this.onFocus,
   });
 
   final int sessionsToday;
@@ -462,6 +451,7 @@ class _DailyOverview extends ConsumerWidget {
 
   /// Anchor for the first-run tip about the daily ring.
   final Key? ringKey;
+  final VoidCallback? onFocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -575,6 +565,12 @@ class _DailyOverview extends ConsumerWidget {
                 );
               },
             ),
+            if (onFocus != null) ...[
+              const SizedBox(height: Gap.lg),
+              const Divider(),
+              const SizedBox(height: Gap.lg),
+              SessionShortcut(onOpen: onFocus!),
+            ],
           ],
         ),
       ),
@@ -742,9 +738,8 @@ class _NoSessions extends StatelessWidget {
         icon: Icons.timer_outlined,
         title: 'No sessions yet',
         subtitle:
-            'Finish your first focus block and this page fills in — '
-            'the daily ring and the weekly chart, then the month view behind '
-            'them.',
+            'Choose a subject and start a focus block. '
+            'Your time and progress will appear here when you finish.',
         action: FilledButton.icon(
           key: ctaKey,
           onPressed: onStart,

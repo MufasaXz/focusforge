@@ -1,19 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Staggered entrance: fades up after a per-index delay.
 ///
-/// Staggering is what makes a screen feel composed rather than dumped — the
-/// eye is walked down the page instead of being hit with everything at once.
-/// Kept short (≈55ms per item, 260ms travel) so it never blocks interaction.
+/// Runs once when visible, with a fixed travel distance for every item.
+/// Reduced motion reveals content immediately, including during a delay.
 class Stagger extends StatefulWidget {
   const Stagger({
     super.key,
     required this.index,
     required this.child,
-    this.step = const Duration(milliseconds: 55),
-    this.maxDelay = const Duration(milliseconds: 420),
-    this.duration = const Duration(milliseconds: 460),
-    this.offset = 18,
+    this.step = const Duration(milliseconds: 40),
+    this.maxDelay = const Duration(milliseconds: 240),
+    this.duration = const Duration(milliseconds: 320),
+    this.offset = 12,
   });
 
   final int index;
@@ -29,28 +30,54 @@ class Stagger extends StatefulWidget {
 
 class _StaggerState extends State<Stagger> {
   bool _shown = false;
+  Timer? _delay;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_shown) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _delay?.cancel();
+      _shown = true;
+      return;
+    }
+    // Offstage branches must not spend their entrance delay before the tab
+    // is visible. Cancelling also makes disposal safe during navigation.
+    if (!TickerMode.valuesOf(context).enabled) {
+      _delay?.cancel();
+      _delay = null;
+      return;
+    }
+    if (_delay != null) return;
     final delay = widget.step * widget.index;
     final clamped = delay > widget.maxDelay ? widget.maxDelay : delay;
-    Future<void>.delayed(clamped, () {
+    _delay = Timer(clamped, () {
       if (mounted) setState(() => _shown = true);
     });
   }
 
   @override
+  void dispose() {
+    _delay?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : widget.duration;
     return AnimatedOpacity(
       opacity: _shown ? 1 : 0,
-      duration: widget.duration,
+      duration: duration,
       curve: Curves.easeOutCubic,
-      child: AnimatedSlide(
-        offset: _shown ? Offset.zero : Offset(0, widget.offset / 100),
-        duration: widget.duration,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: _shown ? 0 : widget.offset),
+        duration: duration,
         curve: Curves.easeOutCubic,
         child: widget.child,
+        builder: (context, offset, child) =>
+            Transform.translate(offset: Offset(0, offset), child: child),
       ),
     );
   }

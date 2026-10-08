@@ -38,6 +38,18 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   )..repeat();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _intro.value = 1;
+      _dots.stop();
+      _dots.value = 0.5;
+    } else if (!_dots.isAnimating) {
+      _dots.repeat();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     Future<void>.delayed(SplashStep.hold, () {
