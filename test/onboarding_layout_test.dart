@@ -127,8 +127,12 @@ void main() {
     viewport(tester, const Size(320, 640));
     await tester.pumpWidget(wrap(GoalStep(onNext: () {}), scale: 2));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Recommended'), 160);
-    expect(find.text('Recommended').hitTestable(), findsOneWidget);
+    final suggested = find.widgetWithText(FilterChip, 'Recommended');
+    await tester.scrollUntilVisible(suggested, 160);
+    await tester.pumpAndSettle();
+    await tester.tap(suggested);
+    await tester.pumpAndSettle();
+    expect(suggested.hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -136,56 +140,62 @@ void main() {
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     var continued = false;
-    await tester.pumpWidget(
-      wrap(PermissionsStep(onNext: () => continued = true)),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.text('No extra permissions are needed on this device.'),
-      findsOneWidget,
-    );
-    expect(find.text('Enable'), findsNothing);
-    await tester.tap(find.text('Review setup'));
-    await tester.pumpAndSettle();
-    expect(continued, isTrue);
+    try {
+      await tester.pumpWidget(
+        wrap(PermissionsStep(onNext: () => continued = true)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No extra permissions are needed on this device.'),
+        findsOneWidget,
+      );
+      expect(find.text('Enable'), findsNothing);
+      await tester.tap(find.text('Review setup'));
+      await tester.pumpAndSettle();
+      expect(continued, isTrue);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets(
     'setup choices announce checked state and respect reduced motion',
     (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
-      await tester.pumpWidget(
-        wrap(
-          SetupChoiceCard(
-            title: 'Student',
-            description: 'Study on this phone.',
-            icon: Icons.school_outlined,
-            color: Colors.blue,
-            selected: true,
-            onTap: () {},
+      try {
+        await tester.pumpWidget(
+          wrap(
+            SetupChoiceCard(
+              title: 'Student',
+              description: 'Study on this phone.',
+              icon: Icons.school_outlined,
+              color: Colors.blue,
+              selected: true,
+              onTap: () {},
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester.getSemantics(find.byType(SetupChoiceCard)),
-        matchesSemantics(
-          label: 'Student. Study on this phone.',
-          hasCheckedState: true,
-          isChecked: true,
-          isInMutuallyExclusiveGroup: true,
-          hasTapAction: true,
-        ),
-      );
-      expect(
-        tester
-            .widget<AnimatedContainer>(find.byType(AnimatedContainer))
-            .duration,
-        Duration.zero,
-      );
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSemantics(find.byType(SetupChoiceCard)),
+          matchesSemantics(
+            label: 'Student. Study on this phone.',
+            hasCheckedState: true,
+            isChecked: true,
+            isInMutuallyExclusiveGroup: true,
+            hasTapAction: true,
+          ),
+        );
+        expect(
+          tester
+              .widget<AnimatedContainer>(find.byType(AnimatedContainer))
+              .duration,
+          Duration.zero,
+        );
+      } finally {
+        semantics.dispose();
+      }
     },
   );
 }

@@ -261,7 +261,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           children: [
                             Icon(preset.icon, size: 15, color: accent),
                             const SizedBox(width: 7),
-                            Text(preset.name),
+                            Flexible(
+                              child: Text(
+                                preset.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             const SizedBox(width: 4),
                             Icon(
                               Icons.expand_more_rounded,

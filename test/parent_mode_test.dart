@@ -32,6 +32,7 @@ import 'package:focusforge/features/onboarding/complete_step.dart';
 import 'package:focusforge/features/onboarding/subjects_step.dart';
 import 'package:focusforge/features/onboarding/permissions_step.dart';
 import 'package:focusforge/features/onboarding/profile_step.dart';
+import 'package:focusforge/features/onboarding/persona_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +66,7 @@ void main() {
 
   Future<void> tapAndSettle(WidgetTester tester, String label) async {
     await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(label));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
@@ -82,7 +84,7 @@ void main() {
   Future<void> reachPersona(WidgetTester tester) async {
     await pastSplash(tester);
     await tapAndSettle(tester, 'Skip for now');
-    expect(find.text('I am a...'), findsOneWidget);
+    expect(find.byType(PersonaStep), findsOneWidget);
   }
 
   testWidgets('a student never sees the device question', (tester) async {
@@ -111,7 +113,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('How will you use this phone?'), findsNothing);
-    expect(find.text('I am a...'), findsOneWidget);
+    expect(find.byType(PersonaStep), findsOneWidget);
     await drain(tester);
   });
 
@@ -249,7 +251,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pump(const Duration(milliseconds: 600));
     }
-    expect(find.text('I am a...'), findsOneWidget);
+    expect(find.byType(PersonaStep), findsOneWidget);
     await tapAndSettle(tester, 'Student');
     await tapAndSettle(tester, 'Continue');
 

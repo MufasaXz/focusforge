@@ -103,6 +103,7 @@ class _StudyTrackerState extends State<StudyTracker>
             for (var i = 0; i < days.length; i++)
               Expanded(
                 child: Semantics(
+                  container: true,
                   button: true,
                   selected: _selected == i,
                   label:
