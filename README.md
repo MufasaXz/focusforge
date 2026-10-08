@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="web/icons/Icon-512.png" width="96" alt="FocusForge app logo">
+
 <sub>LESS SCROLLING. MORE STUDYING.</sub>
 
 # FocusForge

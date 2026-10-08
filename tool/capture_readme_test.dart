@@ -1,6 +1,7 @@
 // README screenshots and Focus motion, using bundled fonts and fictional data.
 // Run: flutter test tool/capture_readme_test.dart
 // Writes PNGs to build/readme-captures; never changes a user's stored data.
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -41,14 +42,14 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    for (final family in ['Inter', 'InterDisplay']) {
-      final loader = FontLoader(family);
-      for (final weight in [
-        if (family == 'Inter') ...['Regular', 'Medium'],
-        'SemiBold',
-        'Bold',
-      ]) {
-        loader.addFont(rootBundle.load('assets/fonts/$family-$weight.ttf'));
+    // Widget tests do not load app fonts automatically. Include the icon font
+    // as well as text fonts, otherwise Material icons become missing-glyph boxes.
+    final fontManifest =
+        jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+    for (final entry in fontManifest.cast<Map<String, dynamic>>()) {
+      final loader = FontLoader(entry['family'] as String);
+      for (final font in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
+        loader.addFont(rootBundle.load(font['asset'] as String));
       }
       await loader.load();
     }
