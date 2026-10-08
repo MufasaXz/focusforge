@@ -438,10 +438,8 @@ void main() {
       await settle(tester);
 
       expect(find.text('No sessions yet'), findsOneWidget);
-      // Section headers are set in small caps, so the rendered text is the
-      // uppercased title rather than the string the caller passes in.
       expect(
-        find.text('SCREEN TIME TODAY'),
+        find.text('Screen time today'),
         findsOneWidget,
         reason:
             'screen time is about the phone, not the session log, so it '
@@ -480,13 +478,13 @@ void main() {
         findsWidgets,
         reason: 'the ring, the breakdown and the day all agree',
       );
-      expect(find.text('WEEKLY PROGRESS'), findsOneWidget);
+      expect(find.text('Weekly progress'), findsOneWidget);
 
       // The tracker opens on the week; the month is the other window onto the
       // same log.
       await tester.tap(find.text('Month'));
       await settle(tester);
-      expect(find.text('MONTHLY PROGRESS'), findsOneWidget);
+      expect(find.text('Monthly progress'), findsOneWidget);
       await tester.tap(find.text('Week'));
       await settle(tester);
 

@@ -13,6 +13,7 @@ import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
@@ -195,7 +196,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               : 'Monthly progress',
           icon: Icons.bar_chart_rounded,
         ),
-        const SizedBox(height: Gap.md),
         _TrackerPanel(
           range: _range,
           onRangeChanged: (r) => setState(() => _range = r),
@@ -214,14 +214,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Top subject',
             icon: Icons.workspace_premium_rounded,
           ),
-          const SizedBox(height: Gap.md),
           TopSubjectCard(range: _range),
           const SizedBox(height: Gap.xl),
           const SectionHeader(
             title: 'Focus heatmap',
             icon: Icons.calendar_month_rounded,
           ),
-          const SizedBox(height: Gap.md),
           Card.filled(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
@@ -243,7 +241,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: 'Screen time today',
         icon: Icons.hourglass_bottom_rounded,
       ),
-      const SizedBox(height: Gap.md),
       const Card.filled(
         child: Padding(
           padding: EdgeInsets.all(Gap.lg),
@@ -256,7 +253,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'Subject breakdown',
           icon: Icons.donut_large_rounded,
         ),
-        const SizedBox(height: Gap.md),
         Card.filled(
           child: Padding(
             padding: const EdgeInsets.all(Gap.lg),
@@ -464,6 +460,7 @@ class _DailyOverview extends ConsumerWidget {
     final minutesToday = ref.watch(liveFocusSecondsTodayProvider) ~/ 60;
 
     return Card.filled(
+      color: cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),
@@ -538,30 +535,36 @@ class _DailyOverview extends ConsumerWidget {
                   ),
                 ];
 
-                // Three equal columns need ~340dp to keep the labels on one
-                // line; below that the chips keep a third of the row as a
-                // minimum and flow onto a second line instead of clipping.
-                if (constraints.maxWidth < 340) {
-                  final minWidth = (constraints.maxWidth - Gap.sm * 2) / 3;
-                  return Wrap(
-                    spacing: Gap.sm,
-                    runSpacing: Gap.sm,
-                    children: [
-                      for (final chip in chips)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(minWidth: minWidth),
-                          child: chip,
-                        ),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    for (var i = 0; i < chips.length; i++) ...[
-                      if (i > 0) const SizedBox(width: Gap.sm),
-                      Expanded(child: chips[i]),
-                    ],
-                  ],
+                final stacked =
+                    constraints.maxWidth < 260 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 19;
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(Radii.card),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(Gap.md),
+                    child: stacked
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < chips.length; i++) ...[
+                                if (i > 0) const SizedBox(height: Gap.lg),
+                                chips[i],
+                              ],
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < chips.length; i++) ...[
+                                if (i > 0) const SizedBox(width: Gap.sm),
+                                Expanded(child: chips[i]),
+                              ],
+                            ],
+                          ),
+                  ),
                 );
               },
             ),
@@ -619,13 +622,18 @@ class _GoalRow extends StatelessWidget {
                 radius: 11,
               ),
               const SizedBox(width: Gap.md),
-              Expanded(child: Text("Today's goal", style: tt.titleSmall)),
-              const SizedBox(width: Gap.sm),
-              Text(
-                formatMinutes(goalMinutes),
-                style: tt.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Today's goal", style: tt.bodySmall),
+                    Text(
+                      formatMinutes(goalMinutes),
+                      style: tt.titleMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: Gap.sm),
@@ -667,48 +675,19 @@ class _TrackerPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        formatHoursShort(total),
-                        style: tt.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        total <= 0
-                            ? 'Nothing logged yet'
-                            : '${formatHoursShort(average)} on an average day',
-                        style: tt.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: Gap.md),
-                SegmentedButton<StudyRange>(
-                  segments: [
-                    for (final r in StudyRange.values)
-                      ButtonSegment(value: r, label: Text(r.label)),
-                  ],
-                  selected: {range},
-                  showSelectedIcon: false,
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: WidgetStatePropertyAll(tt.labelSmall),
-                  ),
-                  onSelectionChanged: (selection) =>
-                      onRangeChanged(selection.first),
-                ),
-              ],
+            AppSegmentedControl<StudyRange>(
+              options: {for (final r in StudyRange.values) r: r.label},
+              selected: range,
+              onChanged: onRangeChanged,
+            ),
+            const SizedBox(height: Gap.xl),
+            Text(formatHoursShort(total), style: tt.displaySmall),
+            const SizedBox(height: Gap.xs),
+            Text(
+              total <= 0
+                  ? 'Nothing logged yet'
+                  : '${formatHoursShort(average)} on an average day',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
             StudyTracker(days: days, onDayTap: onDayTap),
@@ -765,34 +744,25 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.outlined(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: Gap.md,
-          horizontal: Gap.sm,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: cs.primary),
-            const SizedBox(height: 7),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    final tt = Theme.of(context).textTheme;
+    return Semantics(
+      label: '$label, $value',
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: cs.primary),
+          const SizedBox(height: Gap.sm),
+          Text(
+            value,
+            style: tt.titleLarge?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: Gap.xs),
+          Text(label, style: tt.bodySmall, textAlign: TextAlign.center),
+        ],
       ),
     );
   }

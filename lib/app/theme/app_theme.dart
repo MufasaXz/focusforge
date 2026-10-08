@@ -185,7 +185,7 @@ class Radii {
   const Radii._();
 
   static const double hero = 28;
-  static const double card = 16;
+  static const double card = 20;
   static const double item = 16;
   static const double tile = 12;
   static const double pill = 999;

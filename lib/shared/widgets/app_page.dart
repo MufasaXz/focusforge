@@ -157,12 +157,9 @@ class AppSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(Gap.xs, 0, Gap.xs, Gap.sm),
-          child: Text(
-            title.toUpperCase(),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-              letterSpacing: 1.1,
-            ),
+          child: Semantics(
+            header: true,
+            child: Text(title, style: theme.textTheme.titleSmall),
           ),
         ),
         Card.filled(
@@ -235,7 +232,7 @@ class EdgeFade extends StatelessWidget {
   }
 }
 
-/// Small caps label above a group of cards or rows.
+/// A sentence-case heading above a group of cards or rows.
 ///
 /// The same treatment [AppSection] gives its heading, exposed separately for
 /// the screens that group raw cards rather than list tiles.
@@ -265,12 +262,9 @@ class SectionHeader extends StatelessWidget {
             const SizedBox(width: Gap.sm),
           ],
           Expanded(
-            child: Text(
-              title.toUpperCase(),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                letterSpacing: 1.1,
-              ),
+            child: Semantics(
+              header: true,
+              child: Text(title, style: theme.textTheme.titleMedium),
             ),
           ),
           ?trailing,

@@ -345,8 +345,8 @@ void main() {
     await settle(tester);
 
     // Section headings are drawn in small caps by `AppSection`.
-    expect(find.text('THIS DEVICE'), findsOneWidget);
-    expect(find.text('CHILDREN'), findsNothing);
+    expect(find.text('This device'), findsOneWidget);
+    expect(find.text('Children'), findsNothing);
     expect(find.text('Add a child'), findsNothing);
   });
 
@@ -359,12 +359,12 @@ void main() {
     await tester.pumpWidget(wrap(container, const ParentControlScreen()));
     await settle(tester);
 
-    expect(find.text('CHILDREN'), findsOneWidget);
+    expect(find.text('Children'), findsOneWidget);
     expect(find.text('Ravi'), findsOneWidget);
     expect(find.text('Meera'), findsOneWidget);
     // The code is set on the child's own page, not on this list.
     expect(find.text('Set a security code'), findsNothing);
-    expect(find.text('THIS DEVICE'), findsNothing);
+    expect(find.text('This device'), findsNothing);
   });
 
   testWidgets('the dashboard leads with the selected child\'s study', (

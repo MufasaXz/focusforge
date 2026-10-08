@@ -304,8 +304,13 @@ void main() {
       await tester.pumpWidget(profileHarness());
       await tester.pumpAndSettle();
 
-      final goals = tester.getRect(find.text('WEEKLY STUDY GOALS'));
-      final appearance = tester.getRect(find.text('APPEARANCE'));
+      final goals = tester.getRect(find.text('Weekly study goals'));
+      final appearance = tester.getRect(
+        find.descendant(
+          of: find.byType(SectionHeader),
+          matching: find.text('Appearance'),
+        ),
+      );
 
       expect(
         appearance.left,
@@ -327,8 +332,13 @@ void main() {
       await tester.pumpWidget(profileHarness());
       await tester.pumpAndSettle();
 
-      final goals = tester.getRect(find.text('WEEKLY STUDY GOALS'));
-      final appearance = tester.getRect(find.text('APPEARANCE'));
+      final goals = tester.getRect(find.text('Weekly study goals'));
+      final appearance = tester.getRect(
+        find.descendant(
+          of: find.byType(SectionHeader),
+          matching: find.text('Appearance'),
+        ),
+      );
 
       expect(
         appearance.top,
