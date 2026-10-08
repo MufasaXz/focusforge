@@ -255,21 +255,33 @@ class SectionHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.xs, 0, Gap.xs, Gap.md),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 18, color: cs.onSurfaceVariant),
-            const SizedBox(width: Gap.sm),
-          ],
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(title, style: theme.textTheme.titleMedium),
+      child: MediaQuery.textScalerOf(context).scale(14) > 19 && trailing != null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(title, style: theme.textTheme.titleMedium),
+                ),
+                const SizedBox(height: Gap.sm),
+                trailing!,
+              ],
+            )
+          : Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                  const SizedBox(width: Gap.sm),
+                ],
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(title, style: theme.textTheme.titleMedium),
+                  ),
+                ),
+                ?trailing,
+              ],
             ),
-          ),
-          ?trailing,
-        ],
-      ),
     );
   }
 }

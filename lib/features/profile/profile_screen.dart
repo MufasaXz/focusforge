@@ -16,6 +16,7 @@ import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
@@ -61,10 +62,7 @@ Future<void> _openSetting(
     await ref.read(userProvider.notifier).save(profile);
     if (!context.mounted) return;
     final name = profile.displayName.trim();
-    showAppSnack(
-      context,
-      name.isEmpty ? 'Signed in.' : 'Signed in as $name.',
-    );
+    showAppSnack(context, name.isEmpty ? 'Signed in.' : 'Signed in as $name.');
   }
 
   if (context.mounted) context.goNamed(route);
@@ -220,7 +218,7 @@ class ProfileScreen extends ConsumerWidget {
         EdgeFade(
           trailing: 32,
           child: SizedBox(
-            height: 118,
+            height: MediaQuery.textScalerOf(context).scale(14) > 19 ? 164 : 118,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: subjects.length,
@@ -241,28 +239,31 @@ class ProfileScreen extends ConsumerWidget {
       ),
       prefStagger(const _AppearanceCard()),
       const SizedBox(height: Gap.xl),
-      prefStagger(
-        const SectionHeader(title: 'Settings', icon: Icons.settings_outlined),
-      ),
-      prefStagger(
-        Card.filled(
-          // Without this the tile ripples paint square corners over the
-          // card's rounded ones.
-          clipBehavior: Clip.antiAlias,
-          child: Column(
+      for (final group in [
+        ('Progress & community', settings.take(3)),
+        ('Focus & protection', settings.skip(3).take(3)),
+        ('App & privacy', settings.skip(6)),
+      ])
+        prefStagger(
+          AppSection(
+            title: group.$1,
             children: [
-              for (var i = 0; i < settings.length; i++) ...[
-                if (i > 0) Divider(color: t.outlineVariant, height: 1),
+              for (final (i, spec) in group.$2.indexed) ...[
+                if (i > 0)
+                  Divider(
+                    color: t.outlineVariant.withValues(alpha: 0.4),
+                    height: 1,
+                    indent: 72,
+                    endIndent: Gap.lg,
+                  ),
                 _SettingTile(
-                  spec: settings[i],
-                  onTap: () => unawaited(_openSetting(context, ref, settings[i])),
+                  spec: spec,
+                  onTap: () => unawaited(_openSetting(context, ref, spec)),
                 ),
               ],
             ],
           ),
         ),
-      ),
-      const SizedBox(height: Gap.xl),
     ];
 
     return _TabEntrance(
@@ -318,7 +319,11 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
+    final compact =
+        MediaQuery.sizeOf(context).width < 380 ||
+        MediaQuery.textScalerOf(context).scale(14) > 19;
     return Card.filled(
+      color: t.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),
@@ -326,50 +331,27 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Avatar(user: user),
-                const SizedBox(width: Gap.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.displayName.trim().isEmpty
-                            ? 'Your profile'
-                            : user.displayName,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: Gap.sm),
-                      // Tonal container built from the persona colour, the
-                      // same pairing [IconBadge] uses.
-                      Chip(
-                        backgroundColor: harmonize(
-                          user.persona.color,
-                          t.primary,
-                        ).withValues(alpha: 0.16),
-                        avatar: Icon(
-                          user.persona.icon,
-                          size: 13,
-                          color: harmonize(user.persona.color, t.primary),
-                        ),
-                        label: Text(
-                          user.persona.label,
-                          style: const TextStyle(fontSize: 11.5),
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: Gap.sm),
-                const _EditProfileButton(),
-              ],
-            ),
+            if (compact) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _Avatar(user: user),
+                  const _EditProfileButton(),
+                ],
+              ),
+              const SizedBox(height: Gap.lg),
+              _ProfileIdentity(user: user),
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Avatar(user: user),
+                  const SizedBox(width: Gap.lg),
+                  Expanded(child: _ProfileIdentity(user: user)),
+                  const SizedBox(width: Gap.sm),
+                  const _EditProfileButton(),
+                ],
+              ),
             const SizedBox(height: Gap.xl),
             Row(
               children: [
@@ -397,13 +379,15 @@ class _HeroCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Gap.xl),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: Gap.lg,
+              runSpacing: Gap.xs,
               children: [
                 Text(
                   'Level ${stats.level}',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                const Spacer(),
                 Text(
                   '${stats.xp} / ${stats.xpForNext} XP',
                   style: Theme.of(context).textTheme.labelSmall,
@@ -428,6 +412,51 @@ class _HeroCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProfileIdentity extends StatelessWidget {
+  const _ProfileIdentity({required this.user});
+
+  final UserProfile user;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final tint = harmonize(user.persona.color, cs.primary);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          user.displayName.trim().isEmpty ? 'Your profile' : user.displayName,
+          style: tt.headlineSmall,
+        ),
+        const SizedBox(height: Gap.sm),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: tint.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(Radii.tile),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: Gap.sm,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(user.persona.icon, size: 16, color: tint),
+                const SizedBox(width: Gap.sm),
+                Flexible(
+                  child: Text(user.persona.label, style: tt.labelMedium),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -471,11 +500,16 @@ class _EditProfileButton extends StatelessWidget {
       onTap: open,
       child: Pressable(
         onTap: open,
-        child: IconBadge(
-          icon: Icons.edit_rounded,
-          color: t.primary,
-          size: 36,
-          radius: 11,
+        child: SizedBox.square(
+          dimension: 48,
+          child: Center(
+            child: IconBadge(
+              icon: Icons.edit_rounded,
+              color: t.primary,
+              size: 36,
+              radius: 11,
+            ),
+          ),
         ),
       ),
     );
@@ -579,7 +613,7 @@ class _AnonymousCard extends ConsumerWidget {
                 children: [
                   Icon(Icons.link_rounded, size: 18),
                   SizedBox(width: Gap.sm),
-                  Text('Link an account'),
+                  Flexible(child: Text('Link an account')),
                 ],
               ),
             ),
@@ -616,44 +650,13 @@ class _AppearanceCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                IconBadge(
-                  icon: settings.mode.icon,
-                  color: t.secondary,
-                  size: 36,
-                  radius: 10,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(
-                    'Appearance',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-                Text(
-                  settings.mode.label,
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: t.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            SegmentedButton<int>(
-              segments: [
-                for (final p in ThemePreference.values)
-                  ButtonSegment(value: p.index, label: Text(p.label)),
-              ],
-              selected: {settings.mode.index},
-              onSelectionChanged: (selection) =>
-                  notifier.setMode(ThemePreference.values[selection.first]),
+            AppSegmentedControl<ThemePreference>(
+              options: {for (final p in ThemePreference.values) p: p.label},
+              selected: settings.mode,
+              onChanged: notifier.setMode,
             ),
             const SizedBox(height: Gap.xl),
-            Text(
-              'Palette',
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: t.onSurfaceVariant),
-            ),
+            Text('Palette', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: Gap.md),
             // Wrap rather than Row: six swatches fit on the tablet this app
             // is built for, but a 320dp phone would clip the last one, and a
@@ -732,43 +735,63 @@ class _PaletteSwatch extends StatelessWidget {
     final t = Theme.of(context).colorScheme;
     final color = palette.lightSeed;
 
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : Motion.base;
     return Semantics(
       label: palette.label,
       button: true,
       selected: selected,
-      child: Tooltip(
-        message: palette.label,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: AnimatedContainer(
-            duration: Motion.quick,
-            curve: Motion.standard,
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: selected
-                    ? t.onSurface
-                    : t.outlineVariant.withValues(alpha: 0.5),
-                width: selected ? 3 : 1,
+      inMutuallyExclusiveGroup: true,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.tile),
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.xs),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: duration,
+                curve: Motion.decelerate,
+                width: 48,
+                height: 48,
+                padding: const EdgeInsets.all(Gap.xs),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(selected ? 18 : 24),
+                  border: Border.all(
+                    color: selected ? t.onSurface : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: AnimatedContainer(
+                  duration: duration,
+                  curve: Motion.decelerate,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(selected ? 12 : 20),
+                  ),
+                  child: selected
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color:
+                              ThemeData.estimateBrightnessForColor(color) ==
+                                  Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                        )
+                      : null,
+                ),
               ),
-            ),
-            // The tick is picked against the swatch, not against the theme:
-            // a dark palette needs a light tick on any surface.
-            child: selected
-                ? Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color:
-                        ThemeData.estimateBrightnessForColor(color) ==
-                            Brightness.dark
-                        ? Colors.white
-                        : Colors.black,
-                  )
-                : null,
+              const SizedBox(height: Gap.xs),
+              Text(
+                palette.label,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
           ),
         ),
       ),
@@ -809,7 +832,7 @@ class _SubjectGoalCard extends StatelessWidget {
               children: [
                 MiniRing(
                   value: s.weekProgress,
-                  color: s.color,
+                  color: harmonize(s.color, t.primary),
                   size: 54,
                   label: '${(s.weekProgress * 100).round()}%',
                 ),
@@ -820,7 +843,11 @@ class _SubjectGoalCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(s.icon, size: 13, color: s.color),
+                        Icon(
+                          s.icon,
+                          size: 16,
+                          color: harmonize(s.color, t.primary),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           s.name,
@@ -886,27 +913,27 @@ class _SettingTile extends StatelessWidget {
     final t = Theme.of(context).colorScheme;
     return ListTile(
       onTap: onTap,
+      minVerticalPadding: Gap.md,
       leading: IconBadge(
         icon: spec.icon,
         color: t.primary,
-        size: 36,
-        radius: 10,
+        size: 40,
+        radius: Radii.tile,
       ),
-      title: Text(spec.label),
+      title: Text(spec.label, style: Theme.of(context).textTheme.titleSmall),
+      subtitle: spec.trailing == null
+          ? null
+          : Text(
+              spec.trailing!,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: spec.trailingColor ?? t.onSurfaceVariant),
+            ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (spec.locked) ...[
-            Icon(Icons.lock_outlined, size: 14, color: t.onSurfaceVariant),
-            const SizedBox(width: 6),
-          ],
-          if (spec.trailing != null) ...[
-            Text(
-              spec.trailing!,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: spec.trailingColor ?? t.onSurfaceVariant),
-            ),
-            const SizedBox(width: 6),
+            Icon(Icons.lock_outlined, size: 16, color: t.onSurfaceVariant),
+            const SizedBox(width: Gap.xs),
           ],
           const AppChevron(),
         ],
@@ -937,8 +964,7 @@ class _HeroStat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall
-              ?.copyWith(fontSize: 10.5),
+          style: Theme.of(context).textTheme.labelSmall,
           textAlign: TextAlign.center,
         ),
       ],
