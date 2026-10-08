@@ -24,7 +24,7 @@ and it is not an APK signature error.
 
 These changes improve transparency; they **do not guarantee scanner approval**.
 Accessibility is still required for native blocking and YouTube filtering while
-Flutter is not running. Four signing schemes verify APK integrity but do not
+Flutter is not running. APK signatures verify integrity but do not
 exempt sensitive permissions from Play Protect. Changing the package or signing
 key to hide from scanning does not resolve the cause.
 
@@ -42,6 +42,3 @@ Google Play testing/distribution provides a reviewed installation route. A
 Play Console release also needs an accurate accessibility declaration, prominent
 disclosure/consent, privacy policy and Data safety responses. UI changes and
 signing cannot replace those requirements. Disabling Play Protect is not the fix.
-
-The v4 .idsig belongs beside the APK for supported incremental installs. It is
-not a second app to install and has no effect on this warning.

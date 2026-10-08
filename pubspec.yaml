@@ -1,7 +1,7 @@
 name: focusforge
 description: "FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification."
 publish_to: 'none'
-version: 1.0.1+6
+version: 1.0.1+8
 
 environment:
   sdk: ^3.13.5
@@ -9,8 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Accounts that survive a reinstall, and the seam for the future
-  # study-groups/leaderboard backend (auth profiles only, never usage data).
+  # Optional account, private group aggregates and the opt-in weekly board.
   firebase_core: ^3.8.0
   firebase_auth: ^5.4.0
   # Parent control: a pairing code, the child's study summary and the block

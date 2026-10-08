@@ -12,7 +12,7 @@ A study companion that protects your attention and makes your progress visible.
 
 **Free & open source** · No ads · No subscriptions
 
-[Download for Android](https://gofile.io/d/rNa0QELz) · [Report an issue](https://github.com/MufasaXz/focusforge/issues) · [Contribute](CONTRIBUTING.md)
+[Download for Android](https://github.com/MufasaXz/focusforge/releases/latest) · [Release notes](CHANGELOG.md) · [Report an issue](https://github.com/MufasaXz/focusforge/issues)
 
 <sub>Version 1.0.1 · Android 7.0+</sub>
 
