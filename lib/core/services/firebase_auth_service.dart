@@ -8,13 +8,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
+import 'study_group_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
 ///
 /// Firebase holds only the credential. The profile record — persona, name,
 /// daily goal, onboarding state — stays in [LocalStore], which is the app's
-/// privacy position: nothing about how the app is used is uploaded, and the
-/// rest of the app keeps working with no network.
+/// privacy position. Optional groups and parent sharing have separate services;
+/// detailed logs stay local and the timer keeps working without a network.
 ///
 /// Constructed only after `Firebase.initializeApp()` has succeeded; see
 /// `bootstrap()`, which falls back to [LocalAuthService] otherwise.
@@ -156,8 +157,11 @@ class FirebaseAuthService extends AuthService {
         _auth.currentUser ??
         (await _guard(() => _auth.signInAnonymously())).user!;
     return _persist(
-      _profileFor(user, displayName: displayName, email: email)
-          .copyWith(isAnonymous: false),
+      _profileFor(
+        user,
+        displayName: displayName,
+        email: email,
+      ).copyWith(isAnonymous: false),
     );
   }
 
@@ -204,9 +208,7 @@ class FirebaseAuthService extends AuthService {
 
     final user = _auth.currentUser;
     if (user == null) {
-      final result = await _guard(
-        () => _auth.signInWithCredential(credential),
-      );
+      final result = await _guard(() => _auth.signInWithCredential(credential));
       return apply(result.user!);
     }
 
@@ -258,11 +260,26 @@ class FirebaseAuthService extends AuthService {
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user != null) {
-      // Delete the credential first. If Firebase wants a fresh login
-      // (`requires-recent-login`), the local record must survive so the user
-      // can try again instead of losing their data to a half-completed
-      // deletion — and the failure surfaces as an [AuthException], never as a
-      // raw Firebase error.
+      // Group rows must be removed while the credential can still authorise
+      // writes. Check login age first, before changing any cloud membership.
+      if (!user.isAnonymous &&
+          (user.metadata.lastSignInTime == null ||
+              DateTime.now().difference(user.metadata.lastSignInTime!) >
+                  const Duration(minutes: 5))) {
+        throw const AuthException(AuthFailure.requiresRecentLogin);
+      }
+      try {
+        if (!user.isAnonymous) {
+          final groups = await FirebaseStudyGroupService()
+              .groupsForDeletion(user.uid)
+              .timeout(const Duration(seconds: 20));
+          for (final group in groups) {
+            await FirebaseStudyGroupService().leave(group);
+          }
+        }
+      } catch (_) {
+        throw const AuthException(AuthFailure.network);
+      }
       await _guard(() => user.delete());
     }
     await _store.clearAll();

@@ -83,18 +83,86 @@ service cloud.firestore {
     function guardianRecordMatches(parent, child) {
       return get(/databases/$(database)/documents/users/$(child)/guardian/link).data.parentUid == parent;
     }
-    // The weekly board. A row is a name and an hour count — nothing else —
-    // and it is readable by anyone signed in, because being on a board is a
-    // public act. Writing is not: a row is only ever yours.
     match /leaderboard/{week}/entries/{uid} {
       allow read: if signedIn();
-      allow create, update: if isSelf(uid) &&
-        request.resource.data.keys().hasOnly(['name', 'minutes', 'updatedAt']) &&
-        request.resource.data.minutes is int &&
-        request.resource.data.minutes >= 0 &&
-        request.resource.data.name is string &&
-        request.resource.data.name.size() <= 60;
-      allow delete: if isSelf(uid);
+      allow create, update: if self(uid) &&
+        request.resource.data.keys().hasOnly(['name','minutes','updatedAt']) &&
+        request.resource.data.minutes is int && request.resource.data.minutes >= 0 &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 60;
+      allow delete: if self(uid);
+    }
+
+    // Invites can be looked up by exact code, never enumerated. Only members
+    // can read group metadata or progress. Session logs are never uploaded.
+    function member(group) {
+      return account() && request.auth.uid in
+        get(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds;
+    }
+    function groupShape(data) {
+      return data.keys().hasOnly(['name','targetHours','createdAt','ownerUid','memberIds','inviteCode']) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 60 &&
+        data.targetHours is int && data.targetHours >= 1 && data.targetHours <= 1000 &&
+        data.createdAt is int && data.memberIds is list && data.memberIds.size() >= 1 &&
+        data.memberIds.size() <= 32 && data.memberIds.toSet().size() == data.memberIds.size() &&
+        data.ownerUid in data.memberIds && data.inviteCode is string &&
+        data.inviteCode.matches('^[A-Z2-9]{10}$');
+    }
+    function joining(group) {
+      let row = getAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid)).data;
+      return row.inviteCode == resource.data.inviteCode &&
+        get(/databases/$(database)/documents/groupInvites/$(row.inviteCode)).data.groupId == group;
+    }
+    match /groupInvites/{code} {
+      allow get: if account();
+      allow list: if false;
+      allow create: if account() && request.resource.data.keys().hasOnly(['groupId']) &&
+        getAfter(/databases/$(database)/documents/studyGroups/$(request.resource.data.groupId)).data.ownerUid == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/studyGroups/$(request.resource.data.groupId)).data.inviteCode == code;
+      allow update: if false;
+      allow delete: if member(resource.data.groupId) &&
+        !existsAfter(/databases/$(database)/documents/studyGroups/$(resource.data.groupId));
+    }
+    match /studyGroups/{group} {
+      allow read: if account() && request.auth.uid in resource.data.memberIds;
+      allow create: if account() && groupShape(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.memberIds == [request.auth.uid] &&
+        getAfter(/databases/$(database)/documents/groupInvites/$(request.resource.data.inviteCode)).data.groupId == group &&
+        existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid));
+      allow update: if account() && groupShape(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds','ownerUid']) &&
+        ((!(request.auth.uid in resource.data.memberIds) &&
+            request.resource.data.ownerUid == resource.data.ownerUid &&
+            request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().union([request.auth.uid].toSet()) &&
+            joining(group)) ||
+          (request.auth.uid in resource.data.memberIds &&
+            request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid]) &&
+            (resource.data.ownerUid == request.auth.uid || request.resource.data.ownerUid == resource.data.ownerUid) &&
+            !existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid))));
+      allow delete: if account() && resource.data.memberIds == [request.auth.uid] &&
+        !existsAfter(/databases/$(database)/documents/groupInvites/$(resource.data.inviteCode)) &&
+        !existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid));
+      match /members/{uid} {
+        allow read: if member(group);
+        function validRow() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['name','joinedAt','inviteCode','week','minutes','focusUntil','updatedAt']) &&
+            d.name is string && d.name.size() > 0 && d.name.size() <= 60 &&
+            d.joinedAt is int && d.inviteCode is string && d.week is string &&
+            d.week.size() <= 10 && d.minutes is int && d.minutes >= 0 && d.minutes <= 10080 &&
+            d.focusUntil is int && d.focusUntil >= 0 && d.focusUntil <= request.time.toMillis() + 86400000 &&
+            d.updatedAt == request.time;
+        }
+        allow create: if account() && self(uid) && validRow() &&
+          uid in getAfter(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds &&
+          getAfter(/databases/$(database)/documents/studyGroups/$(group)).data.inviteCode == request.resource.data.inviteCode &&
+          getAfter(/databases/$(database)/documents/groupInvites/$(request.resource.data.inviteCode)).data.groupId == group;
+        allow update: if account() && self(uid) && member(group) && validRow() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','week','minutes','focusUntil','updatedAt']);
+        allow delete: if account() && self(uid) && member(group) &&
+          (!existsAfter(/databases/$(database)/documents/studyGroups/$(group)) ||
+            !(uid in getAfter(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds));
+      }
     }
   }
 }

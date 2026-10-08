@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/seed.dart';
 import '../services/leaderboard_service.dart';
+import '../services/study_group_service.dart';
 import '../services/local_store.dart';
 import 'app_providers.dart';
 import 'parent_providers.dart';
@@ -307,105 +307,116 @@ double _subjectTargetFraction(
 ///
 /// There is no seeded group. A group nobody joined, with members nobody
 /// invited, is not a feature — it is a screenshot.
-class GroupsNotifier extends Notifier<List<StudyGroup>> {
-  /// Dotted like every other store key; should move into [StoreKeys] with the
-  /// next store change.
-  static const _key = 'groups.custom';
-
-  @override
-  List<StudyGroup> build() {
-    // Watched, not read: a group's progress is the user's progress, so it has
-    // to move the moment a session is logged.
-    final hours = ref.watch(leaderboardWeekHoursProvider);
-    return [
-      for (final group in _restore(ref.read(localStoreProvider).getList(_key)))
-        group.copyWith(weeklyHours: hours),
-    ];
-  }
-
-  /// Rebuilds a group from its stored row. Every field is type-tested — this
-  /// runs during bootstrap, where one bad row must not abort the launch.
-  static List<StudyGroup> _restore(List<Map<String, dynamic>> stored) => [
-    for (final m in stored)
-      if (m['id'] case final String id)
-        StudyGroup(
-          id: id,
-          name: m['name'] is String ? m['name'] as String : 'Group',
-          icon: AppIcons.resolve(
-            m['icon'] is String ? m['icon'] as String : null,
-          ),
-          targetHours: m['targetHours'] is num
-              ? (m['targetHours'] as num).toDouble()
-              : 10,
-          createdAt: m['createdAt'] is num
-              ? DateTime.fromMillisecondsSinceEpoch(
-                  (m['createdAt'] as num).toInt(),
-                )
-              : DateTime.now(),
-          inviteCode: m['inviteCode'] is String
-              ? m['inviteCode'] as String
-              : '',
-        ),
-  ];
-
-  Future<void> _persist() async {
-    await ref.read(localStoreProvider).setList(_key, [
-      for (final g in state)
-        {
-          'id': g.id,
-          'name': g.name,
-          'icon': AppIcons.nameOfOr(g.icon, 'groups'),
-          'targetHours': g.targetHours,
-          'inviteCode': g.inviteCode,
-          'createdAt': g.createdAt.millisecondsSinceEpoch,
-        },
-    ]);
-  }
-
-  Future<StudyGroup> create({
-    required String name,
-    required IconData icon,
-    required double targetHours,
-  }) async {
-    final now = DateTime.now();
-    final group = StudyGroup(
-      id: 'g${now.microsecondsSinceEpoch}',
-      name: name.trim(),
-      icon: icon,
-      targetHours: targetHours.clamp(1, 100),
-      createdAt: now,
-      weeklyHours: ref.read(leaderboardWeekHoursProvider),
-      inviteCode: _code(name),
-    );
-    state = [...state, group];
-    await _persist();
-    return group;
-  }
-
-  Future<void> remove(String id) async {
-    state = state.where((g) => g.id != id).toList(growable: false);
-    await _persist();
-  }
-
-  /// A short, shareable code. Generated from the name so it is recognisable,
-  /// with digits from the clock so two groups cannot collide by accident.
-  static String _code(String name) {
-    final letters = name.replaceAll(RegExp(r'[^A-Za-z]'), '').toUpperCase();
-    final prefix = letters.padRight(3, 'X').substring(0, 3);
-    final digits = (DateTime.now().microsecondsSinceEpoch % 9000 + 1000)
-        .toString();
-    return '$prefix-$digits';
-  }
-}
-
-final groupsProvider = NotifierProvider<GroupsNotifier, List<StudyGroup>>(
-  GroupsNotifier.new,
+final studyGroupServiceProvider = Provider<StudyGroupService>(
+  (ref) => FirebaseLeaderboardService.isSupported
+      ? FirebaseStudyGroupService()
+      : const UnavailableStudyGroupService(),
 );
-
-/// Groups are the one feature gated behind a real account.
+final cloudGroupsProvider = StreamProvider<List<StudyGroup>>((ref) {
+  final service = ref.watch(studyGroupServiceProvider);
+  final uid = ref.watch(accountUidProvider);
+  if (!service.available || uid == null || !ref.watch(canUseGroupsProvider)) {
+    return Stream.value([]);
+  }
+  return service.watchGroups(uid);
+});
+final groupsProvider = Provider<List<StudyGroup>>(
+  (ref) => ref.watch(cloudGroupsProvider).valueOrNull ?? [],
+);
+final groupMembersProvider = StreamProvider.autoDispose
+    .family<List<GroupMember>, String>(
+      (ref, id) => ref.watch(studyGroupServiceProvider).watchMembers(id),
+    );
 final canUseGroupsProvider = Provider<bool>(
   (ref) => !ref.watch(userProvider).isAnonymous,
 );
+final groupClockProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  yield* Stream.periodic(const Duration(seconds: 30), (_) => DateTime.now());
+});
+final groupWeekProvider = Provider<String>(
+  (ref) => weekKey(
+    (ref.watch(groupClockProvider).valueOrNull ?? DateTime.now()).toUtc(),
+  ),
+);
+final groupWeekMinutesProvider = Provider<int>((ref) {
+  final now = ref.watch(groupClockProvider).valueOrNull ?? DateTime.now();
+  final utc = now.toUtc();
+  final start = DateTime.utc(utc.year, utc.month, utc.day - utc.weekday + 1);
+  return ref
+      .watch(sessionsProvider)
+      .where(
+        (s) =>
+            s.completed &&
+            !s.startedAt.isBefore(start) &&
+            !s.startedAt.isAfter(now),
+      )
+      .fold(0, (sum, s) => sum + s.minutes);
+});
+final groupSyncErrorProvider = StateProvider<String?>((ref) => null);
+final groupPublisherProvider = Provider<void>((ref) {
+  var disposed = false;
+  var sending = false;
+  var queued = false;
+  Object? lastPublished;
+  ref.onDispose(() => disposed = true);
+  Future<void> publish() async {
+    if (disposed) return;
+    if (sending) {
+      queued = true;
+      return;
+    }
+    final service = ref.read(studyGroupServiceProvider);
+    if (!service.available || !ref.read(canUseGroupsProvider)) return;
+    final groups = ref.read(groupsProvider);
+    final timer = ref.read(timerProvider);
+    final end = timer.running && timer.phase == TimerPhase.focus
+        ? timer.targetEnd
+        : null;
+    final week = ref.read(groupWeekProvider);
+    final minutes = ref.read(groupWeekMinutesProvider).clamp(0, 10080);
+    final name = ref.read(userProvider).displayName;
+    final payload = (
+      ref.read(accountUidProvider),
+      groups.map((g) => g.id).join(','),
+      week,
+      minutes,
+      name,
+      end,
+    );
+    if (payload == lastPublished) return;
+    sending = true;
+    try {
+      await Future.wait([
+        for (final group in groups)
+          service.publish(group.id, week, minutes, name, end),
+      ]);
+      lastPublished = payload;
+      if (!disposed) ref.read(groupSyncErrorProvider.notifier).state = null;
+    } catch (_) {
+      if (!disposed) {
+        ref.read(groupSyncErrorProvider.notifier).state =
+            'Your latest progress has not synced. We will retry shortly.';
+      }
+    } finally {
+      sending = false;
+      if (queued && !disposed) {
+        queued = false;
+        unawaited(publish());
+      }
+    }
+  }
+
+  ref.listen(groupsProvider, (_, _) => unawaited(publish()));
+  ref.listen(groupWeekMinutesProvider, (_, _) => unawaited(publish()));
+  ref.listen(userProvider, (_, _) => unawaited(publish()));
+  ref.listen(
+    timerProvider.select((t) => (t.running, t.phase, t.targetEnd)),
+    (_, _) => unawaited(publish()),
+  );
+  ref.listen(groupClockProvider, (_, _) => unawaited(publish()));
+  unawaited(publish());
+});
 
 // -- Leaderboard -------------------------------------------------------------
 
@@ -431,11 +442,7 @@ final leaderboardWeekHoursProvider = Provider<double>((ref) {
 /// draw without a server, because it is against the user's own history.
 final previousWeekHoursProvider = Provider<double>((ref) {
   final now = DateTime.now();
-  final thisMonday = DateTime(
-    now.year,
-    now.month,
-    now.day - (now.weekday - 1),
-  );
+  final thisMonday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   final lastMonday = DateTime(
     thisMonday.year,
     thisMonday.month,

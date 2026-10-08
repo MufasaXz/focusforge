@@ -148,6 +148,7 @@ Future<ProviderContainer> bootstrap() async {
       .read(boardOptInProvider.notifier)
       .hydrate(store.getBool(StoreKeys.boardOptIn));
   container.read(leaderboardPublisherProvider);
+  container.read(groupPublisherProvider);
 
   // -- Audio -----------------------------------------------------------------
   container

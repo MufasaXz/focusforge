@@ -30,7 +30,8 @@ out of the apps you lose time to, a **timer** that keeps you in the chair,
 tomorrow easier to start.
 
 It is free — no ads, no premium tier, no tracking — and it works signed out.
-Everything you log stays on the device.
+Your detailed session log stays on the device. Optional groups and parent
+control share limited summaries with the people you choose.
 
 ## What it does
 
@@ -52,7 +53,7 @@ with it. The shield draws the line where you draw it.
   playing, and remove the recommendation feed while a lecture link still opens.
   Two switches, because "no Shorts" and "no YouTube" are different requests.
 - **The Deep Breath Gate.** Reach for a blocked app and you get a 4-7-8 breath
-  first. Most of the time, you decide not to.
+  first. The pause gives you a chance to decide.
 - **Activity, in plain language.** What was closed, what you walked away from,
   and how long the apps you have rules for were open.
 - **It says when a rule cannot fire.** A time budget with no usage access is
@@ -165,15 +166,22 @@ Display cut; supporting text uses Inter, with theme-aware contrast in both modes
 <details>
 <summary><b>Privacy</b> — what is stored, and where</summary>
 
-Screen time, sessions, shield rules and statistics live in local storage on the
-phone. Nothing is uploaded, and the app does not need an account.
+Screen time, sessions, personal shield rules and statistics live on the phone.
+An account is optional. Firebase holds the sign-in credential when connected.
 
-Linking an account is optional, and the only thing a remote service ever holds
-is a credential: an opaque ID, an email address if you gave one, and which
-provider you used. No usage data, no screen time, no app lists.
+Joining a study group shares your display name, completed minutes for the UTC
+week and the end time of an active focus timer with members. Leaving removes
+your row. The weekly public board remains a separate opt-in. Pairing a parent
+shares study summaries and installed app names so they can choose remote rules.
+Messages, passwords, accessibility screen checks and session logs are never uploaded.
 
-You can export everything as JSON, or delete it outright. Deleting an account
-removes the credential *and* wipes the local store.
+Export local data as JSON, leave groups, unlink parent control or delete the
+account in Data & Privacy. Account deletion removes group membership before
+deleting the credential and wiping the local store. Older parent/board records
+are not automatically purged; unlink and opt out before deleting an account.
+
+See [Firebase setup](docs/firebase-setup.md) and
+[Play Protect guidance](docs/play-protect.md).
 
 </details>
 

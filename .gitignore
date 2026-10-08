@@ -51,3 +51,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local Firebase rules test dependencies and emulator state.
+/tool/firebase/node_modules/
+/.firebase/

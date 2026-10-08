@@ -21,8 +21,7 @@ import 'settings_support.dart';
 
 /// Data & Privacy — the screen that has to tell the truth about storage.
 ///
-/// The distinction it draws is between what is *local* (everything the app
-/// records) and what a linked account *would* sync. On the web there is no
+/// Distinguishes detailed local records from optional shared summaries. On the web there is no
 /// file system to write an export to, so exporting copies to the clipboard
 /// instead — and says so, rather than pretending a download happened.
 class PrivacyScreen extends ConsumerWidget {
@@ -49,11 +48,11 @@ class PrivacyScreen extends ConsumerWidget {
                   size: 42,
                   radius: 12,
                 ),
-                title: const Text('Everything stays on this device'),
+                title: const Text('Your detailed history stays here'),
                 subtitle: const Text(
                   'Focus sessions, shield events, badges and settings '
-                  'are stored locally. Usage patterns are never uploaded '
-                  'to any server.',
+                  'are stored locally. Optional social and parent features '
+                  'share only the summaries described below.',
                 ),
               ),
             ],
@@ -61,9 +60,10 @@ class PrivacyScreen extends ConsumerWidget {
           AppSection(
             title: 'What’s in the cloud',
             footnote: user.isAnonymous
-                ? 'You are signed in anonymously, so nothing is synced yet. '
-                      'Linking an account is what turns these on.'
-                : 'Synced with your linked account.',
+                ? 'Group sharing needs a linked account. Parent sharing starts '
+                      'only when you pair this device.'
+                : 'Sharing starts when you join a group, opt into the board, '
+                      'or pair with a parent.',
             children: const [
               ListTile(
                 title: Text('Your profile'),
@@ -72,7 +72,9 @@ class PrivacyScreen extends ConsumerWidget {
               ),
               ListTile(
                 title: Text('Study group membership'),
-                subtitle: Text('Which groups you belong to'),
+                subtitle: Text(
+                  'Membership, name, weekly minutes and active focus status · Members only',
+                ),
                 leading: Icon(Icons.groups_outlined),
               ),
               ListTile(
@@ -81,8 +83,10 @@ class PrivacyScreen extends ConsumerWidget {
                 leading: Icon(Icons.leaderboard_outlined),
               ),
               ListTile(
-                title: Text('Shield preferences'),
-                subtitle: Text('So your blocks follow you between devices'),
+                title: Text('Parent control'),
+                subtitle: Text(
+                  'Paired study summaries, installed app names and rules set by your parent',
+                ),
                 leading: Icon(Icons.shield_outlined),
               ),
             ],
@@ -133,13 +137,13 @@ class PrivacyScreen extends ConsumerWidget {
                   context,
                   title: 'Privacy policy',
                   body:
-                      'FocusForge keeps your usage data on this device. There '
-                      'is no analytics SDK and no ad network, and no server '
-                      'receives your focus history. The only data that leaves '
-                      'the device is what you explicitly sync by linking an '
-                      'account: your profile, group membership, leaderboard '
-                      'scores and shield preferences. You can export or delete '
-                      'everything from this screen at any time.',
+                      'Detailed sessions, screen time and screen checks stay on your device. '
+                      'Groups share your name, weekly focus minutes and current focus timer with members. '
+                      'The public weekly board shares your name and total only when you opt in. '
+                      'A paired parent receives study summaries and installed app names to choose rules. '
+                      'Firebase stores these optional records. No ad network or analytics SDK is used. '
+                      'Leaving a group removes your membership and progress row. You can export local '
+                      'data or delete your account here.',
                 ),
               ),
               ListTile(
@@ -248,7 +252,9 @@ class PrivacyScreen extends ConsumerWidget {
       title: 'Delete your account?',
       message:
           'Every local record is erased: profile, sessions, shields and '
-          'badges. This cannot be undone.',
+          'badges. Group memberships and their progress rows are removed '
+          'before the account is deleted. Unlink parent control and opt out '
+          'of the public board first to remove those older records. This cannot be undone.',
       requirePhrase: 'DELETE',
       fieldHint: 'Type DELETE',
       confirmLabel: 'Delete everything',
@@ -262,10 +268,9 @@ class PrivacyScreen extends ConsumerWidget {
     // crosses an async gap before the reset needs the container.
     final container = ProviderScope.containerOf(context, listen: false);
 
-    // The credential goes first and can refuse — offline, or when Firebase
-    // wants a fresh sign-in. Report that and keep every local record: wiping
-    // them under a credential that still exists is the half-deletion this
-    // ordering exists to prevent.
+    // The auth service removes group membership while it can still authorise
+    // cloud writes. Local records are kept if cleanup or credential deletion
+    // fails so the user can retry.
     try {
       await ref.read(authServiceProvider).deleteAccount();
     } on AuthException catch (e) {
@@ -291,7 +296,7 @@ class PrivacyScreen extends ConsumerWidget {
     showLicensePage(
       context: context,
       applicationName: 'FocusForge',
-      applicationVersion: '0.1.0',
+      applicationVersion: '1.0.1',
       applicationLegalese: 'MIT licensed · built with Flutter',
     );
   }
@@ -331,14 +336,18 @@ class _ExportBody extends StatelessWidget {
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text('Exported JSON', style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Exported JSON',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ],
         ),
         const SizedBox(height: Gap.md),
         Text(
           '$keyCount stored keys. Nothing has left this device.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.lg),
         Container(
@@ -413,7 +422,12 @@ class _InfoBody extends StatelessWidget {
               radius: 12,
             ),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: Gap.lg),

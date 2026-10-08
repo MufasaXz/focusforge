@@ -28,25 +28,18 @@ class Achievement {
   double get ratio => target <= 0 ? 0 : (progress / target).clamp(0.0, 1.0);
 
   Achievement copyWith({double? progress, DateTime? unlockedAt}) => Achievement(
-        id: id,
-        name: name,
-        description: description,
-        icon: icon,
-        color: color,
-        target: target,
-        progress: progress ?? this.progress,
-        unlockedAt: unlockedAt ?? this.unlockedAt,
-      );
+    id: id,
+    name: name,
+    description: description,
+    icon: icon,
+    color: color,
+    target: target,
+    progress: progress ?? this.progress,
+    unlockedAt: unlockedAt ?? this.unlockedAt,
+  );
 }
 
-/// A study group the user belongs to.
-///
-/// A group is local until there is a backend to sync it: it holds the name,
-/// the icon, the weekly target and an invite code the user can share. The
-/// hours are the user's own, measured from their session log — which is the
-/// truth about a group of one, and is why [memberCount] is a constant rather
-/// than a stored number. A made-up headcount is the exact kind of decoration
-/// this model is shaped to avoid.
+/// A private Firebase study group. Only aggregate progress is shared.
 @immutable
 class StudyGroup {
   const StudyGroup({
@@ -55,41 +48,45 @@ class StudyGroup {
     required this.icon,
     required this.targetHours,
     required this.createdAt,
-    this.weeklyHours = 0,
     this.inviteCode = '',
+    this.ownerUid = '',
+    this.memberIds = const [],
   });
-
   final String id;
   final String name;
   final IconData icon;
-
-  /// The user's completed hours this week, filled in by the provider from the
-  /// session log. Not persisted — a stored copy would go stale the moment a
-  /// session ends.
-  final double weeklyHours;
-
   final double targetHours;
   final DateTime createdAt;
-
-  /// Shareable, and generated locally. Two people who both install FocusForge
-  /// can hold the same code and compare weeks by hand; nothing syncs.
   final String inviteCode;
+  final String ownerUid;
+  final List<String> memberIds;
+  int get memberCount => memberIds.length;
+}
 
-  /// Everyone in the group. One, until membership can actually be synced.
-  int get memberCount => 1;
-
-  double get progress =>
-      targetHours <= 0 ? 0 : (weeklyHours / targetHours).clamp(0.0, 1.0);
-
-  StudyGroup copyWith({String? name, IconData? icon, double? targetHours, double? weeklyHours}) =>
-      StudyGroup(
-        id: id,
-        name: name ?? this.name,
-        icon: icon ?? this.icon,
-        targetHours: targetHours ?? this.targetHours,
-        createdAt: createdAt,
-        weeklyHours: weeklyHours ?? this.weeklyHours,
-        inviteCode: inviteCode,
+@immutable
+class GroupMember {
+  const GroupMember({
+    required this.uid,
+    required this.name,
+    required this.week,
+    required this.minutes,
+    this.focusUntil,
+  });
+  final String uid;
+  final String name;
+  final String week;
+  final int minutes;
+  final DateTime? focusUntil;
+  bool focusingAt(DateTime now) => focusUntil?.isAfter(now) ?? false;
+  factory GroupMember.fromJson(String uid, Map<String, dynamic> data) =>
+      GroupMember(
+        uid: uid,
+        name: data['name'] as String? ?? 'A student',
+        week: data['week'] as String? ?? '',
+        minutes: data['minutes'] as int? ?? 0,
+        focusUntil: data['focusUntil'] is int && (data['focusUntil'] as int) > 0
+            ? DateTime.fromMillisecondsSinceEpoch(data['focusUntil'] as int)
+            : null,
       );
 }
 
@@ -173,36 +170,36 @@ class NotificationPrefs {
     bool? quietHoursEnabled,
     int? quietStartHour,
     int? quietEndHour,
-  }) =>
-      NotificationPrefs(
-        sessionReminders: sessionReminders ?? this.sessionReminders,
-        dailySummary: dailySummary ?? this.dailySummary,
-        streakAlerts: streakAlerts ?? this.streakAlerts,
-        blockingAlerts: blockingAlerts ?? this.blockingAlerts,
-        weeklyReport: weeklyReport ?? this.weeklyReport,
-        buddyUpdates: buddyUpdates ?? this.buddyUpdates,
-        groupActivity: groupActivity ?? this.groupActivity,
-        challengeInvites: challengeInvites ?? this.challengeInvites,
-        quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
-        quietStartHour: quietStartHour ?? this.quietStartHour,
-        quietEndHour: quietEndHour ?? this.quietEndHour,
-      );
+  }) => NotificationPrefs(
+    sessionReminders: sessionReminders ?? this.sessionReminders,
+    dailySummary: dailySummary ?? this.dailySummary,
+    streakAlerts: streakAlerts ?? this.streakAlerts,
+    blockingAlerts: blockingAlerts ?? this.blockingAlerts,
+    weeklyReport: weeklyReport ?? this.weeklyReport,
+    buddyUpdates: buddyUpdates ?? this.buddyUpdates,
+    groupActivity: groupActivity ?? this.groupActivity,
+    challengeInvites: challengeInvites ?? this.challengeInvites,
+    quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
+    quietStartHour: quietStartHour ?? this.quietStartHour,
+    quietEndHour: quietEndHour ?? this.quietEndHour,
+  );
 
   Map<String, dynamic> toJson() => {
-        'sessionReminders': sessionReminders,
-        'dailySummary': dailySummary,
-        'streakAlerts': streakAlerts,
-        'blockingAlerts': blockingAlerts,
-        'weeklyReport': weeklyReport,
-        'buddyUpdates': buddyUpdates,
-        'groupActivity': groupActivity,
-        'challengeInvites': challengeInvites,
-        'quietHoursEnabled': quietHoursEnabled,
-        'quietStartHour': quietStartHour,
-        'quietEndHour': quietEndHour,
-      };
+    'sessionReminders': sessionReminders,
+    'dailySummary': dailySummary,
+    'streakAlerts': streakAlerts,
+    'blockingAlerts': blockingAlerts,
+    'weeklyReport': weeklyReport,
+    'buddyUpdates': buddyUpdates,
+    'groupActivity': groupActivity,
+    'challengeInvites': challengeInvites,
+    'quietHoursEnabled': quietHoursEnabled,
+    'quietStartHour': quietStartHour,
+    'quietEndHour': quietEndHour,
+  };
 
-  factory NotificationPrefs.fromJson(Map<String, dynamic> j) => NotificationPrefs(
+  factory NotificationPrefs.fromJson(Map<String, dynamic> j) =>
+      NotificationPrefs(
         sessionReminders: j['sessionReminders'] as bool? ?? true,
         dailySummary: j['dailySummary'] as bool? ?? true,
         streakAlerts: j['streakAlerts'] as bool? ?? true,

@@ -17,6 +17,7 @@ class AppPage extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.trailing,
+    this.onBack,
     this.bottomPadding = Gap.xxl,
     this.actions = const [],
   });
@@ -25,6 +26,7 @@ class AppPage extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   final Widget? trailing;
+  final VoidCallback? onBack;
   final double bottomPadding;
 
   /// Pinned between the app bar and the scroll view, e.g. a segmented control.
@@ -62,7 +64,9 @@ class AppPage extends StatelessWidget {
                   icon: const Icon(Icons.arrow_back),
                   tooltip: 'Back',
                   onPressed: () {
-                    if (context.canPop()) {
+                    if (onBack != null) {
+                      onBack!();
+                    } else if (context.canPop()) {
                       context.pop();
                     } else {
                       context.go('/profile');
@@ -241,11 +245,13 @@ class SectionHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.trailing,
+    this.onBack,
     this.icon,
   });
 
   final String title;
   final Widget? trailing;
+  final VoidCallback? onBack;
   final IconData? icon;
 
   @override
