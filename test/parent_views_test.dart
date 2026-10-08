@@ -110,15 +110,16 @@ class FakeParent implements ParentService {
         ]);
 
   @override
-  Future<PairCode> mintPairCode({required String childName}) async =>
-      PairCode(
-        code: '123456',
-        expiresAt: DateTime.now().add(PairCode.lifetime),
-      );
+  Future<PairCode> mintPairCode({required String childName}) async => PairCode(
+    code: '123456',
+    expiresAt: DateTime.now().add(PairCode.lifetime),
+  );
 
   @override
-  Future<ChildLink> linkChild(String code, {required String parentName}) async =>
-      const ChildLink(uid: 'child-3', name: 'New');
+  Future<ChildLink> linkChild(
+    String code, {
+    required String parentName,
+  }) async => const ChildLink(uid: 'child-3', name: 'New');
 
   @override
   Future<void> unlink(String uid) async {}
@@ -185,15 +186,17 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    container.read(userProvider.notifier).save(
-      const UserProfile(
-        uid: 'parent-1',
-        displayName: 'Amma',
-        persona: Persona.parent,
-        onboardingComplete: true,
-        isGuardian: true,
-      ),
-    );
+    container
+        .read(userProvider.notifier)
+        .save(
+          const UserProfile(
+            uid: 'parent-1',
+            displayName: 'Amma',
+            persona: Persona.parent,
+            onboardingComplete: true,
+            isGuardian: true,
+          ),
+        );
     return container;
   }
 
@@ -231,21 +234,22 @@ void main() {
     expect(find.text('Can\'t read their block list'), findsOneWidget);
   });
 
-  testWidgets('a child who left the list says so instead of going blank', (
-    tester,
-  ) async {
-    useTallPhone(tester);
-    final parent = FakeParent(childrenFailing: true);
-    final container = parentDevice(parent);
+  testWidgets(
+    'a failed child-list read does not claim the child was unlinked',
+    (tester) async {
+      useTallPhone(tester);
+      final parent = FakeParent(childrenFailing: true);
+      final container = parentDevice(parent);
 
-    await tester.pumpWidget(
-      wrap(container, const ChildDashboardScreen(childUid: 'child-1')),
-    );
-    await settle(tester);
+      await tester.pumpWidget(
+        wrap(container, const ChildDashboardScreen(childUid: 'child-1')),
+      );
+      await settle(tester);
 
-    expect(tester.takeException(), isNull);
-    expect(find.text('This child is not linked any more'), findsOneWidget);
-  });
+      expect(tester.takeException(), isNull);
+      expect(find.text('Connection could not be checked'), findsOneWidget);
+    },
+  );
 
   testWidgets('the child\'s page shows their day and their week', (
     tester,
@@ -332,14 +336,16 @@ void main() {
   ) async {
     useTallPhone(tester);
     final container = parentDevice(FakeParent());
-    container.read(userProvider.notifier).save(
-      const UserProfile(
-        uid: 'parent-1',
-        displayName: 'Ravi',
-        persona: Persona.student,
-        onboardingComplete: true,
-      ),
-    );
+    container
+        .read(userProvider.notifier)
+        .save(
+          const UserProfile(
+            uid: 'parent-1',
+            displayName: 'Ravi',
+            persona: Persona.student,
+            onboardingComplete: true,
+          ),
+        );
 
     await tester.pumpWidget(wrap(container, const ParentControlScreen()));
     await settle(tester);

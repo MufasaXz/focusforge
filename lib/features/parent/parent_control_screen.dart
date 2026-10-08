@@ -16,6 +16,8 @@ import '../../shared/widgets/icon_badge.dart';
 import '../settings/settings_support.dart';
 import 'parent_lock.dart';
 
+final _parentActionBusyProvider = StateProvider<bool>((ref) => false);
+
 /// Parent control — one page, two roles.
 ///
 /// A device is either watched by a parent or it is a parent's own, and the two
@@ -83,10 +85,8 @@ class _NoBackendCard extends StatelessWidget {
               child: Text(
                 'This build has no backend to pair over, so parent control is '
                 'unavailable. Everything else in the app works as usual.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
               ),
             ),
           ],
@@ -110,8 +110,10 @@ class _ThisDeviceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final guardian = ref.watch(guardianProvider).valueOrNull;
+    final linkState = ref.watch(guardianProvider);
+    final guardian = linkState.valueOrNull;
     final codeSet = ref.watch(parentCodeProvider) != null;
+    final busy = ref.watch(_parentActionBusyProvider);
 
     return AppSection(
       title: 'This device',
@@ -124,24 +126,43 @@ class _ThisDeviceSection extends ConsumerWidget {
           : 'Your parent has not set a security code yet. Until they do, '
                 'parent control can be turned off here without asking.',
       children: [
-        if (guardian == null)
+        if (linkState.hasError)
           ListTile(
-            leading: const IconBadge(
-              icon: Icons.qr_code_2_rounded,
-              color: Color(0xFF7FA9FF),
+            leading: const Icon(Icons.cloud_off_outlined),
+            title: const Text('Connection could not be checked'),
+            subtitle: const Text(
+              'Your existing protection is kept. Tap to retry.',
             ),
-            title: const Text('Show this device\'s code'),
+            trailing: const Icon(Icons.refresh_rounded),
+            onTap: () => ref.invalidate(guardianProvider),
+          )
+        else if (linkState.isLoading && guardian == null)
+          const ListTile(
+            title: Text('Checking this device’s connection'),
+            leading: CircularProgressIndicator(),
+          )
+        else if (guardian == null)
+          ListTile(
+            leading: IconBadge(
+              icon: Icons.qr_code_2_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(
+              busy
+                  ? 'Preparing your pairing code…'
+                  : 'Show this device\'s code',
+            ),
             subtitle: const Text('Six digits, good for 15 minutes'),
-            enabled: enabled,
-            onTap: enabled
+            enabled: enabled && !busy,
+            onTap: enabled && !busy
                 ? () => unawaited(_showPairCode(context, ref))
                 : null,
           )
         else ...[
           ListTile(
-            leading: const IconBadge(
+            leading: IconBadge(
               icon: Icons.family_restroom_rounded,
-              color: Color(0xFF8FE39B),
+              color: Theme.of(context).colorScheme.tertiary,
             ),
             title: Text(guardian.name),
             subtitle: Text(
@@ -174,32 +195,56 @@ class _ThisDeviceSection extends ConsumerWidget {
 /// another phone, and a dialog that closed on minting would leave the user
 /// wondering whether it worked.
 Future<void> _showPairCode(BuildContext context, WidgetRef ref) async {
-  final service = ref.read(parentServiceProvider);
-  final name = ref.read(userProvider).displayName;
-
-  final PairCode code;
+  if (ref.read(_parentActionBusyProvider)) return;
+  final container = ProviderScope.containerOf(context, listen: false);
+  container.read(_parentActionBusyProvider.notifier).state = true;
   try {
-    code = await service.mintPairCode(childName: name);
+    final code = await ref
+        .read(parentServiceProvider)
+        .mintPairCode(childName: ref.read(userProvider).displayName);
+    if (!context.mounted) return;
+    await showAppDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => _PairCodeBody(code: code),
+    );
   } on PairException catch (error) {
     if (context.mounted) showAppSnack(context, error.friendly);
-    return;
+  } finally {
+    container.read(_parentActionBusyProvider.notifier).state = false;
   }
-  if (!context.mounted) return;
-
-  await showAppDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) => _PairCodeBody(code: code),
-  );
 }
 
-class _PairCodeBody extends ConsumerWidget {
+class _PairCodeBody extends ConsumerStatefulWidget {
   const _PairCodeBody({required this.code});
 
   final PairCode code;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PairCodeBody> createState() => _PairCodeBodyState();
+}
+
+class _PairCodeBodyState extends ConsumerState<_PairCodeBody> {
+  late final Timer _tick;
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
+    final code = widget.code;
+    final remaining = code.expiresAt.difference(DateTime.now());
     final cs = Theme.of(context).colorScheme;
     // The link is written by the *other* phone, so this screen finds out the
     // same way the rest of the app does.
@@ -220,9 +265,9 @@ class _PairCodeBody extends ConsumerWidget {
       children: [
         Row(
           children: [
-            const IconBadge(
+            IconBadge(
               icon: Icons.qr_code_2_rounded,
-              color: Color(0xFF7FA9FF),
+              color: Theme.of(context).colorScheme.primary,
               size: 40,
               radius: 12,
             ),
@@ -248,21 +293,28 @@ class _PairCodeBody extends ConsumerWidget {
             color: cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(Radii.item),
           ),
-          child: Text(
-            code.code,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              letterSpacing: 10,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                code.expired ? 'Expired' : code.code,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  letterSpacing: 5,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
           ),
         ),
         const SizedBox(height: Gap.md),
         Text(
-          'Good for ${PairCode.lifetime.inMinutes} minutes, and only once.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          code.expired
+              ? 'This code has expired. Close this and request a fresh one.'
+              : 'Expires in ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')} · One use only',
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.xl),
         Row(
@@ -345,6 +397,7 @@ class _ChildrenSection extends ConsumerWidget {
     final children =
         ref.watch(childrenProvider).valueOrNull ?? const <ChildLink>[];
     final loading = ref.watch(childrenProvider).isLoading;
+    final busy = ref.watch(_parentActionBusyProvider);
 
     return AppSection(
       title: 'Children',
@@ -352,7 +405,15 @@ class _ChildrenSection extends ConsumerWidget {
           ? 'Three children is the limit.'
           : 'Each child gets their own dashboard and their own block list.',
       children: [
-        if (loading && children.isEmpty)
+        if (ref.watch(childrenProvider).hasError)
+          ListTile(
+            leading: const Icon(Icons.cloud_off_outlined),
+            title: const Text('Linked devices could not load'),
+            subtitle: const Text('Tap to retry. Check your connection.'),
+            trailing: const Icon(Icons.refresh_rounded),
+            onTap: () => ref.invalidate(childrenProvider),
+          )
+        else if (loading && children.isEmpty)
           const ListTile(
             leading: SizedBox(
               width: 24,
@@ -363,9 +424,9 @@ class _ChildrenSection extends ConsumerWidget {
           )
         else if (children.isEmpty)
           ListTile(
-            leading: const IconBadge(
+            leading: IconBadge(
               icon: Icons.child_care_rounded,
-              color: Color(0xFF8FE39B),
+              color: Theme.of(context).colorScheme.tertiary,
             ),
             title: const Text('No children linked yet'),
             subtitle: const Text('Add one with a code from their phone'),
@@ -373,9 +434,9 @@ class _ChildrenSection extends ConsumerWidget {
         else
           for (final child in children)
             ListTile(
-              leading: const IconBadge(
+              leading: IconBadge(
                 icon: Icons.person_rounded,
-                color: Color(0xFF8FE39B),
+                color: Theme.of(context).colorScheme.tertiary,
               ),
               title: Text(child.name),
               subtitle: Text(
@@ -394,14 +455,16 @@ class _ChildrenSection extends ConsumerWidget {
             ),
         if (children.length < 3)
           ListTile(
-            leading: const IconBadge(
+            leading: IconBadge(
               icon: Icons.add_rounded,
-              color: Color(0xFF7FA9FF),
+              color: Theme.of(context).colorScheme.primary,
             ),
-            title: const Text('Add a child'),
+            title: Text(busy ? 'Linking device…' : 'Add a child'),
             subtitle: const Text('Enter the six digits from their phone'),
-            enabled: enabled,
-            onTap: enabled ? () => unawaited(_addChild(context, ref)) : null,
+            enabled: enabled && !busy,
+            onTap: enabled && !busy
+                ? () => unawaited(_addChild(context, ref))
+                : null,
           ),
       ],
     );
@@ -409,6 +472,7 @@ class _ChildrenSection extends ConsumerWidget {
 }
 
 Future<void> _addChild(BuildContext context, WidgetRef ref) async {
+  if (ref.read(_parentActionBusyProvider)) return;
   final code = await showAppInputDialog(
     context: context,
     title: 'Add a child',
@@ -428,6 +492,9 @@ Future<void> _addChild(BuildContext context, WidgetRef ref) async {
     return;
   }
 
+  if (!context.mounted) return;
+  final container = ProviderScope.containerOf(context, listen: false);
+  container.read(_parentActionBusyProvider.notifier).state = true;
   final service = ref.read(parentServiceProvider);
   final name = ref.read(userProvider).displayName;
   try {
@@ -438,6 +505,8 @@ Future<void> _addChild(BuildContext context, WidgetRef ref) async {
     if (context.mounted) showAppSnack(context, '${child.name} is linked.');
   } on PairException catch (error) {
     if (context.mounted) showAppSnack(context, error.friendly);
+  } finally {
+    container.read(_parentActionBusyProvider.notifier).state = false;
   }
 }
 
@@ -456,12 +525,12 @@ class _WhatATParentSeesNote extends StatelessWidget {
         const SizedBox(width: Gap.sm),
         Expanded(
           child: Text(
-            'What a parent sees: today\'s minutes, sessions, the daily goal, '
-            'the streak and the leading subject. Not the session log, not the '
-            'subjects studied, not the apps used.',
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            'A linked parent sees daily and weekly study totals, your goal, '
+            'streak and leading subject. Your installed app names are shared '
+            'so they can choose Shield rules. Messages, screen contents and '
+            'your detailed session log stay private.',
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
       ],

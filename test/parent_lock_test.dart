@@ -12,6 +12,8 @@
 // while enforcement was off, or a code that verified a wrong value — the
 // parent's setup would be decoration.
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -51,23 +53,23 @@ class PairedParentService implements ParentService {
       Stream.value(guardian ?? GuardianLink(uid: 'parent-1', name: 'Amma'));
 
   @override
-  Stream<RemoteBlocks?> watchBlocks(String childUid) =>
-      Stream.value(blocks);
+  Stream<RemoteBlocks?> watchBlocks(String childUid) => Stream.value(blocks);
 
   @override
   Stream<List<CatalogApp>> watchCatalog(String childUid) =>
       Stream.value(const []);
 
   @override
-  Future<PairCode> mintPairCode({required String childName}) async =>
-      PairCode(
-        code: '123456',
-        expiresAt: DateTime.now().add(PairCode.lifetime),
-      );
+  Future<PairCode> mintPairCode({required String childName}) async => PairCode(
+    code: '123456',
+    expiresAt: DateTime.now().add(PairCode.lifetime),
+  );
 
   @override
-  Future<ChildLink> linkChild(String code, {required String parentName}) async =>
-      const ChildLink(uid: 'child-2', name: 'Ravi');
+  Future<ChildLink> linkChild(
+    String code, {
+    required String parentName,
+  }) async => const ChildLink(uid: 'child-2', name: 'Ravi');
 
   @override
   Future<void> unlink(String uid) async {}
@@ -129,6 +131,66 @@ void main() {
         .save(const UserProfile(uid: 'child-1', displayName: 'Ravi'));
     return container;
   }
+
+  test('sync keeps cached blocks on link errors and clears after a confirmed unlink', () async {
+    final guardian = StreamController<GuardianLink?>();
+    final blocks = StreamController<RemoteBlocks?>();
+    addTearDown(guardian.close);
+    addTearDown(blocks.close);
+    final engine = RecordingShieldService();
+    addTearDown(engine.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        shieldServiceProvider.overrideWithValue(engine),
+        parentServiceProvider.overrideWithValue(
+          PairedParentService(blocks: const RemoteBlocks()),
+        ),
+        guardianProvider.overrideWith((ref) => guardian.stream),
+        myRemoteBlocksProvider.overrideWith((ref) => blocks.stream),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'child-1'));
+    container.read(shieldSyncBridgeProvider);
+    guardian.add(GuardianLink(uid: 'parent', name: 'Amma'));
+    blocks.add(
+      const RemoteBlocks(
+        apps: [RemoteBlock(packageId: 'com.example.app', name: 'App')],
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(engine.lastApplied!.remote, hasLength(1));
+    guardian.addError(StateError('offline'));
+    blocks.addError(StateError('offline'));
+    await Future<void>.delayed(Duration.zero);
+    expect(engine.lastApplied!.remote, hasLength(1));
+    guardian.add(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(engine.lastApplied!.remote, isEmpty);
+  });
+
+  test(
+    'a cold start restores confirmed parent rules only for the same account',
+    () async {
+      await store.setMap(StoreKeys.remoteBlocks, {
+        'uid': 'child-1',
+        'blocks': const RemoteBlocks(
+          apps: [RemoteBlock(packageId: 'com.example.app', name: 'App')],
+        ).toJson(),
+      });
+      final engine = RecordingShieldService();
+      addTearDown(engine.dispose);
+      final c = childDevice(engine);
+      expect(c.read(remoteBlocksProvider).apps, hasLength(1));
+      c
+          .read(userProvider.notifier)
+          .hydrate(const UserProfile(uid: 'another-child'));
+      expect(c.read(remoteBlocksProvider).apps, isEmpty);
+    },
+  );
 
   test('a code is a digest of four digits, never the digits', () {
     final code = ParentCode.of('4821');

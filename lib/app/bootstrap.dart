@@ -256,6 +256,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(whitelistProvider);
   container.invalidate(youtubeRulesProvider);
   container.invalidate(strictModeProvider);
+  container.invalidate(remoteBlocksProvider);
   container.invalidate(breathEventsProvider);
   container.invalidate(achievementsProvider);
   container.invalidate(notificationsProvider);

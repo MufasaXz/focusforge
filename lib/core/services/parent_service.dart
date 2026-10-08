@@ -36,7 +36,8 @@ abstract class ParentService {
   /// The parent this device is linked to, if any.
   Stream<GuardianLink?> watchGuardian(String uid);
 
-  /// Breaks the link. Called by the child's device, behind its security code.
+  /// Breaks both sides of the link. The child confirms its security code;
+  /// the linked parent may also retire a device from its dashboard.
   Future<void> unlink(String uid);
 
   /// Publishes the child's summary for the parent to read.
@@ -97,7 +98,7 @@ class PairException implements Exception {
       'The server refused the change. If this project\'s security rules have '
           'not been published yet, that is why.',
     PairFailure.noBackend => 'This build has no backend to pair over.',
-    PairFailure.offline => 'No connection. Pairing needs one.',
+    PairFailure.offline => 'The change could not be confirmed. Check your connection; pending changes may still finish.',
     PairFailure.unknown => 'Something went wrong while pairing.',
   };
 
@@ -149,7 +150,9 @@ class FirebaseParentService implements ParentService {
     PairFailure denied = PairFailure.alreadyLinked,
   }) async {
     try {
-      return await body();
+      return await body().timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      throw const PairException(PairFailure.offline);
     } on FirebaseException catch (error) {
       if (error.code == 'permission-denied') {
         throw PairException(denied, error.message);
@@ -164,77 +167,74 @@ class FirebaseParentService implements ParentService {
   @override
   Future<PairCode> mintPairCode({required String childName}) async {
     final me = _requireUid();
-    // Six digits, leading zeros kept: the code is a string everywhere, so
-    // 000123 is a code rather than the number 123.
-    final code = List.generate(6, (_) => _random.nextInt(10)).join();
-    final expires = DateTime.now().add(PairCode.lifetime);
-    await _guard(
-      () => _db.collection('pairCodes').doc(code).set({
-        'childUid': me,
-        'childName': childName,
-        'createdAt': DateTime.now().millisecondsSinceEpoch,
-        'expiresAt': expires.millisecondsSinceEpoch,
-      }),
-    );
-    return PairCode(code: code, expiresAt: expires);
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final code = List.generate(6, (_) => _random.nextInt(10)).join();
+      final expires = DateTime.now().add(PairCode.lifetime);
+      final created = await _guard(
+        () => _db.runTransaction((tx) async {
+          final doc = _db.collection('pairCodes').doc(code);
+          if ((await tx.get(doc)).exists) return false;
+          tx.set(doc, {
+            'childUid': me,
+            'childName': childName.trim().substring(
+              0,
+              min(childName.trim().length, 60),
+            ),
+            'createdAt': DateTime.now().millisecondsSinceEpoch,
+            'expiresAt': expires.millisecondsSinceEpoch,
+          });
+          return true;
+        }),
+        denied: PairFailure.refused,
+      );
+      if (created) return PairCode(code: code, expiresAt: expires);
+    }
+    throw const PairException(PairFailure.unknown);
   }
 
   @override
   Future<ChildLink> linkChild(String code, {required String parentName}) async {
     final me = _requireUid();
-    final doc = await _guard(() => _db.collection('pairCodes').doc(code).get());
-    final data = doc.data();
-    if (!doc.exists || data == null) {
+    final clean = code.trim();
+    if (!PairCode.looksValid(clean)) {
       throw const PairException(PairFailure.badCode);
     }
-    final childUid = data['childUid'];
-    if (childUid is! String || childUid.isEmpty) {
+    final codeDoc = _db.collection('pairCodes').doc(clean);
+    final doc = await _guard(
+      () => codeDoc.get(const GetOptions(source: Source.server)),
+    );
+    final data = doc.data();
+    if (data == null || data['childUid'] is! String || data['childUid'] == me) {
       throw const PairException(PairFailure.badCode);
+    }
+    if (data['claimedBy'] != null) {
+      throw const PairException(PairFailure.alreadyLinked);
     }
     final expires = data['expiresAt'];
-    if (expires is num &&
-        DateTime.now().isAfter(
-          DateTime.fromMillisecondsSinceEpoch(expires.toInt()),
-        )) {
+    if (expires is! num || expires <= DateTime.now().millisecondsSinceEpoch) {
       throw const PairException(PairFailure.expired);
     }
-
-    final name = data['childName'] is String
-        ? data['childName'] as String
-        : 'Your child';
-
-    // The child's own record names the parent; the parent's list names the
-    // child. Both are written before the code is retired, so a half-finished
-    // link is a retry rather than a lost pairing.
-    //
-    // The record is a document *inside* the child's `guardian` collection:
-    // `users/{uid}/guardian/link`. A document path must have an even number
-    // of segments — `users/{uid}/guardian` names a collection, not a
-    // document, and the SDK refuses it ("document references must have an
-    // even number of segments") before a request is ever sent.
-    await _guard(
-      () => _db.doc('users/$childUid/guardian/link').set({
-        'parentUid': me,
-        'parentName': parentName,
-        'linkedAt': DateTime.now().millisecondsSinceEpoch,
-      }),
-    );
-    await _guard(
-      () => _db
-          .collection('users')
-          .doc(me)
-          .collection('children')
-          .doc(childUid)
-          .set({
-            'name': name,
-            'linkedAt': DateTime.now().millisecondsSinceEpoch,
-          }),
-    );
-    // A code is good once. Leaving it live would let a second parent claim the
-    // same device for the rest of the window.
-    unawaited(_guard(() => _db.collection('pairCodes').doc(code).delete()));
-
-    return ChildLink(uid: childUid, name: name, linkedAt: DateTime.now());
+    final childUid = data['childUid'] as String;
+    final name = data['childName'] as String? ?? 'Your child';
+    final now = DateTime.now();
+    // A valid code and all three writes are checked together by the rules.
+    final batch = _db.batch();
+    batch.set(_db.doc('users/$childUid/guardian/link'), {
+      'parentUid': me,
+      'parentName': parentName.trim().substring(
+        0,
+        min(parentName.trim().length, 60),
+      ),
+      'linkedAt': now.millisecondsSinceEpoch,
+      'pairCode': clean,
+    });
+    batch.set(_db.doc('users/$me/children/$childUid'), {
+      'name': name,
+      'linkedAt': now.millisecondsSinceEpoch,
+    });
+    batch.update(codeDoc, {'claimedBy': me});
+    await _guard(batch.commit);
+    return ChildLink(uid: childUid, name: name, linkedAt: now);
   }
 
   @override
@@ -253,12 +253,22 @@ class FirebaseParentService implements ParentService {
   @override
   Stream<GuardianLink?> watchGuardian(String uid) => _db
       .doc('users/$uid/guardian/link')
-      .snapshots()
+      .snapshots(includeMetadataChanges: true)
+      .where((doc) => doc.exists || !doc.metadata.isFromCache)
       .map((doc) => doc.exists ? GuardianLink.fromJson(doc.data()) : null);
 
   @override
-  Future<void> unlink(String uid) =>
-      _guard(() => _db.doc('users/$uid/guardian/link').delete());
+  Future<void> unlink(String uid) => _guard(() async {
+    final doc = _db.doc('users/$uid/guardian/link');
+    final link = await doc.get(const GetOptions(source: Source.server));
+    final parentUid = link.data()?['parentUid'];
+    if (parentUid is! String) return;
+    final batch = _db.batch();
+    batch.delete(doc);
+    batch.delete(_db.doc('users/$parentUid/children/$uid'));
+    batch.delete(_db.doc('users/$uid/remoteRules/current'));
+    await batch.commit();
+  }, denied: PairFailure.refused);
 
   @override
   Future<void> publishProgress(String uid, ChildProgress progress) => _guard(
@@ -296,15 +306,17 @@ class FirebaseParentService implements ParentService {
     // protects: whoever can read the link can check a code against it, and the
     // child's own device is the one that has to. A merge keeps the link itself
     // — the parent's name, the date — exactly as it was.
-    () => _db.doc('users/$childUid/guardian/link').set(
-      code == null
-          ? {
-              'codeSalt': FieldValue.delete(),
-              'codeHash': FieldValue.delete(),
-            }
-          : {'codeSalt': code.salt, 'codeHash': code.hash},
-      SetOptions(merge: true),
-    ),
+    () => _db
+        .doc('users/$childUid/guardian/link')
+        .set(
+          code == null
+              ? {
+                  'codeSalt': FieldValue.delete(),
+                  'codeHash': FieldValue.delete(),
+                }
+              : {'codeSalt': code.salt, 'codeHash': code.hash},
+          SetOptions(merge: true),
+        ),
     denied: PairFailure.refused,
   );
 
@@ -314,7 +326,8 @@ class FirebaseParentService implements ParentService {
       .doc(childUid)
       .collection('remoteRules')
       .doc('current')
-      .snapshots()
+      .snapshots(includeMetadataChanges: true)
+      .where((doc) => doc.exists || !doc.metadata.isFromCache)
       .map((doc) => doc.exists ? RemoteBlocks.fromJson(doc.data()) : null);
 
   @override
@@ -340,9 +353,7 @@ class FirebaseParentService implements ParentService {
       .map((doc) {
         final apps = doc.data()?['apps'];
         if (apps is! List) return const <CatalogApp>[];
-        return [
-          for (final row in apps) ?CatalogApp.fromJson(row),
-        ];
+        return [for (final row in apps) ?CatalogApp.fromJson(row)];
       });
 
   @override
@@ -393,7 +404,8 @@ class UnavailableParentService implements ParentService {
       _refuse();
 
   @override
-  Future<void> publishCode(String childUid, ParentCode? code) async => _refuse();
+  Future<void> publishCode(String childUid, ParentCode? code) async =>
+      _refuse();
 
   @override
   Stream<RemoteBlocks?> watchBlocks(String childUid) => Stream.value(null);

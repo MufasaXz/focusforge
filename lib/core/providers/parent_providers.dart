@@ -184,13 +184,29 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
   // A parent's rules land in the shield's own state first, so every later
   // rebuild of the config — a toggle, a preset change — carries them too.
   ref.listen(myRemoteBlocksProvider, (previous, next) {
-    // `valueOrNull`, not `value`: an error reading the parent's list must
-    // leave the rules as they are, not throw out of the listener.
-    final blocks = next.valueOrNull;
-    if (blocks == null) return;
-    // A parent who is only watching keeps their list, and this is what makes
-    // "only watching" mean nothing is enforced rather than nothing is stored.
-    ref.read(remoteBlocksProvider.notifier).set(blocks.inForce);
+    if (!ref.read(parentServiceProvider).available ||
+        ref.read(accountUidProvider) == null ||
+        next is! AsyncData<RemoteBlocks?>) {
+      return;
+    }
+    final guardian = ref.read(guardianProvider);
+    if (guardian is! AsyncData<GuardianLink?>) return;
+    ref
+        .read(remoteBlocksProvider.notifier)
+        .set(
+          guardian.value == null
+              ? const RemoteBlocks()
+              : next.value?.inForce ?? const RemoteBlocks(),
+        );
+  });
+  ref.listen(guardianProvider, (previous, next) {
+    if (ref.read(parentServiceProvider).available &&
+        ref.read(accountUidProvider) != null &&
+        next is AsyncData<GuardianLink?> &&
+        next.value == null) {
+      ref.read(remoteBlocksProvider.notifier).set(const RemoteBlocks());
+      ref.read(parentLockProvider.notifier).lock();
+    }
   });
   ref.listen(timerProvider, (previous, next) => syncShield(ref));
   syncShield(ref);
@@ -203,7 +219,7 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
 /// stays here — a parent can see whether the work is happening without reading
 /// the child's whole day.
 final parentProgressPublisherProvider = Provider<void>((ref) {
-  Future<void> publish() async {
+  Future<void> send() async {
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -238,6 +254,19 @@ final parentProgressPublisherProvider = Provider<void>((ref) {
     );
   }
 
+  Future<void> publish() async {
+    try {
+      await send();
+    } catch (_) {
+      /* Keep local data; retry on the next heartbeat. */
+    }
+  }
+
+  final heartbeat = Timer.periodic(
+    const Duration(minutes: 1),
+    (_) => unawaited(publish()),
+  );
+  ref.onDispose(heartbeat.cancel);
   ref.listen(sessionsProvider, (previous, next) => unawaited(publish()));
   ref.listen(dailyGoalProvider, (previous, next) => unawaited(publish()));
   ref.listen(guardianProvider, (previous, next) => unawaited(publish()));
@@ -259,7 +288,7 @@ bool _withinLastWeek(DateTime at, DateTime now) {
 /// the package the rule is written against and a name to recognise it by.
 /// Nothing about how the apps are used travels with it.
 final catalogPublisherProvider = Provider<void>((ref) {
-  Future<void> publish() async {
+  Future<void> send() async {
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -273,9 +302,16 @@ final catalogPublisherProvider = Provider<void>((ref) {
     // engine refuses several of them anyway.
     await service.publishCatalog(uid, [
       for (final app in installed)
-        if (!app.isSystem)
-          CatalogApp(packageId: app.packageId, name: app.name),
+        if (!app.isSystem) CatalogApp(packageId: app.packageId, name: app.name),
     ]);
+  }
+
+  Future<void> publish() async {
+    try {
+      await send();
+    } catch (_) {
+      /* Retry after a new link or restart. */
+    }
   }
 
   // A fresh link is the moment the parent's picker has something to show.

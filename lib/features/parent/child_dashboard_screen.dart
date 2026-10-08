@@ -41,6 +41,29 @@ class ChildDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _ChildDashboardScreenState extends ConsumerState<ChildDashboardScreen> {
+  bool _unlinking = false;
+  Future<void> _unlink(ChildLink child) async {
+    final confirmed = await showAppConfirmDialog(
+      context: context,
+      title: 'Unlink ${child.name}?',
+      message: 'Their study summary will stop sharing and the Shield rules you set will lift.',
+      confirmLabel: 'Unlink device',
+      destructive: true,
+      icon: Icons.link_off_rounded,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _unlinking = true);
+    try {
+      await ref.read(parentServiceProvider).unlink(child.uid);
+      if (mounted) context.go(AppRoutes.paths[AppRoutes.parentControl]!);
+    } on PairException catch (e) {
+      if (mounted) {
+        setState(() => _unlinking = false);
+        showAppSnack(context, e.friendly);
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -78,23 +101,26 @@ class _ChildDashboardScreenState extends ConsumerState<ChildDashboardScreen> {
     return AppPage(
       title: child?.name ?? 'Child',
       subtitle: 'Their device',
-      trailing: list.length > 1 ? _ChildSwitcher(current: widget.childUid) : null,
+      trailing: list.length > 1
+          ? _ChildSwitcher(current: widget.childUid)
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (child == null)
             EmptyState(
               icon: Icons.link_off_rounded,
-              title: 'This child is not linked any more',
+              title: children.hasError
+                  ? 'Connection could not be checked'
+                  : 'This child is not linked any more',
               subtitle: children.hasError
                   ? 'Their record could not be read just now. Pull the list '
                         'open again from Parent control.'
                   : 'Their device is no longer on your list, so there is '
                         'nothing here to watch or to block.',
               action: TextButton(
-                onPressed: () => context.go(
-                  AppRoutes.paths[AppRoutes.parentControl]!,
-                ),
+                onPressed: () =>
+                    context.go(AppRoutes.paths[AppRoutes.parentControl]!),
                 child: const Text('Back to Parent control'),
               ),
             )
@@ -131,6 +157,12 @@ class _ChildDashboardScreenState extends ConsumerState<ChildDashboardScreen> {
                 blocks: blocks ?? const RemoteBlocks(),
               ),
             _SecurityCodeSection(childUid: widget.childUid, name: child.name),
+            const SizedBox(height: Gap.lg),
+            OutlinedButton.icon(
+              onPressed: _unlinking ? null : () => _unlink(child),
+              icon: const Icon(Icons.link_off_rounded),
+              label: Text(_unlinking ? 'Unlinking…' : 'Unlink this device'),
+            ),
           ],
         ],
       ),
@@ -171,10 +203,8 @@ class _Unreachable extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     body,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.4,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
                   ),
                 ],
               ),
@@ -432,10 +462,7 @@ class _BlocksSection extends ConsumerWidget {
                 ),
               if (blocks.apps.isEmpty)
                 ListTile(
-                  leading: Icon(
-                    Icons.apps_rounded,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  leading: Icon(Icons.apps_rounded, color: cs.onSurfaceVariant),
                   title: const Text('No apps blocked'),
                   subtitle: const Text('Add one from their app list'),
                 ),
@@ -474,23 +501,21 @@ Future<void> _setEnforced(WidgetRef ref, String childUid, bool value) async {
       .publishBlocks(childUid, current.copyWith(enforced: value));
 }
 
-Future<void> _removeApp(
-  WidgetRef ref,
-  String childUid,
-  RemoteBlock app,
-) async {
+Future<void> _removeApp(WidgetRef ref, String childUid, RemoteBlock app) async {
   final current =
       ref.read(childBlocksProvider(childUid)).valueOrNull ??
       const RemoteBlocks();
-  await ref.read(parentServiceProvider).publishBlocks(
-    childUid,
-    current.copyWith(
-      apps: [
-        for (final a in current.apps)
-          if (a.packageId != app.packageId) a,
-      ],
-    ),
-  );
+  await ref
+      .read(parentServiceProvider)
+      .publishBlocks(
+        childUid,
+        current.copyWith(
+          apps: [
+            for (final a in current.apps)
+              if (a.packageId != app.packageId) a,
+          ],
+        ),
+      );
 }
 
 /// Picks apps from the child's own list.
@@ -498,7 +523,11 @@ Future<void> _removeApp(
 /// The list comes from the child's device because that is the only place that
 /// knows what is installed. A parent choosing from a canned catalogue of
 /// famous apps would be choosing a name, not an app.
-Future<void> _addApps(BuildContext context, WidgetRef ref, String childUid) async {
+Future<void> _addApps(
+  BuildContext context,
+  WidgetRef ref,
+  String childUid,
+) async {
   final catalog = ref.read(childCatalogProvider(childUid)).valueOrNull;
   if (catalog == null || catalog.isEmpty) {
     showAppSnack(
@@ -516,11 +545,8 @@ Future<void> _addApps(BuildContext context, WidgetRef ref, String childUid) asyn
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => _AppPickerSheet(
-      childUid: childUid,
-      catalog: catalog,
-      blocks: current,
-    ),
+    builder: (context) =>
+        _AppPickerSheet(childUid: childUid, catalog: catalog, blocks: current),
   );
 }
 
@@ -605,9 +631,8 @@ class _AppPickerSheetState extends ConsumerState<_AppPickerSheet> {
                 Text(
                   '${_blocks.apps.length} blocked · changes arrive on their '
                   'phone the next time it is online',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: Gap.md),
                 TextField(
@@ -720,10 +745,7 @@ class _SecurityCodeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionHeader(
-          title: 'Security code',
-          icon: Icons.lock_rounded,
-        ),
+        const SectionHeader(title: 'Security code', icon: Icons.lock_rounded),
         Card.filled(
           clipBehavior: Clip.antiAlias,
           child: ListTile(

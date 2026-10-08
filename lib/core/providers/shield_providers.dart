@@ -113,7 +113,12 @@ DateTime? focusWindowEnd(TimerState timer) {
 /// parent's rule on its way to the service.
 class RemoteBlocksNotifier extends Notifier<RemoteBlocks> {
   @override
-  RemoteBlocks build() => const RemoteBlocks();
+  RemoteBlocks build() {
+    final uid = ref.watch(userProvider.select((user) => user.uid));
+    final cached = ref.read(localStoreProvider).getMap(StoreKeys.remoteBlocks);
+    if (uid.isEmpty || cached?['uid'] != uid) return const RemoteBlocks();
+    return RemoteBlocks.fromJson(cached?['blocks']).inForce;
+  }
 
   /// Replaces the parent's rules and re-pushes the config.
   void set(RemoteBlocks next) {
@@ -122,6 +127,15 @@ class RemoteBlocksNotifier extends Notifier<RemoteBlocks> {
     // Nothing on either side is not a change worth a channel call.
     if (wasEmpty && isEmpty) return;
     state = next;
+    final uid = ref.read(userProvider).uid;
+    // Restore the last confirmed rules before the cold-start engine push.
+    // A backend error must not silently remove protection on a restart.
+    unawaited(
+      ref
+          .read(localStoreProvider)
+          .setMap(StoreKeys.remoteBlocks, {'uid': uid, 'blocks': next.toJson()})
+          .catchError((Object _) {}),
+    );
     // The new value is passed rather than re-read: this notifier reading its
     // own provider is the self-dependency syncShield's contract exists to
     // avoid.
