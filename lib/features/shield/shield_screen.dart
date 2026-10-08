@@ -22,6 +22,7 @@ import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/accessibility_disclosure.dart';
 import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
@@ -849,9 +850,8 @@ class _NoChildrenYet extends StatelessWidget {
                 'This tab closes apps on your child\'s phone. Open Profile → '
                 'Parent control and add a child with the six digits their '
                 'phone shows; their app list arrives here.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: cs.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1035,9 +1035,7 @@ class _EnforceRow extends ConsumerWidget {
       child: SwitchListTile.adaptive(
         value: blocks.enforced,
         secondary: Icon(
-          blocks.enforced
-              ? Icons.shield_rounded
-              : Icons.visibility_outlined,
+          blocks.enforced ? Icons.shield_rounded : Icons.visibility_outlined,
           color: blocks.enforced ? cs.tertiary : cs.onErrorContainer,
         ),
         title: Text(
@@ -1053,11 +1051,7 @@ class _EnforceRow extends ConsumerWidget {
           ),
         ),
         onChanged: (value) => unawaited(
-          _publishBlocks(
-            ref,
-            childUid,
-            blocks.copyWith(enforced: value),
-          ),
+          _publishBlocks(ref, childUid, blocks.copyWith(enforced: value)),
         ),
       ),
     );
@@ -1256,10 +1250,8 @@ class _NoChildApps extends StatelessWidget {
                     : 'Their phone publishes the apps it has while FocusForge '
                           'is open and linked. It arrives here as soon as it '
                           'does.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1603,6 +1595,10 @@ class _PermissionGate extends ConsumerWidget {
               const SizedBox(height: Gap.md),
               FilledButton(
                 onPressed: () async {
+                  if (permission == AppPermission.accessibility &&
+                      !await confirmShieldAccess(context)) {
+                    return;
+                  }
                   await const PermissionManager().request(permission);
                   // The answer arrives on resume, not here — the grant happens
                   // in a settings page this app is not running behind.
@@ -1612,7 +1608,7 @@ class _PermissionGate extends ConsumerWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: cs.onErrorContainer,
                   foregroundColor: cs.errorContainer,
-                  minimumSize: const Size.fromHeight(44),
+                  minimumSize: const Size.fromHeight(48),
                 ),
                 child: Text(action),
               ),
@@ -2534,9 +2530,8 @@ class _YoutubeView extends ConsumerWidget {
                     runWithParentUnlock(
                       context,
                       ref,
-                      () => ref
-                          .read(youtubeRulesProvider.notifier)
-                          .setShorts(v),
+                      () =>
+                          ref.read(youtubeRulesProvider.notifier).setShorts(v),
                     ),
                   ),
                 ),

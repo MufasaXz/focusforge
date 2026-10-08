@@ -5,13 +5,12 @@
          app follows now that its default theme is `system`. -->
     <color name="ff_launch_background">#181210</color>
 
-    <!-- See values/colors.xml. The accent stays the ember: on a dark surface
-         it is already legible, and a themed salmon would read as a different
-         brand on the one screen that has to feel like the app. -->
+    <!-- Warm scheme roles with readable action contrast in dark mode. -->
     <color name="ff_block_surface">#181210</color>
     <color name="ff_block_on_surface">#EDE0DB</color>
     <color name="ff_block_muted">#D8C2BA</color>
     <color name="ff_block_outline">#54433C</color>
-    <color name="ff_block_accent">#E8672A</color>
-    <color name="ff_block_on_accent">#FFFFFF</color>
+    <color name="ff_block_accent">#FFB692</color>
+    <color name="ff_block_on_accent">#542100</color>
+    <color name="ff_block_container">#332822</color>
 </resources>

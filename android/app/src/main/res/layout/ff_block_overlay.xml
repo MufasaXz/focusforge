@@ -27,17 +27,39 @@
         android:scrollbars="none">
 
         <LinearLayout
+            android:id="@+id/ff_block_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingHorizontal="32dp"
+            android:paddingHorizontal="28dp"
             android:paddingVertical="40dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                android:text="FocusForge · Shield"
+                android:textColor="@color/ff_block_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxWidth="320dp"
+                android:gravity="center"
+                android:text="A moment for your focus"
+                android:textColor="@color/ff_block_on_surface"
+                android:textSize="30sp"
+                android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/ff_block_icon"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginTop="28dp"
+                android:padding="10dp"
+                android:background="@drawable/ff_block_icon_surface"
                 android:contentDescription="@null" />
 
             <TextView
@@ -65,10 +87,13 @@
             <Button
                 android:id="@+id/ff_block_back"
                 android:layout_width="wrap_content"
-                android:layout_height="52dp"
+                android:layout_height="wrap_content"
+                android:minHeight="52dp"
                 android:layout_marginTop="32dp"
                 android:minWidth="220dp"
-                android:paddingHorizontal="28dp"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="14dp"
+                android:textAllCaps="false"
                 android:background="@drawable/ff_block_button_primary"
                 android:stateListAnimator="@null"
                 android:textColor="@color/ff_block_on_accent"
@@ -78,10 +103,13 @@
             <Button
                 android:id="@+id/ff_block_anyway"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
                 android:layout_marginTop="10dp"
                 android:minWidth="220dp"
-                android:paddingHorizontal="28dp"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="14dp"
+                android:textAllCaps="false"
                 android:background="@drawable/ff_block_button_ghost"
                 android:stateListAnimator="@null"
                 android:textColor="@color/ff_block_muted"

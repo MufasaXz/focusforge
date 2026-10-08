@@ -25,6 +25,7 @@
     android:notificationTimeout="100"
     android:accessibilityFlags="flagDefault|flagReportViewIds"
     android:canRetrieveWindowContent="true"
+    android:isAccessibilityTool="false"
     android:description="@string/accessibility_service_description"
     android:summary="@string/accessibility_service_summary"
 />

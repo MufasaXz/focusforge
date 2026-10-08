@@ -12,6 +12,7 @@
     <color name="ff_block_on_surface">#201A18</color>
     <color name="ff_block_muted">#54433C</color>
     <color name="ff_block_outline">#D8C2BA</color>
-    <color name="ff_block_accent">#E8672A</color>
+    <color name="ff_block_accent">#9A461C</color>
     <color name="ff_block_on_accent">#FFFFFF</color>
+    <color name="ff_block_container">#F5E5DE</color>
 </resources>

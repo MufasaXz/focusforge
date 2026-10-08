@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -725,14 +728,14 @@ class FocusAccessibilityService : AccessibilityService() {
         view.findViewById<TextView>(R.id.ff_block_app)?.text = label
         view.findViewById<TextView>(R.id.ff_block_reason)?.text = reason
         view.findViewById<TextView>(R.id.ff_block_note)?.text =
-            "Nothing has been deleted. You can change this any time in FocusForge."
+            "Leave this app closed, or take three slow breaths before deciding to open it."
 
         view.findViewById<Button>(R.id.ff_block_back)?.apply {
-            text = "Take me back"
+            text = "Back to what matters"
             setOnClickListener { leave(packageName, label) }
         }
         view.findViewById<Button>(R.id.ff_block_anyway)?.apply {
-            text = "Open it anyway"
+            text = "Pause and breathe"
             setOnClickListener { openAnyway(packageName, label) }
         }
 
@@ -758,6 +761,19 @@ class FocusAccessibilityService : AccessibilityService() {
             overlay = view
             blockedPackage = packageName
             blockedReason = reason
+            // The blocking surface is opaque immediately; only the content enters.
+            // Respect Android's Remove animations setting and cancel on dismissal.
+            val content = view.findViewById<View>(R.id.ff_block_content)
+            applyOverlayTypeface(content)
+            val motion = Settings.Global.getFloat(
+                content.context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
+            ) > 0f
+            if (motion) {
+                content.alpha = 0f
+                content.translationY = 16f * resources.displayMetrics.density
+                content.animate().alpha(1f).translationY(0f).setDuration(300L)
+                    .setInterpolator(DecelerateInterpolator()).start()
+            }
             handler.removeCallbacks(watchdog)
             handler.postDelayed(watchdog, WATCHDOG_MS)
         } catch (_: Exception) {
@@ -772,9 +788,24 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun applyOverlayTypeface(view: View) {
+        val regular = try {
+            Typeface.createFromAsset(assets, "flutter_assets/assets/fonts/Inter-Regular.ttf")
+        } catch (_: Exception) { Typeface.create("sans-serif", Typeface.NORMAL) }
+        val bold = try {
+            Typeface.createFromAsset(assets, "flutter_assets/assets/fonts/InterDisplay-SemiBold.ttf")
+        } catch (_: Exception) { Typeface.create("sans-serif", Typeface.BOLD) }
+        fun apply(child: View) {
+            if (child is TextView) child.typeface = if (child.typeface?.isBold == true) bold else regular
+            if (child is ViewGroup) for (i in 0 until child.childCount) apply(child.getChildAt(i))
+        }
+        apply(view)
+    }
+
     private fun dismissOverlay() {
         handler.removeCallbacks(watchdog)
         val view = overlay ?: return
+        view.findViewById<View>(R.id.ff_block_content)?.animate()?.cancel()
         overlay = null
         blockedPackage = null
         blockedReason = null

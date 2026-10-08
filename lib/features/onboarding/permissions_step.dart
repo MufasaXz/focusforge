@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/services/permission_manager.dart';
 import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/accessibility_disclosure.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -64,6 +65,11 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
 
   Future<void> _enable(AppPermission permission) async {
     if (_requesting != null) return;
+    if (permission == AppPermission.accessibility &&
+        !await confirmShieldAccess(context)) {
+      return;
+    }
+    if (!mounted) return;
     setState(() => _requesting = permission);
     final outcome = await _manager.request(permission);
     if (!mounted) return;

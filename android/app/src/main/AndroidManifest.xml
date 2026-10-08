@@ -75,8 +75,7 @@
             android:name=".shield.FocusAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false"
-            android:label="FocusForge"
-            android:isAccessibilityTool="false">
+            android:label="FocusForge">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>
