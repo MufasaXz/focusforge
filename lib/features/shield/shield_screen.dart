@@ -22,6 +22,7 @@ import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/skeleton.dart';
@@ -238,20 +239,13 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                       ],
                     ),
                     const SizedBox(height: Gap.lg),
-                    // `double.infinity` makes the button fill the column: the
-                    // M3 segmented button otherwise shrink-wraps its segments.
-                    SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<int>(
-                        segments: [
-                          for (var i = 0; i < segments.length; i++)
-                            ButtonSegment(value: i, label: Text(segments[i])),
-                        ],
-                        selected: {segment},
-                        showSelectedIcon: false,
-                        onSelectionChanged: (selection) =>
-                            setState(() => _segment = selection.first),
-                      ),
+                    AppSegmentedControl<int>(
+                      options: {
+                        for (var i = 0; i < segments.length; i++)
+                          i: segments[i],
+                      },
+                      selected: segment,
+                      onChanged: (value) => setState(() => _segment = value),
                     ),
                     if (showSwitcher) ...[
                       const SizedBox(height: Gap.md),
