@@ -58,3 +58,41 @@ test suite so ordinary tests never rewrite screenshots.
 Validation: 204 tests passed, static analysis clean, release web build passed.
 Additional checks cover 320dp screens with 2x text, RTL selection semantics,
 reduced motion, timer start/pause and restored ambient selections.
+
+## Shield, breathing and social refinement — build 8
+
+The second pass keeps the same typography and colour identity:
+
+- Native Shield uses a stronger heading, framed app icon, clearer reason and
+  two explicit actions. Its opaque surface blocks immediately while content
+  enters with a short upward fade; Android's animation setting is respected.
+- Breathing adds phase seconds, a 4/7/8 guide, gentle tonal transitions and an
+  early return action. Reduced motion keeps the disc still and preserves the
+  full exercise. Failed launches leave retry/back available.
+- Groups now have a real create/join flow, shared weekly progress, member-only
+  standings, invite copying, active timer status and leaving/owner transfer.
+- Parent views use scheme colours, live code expiry, loading/error states,
+  atomic pairing/unlink, per-account rule caching and retrying summary sync.
+
+The following captures use fictional members and explicit provider overrides.
+They demonstrate the UI; they do not prove a production Firebase deployment.
+No Android device was connected, so native overlay behaviour and Play Protect
+clearance have not been verified on a phone. The image viewer did not display
+pixels in this environment; layout was checked with widget assertions and
+captures were generated for human review.
+
+| Screen | Dark | Light |
+| --- | --- | --- |
+| Groups | [Capture](groups-dark.webp) | [Capture](groups-light.webp) |
+| Group standings | [Capture](group-detail-dark.webp) | [Capture](group-detail-light.webp) |
+| Breathing guide | [Capture](breathing-dark.webp) | [Capture](breathing-light.webp) |
+| Breathing choice | [Capture](breathing-complete-dark.webp) | [Capture](breathing-complete-light.webp) |
+| Parent connection | [Capture](parent-link-dark.webp) | [Capture](parent-link-light.webp) |
+
+Regenerate with: flutter test --no-pub tool/capture_refinement_test.dart
+
+Validation: 213 Flutter tests and nine Firestore emulator tests passed. Static
+analysis is clean. The Flutter checks include 320dp/2x text layouts, reduced
+motion, handoff order, recovery, UTC totals, queued progress writes, private
+membership and cached parent rules. Firebase setup and Play Protect review are
+documented separately in docs/firebase-setup.md and docs/play-protect.md.
