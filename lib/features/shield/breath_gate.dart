@@ -1,4 +1,3 @@
-import '../../app/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/services/shield_service.dart';
@@ -83,6 +83,18 @@ class _Frame {
 
   /// 0..1 across the whole session.
   final double progress;
+
+  int get phaseSeconds {
+    if (phase == _Phase.complete) return 0;
+    final elapsedMs = (_Protocol.total.inMilliseconds * progress).round();
+    final offset = elapsedMs % _Protocol.cycle.inMilliseconds;
+    final end = switch (phase) {
+      _Phase.inhale => 4000,
+      _Phase.hold => 11000,
+      _ => 19000,
+    };
+    return ((end - offset) / 1000).ceil();
+  }
 
   static _Frame at(Duration elapsed) {
     final totalMs = _Protocol.total.inMilliseconds;
@@ -178,10 +190,13 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: _Protocol.total,
+    animationBehavior: AnimationBehavior.preserve,
   );
 
   /// Guards the two exits: a double-tap must not log two decisions.
   bool _leaving = false;
+  bool _recorded = false;
+  String? _error;
 
   @override
   void initState() {
@@ -200,17 +215,37 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
     setState(() => _leaving = true);
 
     final packageId = widget.args.packageId;
-    if (packageId != null) {
-      await ref
-          .read(breathEventsProvider.notifier)
-          .record(
-            BreathEvent(
-              appName: widget.args.appName,
-              at: DateTime.now(),
-              walkedAway: walkedAway,
-            ),
-          );
-      if (!walkedAway) await _handBack(packageId);
+    try {
+      if (packageId != null) {
+        if (!walkedAway) await _handBack(packageId);
+        if (!_recorded) {
+          _recorded = true;
+          // The notifier updates its in-memory log before persisting. A local
+          // storage failure must not strand a successful handoff or double-log
+          // it when the user retries another action.
+          try {
+            await ref
+                .read(breathEventsProvider.notifier)
+                .record(
+                  BreathEvent(
+                    appName: widget.args.appName,
+                    at: DateTime.now(),
+                    walkedAway: walkedAway,
+                  ),
+                );
+          } catch (_) {
+            /* Keep the current run's decision; allow the exit. */
+          }
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _leaving = false;
+          _error = 'Could not finish that action. Try again, or go back.';
+        });
+      }
+      return;
     }
 
     if (!mounted) return;
@@ -265,9 +300,7 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: ColoredBox(
-                  color: cs.surface.withValues(alpha: 0.6),
-                ),
+                child: ColoredBox(color: cs.surface.withValues(alpha: 0.6)),
               ),
             ),
             SafeArea(
@@ -280,9 +313,9 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
                       // panel — so it does not jump when the buttons appear. The
                       // scroll view is the safety net: a short or landscape
                       // viewport scrolls rather than overflowing.
-                      final orbSize = (constraints.maxHeight * 0.34).clamp(
-                        150.0,
-                        300.0,
+                      final orbSize = math.min(
+                        (constraints.maxHeight * 0.34).clamp(180.0, 300.0),
+                        math.max(120.0, constraints.maxWidth - Gap.xl * 2),
                       );
                       return SingleChildScrollView(
                         child: ConstrainedBox(
@@ -318,16 +351,24 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
                                       child: _BreathOrb(
                                         frame: frame,
                                         size: orbSize,
+                                        reduceMotion:
+                                            MediaQuery.disableAnimationsOf(
+                                              context,
+                                            ),
                                       ),
                                     ),
                                     AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 320,
-                                      ),
+                                      duration:
+                                          MediaQuery.disableAnimationsOf(
+                                            context,
+                                          )
+                                          ? Duration.zero
+                                          : const Duration(milliseconds: 320),
                                       switchInCurve: Curves.easeOutCubic,
                                       child: frame.phase == _Phase.complete
                                           ? _CompletionPanel(
                                               key: const ValueKey('complete'),
+                                              busy: _leaving,
                                               onWalkAway: () =>
                                                   _finish(walkedAway: true),
                                               onContinue: () =>
@@ -336,8 +377,24 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
                                           : _Countdown(
                                               key: const ValueKey('running'),
                                               frame: frame,
+                                              onWalkAway: _leaving
+                                                  ? null
+                                                  : () => _finish(
+                                                      walkedAway: true,
+                                                    ),
                                             ),
                                     ),
+                                    if (_error != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: Gap.md,
+                                        ),
+                                        child: Text(
+                                          _error!,
+                                          style: TextStyle(color: cs.error),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
                                   ],
                                 );
                               },
@@ -367,21 +424,26 @@ class _GateHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
-        Chip(
+        Container(
           padding: const EdgeInsets.symmetric(
             horizontal: Gap.md,
             vertical: Gap.sm,
           ),
-          label: Row(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(Radii.pill),
+          ),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.shield_rounded, size: 14, color: cs.primary),
-              const SizedBox(width: 6),
-              Text(
-                'Deep Breath Gate',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 0.6,
+              Icon(Icons.shield_rounded, size: 18, color: cs.primary),
+              const SizedBox(width: Gap.sm),
+              Flexible(
+                child: Text(
+                  'A moment to reset',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
             ],
@@ -395,8 +457,9 @@ class _GateHeader extends StatelessWidget {
         ),
         const SizedBox(height: Gap.xs),
         Text(
-          'Three slow breaths before you decide.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          'Follow the circle. Breathe gently, at your own pace.',
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
       ],
@@ -405,7 +468,13 @@ class _GateHeader extends StatelessWidget {
 }
 
 class _BreathOrb extends StatelessWidget {
-  const _BreathOrb({required this.frame, required this.size});
+  const _BreathOrb({
+    required this.frame,
+    required this.size,
+    required this.reduceMotion,
+  });
+
+  final bool reduceMotion;
 
   final _Frame frame;
 
@@ -432,7 +501,9 @@ class _BreathOrb extends StatelessWidget {
           CustomPaint(
             size: Size.square(size),
             painter: _ProgressRingPainter(
-              progress: frame.progress,
+              progress: reduceMotion
+                  ? (frame.progress * 57).floor() / 57
+                  : frame.progress,
               color: color,
               track: cs.surfaceContainerHighest,
             ),
@@ -442,8 +513,12 @@ class _BreathOrb extends StatelessWidget {
           // decoration on an otherwise quiet screen.
           ExcludeSemantics(
             child: Transform.scale(
-              scale: frame.scale,
-              child: Container(
+              scale: reduceMotion ? 0.88 : frame.scale,
+              child: AnimatedContainer(
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 350),
+                curve: Curves.easeOutCubic,
                 width: orb,
                 height: orb,
                 decoration: BoxDecoration(
@@ -467,21 +542,37 @@ class _BreathOrb extends StatelessWidget {
                 : '${frame.phase.instruction}. '
                       'Cycle ${frame.cycle} of ${_Protocol.cycles}.',
             child: ExcludeSemantics(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    frame.phase.instruction,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontSize: instructionSize,
-                    ),
+              child: Padding(
+                padding: const EdgeInsets.all(Gap.lg),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        frame.phase.instruction,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(fontSize: instructionSize),
+                      ),
+                      if (frame.phase != _Phase.complete)
+                        Text(
+                          '${frame.phaseSeconds}',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                                color: cs.onSurfaceVariant,
+                              ),
+                        ),
+                      const SizedBox(height: Gap.xs),
+                      Text(
+                        'Breath ${frame.cycle} / ${_Protocol.cycles}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: Gap.xs),
-                  Text(
-                    'Cycle ${frame.cycle} / ${_Protocol.cycles}',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -530,7 +621,8 @@ class _ProgressRingPainter extends CustomPainter {
 }
 
 class _Countdown extends StatelessWidget {
-  const _Countdown({super.key, required this.frame});
+  const _Countdown({super.key, required this.frame, this.onWalkAway});
+  final VoidCallback? onWalkAway;
 
   final _Frame frame;
 
@@ -557,7 +649,28 @@ class _Countdown extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Gap.xs),
-        Text('left in this session', style: Theme.of(context).textTheme.labelSmall),
+        Text(
+          'left in this session',
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+        const SizedBox(height: Gap.lg),
+        Text(
+          'In 4 · Hold 7 · Out 8',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: Gap.sm),
+        Text(
+          'Stay comfortable. Let your breath return to normal if you feel lightheaded.',
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: Gap.md),
+        TextButton.icon(
+          onPressed: onWalkAway,
+          icon: const Icon(Icons.arrow_back_rounded),
+          label: const Text('Keep the app closed'),
+        ),
       ],
     );
   }
@@ -568,10 +681,12 @@ class _CompletionPanel extends StatelessWidget {
     super.key,
     required this.onWalkAway,
     required this.onContinue,
+    this.busy = false,
   });
 
   final VoidCallback onWalkAway;
   final VoidCallback onContinue;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -586,9 +701,9 @@ class _CompletionPanel extends StatelessWidget {
         ),
         const SizedBox(height: Gap.xs),
         Text(
-          'The urge usually passes in under a minute. Choose what happens '
-          'next.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          'You made room for a choice. What would you like to do next?',
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xl),
@@ -596,14 +711,14 @@ class _CompletionPanel extends StatelessWidget {
           label: 'Go back',
           icon: Icons.arrow_back_rounded,
           primary: true,
-          onTap: onWalkAway,
+          onTap: busy ? null : onWalkAway,
         ),
         const SizedBox(height: Gap.md),
         _GateButton(
           label: 'Continue anyway',
           icon: Icons.arrow_forward_rounded,
           primary: false,
-          onTap: onContinue,
+          onTap: busy ? null : onContinue,
         ),
       ],
     );
@@ -623,7 +738,7 @@ class _GateButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool primary;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

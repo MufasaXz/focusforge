@@ -61,8 +61,13 @@ void main() {
     WidgetTester tester, {
     String? packageId = 'com.example.scroll',
     int graceSeconds = ShieldConfig.defaultGraceSeconds,
+    bool reduceMotion = false,
+    double textScale = 1,
+    Size size = const Size(420, 1600),
+    RecordingShieldService? service,
   }) async {
     useTallPhone(tester);
+    tester.view.physicalSize = size;
 
     final container = ProviderContainer(
       overrides: [
@@ -71,7 +76,9 @@ void main() {
         // in a widget test `defaultTargetPlatform` is Android, so the default
         // would be the real MethodChannel, whose calls never reply and would
         // leave the gate awaiting a hand-off that never finishes.
-        shieldServiceProvider.overrideWithValue(RecordingShieldService()),
+        shieldServiceProvider.overrideWithValue(
+          service ?? RecordingShieldService(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -81,7 +88,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, _) => const Scaffold(body: Center(child: Text('behind'))),
+          builder: (_, _) =>
+              const Scaffold(body: Center(child: Text('behind'))),
         ),
         GoRoute(
           path: '/gate',
@@ -101,13 +109,21 @@ void main() {
         container: container,
         child: MaterialApp.router(
           theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              disableAnimations: reduceMotion,
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: child!,
+          ),
           routerConfig: router,
         ),
       ),
     );
     await tester.pumpAndSettle();
     router.push('/gate');
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     return container;
   }
 
@@ -143,6 +159,71 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('reduced motion keeps the full pause with a stationary orb', (
+    tester,
+  ) async {
+    await pumpGate(tester, reduceMotion: true);
+    expect(find.text('Continue anyway'), findsNothing);
+    double orbScale() => tester
+        .widgetList<Transform>(find.byType(Transform))
+        .map((t) => t.transform.entry(0, 0))
+        .firstWhere((v) => (v - .88).abs() < .001);
+    expect(orbScale(), closeTo(.88, .001));
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Hold'), findsOneWidget);
+    expect(orbScale(), closeTo(.88, .001));
+    expect(find.text('Continue anyway'), findsNothing);
+    await breatheThrough(tester);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'breathing and completion remain usable with enlarged text on a small phone',
+    (tester) async {
+      await pumpGate(
+        tester,
+        reduceMotion: true,
+        textScale: 2,
+        size: const Size(320, 640),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Keep the app closed'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Keep the app closed').hitTestable(), findsOneWidget);
+      await breatheThrough(tester);
+      await tester.ensureVisible(find.text('Continue anyway'));
+      await tester.pumpAndSettle();
+      expect(find.text('Continue anyway').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('walking away during the pause keeps the app closed', (
+    tester,
+  ) async {
+    final container = await pumpGate(tester);
+    await tester.ensureVisible(find.text('Keep the app closed'));
+    await tester.tap(find.text('Keep the app closed'));
+    await tester.pumpAndSettle();
+    expect(serviceOf(container).calls, isEmpty);
+    expect(container.read(breathEventsProvider).single.walkedAway, isTrue);
+  });
+  testWidgets(
+    'a failed app launch leaves retry and back available without a false event',
+    (tester) async {
+      final service = FailingLaunch();
+      final container = await pumpGate(tester, service: service);
+      await breatheThrough(tester);
+      await tapExit(tester, 'Continue anyway');
+      expect(
+        find.text('Could not finish that action. Try again, or go back.'),
+        findsOneWidget,
+      );
+      expect(container.read(breathEventsProvider), isEmpty);
+      await tapExit(tester, 'Go back');
+      expect(container.read(breathEventsProvider).single.walkedAway, isTrue);
+    },
+  );
+
   testWidgets('the second exit grants the grace before it opens the app', (
     tester,
   ) async {
@@ -154,7 +235,8 @@ void main() {
     expect(
       serviceOf(container).calls,
       ['grant:com.example.scroll@120', 'open:com.example.scroll'],
-      reason: 'the grace has to be in place before the launch, or the block '
+      reason:
+          'the grace has to be in place before the launch, or the block '
           'screen the user just sat through comes straight back',
     );
     expect(tester.takeException(), isNull);
@@ -172,7 +254,8 @@ void main() {
     expect(
       log.single.walkedAway,
       isFalse,
-      reason: '"open it anyway" is the number that says the pause did not '
+      reason:
+          '"open it anyway" is the number that says the pause did not '
           'change your mind',
     );
   });
@@ -191,7 +274,9 @@ void main() {
     expect(container.read(breathEventsProvider).single.walkedAway, isTrue);
   });
 
-  testWidgets('a preview hands nothing over and writes nothing', (tester) async {
+  testWidgets('a preview hands nothing over and writes nothing', (
+    tester,
+  ) async {
     final container = await pumpGate(tester, packageId: null);
     await breatheThrough(tester);
 
@@ -200,15 +285,23 @@ void main() {
     expect(
       serviceOf(container).calls,
       isEmpty,
-      reason: 'there is no interception behind a preview, so there is no app '
+      reason:
+          'there is no interception behind a preview, so there is no app '
           'to bring forward',
     );
     expect(
       container.read(breathEventsProvider),
       isEmpty,
-      reason: 'a decision the user did not make has no place in the numbers '
+      reason:
+          'a decision the user did not make has no place in the numbers '
           'the Shield screen reports',
     );
     expect(tester.takeException(), isNull);
   });
+}
+
+class FailingLaunch extends RecordingShieldService {
+  @override
+  Future<void> openApp(String packageId) async =>
+      throw StateError('launch failed');
 }
