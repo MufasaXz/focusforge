@@ -419,7 +419,7 @@ class _VolumeRow extends StatelessWidget {
                 ),
                 child: Slider(
                   value: value,
-                  activeColor: sound.color,
+                  activeColor: harmonize(sound.color, t.primary),
                   inactiveColor: t.surfaceContainerHighest,
                   onChanged: onChanged,
                   // The name is on the node's label; the formatter only has to

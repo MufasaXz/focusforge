@@ -357,7 +357,7 @@ class _HeroCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _HeroStat(
-                    value: '${stats.totalFocusHours.round()}h',
+                    value: _hours(stats.totalFocusHours),
                     label: 'Total focus',
                   ),
                 ),
