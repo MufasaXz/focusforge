@@ -1,6 +1,7 @@
 // Reproducible UI review captures with bundled fonts and fictional local data.
 // Run: flutter test tool/capture_ui_test.dart
 // Writes PNGs to build/ui-review; never changes a user's stored data.
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -36,14 +37,14 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    for (final family in ['Inter', 'InterDisplay']) {
-      final loader = FontLoader(family);
-      for (final weight in [
-        if (family == 'Inter') ...['Regular', 'Medium'],
-        'SemiBold',
-        'Bold',
-      ]) {
-        loader.addFont(rootBundle.load('assets/fonts/$family-$weight.ttf'));
+    // Load the bundled icon font too: widget tests do not do this themselves.
+    final manifest =
+        jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+    for (final entry in manifest.cast<Map<String, dynamic>>()) {
+      final loader = FontLoader(entry['family'] as String);
+      for (final font
+          in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
+        loader.addFont(rootBundle.load(font['asset'] as String));
       }
       await loader.load();
     }
