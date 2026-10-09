@@ -8,6 +8,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/services/auth_service.dart';
 import 'form_controls.dart';
+import 'tonal_panel.dart';
 
 /// Email sign-in / sign-up sheet.
 ///
@@ -156,6 +157,15 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
         icon: Icons.error_outline_rounded,
         danger: true,
       );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _shakeIt();
+      showAppSnack(
+        context,
+        'Could not sign in. Please try again.',
+        danger: true,
+      );
     }
   }
 
@@ -216,6 +226,11 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Eyebrow(
+                'YOUR FOCUSFORGE ACCOUNT',
+                icon: Icons.lock_outline_rounded,
+              ),
+              const SizedBox(height: Gap.lg),
               Row(
                 children: [
                   Expanded(
@@ -234,7 +249,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                'Stored on this device for now — nothing is sent to a server.',
+                widget.service.usesRemoteCredentials
+                    ? 'Sign-in is handled by Firebase. Your detailed study log stays on this device.'
+                    : 'Stored on this device for now — nothing is sent to a server.',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),

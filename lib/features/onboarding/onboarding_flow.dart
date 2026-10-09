@@ -157,7 +157,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
           bottom: false,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+              constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 children: [
                   if (_index > 0)
@@ -307,7 +307,7 @@ class _FlowHeader extends StatelessWidget {
                       value: value,
                       color: cs.primary,
                       backgroundColor: cs.surfaceContainerHighest,
-                      minHeight: 6,
+                      minHeight: 4,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                   ),

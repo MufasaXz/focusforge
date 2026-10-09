@@ -23,7 +23,7 @@ class PersonaStep extends ConsumerWidget {
     final selected = ref.watch(userProvider).persona;
 
     return StepScaffold(
-      title: 'I am a...',
+      title: 'How will you focus?',
       subtitle:
           'This tunes the subjects, goals and wording you see first. You can '
           'change it later in your profile.',

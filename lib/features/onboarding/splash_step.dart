@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/app_mark.dart';
+import 'focus_preview.dart';
 
 /// Screen 0 — the splash.
 ///
@@ -122,7 +123,12 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
-                  const SizedBox(height: Gap.xxl),
+                  const SizedBox(height: Gap.xl),
+                  FadeTransition(
+                    opacity: _fade(0.4, 1),
+                    child: const FocusPreview(),
+                  ),
+                  const SizedBox(height: Gap.lg),
                   FadeTransition(
                     opacity: _fade(0.6, 1),
                     child: _loadingDots(context),

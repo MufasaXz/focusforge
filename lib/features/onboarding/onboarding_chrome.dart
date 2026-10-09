@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/form_controls.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/tonal_panel.dart';
 
 /// Furniture shared by every onboarding step.
 ///
@@ -76,13 +77,18 @@ class _StepScaffoldState extends State<StepScaffold> {
     final t = Theme.of(context).colorScheme;
 
     final body = <Widget>[
+      if (MediaQuery.sizeOf(context).height >= 400) ...[
+        const Eyebrow('MAKE IT YOURS', icon: Icons.tune_rounded),
+        const SizedBox(height: Gap.lg),
+      ],
       Stagger(
         index: 0,
         child: Semantics(
           header: true,
           child: Text(
             widget.title,
-            style: Theme.of(context).textTheme.headlineLarge,
+            style: Theme.of(context).textTheme.headlineLarge
+                ?.copyWith(letterSpacing: -1.1),
           ),
         ),
       ),
@@ -181,7 +187,7 @@ class _StepScaffoldState extends State<StepScaffold> {
             ),
             DecoratedBox(
               decoration: BoxDecoration(
-                color: t.surface,
+                color: t.surfaceContainerLow,
                 border: Border(
                   top: BorderSide(
                     color: t.outlineVariant.withValues(alpha: 0.4),

@@ -37,7 +37,7 @@ class SetupChoiceCard extends StatelessWidget {
       onTap();
     }
 
-    final radius = selected ? Radii.item : Radii.hero;
+    const radius = Radii.card;
     return Semantics(
       label: '$title. $description',
       checked: selected,
@@ -49,11 +49,11 @@ class SetupChoiceCard extends StatelessWidget {
         curve: Motion.decelerate,
         decoration: BoxDecoration(
           color: selected
-              ? accent.withValues(alpha: 0.10)
+              ? accent.withValues(alpha: 0.14)
               : cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
-            color: selected ? accent : cs.outlineVariant,
+            color: selected ? accent : cs.outlineVariant.withValues(alpha: .45),
             width: 1,
           ),
         ),
@@ -67,12 +67,7 @@ class SetupChoiceCard extends StatelessWidget {
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
                 children: [
-                  IconBadge(
-                    icon: icon,
-                    color: accent,
-                    size: 48,
-                    radius: selected ? Radii.tile : 20,
-                  ),
+                  IconBadge(icon: icon, color: accent, size: 48, radius: 16),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: Column(

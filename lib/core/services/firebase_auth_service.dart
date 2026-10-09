@@ -20,6 +20,9 @@ import 'study_group_service.dart';
 /// Constructed only after `Firebase.initializeApp()` has succeeded; see
 /// `bootstrap()`, which falls back to [LocalAuthService] otherwise.
 class FirebaseAuthService extends AuthService {
+  @override
+  bool get usesRemoteCredentials => true;
+
   FirebaseAuthService(this._store) {
     // `authStateChanges()` is the single source of stream events: it fires
     // both for sessions started through this class and for ones it never saw

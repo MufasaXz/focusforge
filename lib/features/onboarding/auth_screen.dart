@@ -14,6 +14,8 @@ import '../../shared/widgets/app_mark.dart';
 import '../../shared/widgets/email_auth_sheet.dart';
 import '../../shared/widgets/provider_marks.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/tonal_panel.dart';
+import 'focus_preview.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 1 — the account fork.
@@ -201,7 +203,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final breathingRoom = (constraints.maxHeight * 0.1).clamp(24.0, 72.0);
+        final breathingRoom = (constraints.maxHeight * 0.025).clamp(12.0, 24.0);
         return SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
@@ -215,30 +217,67 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 Stagger(
                   index: 0,
-                  child: const Center(
-                    child: AppMark(size: 64, semanticLabel: 'FocusForge'),
+                  child: TonalPanel(
+                    accent: true,
+                    padding: const EdgeInsets.all(Gap.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const AppMark(size: 32),
+                            const SizedBox(width: Gap.sm),
+                            Expanded(
+                              child: Text(
+                                'FocusForge',
+                                style: Theme.of(context).textTheme.titleSmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Icon(
+                              Icons.auto_awesome_outlined,
+                              size: 18,
+                              color: cs.primary,
+                            ),
+                          ],
+                        ),
+                        const FocusPreview(),
+                        const Eyebrow('LESS NOISE. MORE YOU.'),
+                        const SizedBox(height: Gap.md),
+                        Text(
+                          'Make room for\nwhat matters.',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(letterSpacing: -1.2),
+                        ),
+                        const SizedBox(height: Gap.sm),
+                        Text(
+                          'Build a study rhythm. Protect your attention. See your progress.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: Gap.xl),
                 Stagger(
                   index: 1,
                   child: Text(
-                    'Welcome to FocusForge',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineLarge,
+                    'Your space starts here',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
                 const SizedBox(height: Gap.sm),
                 Stagger(
                   index: 2,
                   child: Text(
-                    'A quieter space to study, one block at a time.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge
+                    'Sign in for study groups, the leaderboard and parent linking.',
+                    style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
-                SizedBox(height: breathingRoom),
+                const SizedBox(height: Gap.lg),
                 Stagger(
                   index: 3,
                   child: ProviderRow(

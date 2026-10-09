@@ -60,6 +60,9 @@ class AuthException implements Exception {
 /// Whichever backend runs, the profile record lives in [LocalStore]. Only the
 /// credential is remote; how the app is used never leaves the device.
 abstract class AuthService {
+  /// Whether credentials are handled by a remote account service.
+  bool get usesRemoteCredentials => false;
+
   /// The signed-in profile, or null while no session has been established.
   UserProfile? get current;
 
