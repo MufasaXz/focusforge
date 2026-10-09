@@ -33,6 +33,7 @@ import '../parent/parent_lock.dart';
 import '../parent/widgets/child_switcher.dart';
 import '../settings/settings_support.dart';
 import 'breath_gate.dart';
+import 'shield_overview.dart';
 
 /// Tab 2 — the shielding engine.
 ///
@@ -49,8 +50,8 @@ import 'breath_gate.dart';
 /// phone picks up. The child's own screen is unchanged — it still manages the
 /// apps on the device in your hand.
 ///
-/// The header is a solid surface pinned over the list: content scrolls
-/// underneath it, and the tonal edge keeps the two apart. No blur here — the
+/// The header sits above the scrollable list and grows with the text size.
+/// A tonal edge keeps the two apart. No blur here — the
 /// design reserves real backdrop filters for the nav bar, the sheets and the
 /// breath gate.
 class ShieldScreen extends ConsumerStatefulWidget {
@@ -118,169 +119,153 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
     final segments = isParent ? _parentSegments : _segmentOptions;
     final segment = _segment.clamp(0, segments.length - 1);
 
-    // The switcher rides in the pinned header rather than in each segment's
-    // list: whose apps these are is a fact about the whole tab, and it has to
-    // stay on screen while the user scrolls their child's app list.
     final showSwitcher = isParent && children.isNotEmpty;
-    final headerHeight = 172 + topInset + (showSwitcher ? 56 : 0);
-
     final armed = ref.watch(activeShieldCountProvider);
 
-    return Stack(
+    return Column(
       children: [
-        Positioned.fill(
+        Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: .35),
+              ),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            topInset + Gap.lg,
+            Gap.lg + 4,
+            Gap.lg,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: Layout.readable),
-              // The entrance waits for the branch to be on screen; see
-              // [_TabEntrance].
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final title = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Shield',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  letterSpacing: -1,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: Gap.xs),
+                          Text(
+                            isParent
+                                ? 'A little less distraction for them.'
+                                : 'Make distraction a little harder.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      );
+                      final status = _ShieldStatusPill(
+                        armed: isParent
+                            ? (childBlocks?.apps.length ?? 0)
+                            : armed,
+                        label: isParent
+                            ? childBlocks == null
+                                  ? 'Reading…'
+                                  : '${childBlocks.apps.length} blocked'
+                            : null,
+                        locked: !isParent && ref.watch(parentLockedProvider),
+                        onTap: isParent
+                            ? child == null
+                                  ? null
+                                  : () => _openChild(child)
+                            : _showStatusSheet,
+                      );
+                      final stacked =
+                          constraints.maxWidth < 330 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 20;
+                      if (stacked) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            title,
+                            const SizedBox(height: Gap.md),
+                            status,
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: title),
+                          const SizedBox(width: Gap.sm),
+                          status,
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  AppSegmentedControl<int>(
+                    options: {
+                      for (var i = 0; i < segments.length; i++) i: segments[i],
+                    },
+                    selected: segment,
+                    onChanged: (value) => setState(() => _segment = value),
+                  ),
+                  if (showSwitcher) ...[
+                    const SizedBox(height: Gap.md),
+                    children.length > 1
+                        ? SizedBox(
+                            height:
+                                48 +
+                                (MediaQuery.textScalerOf(context).scale(14) -
+                                        14)
+                                    .clamp(0, 42),
+                            child: const ChildChips(),
+                          )
+                        : Text(
+                            "${children.first.name}'s phone",
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Layout.readable),
               child: _TabEntrance(
-                // Each segment owns its own scroll view. The app list is the
-                // whole device — hundreds of rows on a real phone — and a
-                // single `ListView` holding all of them would build every row,
-                // every toggle and every icon before the first one was
-                // painted. Only the app list needs that; the other two stay as
-                // they were.
                 child: switch ((isParent, segment)) {
-                  (true, _) when child == null => _SegmentScroll(
-                    topPadding: headerHeight + Gap.md,
-                    child: const _NoChildrenYet(),
+                  (true, _) when child == null => const _SegmentScroll(
+                    topPadding: Gap.lg,
+                    child: _NoChildrenYet(),
                   ),
                   (true, 0) => _ChildAppsView(
                     childUid: child!.uid,
                     childName: child.name,
-                    topPadding: headerHeight + Gap.md,
+                    topPadding: Gap.lg,
                   ),
                   (true, _) => _SegmentScroll(
-                    topPadding: headerHeight + Gap.md,
+                    topPadding: Gap.lg,
                     child: _ChildYoutubeView(
                       childUid: child!.uid,
                       childName: child.name,
                     ),
                   ),
-                  (false, 0) => _AppsView(topPadding: headerHeight + Gap.md),
-                  (false, 1) => _SegmentScroll(
-                    topPadding: headerHeight + Gap.md,
-                    child: const _YoutubeView(),
+                  (false, 0) => const _AppsView(topPadding: Gap.lg),
+                  (false, 1) => const _SegmentScroll(
+                    topPadding: Gap.lg,
+                    child: _YoutubeView(),
                   ),
-                  (false, _) => _SegmentScroll(
-                    topPadding: headerHeight + Gap.md,
-                    child: const _ActivityView(),
+                  (false, _) => const _SegmentScroll(
+                    topPadding: Gap.lg,
+                    child: _ActivityView(),
                   ),
                 },
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          // A solid surface, not a frosted bar: M3 expresses layering through
-          // surface tone, and a backdrop filter here would be spent on chrome
-          // that never moves. The band is full width; its contents are not.
-          child: Container(
-            color: cs.surface,
-            padding: EdgeInsets.fromLTRB(
-              Gap.lg + 4,
-              topInset + Gap.lg,
-              Gap.lg + 4,
-              Gap.lg,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: Layout.readable),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Shield',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(fontSize: 24),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isParent
-                                    ? 'Close what pulls them away'
-                                    : 'Close what pulls you away',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: Gap.md),
-                        _ShieldStatusPill(
-                          armed: isParent
-                              ? (childBlocks?.apps.length ?? 0)
-                              : armed,
-                          label: isParent
-                              ? childBlocks == null
-                                    ? 'Reading…'
-                                    : childBlocks.apps.isEmpty
-                                    ? 'Nothing blocked'
-                                    : '${childBlocks.apps.length} blocked'
-                              : null,
-                          locked: !isParent && ref.watch(parentLockedProvider),
-                          // A parent's badge is the way into the child's
-                          // dashboard; their own device has nothing to unlock.
-                          onTap: isParent
-                              ? child == null
-                                    ? null
-                                    : () => _openChild(child)
-                              : _showStatusSheet,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Gap.lg),
-                    AppSegmentedControl<int>(
-                      options: {
-                        for (var i = 0; i < segments.length; i++)
-                          i: segments[i],
-                      },
-                      selected: segment,
-                      onChanged: (value) => setState(() => _segment = value),
-                    ),
-                    if (showSwitcher) ...[
-                      const SizedBox(height: Gap.md),
-                      SizedBox(
-                        height: 36,
-                        child: children.length > 1
-                            ? const ChildChips()
-                            : Row(
-                                children: [
-                                  Icon(
-                                    Icons.smartphone_rounded,
-                                    size: 15,
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: Gap.sm),
-                                  Expanded(
-                                    child: Text(
-                                      '${children.first.name}\'s phone',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelMedium
-                                          ?.copyWith(
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ],
-                  ],
-                ),
               ),
             ),
           ),
@@ -357,7 +342,7 @@ class _ShieldStatusPill extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final on = armed > 0;
     final color = on ? cs.tertiary : cs.onSurfaceVariant;
-    final text = label ?? (on ? '$armed armed' : 'Nothing armed');
+    final text = label ?? (on ? '$armed rules' : 'View status');
 
     return Semantics(
       button: onTap != null,
@@ -405,11 +390,13 @@ class _ShieldStatusPill extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    text,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Text(
+                      text,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -675,6 +662,7 @@ class _AppsView extends ConsumerStatefulWidget {
 
 class _AppsViewState extends ConsumerState<_AppsView> {
   final _search = TextEditingController();
+  int _filter = 0;
 
   @override
   void dispose() {
@@ -695,11 +683,21 @@ class _AppsViewState extends ConsumerState<_AppsView> {
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
     final budgeted = ref.watch(budgetedAppsProvider).length;
 
-    final visible = query.isEmpty
-        ? all
-        : all
-              .where((r) => r.name.toLowerCase().contains(query))
-              .toList(growable: false);
+    bool matchesRule(ShieldAppRow row) => switch (_filter) {
+      1 => row.rule?.tier == WhitelistTier.blocked,
+      2 => row.rule?.tier == WhitelistTier.focusOnly,
+      3 => row.rule?.tier == WhitelistTier.budgeted,
+      _ => true,
+    };
+    final visible = all
+        .where(
+          (row) =>
+              matchesRule(row) &&
+              (query.isEmpty ||
+                  row.name.toLowerCase().contains(query) ||
+                  row.packageId.toLowerCase().contains(query)),
+        )
+        .toList(growable: false);
 
     return CustomScrollView(
       slivers: [
@@ -712,6 +710,8 @@ class _AppsViewState extends ConsumerState<_AppsView> {
           ),
           sliver: SliverList.list(
             children: [
+              const ShieldOverview(),
+              const SizedBox(height: Gap.lg),
               if (native && !enabled)
                 const _PermissionGate(
                   icon: Icons.accessibility_new_rounded,
@@ -737,10 +737,30 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                 controller: _search,
                 onChanged: () => setState(() {}),
               ),
+              const SizedBox(height: Gap.md),
+              Wrap(
+                spacing: Gap.sm,
+                runSpacing: Gap.xs,
+                children: [
+                  for (final (index, label) in [
+                    'All',
+                    'Blocked',
+                    'Focus only',
+                    'Budgets',
+                  ].indexed)
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: _filter == index,
+                      onSelected: (_) => setState(() => _filter = index),
+                    ),
+                ],
+              ),
               const SizedBox(height: Gap.xl),
               _ListHeading(
-                title: query.isEmpty ? 'All apps' : 'Results',
-                note: loading ? 'Reading the device…' : null,
+                title: query.isEmpty && _filter == 0 ? 'All apps' : 'Results',
+                note: loading
+                    ? 'Reading the device…'
+                    : '${visible.length} apps',
                 icon: Icons.apps_rounded,
               ),
               const SizedBox(height: Gap.sm),
@@ -758,7 +778,23 @@ class _AppsViewState extends ConsumerState<_AppsView> {
             sliver: SliverToBoxAdapter(
               child: all.isEmpty
                   ? const _NoApps()
-                  : _NoMatches(query: _search.text.trim()),
+                  : Column(
+                      children: [
+                        _NoMatches(
+                          query: query.isEmpty
+                              ? 'this filter'
+                              : _search.text.trim(),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => setState(() {
+                            _search.clear();
+                            _filter = 0;
+                          }),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Show all apps'),
+                        ),
+                      ],
+                    ),
             ),
           )
         else

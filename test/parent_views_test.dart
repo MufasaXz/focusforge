@@ -200,14 +200,22 @@ void main() {
     return container;
   }
 
-  Widget wrap(ProviderContainer container, Widget child) =>
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: Scaffold(body: child),
-        ),
-      );
+  Widget wrap(
+    ProviderContainer container,
+    Widget child, {
+    double textScale = 1,
+  }) => UncontrolledProviderScope(
+    container: container,
+    child: MaterialApp(
+      theme: AppTheme.light(),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: Scaffold(body: child),
+    ),
+  );
 
   /// Pumps past the stagger entrances and the tab fade.
   Future<void> settle(WidgetTester tester) async {
@@ -272,6 +280,22 @@ void main() {
     expect(find.text('5h · 6 sessions'), findsOneWidget);
     expect(find.text('A code is set for Ravi'), findsNothing);
     expect(find.text('Set a four-digit code'), findsOneWidget);
+  });
+
+  testWidgets('parent Shield fits a narrow phone with enlarged text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final container = parentDevice(FakeParent());
+    await tester.pumpWidget(
+      wrap(container, const ShieldScreen(), textScale: 2),
+    );
+    await settle(tester);
+    expect(find.text('Ravi'), findsOneWidget);
+    expect(find.text('Meera'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the parent\'s shield lists the child\'s apps and blocks one', (
