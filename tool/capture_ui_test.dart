@@ -15,6 +15,8 @@ import 'package:focusforge/app/app.dart';
 import 'package:focusforge/app/router.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/models/shield.dart';
+import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
@@ -23,6 +25,9 @@ import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/auth_screen.dart';
+import 'package:focusforge/features/onboarding/profile_step.dart';
+import 'package:focusforge/features/onboarding/subjects_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +57,25 @@ void main() {
       overrides: [
         localStoreProvider.overrideWithValue(store),
         shieldServiceProvider.overrideWithValue(engine),
-        installedAppsProvider.overrideWith((ref) async => const []),
+        installedAppsProvider.overrideWith(
+          (ref) async => const [
+            InstalledApp(
+              packageId: 'com.example.social',
+              name: 'Social',
+              isSystem: false,
+            ),
+            InstalledApp(
+              packageId: 'com.example.video',
+              name: 'Video',
+              isSystem: false,
+            ),
+            InstalledApp(
+              packageId: 'com.example.reader',
+              name: 'Reader',
+              isSystem: false,
+            ),
+          ],
+        ),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
         usageAccessProvider.overrideWith((ref) async => false),
         shieldEnabledProvider.overrideWith((ref) async => false),
@@ -67,6 +90,16 @@ void main() {
             displayName: 'Alex Morgan',
             onboardingComplete: true,
           ),
+        );
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(packageId: 'com.example.social', name: 'Social');
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(
+          packageId: 'com.example.video',
+          name: 'Video',
+          tier: WhitelistTier.budgeted,
         );
     final now = DateTime.now();
     final sessions = [
@@ -120,8 +153,20 @@ void main() {
       await tester.pumpWidget(scope(const FocusForgeApp()));
       for (final route in ['dashboard', 'shield', 'focus', 'profile']) {
         container.read(routerProvider).go('/$route');
+        await tester.pumpAndSettle();
+        for (final state in tester.stateList<ScrollableState>(
+          find.byType(Scrollable),
+        )) {
+          if (state.position.axis == Axis.vertical) state.position.jumpTo(0);
+        }
         await capture('$route-${mode.name}');
         if (route == 'profile') {
+          await tester.scrollUntilVisible(
+            find.text('YOUR WEEK IN FOCUS'),
+            140,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await capture('profile-recap-${mode.name}');
           await tester.scrollUntilVisible(
             find.text('Tide'),
             180,
@@ -129,6 +174,25 @@ void main() {
           );
           await capture('appearance-${mode.name}');
         }
+      }
+    }
+    for (final mode in [ThemePreference.dark, ThemePreference.light]) {
+      for (final page in <String, Widget>{
+        'login': const AuthScreen(),
+        'setup-profile': ProfileStep(onNext: () {}),
+        'setup-subjects': SubjectsStep(onNext: () {}),
+      }.entries) {
+        await tester.pumpWidget(
+          scope(
+            MaterialApp(
+              theme: mode == ThemePreference.dark
+                  ? AppTheme.dark()
+                  : AppTheme.light(),
+              home: Scaffold(body: SafeArea(child: page.value)),
+            ),
+          ),
+        );
+        await capture('${page.key}-${mode.name}');
       }
     }
     await tester.pumpWidget(

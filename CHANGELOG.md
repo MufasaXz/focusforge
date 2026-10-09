@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.0.2 — 2026-10-09
+
+Android build 9.
+
+### Added
+
+- A seven-day recap on You, showing completed focus time, active days and
+  daily-goal editing, plus shortcuts to Focus and Shield.
+- Shield filters for blocked, focus-only and budgeted apps. Search now matches
+  package names as well as app names; empty results offer a single reset action.
+
+### Improved
+
+- Redesigned login and setup with a focus preview, tonal surfaces, clearer
+  account benefits, refined typography and selected-state styling.
+- Refreshed profile identity and Shield overview with theme-aware accents and
+  rule counts. The overview explains when Android accessibility is required.
+- Shield headers adapt to enlarged text, including the parent's child selector.
+
+### Fixed
+
+- Email sign-in explains whether credentials are local or handled by Firebase.
+- Unexpected sign-in failures release the loading state and allow another try.
+
+### Release details
+
+- Version 1.0.2 (9), signed with the existing Android release certificate.
+- Existing blocking, YouTube filtering, study groups and parent features remain
+  available. Cloud features still require the existing Firebase configuration
+  and Firestore rules; see [Firebase setup](docs/firebase-setup.md).
+- This UI release does not change Play Protect eligibility; see
+  [installation and review guidance](docs/play-protect.md).
+
 ## [1.0.1](https://github.com/MufasaXz/focusforge/releases/tag/1.0.1) — 2026-10-08
 
 Android build 8. Changes since 1.0.0.
