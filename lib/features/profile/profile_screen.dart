@@ -21,6 +21,8 @@ import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/tonal_panel.dart';
+import 'widgets/focus_overview.dart';
 import '../settings/account_gate.dart';
 import '../settings/settings_support.dart';
 import 'widgets/avatar_sheet.dart';
@@ -189,6 +191,8 @@ class ProfileScreen extends ConsumerWidget {
     // other. Stacked — which is every phone — it is the same page it has
     // always been, in the same order.
     final identity = <Widget>[
+      stagger(const Eyebrow('YOUR SPACE', icon: Icons.person_outline_rounded)),
+      const SizedBox(height: Gap.lg),
       stagger(
         _HeroCard(
           user: user,
@@ -199,9 +203,15 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: Gap.lg),
+      stagger(ProfileShortcuts(guardian: user.isGuardian)),
+      const SizedBox(height: Gap.lg),
       if (user.isAnonymous) ...[
         stagger(const _AnonymousCard()),
         const SizedBox(height: Gap.lg),
+      ],
+      if (!user.isGuardian) ...[
+        stagger(const FocusOverview()),
+        const SizedBox(height: Gap.xl),
       ],
       stagger(
         SectionHeader(
@@ -322,15 +332,15 @@ class _HeroCard extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 380 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    return Card.filled(
-      color: t.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.hero),
-      ),
+    return TonalPanel(
+      accent: true,
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           children: [
+            const Eyebrow('A LITTLE BETTER, EVERY DAY'),
+            const SizedBox(height: Gap.xl),
             if (compact) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -431,7 +441,10 @@ class _ProfileIdentity extends StatelessWidget {
       children: [
         Text(
           user.displayName.trim().isEmpty ? 'Your profile' : user.displayName,
-          style: tt.headlineSmall,
+          style: tt.headlineSmall?.copyWith(
+            letterSpacing: -.8,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: Gap.sm),
         DecoratedBox(
