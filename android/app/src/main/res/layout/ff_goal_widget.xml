@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="12dp" android:background="@drawable/ff_widget_day">
+<TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="DAILY GOAL" android:textSize="10sp" android:letterSpacing="0.16" android:textStyle="bold" />
+<ImageView android:id="@+id/widget_dial" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginVertical="6dp" android:scaleType="fitCenter" android:contentDescription="Daily goal completion percentage" />
+<TextView android:id="@+id/widget_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="0 / 300 min today" android:textSize="15sp" android:textStyle="bold" />
+<TextView android:id="@+id/widget_subject" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:layout_marginTop="4dp" />
+<TextView android:id="@+id/widget_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:maxLines="2" android:layout_marginTop="3dp" />
+</LinearLayout>

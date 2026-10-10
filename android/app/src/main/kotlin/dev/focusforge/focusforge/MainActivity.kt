@@ -34,6 +34,11 @@ class MainActivity : FlutterActivity() {
                     intent?.removeExtra("open_focus")
                     result.success(open)
                 }
+                "takeDashboardLaunch" -> {
+                    val open = intent?.getBooleanExtra("open_dashboard", false) ?: false
+                    intent?.removeExtra("open_dashboard")
+                    result.success(open)
+                }
                 else -> result.notImplemented()
             }
         }

@@ -690,8 +690,8 @@ class _AppearanceCard extends ConsumerWidget {
             ),
             const SizedBox(height: Gap.lg),
             Text(
-              'Add the Retro clock from your Android home screen’s Widgets menu. '
-              'It shows the live countdown and today’s focus time.',
+              'Open your Android home screen’s Widgets menu to add the Retro clock, '
+              'Study session or Daily goal. See your subject, countdown and progress at a glance.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.onSurfaceVariant),
             ),
             if (isDark) ...[
