@@ -111,7 +111,11 @@ open class FocusWidget : AppWidgetProvider() {
                 add(Calendar.DAY_OF_YEAR, 1)
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             }.timeInMillis
-            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, if (running) minOf(target, midnight) else midnight, pending)
+            // Refresh when the native countdown needs a leading zero below ten minutes.
+            val leadingZeroBoundary = target - 599_000L
+            val nextRefresh = if (running) minOf(target, midnight,
+                if (leadingZeroBoundary > now) leadingZeroBoundary else Long.MAX_VALUE) else midnight
+            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextRefresh, pending)
             val remaining = if (running) target - now else if (timer.optBoolean("running")) 0L else timer.optLong("remainingMs", 25 * 60_000L)
             val views = RemoteViews(context.packageName, when(kind) {
                 "goal" -> R.layout.ff_goal_widget
@@ -122,7 +126,11 @@ open class FocusWidget : AppWidgetProvider() {
             listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_subject).forEach { views.setTextColor(it, ink) }
             if (kind != "goal") listOf(R.id.widget_time, R.id.widget_live).forEach { views.setTextColor(it, ink) }
             views.setTextColor(R.id.widget_caption, secondary)
-            views.setTextViewText(R.id.widget_title, if (kind == "goal") "DAILY GOAL" else "FOCUSFORGE · " + phase.uppercase(Locale.ROOT))
+            views.setTextViewText(R.id.widget_title, if (kind == "goal") "DAILY GOAL" else phase.uppercase(Locale.ROOT))
+            if (kind == "clock") {
+                views.setTextViewText(R.id.widget_phase, (if (phase == "Focus") "○ FOCUS" else "○ BREAK"))
+                views.setTextColor(R.id.widget_phase, secondary)
+            }
             views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
             views.setTextViewText(R.id.widget_progress, minutes.toString() + " / " + goal + " min today")
             views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
@@ -132,15 +140,18 @@ open class FocusWidget : AppWidgetProvider() {
                 views.setImageViewBitmap(R.id.widget_dial, goalRing(minutes.toFloat() / goal, dark, accent, ink))
                 views.setContentDescription(R.id.widget_dial, (minutes * 100 / goal).coerceIn(0, 100).toString() + " percent of today's goal complete")
             } else {
-                if (kind == "clock") views.setImageViewBitmap(R.id.widget_dial, dial(dark, secondary, accent))
+                if (kind == "clock") views.setImageViewBitmap(R.id.widget_dial, dial(dark, ink))
                 views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
                 views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
                 if (running) {
-                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining, "%s", true)
+                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining,
+                        if (remaining < 600_000L) "0%s" else "%s", true)
                     views.setChronometerCountDown(R.id.widget_live, true)
                 } else {
                     val seconds = remaining.coerceAtLeast(0) / 1000
-                    views.setTextViewText(R.id.widget_time, String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60))
+                    views.setTextViewText(R.id.widget_time, if (seconds >= 3600)
+                        String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+                        else String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60))
                     views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime(), "%s", false)
                 }
             }
@@ -176,38 +187,26 @@ open class FocusWidget : AppWidgetProvider() {
             canvas.drawLine(160f, 135f, 165f, 112f, pen)
             return bitmap
         }
-        private fun dial(dark: Boolean, marks: Int, accent: Int): Bitmap {
+        private fun dial(dark: Boolean, marks: Int): Bitmap {
             val bitmap = Bitmap.createBitmap(360, 360, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.shader = LinearGradient(0f, 0f, 360f, 360f, Color.parseColor(if (dark) "#373735" else "#E7DEC9"), Color.parseColor(if (dark) "#232426" else "#D4C8AD"), Shader.TileMode.CLAMP)
-            canvas.drawCircle(180f, 180f, 173f, paint)
-            paint.shader = null
+            paint.color = Color.parseColor(if (dark) "#363630" else "#DCD0B4")
+            canvas.drawCircle(180f, 180f, 169.2f, paint)
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2f
-            paint.color = Color.argb(if (dark) 50 else 220, 255, 255, 255)
-            canvas.drawCircle(180f, 180f, 172f, paint)
+            paint.strokeCap = Paint.Cap.BUTT
             for (i in 0 until 60) {
                 val angle = i * PI / 30 - PI / 2
                 val major = i % 5 == 0
-                val inner = if (major) 133 else 147
-                paint.color = marks
-                paint.strokeWidth = if (major) 3.5f else 1.5f
-                canvas.drawLine((180 + cos(angle) * inner).toFloat(), (180 + sin(angle) * inner).toFloat(), (180 + cos(angle) * 157).toFloat(), (180 + sin(angle) * 157).toFloat(), paint)
-                if (major) {
-                    paint.style = Paint.Style.FILL
-                    paint.textSize = 12f
-                    paint.typeface = Typeface.MONOSPACE
-                    paint.textAlign = Paint.Align.CENTER
-                    canvas.drawText(if (i == 0) "60" else i.toString(), (180 + cos(angle) * 120).toFloat(), (184 + sin(angle) * 120).toFloat(), paint)
-                    paint.style = Paint.Style.STROKE
-                }
+                val outer = 164.2
+                val inner = outer - if (major) 11.5 else 6.5
+                paint.color = Color.argb(if (major) 148 else 72, Color.red(marks), Color.green(marks), Color.blue(marks))
+                paint.strokeWidth = if (major) 1.37f else .86f
+                canvas.drawLine((180 + cos(angle) * inner).toFloat(), (180 + sin(angle) * inner).toFloat(), (180 + cos(angle) * outer).toFloat(), (180 + sin(angle) * outer).toFloat(), paint)
             }
-            paint.color = accent
-            paint.strokeWidth = 5f
-            canvas.drawLine(180f, 9f, 180f, 35f, paint)
             return bitmap
         }
+
     }
 }
 

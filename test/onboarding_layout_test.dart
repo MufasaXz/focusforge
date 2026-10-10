@@ -10,6 +10,7 @@ import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
+import 'package:focusforge/features/focus/widgets/clock_faces.dart';
 import 'package:focusforge/features/onboarding/goal_step.dart';
 import 'package:focusforge/features/onboarding/onboarding_chrome.dart';
 import 'package:focusforge/features/onboarding/permissions_step.dart';
@@ -55,6 +56,8 @@ void main() {
           wrap(const AuthScreen(embedded: true), scale: 2, dark: dark),
         );
         await tester.pumpAndSettle();
+        expect(find.byType(RetroClock), findsNothing);
+        expect(find.text('25:00'), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.scrollUntilVisible(find.text('Skip for now'), 160);
         expect(find.text('Skip for now').hitTestable(), findsOneWidget);

@@ -178,6 +178,9 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                         accent: accent,
                         height: side * 0.30,
                         progress: timer.progressFor(preset),
+                        phaseLabel: timer.phase == TimerPhase.focus
+                            ? 'FOCUS'
+                            : 'BREAK',
                       ),
                     ),
                   ),

@@ -984,6 +984,7 @@ class _AnalogFace extends StatelessWidget {
                 accent: accent,
                 height: side,
                 progress: progress,
+                phaseLabel: phase == TimerPhase.focus ? 'FOCUS' : 'BREAK',
               ),
             ),
             const SizedBox(height: Gap.lg),

@@ -83,6 +83,30 @@ void main() {
   group('ClockDisplay', () {
     const remaining = Duration(minutes: 24, seconds: 51);
 
+    testWidgets(
+      'retro displays the engine time and current phase with bundled serif figures',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(
+            const ClockDisplay(
+              remaining: remaining,
+              face: ClockFace.retro,
+              accent: Colors.orange,
+              height: 280,
+              phaseLabel: 'BREAK',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('24:51'), findsOneWidget);
+        expect(find.text('BREAK'), findsOneWidget);
+        expect(find.text('REMAINING'), findsNothing);
+        final text = tester.widget<Text>(find.text('24:51'));
+        expect(text.style?.fontFamily, 'FocusDial');
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('the faces that draw text show every figure', (tester) async {
       for (final face in [ClockFace.minimal, ClockFace.neon]) {
         await tester.pumpWidget(
