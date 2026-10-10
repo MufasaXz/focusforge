@@ -75,7 +75,8 @@ enum ClockFace {
   segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
   minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded),
   analog('Analog', 'Hour, minute and second hands', Icons.access_time_rounded),
-  neon('Neon', 'Lit figures with a glow', Icons.lightbulb_outline_rounded);
+  neon('Neon', 'Lit figures with a glow', Icons.lightbulb_outline_rounded),
+  serif('Serif', 'Typeset figures in the dial serif', Icons.text_fields_rounded);
 
   const ClockFace(this.label, this.blurb, this.icon);
 
