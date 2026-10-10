@@ -132,7 +132,7 @@ final themeSettingsProvider =
 /// make every palette swatch rebuild the focus tab.
 class ClockFaceNotifier extends Notifier<ClockFace> {
   @override
-  ClockFace build() => ClockFace.minimal;
+  ClockFace build() => ClockFace.retro;
 
   LocalStore get _store => ref.read(localStoreProvider);
 

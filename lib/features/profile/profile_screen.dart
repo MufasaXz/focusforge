@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -32,7 +33,7 @@ import 'widgets/subject_target_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
 /// so the version is a constant — keep it in step with `pubspec.yaml`.
-const _appVersion = '1.0.2';
+const _appVersion = '1.0.3';
 
 /// Opens a settings destination, asking for an account first when the row is
 /// locked.
@@ -657,7 +658,7 @@ class _AppearanceCard extends ConsumerWidget {
     // light mode would offer a control that cannot do anything.
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
@@ -686,6 +687,12 @@ class _AppearanceCard extends ConsumerWidget {
                     onTap: () => notifier.setPalette(p),
                   ),
               ],
+            ),
+            const SizedBox(height: Gap.lg),
+            Text(
+              'Add the Retro clock from your Android home screen’s Widgets menu. '
+              'It shows the live countdown and today’s focus time.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.onSurfaceVariant),
             ),
             if (isDark) ...[
               const SizedBox(height: Gap.lg),
@@ -835,7 +842,7 @@ class _SubjectGoalCard extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         scale: 0.97,
-        child: Card.filled(
+        child: GlassCard(
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: Gap.lg,

@@ -6,4 +6,5 @@
          that is not flattering. -->
     <string name="accessibility_service_summary">Closes the apps you choose, and hides the YouTube Shorts feed.</string>
     <string name="accessibility_service_description">FocusForge watches which app comes to the foreground so it can close the ones you asked it to keep closed. To tell the YouTube Shorts player apart from a normal video — so lectures still play — it reads view names inside YouTube. It reads nothing else on screen: not your messages, not your passwords, and no other app at all. Nothing it reads is stored or sent anywhere.</string>
+    <string name="ff_widget_description">A retro countdown and today’s completed focus time. Tap to open Focus.</string>
 </resources>

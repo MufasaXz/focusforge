@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -252,7 +253,7 @@ class _PermissionCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final granted = status == PermissionOutcome.granted;
 
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(

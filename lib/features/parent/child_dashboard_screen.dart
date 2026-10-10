@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -422,7 +423,7 @@ class _BlocksSection extends ConsumerWidget {
           title: 'Blocks on their device',
           icon: Icons.block_rounded,
         ),
-        Card.filled(
+        GlassCard(
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
@@ -746,7 +747,7 @@ class _SecurityCodeSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SectionHeader(title: 'Security code', icon: Icons.lock_rounded),
-        Card.filled(
+        GlassCard(
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: IconBadge(

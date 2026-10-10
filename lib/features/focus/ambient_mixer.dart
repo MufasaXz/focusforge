@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -50,7 +51,7 @@ class AmbientMixerSection extends ConsumerWidget {
                   ),
           ),
         ),
-        Card.filled(
+        GlassCard(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, Gap.md),
             child: Column(

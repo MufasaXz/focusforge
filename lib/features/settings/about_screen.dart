@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -20,7 +21,7 @@ class AboutScreen extends StatelessWidget {
 
   /// Kept in step with `pubspec.yaml` by hand. There is no `package_info`
   /// dependency by design, and one hardcoded string is cheaper than a plugin.
-  static const _version = '1.0.2';
+  static const _version = '1.0.3';
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class AboutScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card.filled(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.xl),
               child: Column(

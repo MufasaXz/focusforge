@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'widget_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,8 +50,12 @@ class LocalStore {
 
   String? getString(String key) => _read<String>(key);
 
-  Future<void> setString(String key, String value) =>
-      _prefs.setString(_k(key), value);
+  Future<void> setString(String key, String value) async {
+    await _prefs.setString(_k(key), value);
+    if ({StoreKeys.sessions, StoreKeys.presets, StoreKeys.theme, StoreKeys.palette}.contains(key)) {
+      await WidgetService.refresh();
+    }
+  }
 
   bool? getBool(String key) => _read<bool>(key);
 
@@ -147,6 +152,7 @@ class LocalStore {
     for (final k in keys) {
       await _prefs.remove(k);
     }
+    await WidgetService.refresh();
   }
 
   /// Everything the app has stored, as a plain map — backs "Export my data".

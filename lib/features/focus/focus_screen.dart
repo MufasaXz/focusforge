@@ -1,3 +1,5 @@
+import '../../shared/widgets/glass_surface.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -329,7 +331,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                   cycleDone: cycleDone,
                                   currentDot: currentDot,
                                 ),
+                                ClockFace.retro ||
                                 ClockFace.analog => _AnalogFace(
+                                  face: face,
                                   remaining: timer.remaining,
                                   accent: accent,
                                   phase: timer.phase,
@@ -527,7 +531,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   ),
                   const SizedBox(width: Gap.sm),
                   Expanded(
-                    child: Card.filled(
+                    child: GlassCard(
                       color: t.surfaceContainerHigh,
                       shape: const StadiumBorder(),
                       clipBehavior: Clip.antiAlias,
@@ -941,6 +945,7 @@ class _FlipClock extends StatelessWidget {
 /// which is where a line belongs on a dial anyway.
 class _AnalogFace extends StatelessWidget {
   const _AnalogFace({
+    required this.face,
     required this.remaining,
     required this.accent,
     required this.phase,
@@ -950,6 +955,7 @@ class _AnalogFace extends StatelessWidget {
     required this.progress,
   });
 
+  final ClockFace face;
   final Duration remaining;
   final Color accent;
   final TimerPhase phase;
@@ -965,7 +971,7 @@ class _AnalogFace extends StatelessWidget {
         // A dial is square, so it is measured against the width it was handed
         // the way the board is. The bounds keep the hands legible on the
         // narrowest phone and stop it swallowing a tablet.
-        final side = (constraints.maxWidth * 0.66).clamp(168.0, 264.0);
+        final side = (constraints.maxWidth * 0.92).clamp(220.0, 340.0);
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -974,7 +980,7 @@ class _AnalogFace extends StatelessWidget {
               height: side,
               child: ClockDisplay(
                 remaining: remaining,
-                face: ClockFace.analog,
+                face: face,
                 accent: accent,
                 height: side,
                 progress: progress,
@@ -1300,7 +1306,7 @@ class _DockNudge extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onTap : null,
         scale: 0.92,
-        child: Card.filled(
+        child: GlassCard(
           color: t.surfaceContainerHigh,
           shape: const StadiumBorder(),
           child: SizedBox(

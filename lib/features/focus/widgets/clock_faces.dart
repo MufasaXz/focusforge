@@ -43,6 +43,13 @@ class ClockDisplay extends StatelessWidget {
     final text = formatClock(remaining);
 
     switch (face) {
+      case ClockFace.retro:
+        return RetroClock(
+          remaining: remaining,
+          accent: accent,
+          size: height,
+          progress: progress,
+        );
       case ClockFace.flip:
         return _FlipBoard(text: text, accent: accent, height: height);
       case ClockFace.segments:
@@ -861,4 +868,211 @@ class _AnalogPainter extends CustomPainter {
       old.ink != ink ||
       old.marks != marks ||
       old.progress != progress;
+}
+
+/// A retro countdown dial. Marks, hand and figures all read the timer engine.
+class RetroClock extends StatelessWidget {
+  const RetroClock({
+    super.key,
+    required this.remaining,
+    required this.accent,
+    required this.size,
+    required this.progress,
+  });
+
+  final Duration remaining;
+  final Color accent;
+  final double size;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: _RetroDialPainter(
+          progress: progress,
+          accent: accent,
+          ink: cs.onSurface,
+          marks: cs.onSurfaceVariant,
+          surface: cs.surfaceContainer,
+          dark: dark,
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: size * 0.14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'REMAINING',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: size * 0.032,
+                    letterSpacing: size * 0.007,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(height: size * 0.022),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    formatClock(remaining),
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: size * 0.17,
+                      height: 1.05,
+                      letterSpacing: -size * 0.008,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurface,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                SizedBox(height: size * 0.028),
+                Container(
+                  width: size * 0.11,
+                  height: size * 0.012,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RetroDialPainter extends CustomPainter {
+  const _RetroDialPainter({
+    required this.progress,
+    required this.accent,
+    required this.ink,
+    required this.marks,
+    required this.surface,
+    required this.dark,
+  });
+
+  final double progress;
+  final Color accent;
+  final Color ink;
+  final Color marks;
+  final Color surface;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final c = Offset(size.width / 2, size.height / 2);
+    final radius = s * 0.47;
+    final rect = Rect.fromCircle(center: c, radius: radius);
+    canvas.drawCircle(
+      c + Offset(0, s * 0.016),
+      radius,
+      Paint()
+        ..color = Colors.black.withValues(alpha: dark ? 0.25 : 0.10)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.024),
+    );
+    canvas.drawCircle(
+      c,
+      radius,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(surface, Colors.white, dark ? 0.055 : 0.32)!,
+            surface,
+            Color.lerp(surface, Colors.black, dark ? 0.12 : 0.045)!,
+          ],
+        ).createShader(rect),
+    );
+    canvas.drawCircle(
+      c,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.004
+        ..color = Colors.white.withValues(alpha: dark ? 0.16 : 0.8),
+    );
+    canvas.drawCircle(
+      c,
+      radius - s * 0.021,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.002
+        ..color = marks.withValues(alpha: 0.22),
+    );
+    final p = progress.clamp(0.0, 1.0);
+    final tick = Paint()..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 60; i++) {
+      final major = i % 5 == 0;
+      final angle = i * math.pi / 30 - math.pi / 2;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final outer = radius - s * 0.045;
+      final inner = outer - s * (major ? 0.066 : 0.029);
+      canvas.drawLine(
+        c + direction * inner,
+        c + direction * outer,
+        tick
+          ..strokeWidth = s * (major ? 0.010 : 0.004)
+          ..color = i / 60 < p
+              ? accent.withValues(alpha: 0.45)
+              : marks.withValues(alpha: major ? 0.85 : 0.52),
+      );
+      if (major) {
+        final label = i == 0 ? '60' : '$i';
+        final painter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: s * 0.032,
+              fontWeight: FontWeight.w600,
+              color: marks,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final at = c + direction * (radius - s * 0.143);
+        painter.paint(
+          canvas,
+          at - Offset(painter.width / 2, painter.height / 2),
+        );
+        painter.dispose();
+      }
+    }
+    final handAngle = p * 2 * math.pi - math.pi / 2;
+    final direction = Offset(math.cos(handAngle), math.sin(handAngle));
+    canvas.drawLine(
+      c + direction * (radius - s * 0.107),
+      c + direction * (radius - s * 0.024),
+      Paint()
+        ..color = accent
+        ..strokeWidth = s * 0.014
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(
+      c + direction * (radius - s * 0.026),
+      s * 0.017,
+      Paint()..color = accent,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RetroDialPainter old) =>
+      old.progress != progress ||
+      old.accent != accent ||
+      old.ink != ink ||
+      old.marks != marks ||
+      old.surface != surface ||
+      old.dark != dark;
 }

@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -80,7 +81,7 @@ class _ClosestBadge extends StatelessWidget {
 
     final closest = locked.reduce((a, b) => a.ratio >= b.ratio ? a : b);
 
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(

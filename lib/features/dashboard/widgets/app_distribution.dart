@@ -1,3 +1,4 @@
+import '../../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +28,7 @@ class AppDistribution extends ConsumerWidget {
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
 
     if (rules.isEmpty) {
-      return Card.filled(
+      return GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.lg),
           child: Row(

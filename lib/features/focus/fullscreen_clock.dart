@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/models/user.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/pressable.dart';
@@ -95,7 +96,9 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
     // Pure black means pure black here too: this is the one screen that is
     // left on for an hour, and a tint over black is exactly what the setting
     // exists to avoid.
-    final amoled = ref.watch(themeSettingsProvider).amoled;
+    final amoled =
+        Theme.of(context).brightness == Brightness.dark &&
+        ref.watch(themeSettingsProvider).amoled;
 
     final size = MediaQuery.sizeOf(context);
     // Everything scales off the shorter side, so landscape is not a portrait
@@ -164,7 +167,9 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                   // is a caption.
                   SizedBox(
                     width: size.width,
-                    height: side * (landscape ? 0.42 : 0.34),
+                    height: face == ClockFace.retro
+                        ? side * (landscape ? 0.64 : 0.82)
+                        : side * (landscape ? 0.42 : 0.34),
                     child: FittedBox(
                       fit: BoxFit.contain,
                       child: ClockDisplay(

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// `system` follows the platform; the other two pin it. Stored by name so the
 /// persisted value survives reordering of this enum.
 enum ThemePreference {
-  light('Light', Icons.light_mode_rounded, ThemeMode.light),
+  light('Day', Icons.light_mode_rounded, ThemeMode.light),
   system('System', Icons.brightness_auto_rounded, ThemeMode.system),
   dark('Dark', Icons.dark_mode_rounded, ThemeMode.dark);
 
@@ -39,6 +39,7 @@ enum ThemePreference {
 /// *preference* — it is stored by name and rebuilt on launch — and the theme
 /// file should stay a pure function of what it is handed.
 enum AppPalette {
+  parchment('Parchment', Color(0xFF766747), Color(0xFFD9C8A3)),
   ember('Ember', Color(0xFFE8672A), Color(0xFFFF8A50)),
   tide('Tide', Color(0xFF1B6FD6), Color(0xFF6FA8FF)),
   grove('Grove', Color(0xFF2E7D4F), Color(0xFF6FD39A)),
@@ -55,20 +56,21 @@ enum AppPalette {
   Color seedFor(Brightness brightness) =>
       brightness == Brightness.dark ? darkSeed : lightSeed;
 
-  /// The stored palette, or [AppPalette.ember] when there is none — the same
+  /// The stored palette, or [AppPalette.parchment] when there is none — the same
   /// fallback a cold install gets, so an unreadable value cannot land the app
   /// on a colour the user never chose.
   static AppPalette fromName(String? name) =>
-      values.firstWhere((v) => v.name == name, orElse: () => AppPalette.ember);
+      values.firstWhere((v) => v.name == name, orElse: () => AppPalette.parchment);
 }
 
 /// How the focus timer draws the time that is left.
 ///
 /// A display preference, not a theme: it changes one widget on one screen, and
 /// it is stored by name for the same reason the palette is — the value has to
-/// survive reordering of this enum. `minimal` is the fallback for a stored
+/// survive reordering of this enum. `retro` is the fallback for a stored
 /// value this build cannot read, including a face that has since been retired.
 enum ClockFace {
+  retro('Retro', 'A studio dial with a live countdown', Icons.timelapse_rounded),
   flip('Flip', 'Split-flap cards', Icons.view_agenda_rounded),
   segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
   minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded),
@@ -82,7 +84,7 @@ enum ClockFace {
   final IconData icon;
 
   static ClockFace fromName(String? name) =>
-      values.firstWhere((v) => v.name == name, orElse: () => ClockFace.minimal);
+      values.firstWhere((v) => v.name == name, orElse: () => ClockFace.retro);
 }
 
 /// Everything the appearance section can change, in one value.
@@ -93,18 +95,12 @@ enum ClockFace {
 class ThemeSettings {
   const ThemeSettings({
     this.mode = ThemePreference.system,
-    this.palette = AppPalette.ember,
+    this.palette = AppPalette.parchment,
     this.amoled = defaultAmoled,
   });
 
-  /// True black ships on.
-  ///
-  /// Most phones have an OLED panel, this is a screen left on a desk for an
-  /// hour at a time, and the difference between a very dark grey and no light
-  /// at all is the whole reason the setting exists. It only means anything in
-  /// dark mode, so a light-mode install is unaffected — and the switch is
-  /// there for anyone who would rather have the tinted surface.
-  static const defaultAmoled = true;
+  /// Charcoal glass ships by default. True black remains opt-in.
+  static const defaultAmoled = false;
 
   final ThemePreference mode;
   final AppPalette palette;

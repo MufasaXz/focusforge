@@ -149,6 +149,7 @@ void main() {
       });
     }
 
+    await container.read(themeSettingsProvider.notifier).setAmoled(false);
     for (final mode in [ThemePreference.dark, ThemePreference.light]) {
       await container.read(themeSettingsProvider.notifier).setMode(mode);
       await tester.pumpWidget(scope(const FocusForgeApp()));
@@ -177,6 +178,7 @@ void main() {
         }
       }
     }
+    await container.read(themeSettingsProvider.notifier).setAmoled(false);
     for (final mode in [ThemePreference.dark, ThemePreference.light]) {
       for (final page in <String, Widget>{
         'login': const AuthScreen(),

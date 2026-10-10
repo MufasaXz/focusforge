@@ -58,12 +58,12 @@ void main() {
 
   group('ClockFace', () {
     test('an unknown or missing name falls back to the shipped face', () {
-      expect(ClockFace.fromName(null), ClockFace.minimal);
-      expect(ClockFace.fromName(''), ClockFace.minimal);
-      expect(ClockFace.fromName('sundial'), ClockFace.minimal);
+      expect(ClockFace.fromName(null), ClockFace.retro);
+      expect(ClockFace.fromName(''), ClockFace.retro);
+      expect(ClockFace.fromName('sundial'), ClockFace.retro);
       expect(
         ClockFace.fromName('digits'),
-        ClockFace.minimal,
+        ClockFace.retro,
         reason: 'a face that has been retired reads as the fallback',
       );
     });
@@ -225,7 +225,9 @@ void main() {
         );
       }
 
-      final windows = tester.renderObjectList<RenderBox>(find.byType(ClipRRect));
+      final windows = tester.renderObjectList<RenderBox>(
+        find.byType(ClipRRect),
+      );
       expect(windows, isNotEmpty);
       for (final window in windows) {
         expect(
@@ -384,7 +386,7 @@ void main() {
       ];
       expect(
         chosen,
-        [ClockFace.minimal],
+        [ClockFace.retro],
         reason:
             'exactly one face is the current one, and a cold install '
             'wears the shipped one',
@@ -399,6 +401,8 @@ void main() {
       await tester.pumpWidget(page(scope));
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text(ClockFace.segments.label));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(ClockFace.segments.label));
       await tester.pumpAndSettle();
 
@@ -443,7 +447,7 @@ void main() {
 
       expect(
         container.read(clockFaceProvider),
-        ClockFace.minimal,
+        ClockFace.retro,
         reason: 'a cold install gets the face the app shipped with',
       );
 
@@ -462,7 +466,7 @@ void main() {
       expect(reopened.read(clockFaceProvider), ClockFace.flip);
 
       reopened.read(clockFaceProvider.notifier).hydrate('sundial');
-      expect(reopened.read(clockFaceProvider), ClockFace.minimal);
+      expect(reopened.read(clockFaceProvider), ClockFace.retro);
     });
   });
 }

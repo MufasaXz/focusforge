@@ -117,7 +117,7 @@ class _FaceCard extends StatelessWidget {
               // card of its own — the flip board — is still visible as a shape
               // rather than dissolving into the row behind it.
               Container(
-                height: 78,
+                height: face == ClockFace.retro ? 170 : 78,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Radii.tile),
@@ -130,7 +130,7 @@ class _FaceCard extends StatelessWidget {
                     remaining: remaining,
                     face: face,
                     accent: t.primary,
-                    height: 46,
+                    height: face == ClockFace.retro ? 156 : 46,
                     progress: progress,
                   ),
                 ),

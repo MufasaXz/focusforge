@@ -6,20 +6,16 @@ import 'typography.dart';
 
 /// The app's Material 3 theme.
 ///
-/// One seed per brightness generates the entire palette. Nothing here
-/// hardcodes a surface colour: a literal would survive a theme switch and go
-/// unreadable, which is exactly what the previous hand-tuned token set kept
-/// doing. Reach for a role — `colorScheme.primary`, `surfaceContainerLow` —
-/// rather than a hex value. The one exception is [amoled], which is a
-/// deliberate, documented override of the surface family and nothing else.
+/// Accent palettes share warm paper surfaces by day and charcoal at night.
+/// Widgets use scheme roles so their glass treatment follows both modes.
 class AppTheme {
   const AppTheme._();
 
-  static ThemeData light({AppPalette palette = AppPalette.ember}) =>
+  static ThemeData light({AppPalette palette = AppPalette.parchment}) =>
       _build(Brightness.light, palette, false);
 
   static ThemeData dark({
-    AppPalette palette = AppPalette.ember,
+    AppPalette palette = AppPalette.parchment,
     bool amoled = false,
   }) => _build(Brightness.dark, palette, amoled);
 
@@ -32,6 +28,7 @@ class AppTheme {
       seedColor: palette.seedFor(brightness),
       brightness: brightness,
     );
+    cs = _studioSurfaces(cs, brightness);
     if (amoled && brightness == Brightness.dark) cs = _trueBlack(cs);
 
     return ThemeData(
@@ -160,6 +157,23 @@ class AppTheme {
     );
   }
 
+  // Neutral surfaces preserve the glass material across accent palettes.
+  static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    return cs.copyWith(
+      surface: Color(dark ? 0xFF191A1C : 0xFFF5EBDE),
+      surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFCF7),
+      surfaceContainerLow: Color(dark ? 0xFF222326 : 0xFFF9F2E8),
+      surfaceContainer: Color(dark ? 0xFF292A2D : 0xFFEFE4D4),
+      surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE8DCC8),
+      surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDFD1BA),
+      onSurface: Color(dark ? 0xFFF4EEE3 : 0xFF302D26),
+      onSurfaceVariant: Color(dark ? 0xFFBDB6AA : 0xFF6C6557),
+      outline: Color(dark ? 0xFF77766F : 0xFF978D7B),
+      outlineVariant: Color(dark ? 0xFF454641 : 0xFFD6CAB7),
+    );
+  }
+
   /// True black for OLED panels.
   ///
   /// A dark M3 scheme is a very dark *grey* — `surface` lands near #141218 —
@@ -185,7 +199,7 @@ class Radii {
   const Radii._();
 
   static const double hero = 28;
-  static const double card = 20;
+  static const double card = 24;
   static const double item = 16;
   static const double tile = 12;
   static const double pill = 999;

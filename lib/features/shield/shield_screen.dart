@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -358,7 +359,7 @@ class _ShieldStatusPill extends StatelessWidget {
           onTap: onTap,
           // A tonal status pill. The armed state is carried by the tertiary
           // border and the dot, not by a glow.
-          child: Card.filled(
+          child: GlassCard(
             shape: StadiumBorder(
               side: BorderSide(color: on ? cs.tertiary : cs.outlineVariant),
             ),
@@ -865,7 +866,7 @@ class _NoChildrenYet extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(top: Gap.xl),
-      child: Card.filled(
+      child: GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.xl),
           child: Column(
@@ -1065,7 +1066,7 @@ class _EnforceRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
+    return GlassCard(
       clipBehavior: Clip.antiAlias,
       color: blocks.enforced ? null : cs.errorContainer,
       child: SwitchListTile.adaptive(
@@ -1260,7 +1261,7 @@ class _NoChildApps extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.xl),
-      child: Card.filled(
+      child: GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.xl),
           child: Column(
@@ -1329,7 +1330,7 @@ class _ChildYoutubeView extends ConsumerWidget {
       children: [
         Stagger(
           index: 0,
-          child: Card.filled(
+          child: GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
@@ -1370,7 +1371,7 @@ class _ChildYoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 2,
-          child: Card.filled(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
@@ -1439,7 +1440,7 @@ class _ChildYoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 4,
-          child: Card.filled(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: ListTile(
               leading: Icon(
@@ -1723,7 +1724,7 @@ class _NoApps extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
@@ -1765,7 +1766,7 @@ class _NoMatches extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.xl),
-      child: Card.filled(
+      child: GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.xl),
           child: Column(
@@ -2216,7 +2217,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
               ],
               if (_tier == WhitelistTier.budgeted) ...[
                 const SizedBox(height: Gap.md),
-                Card.filled(
+                GlassCard(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       Gap.md,
@@ -2507,7 +2508,7 @@ class _YoutubeView extends ConsumerWidget {
       children: [
         Stagger(
           index: 0,
-          child: Card.filled(
+          child: GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
@@ -2551,7 +2552,7 @@ class _YoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 2,
-          child: Card.filled(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
@@ -2659,7 +2660,7 @@ class _YoutubeView extends ConsumerWidget {
           ),
           Stagger(
             index: 5,
-            child: Card.filled(
+            child: GlassCard(
               clipBehavior: Clip.antiAlias,
               child: ListTile(
                 leading: Icon(
@@ -2810,7 +2811,7 @@ class _ActivityView extends ConsumerWidget {
           index: 2,
           child: events.isEmpty
               ? const _EmptyLog()
-              : Card.filled(
+              : GlassCard(
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
@@ -2847,7 +2848,7 @@ class _ActivityView extends ConsumerWidget {
                       'Nothing on your list has been opened yet today. The '
                       'numbers appear here as soon as something is.',
                 )
-              : Card.filled(
+              : GlassCard(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: Gap.lg,
@@ -2889,7 +2890,7 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MergeSemantics(
-      child: Card.filled(
+      child: GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.lg),
           child: Column(
@@ -3118,7 +3119,7 @@ class _EmptyLog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(

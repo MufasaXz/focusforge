@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,7 +136,7 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Card.filled(
+                GlassCard(
                   child: Padding(
                     padding: const EdgeInsets.all(Gap.lg),
                     child: Column(
@@ -257,7 +258,7 @@ class _GroupCard extends ConsumerWidget {
         60;
     final now = ref.watch(groupClockProvider).valueOrNull ?? DateTime.now();
     final focusing = rows.where((m) => m.focusingAt(now)).length;
-    return Card.filled(
+    return GlassCard(
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.card),
         onTap: () => Navigator.of(context).push(

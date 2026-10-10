@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -139,7 +140,7 @@ class _BoardRowTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
 
-    return Card.filled(
+    return GlassCard(
       color: entry.isMe ? cs.primaryContainer : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -272,7 +273,7 @@ class _EmptyBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(
@@ -307,7 +308,7 @@ class _BoardLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Card.filled(
+    return const GlassCard(
       child: Padding(
         padding: EdgeInsets.all(Gap.xl),
         child: Center(
@@ -330,7 +331,7 @@ class _NoBackendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.filled(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(

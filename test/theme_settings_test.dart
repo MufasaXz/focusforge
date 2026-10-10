@@ -22,9 +22,9 @@ import 'package:focusforge/core/models/user.dart';
 void main() {
   group('AppPalette', () {
     test('a missing or unknown name falls back to the shipped palette', () {
-      expect(AppPalette.fromName(null), AppPalette.ember);
-      expect(AppPalette.fromName(''), AppPalette.ember);
-      expect(AppPalette.fromName('chartreuse'), AppPalette.ember);
+      expect(AppPalette.fromName(null), AppPalette.parchment);
+      expect(AppPalette.fromName(''), AppPalette.parchment);
+      expect(AppPalette.fromName('chartreuse'), AppPalette.parchment);
     });
 
     test('round-trips by name', () {
@@ -110,13 +110,11 @@ void main() {
       const settings = ThemeSettings();
 
       expect(settings.mode, ThemePreference.system);
-      expect(settings.palette, AppPalette.ember);
+      expect(settings.palette, AppPalette.parchment);
       expect(
         settings.amoled,
-        isTrue,
-        reason:
-            'true black is the shipped look in dark mode — the switch turns '
-            'it off, and a light-mode install never sees it',
+        isFalse,
+        reason: 'charcoal glass ships in dark mode; true black is optional',
       );
     });
 

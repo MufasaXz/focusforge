@@ -1,3 +1,4 @@
+import '../../../shared/widgets/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +41,7 @@ class ChildStudyCard extends ConsumerWidget {
       pathParameters: {'uid': child.uid},
     );
 
-    return Card.filled(
+    return GlassCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),

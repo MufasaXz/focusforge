@@ -1,5 +1,6 @@
+import '../../shared/widgets/glass_surface.dart';
+import '../../core/services/widget_service.dart';
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -96,6 +97,9 @@ class _AppShellState extends ConsumerState<AppShell>
   /// The package travels with the gate rather than being dropped here — it is
   /// what the gate hands back when the pause is over.
   Future<void> _checkBlockedLaunch() async {
+    if (await WidgetService.takeFocusLaunch() && mounted && !ref.read(userProvider).isGuardian) {
+      widget.navigationShell.goBranch(2);
+    }
     final service = ref.read(shieldServiceProvider);
     if (service is! NativeShieldService) return;
     final blocked = await service.takeBlockedApp();
@@ -223,11 +227,13 @@ class _AppShellState extends ConsumerState<AppShell>
             : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
-      child: wide
+      child: GlassBackdrop(
+        child: wide
           // A tablet gets the rail. The bar is not stretched across it: a
           // four-item bar spanning 1200dp puts Home and You a hand apart, and
           // it costs a strip of height the content could use.
           ? Scaffold(
+              backgroundColor: Colors.transparent,
               body: Row(
                 children: [
                   SafeArea(
@@ -279,6 +285,8 @@ class _AppShellState extends ConsumerState<AppShell>
               ),
             )
           : Scaffold(
+              backgroundColor: Colors.transparent,
+              extendBody: true,
               body: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -287,20 +295,21 @@ class _AppShellState extends ConsumerState<AppShell>
                   child: body,
                 ),
               ),
-              // One of the three places the design allows a real backdrop blur:
-              // the bar floats over scrolling content, and the blur is what
-              // says so. Everywhere else uses a solid tonal surface.
+              // The glass navigation pill floats above the scrolling body.
               bottomNavigationBar: Center(
                 heightFactor: 1,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
                     maxWidth: AppShell.maxContentWidth,
                   ),
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: SafeArea(
+                    top: false,
+                    minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: GlassCard(
+                      shape: const StadiumBorder(),
                       child: NavigationBar(
-                        backgroundColor: cs.surface.withValues(alpha: 0.85),
+                        height: 72,
+                        backgroundColor: Colors.transparent,
                         selectedIndex: selectedIndex,
                         onDestinationSelected: _select,
                         destinations: destinations,
@@ -310,6 +319,7 @@ class _AppShellState extends ConsumerState<AppShell>
                 ),
               ),
             ),
+      ),
     );
   }
 }
@@ -353,6 +363,6 @@ class _ShieldIcon extends StatelessWidget {
 
 /// Bottom padding a tab's scroll view should leave under its last row.
 ///
-/// The navigation bar is docked in the scaffold's own slot now, so the body is
-/// already laid out above it — this is breathing room, not clearance.
-const double kNavBarClearance = 24;
+/// The body extends beneath the floating navigation pill. Scroll content
+/// leaves this clearance so its final controls remain reachable.
+const double kNavBarClearance = 108;

@@ -1,3 +1,4 @@
+import '../../shared/widgets/glass_surface.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -161,7 +162,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         const Stagger(index: 4, child: SectionHeader(title: 'Quick tips')),
         Stagger(
           index: 5,
-          child: Card.filled(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: Gap.xs),
