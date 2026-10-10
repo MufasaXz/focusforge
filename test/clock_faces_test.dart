@@ -1,10 +1,10 @@
-// The focus clock: the five faces it can be drawn in, and the preference that
+// The focus clock: the seven faces it can be drawn in, and the preference that
 // chooses between them.
 //
 // WHAT INVARIANT: every face renders the same value, none of them throws at
 // any size, and the chosen face is the one a later launch reads back.
 //
-// WHY IT MATTERS: three of the five faces paint their figures rather than
+// WHY IT MATTERS: three of the seven faces paint their figures rather than
 // laying out text, so a mistake in them is invisible to the model tests and to
 // `find.text` — it shows up as a blank rectangle on the timer, or as a layout
 // exception only when the timer is at 100 minutes. The flip board in
@@ -78,6 +78,15 @@ void main() {
         reason: 'stored by name, so the names have to be distinct',
       );
     });
+
+    test('the serif face reads by name while the fallback stays put', () {
+      expect(ClockFace.fromName('serif'), ClockFace.serif);
+      expect(
+        ClockFace.fromName('serif dial'),
+        ClockFace.retro,
+        reason: 'a near-miss is still an unreadable value, not a guess',
+      );
+    });
   });
 
   group('ClockDisplay', () {
@@ -132,6 +141,71 @@ void main() {
         }
         expect(tester.takeException(), isNull);
       }
+    });
+
+    testWidgets('the serif face sets figures in the dial serif, colon apart', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          const ClockDisplay(
+            remaining: remaining,
+            face: ClockFace.serif,
+            accent: Colors.orange,
+            height: 48,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // One Text per character: that split is what lets the colon wear a
+      // family of its own when the digits-only subset cannot carry it.
+      for (final glyph in ['2', '4', ':', '5', '1']) {
+        expect(
+          find.text(glyph),
+          findsWidgets,
+          reason: 'serif renders the engine\'s time',
+        );
+      }
+      final figure = tester.widget<Text>(find.text('2').first);
+      expect(figure.style?.fontFamily, 'FocusDial');
+      expect(
+        figure.style?.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+        reason: 'serif figures still have to align as the time ticks',
+      );
+      final colon = tester.widget<Text>(find.text(':').first);
+      expect(colon.style?.fontFamily, 'InterDisplay');
+      expect(colon.style?.color, Colors.orange);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the serif face survives a narrow column at double text size', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        wrap(
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(2)),
+              child: const ClockDisplay(
+                remaining: remaining,
+                face: ClockFace.serif,
+                accent: Colors.orange,
+                height: 26,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(':'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the flip board holds one card per figure', (tester) async {
@@ -397,7 +471,7 @@ void main() {
       }
       // The shipped face is the one the timer is wearing. Asked of the
       // semantics rather than of the check mark: the check is built into every
-      // row and scaled away, so its presence finds all five.
+      // row and scaled away, so its presence finds all seven.
       final chosen = [
         for (final face in ClockFace.values)
           if (tester
@@ -434,6 +508,43 @@ void main() {
       expect(
         store.getString(StoreKeys.clockFace),
         'segments',
+        reason: 'the choice has to survive the app being closed',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the serif tile previews in its serif and can be chosen', (
+      tester,
+    ) async {
+      final scope = container();
+      await tester.pumpWidget(page(scope));
+      await tester.pumpAndSettle();
+
+      // The values loop above proves every face is listed; this one proves
+      // the new tile previews in the family it promises.
+      final timer = scope.read(timerProvider);
+      final firstDigit = formatClock(
+        timer.remaining,
+      ).replaceAll(':', '').split('').first;
+      final families = tester
+          .widgetList<Text>(find.text(firstDigit))
+          .map((t) => t.style?.fontFamily)
+          .toSet();
+      expect(
+        families,
+        contains('FocusDial'),
+        reason: 'the serif preview has to wear the serif',
+      );
+
+      await tester.ensureVisible(find.text(ClockFace.serif.label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(ClockFace.serif.label));
+      await tester.pumpAndSettle();
+
+      expect(scope.read(clockFaceProvider), ClockFace.serif);
+      expect(
+        store.getString(StoreKeys.clockFace),
+        'serif',
         reason: 'the choice has to survive the app being closed',
       );
       expect(tester.takeException(), isNull);

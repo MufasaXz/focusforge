@@ -72,6 +72,8 @@ class ClockDisplay extends StatelessWidget {
         );
       case ClockFace.neon:
         return _NeonClock(text: text, accent: accent, height: height);
+      case ClockFace.serif:
+        return _SerifClock(text: text, accent: accent, height: height);
     }
   }
 }
@@ -651,6 +653,65 @@ class _NeonClock extends StatelessWidget {
           if (dark) Shadow(color: halo, blurRadius: height * 0.95),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Serif — typeset figures in the dial serif
+// ---------------------------------------------------------------------------
+
+/// The remaining time set like a colophon: figures in the bundled serif, the
+/// colon in InterDisplay.
+///
+/// One [Text] per character, and the split is load-bearing rather than
+/// stylistic. FocusDial ships as a digits-only subset, so it may not carry a
+/// colon at all — a single [Text] in FocusDial would set the separator as tofu,
+/// or silently fall back to a different cut, which reads as a stranger in the
+/// row. Each character gets the family that owns it, the way the flip board
+/// gives each figure its own card.
+///
+/// The colon carries the accent: it is the one part of the row that is allowed
+/// a colour, so the phase survives in a face that is otherwise ink.
+class _SerifClock extends StatelessWidget {
+  const _SerifClock({
+    required this.text,
+    required this.accent,
+    required this.height,
+  });
+
+  final String text;
+  final Color accent;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // The bundle carries the one serif weight, so none is asked for — naming
+    // a weight the family does not have would only get a guess back.
+    final figures = TextStyle(
+      fontFamily: 'FocusDial',
+      fontSize: height,
+      height: 1.04,
+      color: cs.onSurface,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    // The colon is InterDisplay's, at the same size and rise, so it sits on
+    // the same baseline as the figures around it.
+    final colon = figures.copyWith(fontFamily: 'InterDisplay', color: accent);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        for (var i = 0; i < text.length; i++)
+          Text(
+            text[i],
+            style: text[i] == ':' ? colon : figures,
+            maxLines: 1,
+          ),
+      ],
     );
   }
 }

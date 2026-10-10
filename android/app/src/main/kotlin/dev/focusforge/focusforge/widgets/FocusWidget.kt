@@ -167,7 +167,10 @@ open class FocusWidget : AppWidgetProvider() {
             val bitmap = Bitmap.createBitmap(320, 320, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 20f; strokeCap = Paint.Cap.ROUND }
-            pen.color = Color.parseColor(if (dark) "#444541" else "#DED1B9")
+            // The track is the accent at a whisper of alpha rather than a fixed
+            // gray, so the ring reads as one object in every palette and
+            // theme while staying behind the arc it carries.
+            pen.color = Color.argb(38, Color.red(accent), Color.green(accent), Color.blue(accent))
             canvas.drawCircle(160f, 160f, 137f, pen)
             pen.shader = LinearGradient(20f, 20f, 300f, 300f, intArrayOf(accent, Color.parseColor(if (dark) "#8DBA95" else "#56765B")), null, Shader.TileMode.CLAMP)
             canvas.drawArc(RectF(23f, 23f, 297f, 297f), -90f, 360f * progress.coerceIn(0f, 1f), false, pen)

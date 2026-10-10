@@ -12,7 +12,7 @@ import '../focus/widgets/clock_faces.dart';
 
 /// How the timer draws its figures.
 ///
-/// A page rather than a row of tiles on the profile: five faces need the width
+/// A page rather than a row of tiles on the profile: seven faces need the width
 /// to be seen at all — a flip card at 40dp is a grey smudge, and the whole
 /// point of the choice is what the face looks like — and a page is where the
 /// rest of the app's settings already live.
@@ -150,8 +150,8 @@ class _FaceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // A check rather than a switch: the choice is one of five,
-                  // and a switch beside each of five rows says four of them are
+                  // A check rather than a switch: the choice is one of seven,
+                  // and a switch beside each of seven rows says six of them are
                   // off rather than that one of them is on.
                   AnimatedScale(
                     duration: MediaQuery.disableAnimationsOf(context)

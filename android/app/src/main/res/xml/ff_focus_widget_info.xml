@@ -2,4 +2,5 @@
     android:minWidth="180dp" android:minHeight="180dp" android:targetCellWidth="3" android:targetCellHeight="3"
     android:minResizeWidth="150dp" android:minResizeHeight="150dp" android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000" android:initialLayout="@layout/ff_focus_widget"
+    android:previewLayout="@layout/ff_focus_widget"
     android:widgetCategory="home_screen" android:description="@string/ff_widget_description" />
