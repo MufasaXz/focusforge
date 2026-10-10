@@ -2,12 +2,15 @@
     android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:gravity="center" android:padding="12dp" android:background="@drawable/ff_widget_day">
     <TextView android:id="@+id/widget_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="FOCUSFORGE" android:textSize="10sp" android:letterSpacing="0.16" android:textStyle="bold" />
+        android:text="FOCUS" android:textSize="10sp" android:letterSpacing="0.16" android:textStyle="bold" />
     <TextView android:id="@+id/widget_subject" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Choose a subject" android:textSize="14sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="6dp" />
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp" android:layout_marginBottom="8dp">
         <ImageView android:id="@+id/widget_dial" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter" android:contentDescription="Retro focus dial" />
-        <TextView android:id="@+id/widget_time" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="25:00" android:textSize="28sp" android:fontFamily="monospace" />
-        <Chronometer android:id="@+id/widget_live" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:textSize="28sp" android:fontFamily="monospace" android:visibility="gone" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/widget_time" style="@style/FocusWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="25:00" android:singleLine="true" />
+            <Chronometer android:id="@+id/widget_live" style="@style/FocusWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:visibility="gone" />
+            <TextView android:id="@+id/widget_phase" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="○ FOCUS" android:textSize="8sp" android:letterSpacing="0.14" android:layout_marginTop="5dp" />
+        </LinearLayout>
     </FrameLayout>
     <TextView android:id="@+id/widget_progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 min today" android:textSize="15sp" android:textStyle="bold" />
     <TextView android:id="@+id/widget_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:maxLines="2" android:text="Tap to focus" android:textSize="10sp" android:layout_marginTop="3dp" />
