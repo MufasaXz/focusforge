@@ -96,3 +96,22 @@ analysis is clean. The Flutter checks include 320dp/2x text layouts, reduced
 motion, handoff order, recovery, UTC totals, queued progress writes, private
 membership and cached parent rules. Firebase setup and Play Protect review are
 documented separately in docs/firebase-setup.md and docs/play-protect.md.
+
+## Video clock correction — 1.0.3 build 2013
+
+The reference video shows a flat tan dial, fine ticks, serif countdown numerals
+and a phase caption below the digits. The earlier Inter countdown, numbered
+marks, shaded rim and large hand have been replaced. Login now has a plain
+header and sign-in choices, with no clock preview or hero card.
+
+FocusDial-Regular.ttf is a static, digits-only subset of Noto Serif Regular,
+licensed under SIL OFL 1.1; the license is in assets/fonts/FocusDial-OFL.txt.
+It is bundled for Flutter and Android widget numerals (Android 8+); Android 7
+widgets use the platform serif fallback. Pixel comparison against a video
+frame selected this font from several open serif candidates. The video's
+original typeface and source were not available, so visual identity has not
+been proven. Dial fill is sampled from the video at #DCD0B4, with Day backdrop
+#F4EADB. Widgets retain the app's subject, countdown and daily-goal data.
+
+Validation: 222 Flutter tests passed; phone/tablet day/dark captures regenerated.
+Native launcher runtime still requires a real-device check.

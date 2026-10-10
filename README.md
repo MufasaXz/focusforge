@@ -35,7 +35,7 @@ A study companion that protects your attention and makes your progress visible.
 shield them only while you focus. Filter YouTube Shorts and feeds while keeping
 lecture links available.
 
-**Make the clock yours.** A retro countdown dial, warm ivory Day mode,
+**Make the clock yours.** A flat tan countdown dial with bundled serif numerals, warm ivory Day mode,
 charcoal Dark mode and frosted cards give studying a quieter workspace.
 Choose a clock face and palette in You. Add one of three Android widgets from
 your launcher's Widgets menu: **Retro clock** for the countdown and subject,
