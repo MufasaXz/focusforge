@@ -19,16 +19,13 @@ A study companion that protects your attention and makes your progress visible.
 <br>
 
 <p>
-  <img src="docs/screenshots/01-dashboard.webp" width="186" alt="Home — daily study goal, focus totals and weekly progress">
-  <img src="docs/screenshots/02-shield.webp" width="186" alt="Shield — choose which apps to block or give a daily time budget">
-  <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/screenshots/03-focus.webp">
-    <img src="docs/screenshots/03-focus.gif" width="186" alt="Focus — a subject timer with an animated Start to Pause transition">
-  </picture>
-  <img src="docs/screenshots/04-groups.webp" width="186" alt="Study groups — a private invite code, weekly standings and focus status">
+  <img src="docs/screenshots/01-dashboard.webp" width="186" alt="Home — day theme with daily goal, focus totals and weekly progress">
+  <img src="docs/screenshots/02-shield.webp" width="186" alt="Shield — day theme with app filters and distraction rules">
+  <img src="docs/screenshots/03-focus.webp" width="186" alt="Focus — dark glass theme with the new retro countdown dial">
+  <img src="docs/screenshots/04-you.webp" width="186" alt="You — dark theme with profile progress and weekly study recap">
 </p>
 
-<sub>Home &nbsp; / &nbsp; Shield &nbsp; / &nbsp; Focus &nbsp; / &nbsp; Together</sub>
+<sub>Home · Day &nbsp; / &nbsp; Shield · Day &nbsp; / &nbsp; Focus · Dark &nbsp; / &nbsp; You · Dark</sub>
 
 </div>
 
