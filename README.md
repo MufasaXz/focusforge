@@ -14,7 +14,7 @@ A study companion that protects your attention and makes your progress visible.
 
 [Download for Android](https://github.com/MufasaXz/focusforge/releases/latest) · [Release notes](CHANGELOG.md) · [Report an issue](https://github.com/MufasaXz/focusforge/issues)
 
-<sub>Version 1.0.1 · Android 7.0+</sub>
+<sub>Version 1.0.3 · Android 7.0+</sub>
 
 <br>
 
@@ -37,6 +37,12 @@ A study companion that protects your attention and makes your progress visible.
 **Protect your attention.** Block distracting apps, set daily time budgets, or
 shield them only while you focus. Filter YouTube Shorts and feeds while keeping
 lecture links available.
+
+**Make the clock yours.** A retro countdown dial, warm ivory Day mode,
+charcoal Dark mode and frosted cards give studying a quieter workspace.
+Choose a clock face and palette in You. Add the Android Retro clock widget
+from your launcher's Widgets menu to see the live countdown and today's
+completed focus minutes.
 
 **Find your rhythm.** Use Pomodoro presets or your own plan, tag a subject, and
 mix ambient sounds. A full-screen timer keeps the next step simple.
