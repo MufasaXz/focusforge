@@ -2,7 +2,16 @@
 
 ## 1.0.3 — 2026-10-10
 
-Android build 2014.
+Android build 2015.
+
+- Setup flow polish: frosted pinned footer, per-stage progress stepper,
+  product promise on the splash, and a tonal celebration hero. Guardian and
+  student branches unchanged.
+- Seventh clock face, Serif: remaining time in the bundled FocusDial serif
+  with an InterDisplay colon, in the Focus tab, full-screen clock and picker.
+  Existing clock selections stay saved.
+- Launcher widgets declare picker previews on Android 12+, and the
+  daily-goal ring track follows the saved palette.
 
 - Restored the original InterDisplay clock, numbered minute marks, shaded rim
   and progress hand in the app. Retained the improved launcher widgets and
@@ -35,15 +44,15 @@ Android build 2014.
 
 ### Release details
 
-- Version 1.0.3 (2011), signed with the existing Android release certificate.
+- Version 1.0.3 (2015), signed with the existing Android release certificate.
   The build number exceeds the earlier architecture-specific version codes.
-- Release packaging was rebuilt from a clean workspace so every CPU
-  architecture includes the current compiled app.
-- Validation: 220 Flutter tests passed, static analysis reported no issues,
-  and day/dark screen captures passed. The Android build and v1/v2/v3
-  signatures were verified. Phone installation and launcher behavior still
-  need device confirmation; the server emulator failed to initialize its
-  storage service for both the earlier and new APKs.
+- Wave-2 premium changes in this build: setup polish (chrome, flow, splash,
+  celebration) and the Serif clock face plus widget previews (Kotlin, XML,
+  faces, picker, tests).
+- Validation: 226 Flutter tests passed, static analysis reported no issues,
+  and day/dark/tablet captures regenerated. The Android release build and
+  v1/v2/v3 signatures were verified; the APK was uploaded for device
+  confirmation.
 
 ## 1.0.2 — 2026-10-09
 

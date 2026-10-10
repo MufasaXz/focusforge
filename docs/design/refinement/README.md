@@ -128,3 +128,20 @@ its Focus screenshot now shows the restored app clock.
 Validation: clock/widget/login tests, static analysis and regenerated day/dark
 captures passed. The release APK has Android v2/v3 signatures, build 2014 and
 package dev.focusforge.focusforge. Native launcher behavior needs a phone check.
+
+## Setup polish and Serif face — 1.0.3 build 2015
+
+Wave 2 of the premium pass, on top of build 2014:
+
+- Setup flow: a frosted pinned footer, a per-stage progress stepper, the
+  product promise under the splash wordmark, and a tonal celebration hero
+  reflecting the user's own choices. Guardian and student branches unchanged.
+- Seventh clock face, Serif: remaining time typeset in the bundled FocusDial
+  serif with an InterDisplay colon, in the Focus tab, full-screen clock and
+  picker. Existing clock selections stay saved.
+- Launcher widgets declare picker previews on Android 12+, and the daily-goal
+  ring track follows the saved palette instead of a fixed gray.
+
+Validation: 226 Flutter tests passed (4 new serif tests), static analysis
+clean, and day/dark/tablet captures regenerated. Widget picker previews and
+launcher behavior still need a phone check.
