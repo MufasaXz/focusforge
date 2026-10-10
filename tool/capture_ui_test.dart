@@ -102,6 +102,7 @@ void main() {
           name: 'Video',
           tier: WhitelistTier.budgeted,
         );
+    container.read(timerProvider.notifier).setSubject('math');
     final now = DateTime.now();
     final sessions = [
       for (var day = 6; day >= 0; day--)
@@ -162,6 +163,10 @@ void main() {
           if (state.position.axis == Axis.vertical) state.position.jumpTo(0);
         }
         await capture('$route-${mode.name}');
+        if (route == 'focus') {
+          expect(find.text('25:00'), findsWidgets);
+          expect(container.read(timerProvider).subjectId, 'math');
+        }
         if (route == 'profile') {
           await tester.scrollUntilVisible(
             find.text('YOUR WEEK IN FOCUS'),
