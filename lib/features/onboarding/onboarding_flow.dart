@@ -140,7 +140,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     // Watched rather than read: the persona decides whether the device page
-    // is part of this run, so the progress bar has to follow the answer the
+    // is part of this run, so the stepper has to follow the answer the
     // moment it changes.
     ref.watch(userProvider.select((u) => (u.persona, u.isGuardian)));
     final steps = _steps;
@@ -252,8 +252,13 @@ class _KeepStepState extends State<_KeepStep>
   }
 }
 
-/// Back affordance plus a progress bar. The user should always know how much
-/// setup is left — an open-ended onboarding is one people abandon.
+/// Back affordance plus a per-stage stepper. The user should always know how
+/// much setup is left — an open-ended onboarding is one people abandon.
+///
+/// A bar says how far; dots say how many. One dot per stage shows the shape of
+/// what is left, and the current stage stretches into a pill so the eye lands
+/// on now. The count beside the stage name keeps its exact text for the screen
+/// reader and for the tests that pin it.
 class _FlowHeader extends StatelessWidget {
   const _FlowHeader({
     required this.index,
@@ -270,7 +275,6 @@ class _FlowHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
 
     final reduce = MediaQuery.disableAnimationsOf(context);
     return Padding(
@@ -292,30 +296,71 @@ class _FlowHeader extends StatelessWidget {
                     Expanded(
                       child: Text(title, style: theme.textTheme.labelMedium),
                     ),
-                    Text('$index of $total', style: theme.textTheme.labelSmall),
+                    // Tabular so the count never shifts width as it advances.
+                    Text(
+                      '$index of $total',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: Gap.sm),
                 Semantics(
                   label: 'Setup progress, $title',
                   value: 'Step $index of $total',
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(end: index / total),
-                    duration: reduce ? Duration.zero : Motion.base,
-                    curve: Motion.decelerate,
-                    builder: (context, value, _) => LinearProgressIndicator(
-                      value: value,
-                      color: cs.primary,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      minHeight: 4,
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                    ),
+                  child: Row(
+                    children: [
+                      for (var stage = 1; stage <= total; stage++) ...[
+                        if (stage > 1) const SizedBox(width: Gap.xs),
+                        _StageDot(
+                          done: stage < index,
+                          current: stage == index,
+                          reduceMotion: reduce,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One stage in the header stepper: a dot behind, a pill for now.
+///
+/// Finished stages stay filled so progress only ever grows; the current stage
+/// stretches into a pill — the one moving shape in the row — and upcoming
+/// stages sit on the track colour. Decorative: the header's [Semantics]
+/// already announces the step, so a dot that also spoke would be noise.
+class _StageDot extends StatelessWidget {
+  const _StageDot({
+    required this.done,
+    required this.current,
+    required this.reduceMotion,
+  });
+
+  final bool done;
+  final bool current;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ExcludeSemantics(
+      child: AnimatedContainer(
+        duration: reduceMotion ? Duration.zero : Motion.base,
+        curve: Motion.decelerate,
+        width: current ? 22 : 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: done || current ? cs.primary : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(Radii.pill),
+        ),
       ),
     );
   }

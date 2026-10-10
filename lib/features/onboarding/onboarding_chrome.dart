@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -185,20 +186,66 @@ class _StepScaffoldState extends State<StepScaffold> {
                 children: body,
               ),
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: t.surfaceContainerLow,
-                border: Border(
-                  top: BorderSide(
-                    color: t.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-              child: footer,
-            ),
+            _FrostedFooter(child: footer),
           ],
         );
       },
+    );
+  }
+}
+
+/// The pinned primary-action surface every step shares.
+///
+/// An opaque footer would cut the page in two; a frosted one keeps the Continue
+/// button legible while the content behind shows through, which is why sheets
+/// and the nav bar get this material and the footer now matches them. The
+/// shared-blur group keeps it cheap, the top hairline marks where the scroll
+/// surface ends, and on true black the blur switches off — there is nothing
+/// behind a black surface to see — while the hairline stays so the footer
+/// still reads as its own surface.
+class _FrostedFooter extends StatelessWidget {
+  const _FrostedFooter({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final black = cs.surface == const Color(0xFF000000);
+    final hairline = Border(
+      top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+    );
+    // Blurring behind an opaque black surface would spend GPU time to produce
+    // the same pixels, so true black keeps the flat fill and the hairline.
+    if (black) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          border: hairline,
+        ),
+        child: child,
+      );
+    }
+    return BackdropGroup(
+      child: ClipRect(
+        child: BackdropFilter.grouped(
+          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  cs.surfaceContainerLow.withValues(alpha: 0.55),
+                  cs.surfaceContainerLow.withValues(alpha: 0.85),
+                ],
+              ),
+              border: hairline,
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
