@@ -84,7 +84,7 @@ void main() {
     const remaining = Duration(minutes: 24, seconds: 51);
 
     testWidgets(
-      'retro displays the engine time and current phase with bundled serif figures',
+      'retro restores the engine time with the original InterDisplay figures',
       (tester) async {
         await tester.pumpWidget(
           wrap(
@@ -99,10 +99,10 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('24:51'), findsOneWidget);
-        expect(find.text('BREAK'), findsOneWidget);
-        expect(find.text('REMAINING'), findsNothing);
+        expect(find.text('BREAK'), findsNothing);
+        expect(find.text('REMAINING'), findsOneWidget);
         final text = tester.widget<Text>(find.text('24:51'));
-        expect(text.style?.fontFamily, 'FocusDial');
+        expect(text.style?.fontFamily, 'InterDisplay');
         expect(tester.takeException(), isNull);
       },
     );

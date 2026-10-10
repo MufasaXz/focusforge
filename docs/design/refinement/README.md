@@ -115,3 +115,16 @@ been proven. Dial fill is sampled from the video at #DCD0B4, with Day backdrop
 
 Validation: 222 Flutter tests passed; phone/tablet day/dark captures regenerated.
 Native launcher runtime still requires a real-device check.
+
+
+## Clock restoration — 1.0.3 build 2014
+
+At the owner’s request, restored the app dial from before build 2013: bundled
+InterDisplay countdown, numbered minute marks, shaded rim and progress hand.
+The launcher widgets keep their build 2013 design, subject and daily-goal data.
+The clean login is retained. The README still contains exactly four screenshots;
+its Focus screenshot now shows the restored app clock.
+
+Validation: clock/widget/login tests, static analysis and regenerated day/dark
+captures passed. The release APK has Android v2/v3 signatures, build 2014 and
+package dev.focusforge.focusforge. Native launcher behavior needs a phone check.

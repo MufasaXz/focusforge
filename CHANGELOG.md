@@ -2,7 +2,11 @@
 
 ## 1.0.3 — 2026-10-10
 
-Android build 2011.
+Android build 2014.
+
+- Restored the original InterDisplay clock, numbered minute marks, shaded rim
+  and progress hand in the app. Retained the improved launcher widgets and
+  clean sign-in screen.
 
 ### Added
 

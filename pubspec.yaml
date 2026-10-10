@@ -1,7 +1,7 @@
 name: focusforge
 description: "FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification."
 publish_to: 'none'
-version: 1.0.3+2013
+version: 1.0.3+2014
 
 environment:
   sdk: ^3.13.5
