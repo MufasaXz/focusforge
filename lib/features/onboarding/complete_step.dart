@@ -14,6 +14,7 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/tonal_panel.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
@@ -104,7 +105,13 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
       children: [
         Stagger(
           index: 2,
-          child: LayoutBuilder(
+          // The setup summary is the celebration's hero: one tonal panel
+          // holding the user's own choices, so the payoff reads as a single
+          // object rather than as loose tiles floating on the page.
+          child: TonalPanel(
+            accent: true,
+            padding: const EdgeInsets.all(Gap.lg),
+            child: LayoutBuilder(
             builder: (context, constraints) {
               final columns =
                   constraints.maxWidth < 300 ||
@@ -156,6 +163,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                 ],
               );
             },
+            ),
           ),
         ),
         const SizedBox(height: Gap.xl),
@@ -202,6 +210,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   }
 }
 
+/// One reflected choice on the celebration screen — persona, subjects, blocks,
+/// goal — so the user sees the setup actually configured something.
 class _StatTile extends StatelessWidget {
   const _StatTile({
     required this.icon,
@@ -219,10 +229,11 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Card.outlined(
+    // Glass over the hero panel's tonal fill: the tiles float above the
+    // summary instead of drawing another border inside it.
+    return GlassCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.item),
-        side: BorderSide(color: cs.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
@@ -251,6 +262,7 @@ class _StatTile extends StatelessWidget {
   }
 }
 
+/// One row of the Quick tips card: a tonal badge plus the one thing to try.
 class _Tip extends StatelessWidget {
   const _Tip({required this.icon, required this.text, this.divider = false});
 
@@ -266,12 +278,17 @@ class _Tip extends StatelessWidget {
       children: [
         if (divider)
           Padding(
-            // Indented to the title, not the leading icon.
-            padding: const EdgeInsets.only(left: Gap.lg + 24 + Gap.lg),
+            // Indented past the leading slot to the title, not the badge.
+            padding: const EdgeInsets.only(left: Gap.lg + 40 + Gap.lg),
             child: Divider(height: 1, thickness: 1, color: cs.outlineVariant),
           ),
         ListTile(
-          leading: Icon(icon, color: cs.primary),
+          leading: IconBadge(
+            icon: icon,
+            color: cs.primary,
+            size: 36,
+            radius: Radii.tile,
+          ),
           title: Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ),
       ],

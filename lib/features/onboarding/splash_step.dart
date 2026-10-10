@@ -100,6 +100,19 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                  const SizedBox(height: Gap.md),
+                  // The promise, arriving after the mark has settled — the last
+                  // thing to fade in is the thing the next screen has to keep.
+                  FadeTransition(
+                    opacity: _fade(0.35, 0.85),
+                    child: Text(
+                      'Less scrolling. More studying.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
