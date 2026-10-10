@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.0.3 — 2026-10-10
+
+Android build 2011.
+
+### Added
+
+- Retro countdown dial in the Focus tab, full-screen clock and clock picker.
+  New installs use Retro; existing clock selections stay saved.
+- Parchment palette with warm ivory day surfaces and charcoal dark surfaces.
+  New installs follow system brightness and use normal dark mode; true black
+  remains available in Appearance.
+- Android home-screen widget with a native live countdown, today's completed
+  focus minutes and a shortcut to Focus. The widget reads the same local timer
+  deadline and session log as the app, and follows the saved theme and palette.
+
+### Improved
+
+- Frosted cards, soft shadows, gradient edges and floating pill navigation
+  throughout the app, including study groups and parent screens.
+- Appearance settings explain how to add the Android widget.
+
+### Fixed
+
+- Full-screen day mode no longer uses a black background when the saved
+  true-black preference is enabled.
+- Chart day labels stay within their slots on narrow screens.
+- Recovered sessions stop reading providers if the container is disposed while
+  a save is in progress.
+
+### Release details
+
+- Version 1.0.3 (2011), signed with the existing Android release certificate.
+  The build number exceeds the earlier architecture-specific version codes.
+- Release packaging was rebuilt from a clean workspace so every CPU
+  architecture includes the current compiled app.
+- Validation: 220 Flutter tests passed, static analysis reported no issues,
+  and day/dark screen captures passed. The Android build and v1/v2/v3
+  signatures were verified. Phone installation and launcher behavior still
+  need device confirmation; the server emulator failed to initialize its
+  storage service for both the earlier and new APKs.
+
 ## 1.0.2 — 2026-10-09
 
 Android build 9.

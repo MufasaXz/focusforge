@@ -14,21 +14,18 @@ A study companion that protects your attention and makes your progress visible.
 
 [Download for Android](https://github.com/MufasaXz/focusforge/releases/latest) · [Release notes](CHANGELOG.md) · [Report an issue](https://github.com/MufasaXz/focusforge/issues)
 
-<sub>Version 1.0.1 · Android 7.0+</sub>
+<sub>Version 1.0.3 · Android 7.0+</sub>
 
 <br>
 
 <p>
-  <img src="docs/screenshots/01-dashboard.webp" width="186" alt="Home — daily study goal, focus totals and weekly progress">
-  <img src="docs/screenshots/02-shield.webp" width="186" alt="Shield — choose which apps to block or give a daily time budget">
-  <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/screenshots/03-focus.webp">
-    <img src="docs/screenshots/03-focus.gif" width="186" alt="Focus — a subject timer with an animated Start to Pause transition">
-  </picture>
-  <img src="docs/screenshots/04-groups.webp" width="186" alt="Study groups — a private invite code, weekly standings and focus status">
+  <img src="docs/screenshots/01-dashboard.webp" width="186" alt="Home — day theme with daily goal, focus totals and weekly progress">
+  <img src="docs/screenshots/02-shield.webp" width="186" alt="Shield — day theme with app filters and distraction rules">
+  <img src="docs/screenshots/03-focus.webp" width="186" alt="Focus — dark glass theme with the new retro countdown dial">
+  <img src="docs/screenshots/04-you.webp" width="186" alt="You — dark theme with profile progress and weekly study recap">
 </p>
 
-<sub>Home &nbsp; / &nbsp; Shield &nbsp; / &nbsp; Focus &nbsp; / &nbsp; Together</sub>
+<sub>Home · Day &nbsp; / &nbsp; Shield · Day &nbsp; / &nbsp; Focus · Dark &nbsp; / &nbsp; You · Dark</sub>
 
 </div>
 
@@ -37,6 +34,12 @@ A study companion that protects your attention and makes your progress visible.
 **Protect your attention.** Block distracting apps, set daily time budgets, or
 shield them only while you focus. Filter YouTube Shorts and feeds while keeping
 lecture links available.
+
+**Make the clock yours.** A retro countdown dial, warm ivory Day mode,
+charcoal Dark mode and frosted cards give studying a quieter workspace.
+Choose a clock face and palette in You. Add the Android Retro clock widget
+from your launcher's Widgets menu to see the live countdown and today's
+completed focus minutes.
 
 **Find your rhythm.** Use Pomodoro presets or your own plan, tag a subject, and
 mix ambient sounds. A full-screen timer keeps the next step simple.
