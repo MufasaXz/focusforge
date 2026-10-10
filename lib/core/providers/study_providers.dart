@@ -837,7 +837,7 @@ class TimerNotifier extends Notifier<TimerState> {
     final added = await ref.read(sessionsProvider.notifier).record(session);
     // A replay must not credit the aggregate twice: the block was already
     // counted when it was first logged.
-    if (!added) return;
+    if (!added || _disposed) return;
     await ref
         .read(statsProvider.notifier)
         .recordSession(minutes: session.minutes, completed: true);

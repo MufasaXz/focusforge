@@ -288,31 +288,35 @@ class _Bar extends StatelessWidget {
           // Free of the slot's width: a three-letter weekday is wider than a
           // month's bar, and a label that wrapped to two lines would take the
           // whole row's baseline with it.
-          UnconstrainedBox(
-            child: AnimatedContainer(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : Motion.base,
-              curve: Motion.emphasized,
-              padding: EdgeInsets.symmetric(
-                horizontal: dense ? 4 : 7,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Radii.pill),
-                color: highlighted ? accent : Colors.transparent,
-              ),
-              child: AnimatedDefaultTextStyle(
+          SizedBox(
+            height: 19,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: AnimatedContainer(
                 duration: MediaQuery.disableAnimationsOf(context)
                     ? Duration.zero
                     : Motion.base,
                 curve: Motion.emphasized,
-                style: label.copyWith(
-                  color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,
-                  fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 11,
+                padding: EdgeInsets.symmetric(
+                  horizontal: dense ? 4 : 7,
+                  vertical: 2,
                 ),
-                child: Text(day.label, maxLines: 1, softWrap: false),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  color: highlighted ? accent : Colors.transparent,
+                ),
+                child: AnimatedDefaultTextStyle(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.base,
+                  curve: Motion.emphasized,
+                  style: label.copyWith(
+                    color: highlighted ? cs.onPrimary : cs.onSurfaceVariant,
+                    fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                  child: Text(day.label, maxLines: 1, softWrap: false),
+                ),
               ),
             ),
           ),
