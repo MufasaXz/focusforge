@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'widget_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,7 +53,14 @@ class LocalStore {
 
   Future<void> setString(String key, String value) async {
     await _prefs.setString(_k(key), value);
-    if ({StoreKeys.sessions, StoreKeys.presets, StoreKeys.theme, StoreKeys.palette}.contains(key)) {
+    if ({
+      StoreKeys.sessions,
+      StoreKeys.presets,
+      StoreKeys.theme,
+      StoreKeys.palette,
+      StoreKeys.subjects,
+      StoreKeys.dailyGoalDays,
+    }.contains(key)) {
       await WidgetService.refresh();
     }
   }
@@ -64,7 +72,10 @@ class LocalStore {
 
   int? getInt(String key) => _read<int>(key);
 
-  Future<void> setInt(String key, int value) => _prefs.setInt(_k(key), value);
+  Future<void> setInt(String key, int value) async {
+    await _prefs.setInt(_k(key), value);
+    if (key == StoreKeys.dailyGoal) await WidgetService.refresh();
+  }
 
   double? getDouble(String key) => _read<double>(key);
 

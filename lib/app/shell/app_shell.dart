@@ -100,6 +100,9 @@ class _AppShellState extends ConsumerState<AppShell>
     if (await WidgetService.takeFocusLaunch() && mounted && !ref.read(userProvider).isGuardian) {
       widget.navigationShell.goBranch(2);
     }
+    if (await WidgetService.takeDashboardLaunch() && mounted && !ref.read(userProvider).isGuardian) {
+      widget.navigationShell.goBranch(0);
+    }
     final service = ref.read(shieldServiceProvider);
     if (service is! NativeShieldService) return;
     final blocked = await service.takeBlockedApp();

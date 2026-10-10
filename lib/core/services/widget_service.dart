@@ -21,10 +21,15 @@ class WidgetService {
     }
   }
 
-  static Future<bool> takeFocusLaunch() async {
+  static Future<bool> takeFocusLaunch() => _takeLaunch('takeFocusLaunch');
+
+  static Future<bool> takeDashboardLaunch() =>
+      _takeLaunch('takeDashboardLaunch');
+
+  static Future<bool> _takeLaunch(String method) async {
     if (!_supported) return false;
     try {
-      return await _channel.invokeMethod<bool>('takeFocusLaunch') ?? false;
+      return await _channel.invokeMethod<bool>(method) ?? false;
     } on MissingPluginException {
       return false;
     } on PlatformException {

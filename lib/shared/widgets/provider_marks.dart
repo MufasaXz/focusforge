@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
+import 'glass_surface.dart';
 
 /// The provider marks the account surfaces draw: the Google "G" and the mail
 /// envelope, each sitting in the rounded square every sign-in sheet puts them
@@ -139,6 +140,7 @@ class ProviderRow extends StatefulWidget {
     super.key,
     required this.label,
     required this.leading,
+    this.subtitle,
     this.onTap,
     this.busy = false,
     this.done = false,
@@ -146,6 +148,7 @@ class ProviderRow extends StatefulWidget {
 
   final String label;
   final Widget leading;
+  final String? subtitle;
 
   /// Null when the backend cannot mint this credential: the row stays on
   /// screen, dimmed and inert, so the option is explained rather than hidden.
@@ -180,15 +183,24 @@ class _ProviderRowState extends State<ProviderRow> {
         scale: _pressed && !reduce ? 0.975 : 1,
         duration: reduce ? Duration.zero : const Duration(milliseconds: 110),
         curve: Curves.easeOut,
-        child: Card.outlined(
+        child: GlassCard(
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.item),
-            side: BorderSide(
-              color: widget.done ? cs.primary : cs.outlineVariant,
-            ),
           ),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            subtitle: widget.subtitle == null
+                ? null
+                : Text(
+                    widget.subtitle!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
             onTap: _live ? widget.onTap : null,
             // Null makes the row informational: the provider is explained
             // rather than hidden, and the disabled palette says so.
@@ -198,7 +210,7 @@ class _ProviderRowState extends State<ProviderRow> {
               child: widget.done
                   ? ProviderBadge(
                       key: const ValueKey('done'),
-                      size: 38,
+                      size: 44,
                       child: Icon(
                         Icons.check_rounded,
                         size: 20,
@@ -207,7 +219,7 @@ class _ProviderRowState extends State<ProviderRow> {
                     )
                   : ProviderBadge(
                       key: const ValueKey('mark'),
-                      size: 38,
+                      size: 44,
                       child: widget.leading,
                     ),
             ),

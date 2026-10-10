@@ -898,7 +898,7 @@ class RetroClock extends StatelessWidget {
           accent: accent,
           ink: cs.onSurface,
           marks: cs.onSurfaceVariant,
-          surface: cs.surfaceContainer,
+          surface: dark ? cs.surfaceContainer : const Color(0xFFDCD0B4),
           dark: dark,
         ),
         child: Center(
@@ -923,11 +923,11 @@ class RetroClock extends StatelessWidget {
                   child: Text(
                     formatClock(remaining),
                     style: TextStyle(
-                      fontFamily: 'monospace',
+                      fontFamily: 'InterDisplay',
                       fontSize: size * 0.17,
                       height: 1.05,
                       letterSpacing: -size * 0.008,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: cs.onSurface,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -1034,7 +1034,7 @@ class _RetroDialPainter extends CustomPainter {
           text: TextSpan(
             text: label,
             style: TextStyle(
-              fontFamily: 'monospace',
+              fontFamily: 'InterDisplay',
               fontSize: s * 0.032,
               fontWeight: FontWeight.w600,
               color: marks,

@@ -11,6 +11,7 @@ import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../shared/widgets/app_mark.dart';
+import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/email_auth_sheet.dart';
 import '../../shared/widgets/provider_marks.dart';
 import '../../shared/widgets/stagger.dart';
@@ -217,46 +218,47 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 Stagger(
                   index: 0,
-                  child: TonalPanel(
-                    accent: true,
-                    padding: const EdgeInsets.all(Gap.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            const AppMark(size: 32),
-                            const SizedBox(width: Gap.sm),
-                            Expanded(
-                              child: Text(
-                                'FocusForge',
-                                style: Theme.of(context).textTheme.titleSmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                  child: GlassCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.xl),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              const AppMark(size: 32),
+                              const SizedBox(width: Gap.sm),
+                              Expanded(
+                                child: Text(
+                                  'FocusForge',
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            Icon(
-                              Icons.auto_awesome_outlined,
-                              size: 18,
-                              color: cs.primary,
-                            ),
-                          ],
-                        ),
-                        const FocusPreview(),
-                        const Eyebrow('LESS NOISE. MORE YOU.'),
-                        const SizedBox(height: Gap.md),
-                        Text(
-                          'Make room for\nwhat matters.',
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(letterSpacing: -1.2),
-                        ),
-                        const SizedBox(height: Gap.sm),
-                        Text(
-                          'Build a study rhythm. Protect your attention. See your progress.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                      ],
+                              Icon(
+                                Icons.auto_awesome_outlined,
+                                size: 18,
+                                color: cs.primary,
+                              ),
+                            ],
+                          ),
+                          const FocusPreview(),
+                          const Eyebrow('LESS NOISE. MORE YOU.'),
+                          const SizedBox(height: Gap.md),
+                          Text(
+                            'Make room for\nwhat matters.',
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(letterSpacing: -1.2),
+                          ),
+                          const SizedBox(height: Gap.sm),
+                          Text(
+                            'Build a study rhythm. Protect your attention. See your progress.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -282,6 +284,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 3,
                   child: ProviderRow(
                     label: 'Continue with Google',
+                    subtitle: 'A familiar way to sign in',
                     leading: const GoogleMark(),
                     busy: _busy == 'google',
                     done: _done == 'google',
@@ -300,6 +303,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 4,
                   child: ProviderRow(
                     label: 'Continue with Email',
+                    subtitle: 'Your email. Your study space.',
                     leading: const MailMark(),
                     busy: _busy == 'email',
                     onTap: _busy == null ? _email : null,

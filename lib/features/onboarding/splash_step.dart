@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/app_mark.dart';
-import 'focus_preview.dart';
 
 /// Screen 0 — the splash.
 ///
@@ -32,11 +30,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
     duration: const Duration(milliseconds: 700),
   )..forward();
 
-  late final AnimationController _dots = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat();
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -52,10 +45,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
     }
     if (MediaQuery.disableAnimationsOf(context) || !visible) {
       _intro.value = 1;
-      _dots.stop();
-      _dots.value = 0.5;
-    } else if (!_dots.isAnimating) {
-      _dots.repeat();
     }
   }
 
@@ -63,7 +52,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
   void dispose() {
     _handoff?.cancel();
     _intro.dispose();
-    _dots.dispose();
     super.dispose();
   }
 
@@ -74,8 +62,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     final logoScale = Tween<double>(
       begin: 0.8,
       end: 1,
@@ -114,25 +100,6 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                  const SizedBox(height: Gap.sm),
-                  FadeTransition(
-                    opacity: _fade(0.4, 1),
-                    child: Text(
-                      'Forge your focus',
-                      style: Theme.of(context).textTheme.bodyLarge
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                  const SizedBox(height: Gap.xl),
-                  FadeTransition(
-                    opacity: _fade(0.4, 1),
-                    child: const FocusPreview(),
-                  ),
-                  const SizedBox(height: Gap.lg),
-                  FadeTransition(
-                    opacity: _fade(0.6, 1),
-                    child: _loadingDots(context),
-                  ),
                 ],
               ),
             ),
@@ -140,41 +107,5 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
         );
       },
     );
-  }
-
-  Widget _loadingDots(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      label: 'Starting up',
-      child: AnimatedBuilder(
-        animation: _dots,
-        builder: (context, _) => Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < 3; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.xs),
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: cs.primary.withValues(
-                      // A travelling wave, so the three read as one animation
-                      // rather than three independent blinks.
-                      alpha: 0.25 + 0.75 * _wave(i),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _wave(int index) {
-    final phase = (_dots.value + index / 3) % 1;
-    return math.sin(phase * math.pi);
   }
 }

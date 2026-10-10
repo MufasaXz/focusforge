@@ -93,6 +93,24 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/ff_focus_widget_info" />
         </receiver>
+        <receiver android:name=".widgets.DailyGoalWidget" android:exported="false" android:label="FocusForge — Daily goal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/ff_goal_widget_info" />
+        </receiver>
+        <receiver android:name=".widgets.StudyWidget" android:exported="false" android:label="FocusForge — Study session">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/ff_study_widget_info" />
+        </receiver>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -5,15 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
 
-/// The daily-goal ring: the app's own mark, filled by the day's focus.
-///
-/// The arc carries the brand gradient rather than a scheme role — this is the
-/// one gauge in the app that is identity first — and it is drawn without the
-/// leading cap dot the timer ring wears: at this stroke the round cap is
-/// already the terminal, and a dot on top of it reads as a bead on a wire.
-///
-/// [value] is drawn from the day's own reading, so the ring moves while a
-/// block is running and settles when it is banked.
+/// Completed focus fills the daily-goal ring; the center stays readable.
 class GoalRing extends StatelessWidget {
   const GoalRing({
     super.key,
@@ -96,6 +88,27 @@ class _GoalRingPainter extends CustomPainter {
     final radius = (size.shortestSide - stroke) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
+    // Fine inner markers make small gains easy to judge.
+    for (var i = 0; i < 48; i++) {
+      final angle = i * math.pi / 24 - math.pi / 2;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      canvas.drawLine(
+        center + direction * (radius - stroke - (i % 4 == 0 ? 6 : 3)),
+        center + direction * (radius - stroke),
+        Paint()
+          ..color = track
+          ..strokeWidth = i % 4 == 0 ? 1.6 : 1,
+      );
+    }
+    canvas.drawCircle(
+      center + const Offset(0, 2),
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke + 2
+        ..color = Colors.black.withValues(alpha: .06)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
     canvas.drawCircle(
       center,
       radius,
@@ -117,11 +130,30 @@ class _GoalRingPainter extends CustomPainter {
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round
         ..shader = SweepGradient(
-          startAngle: -math.pi / 2,
-          endAngle: 3 * math.pi / 2,
-          colors: colors,
+          transform: const GradientRotation(-math.pi / 2),
+          colors: [...colors, colors.first],
         ).createShader(rect),
     );
+    // A slim highlight gives the filled arc a rounded, softly lit edge.
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius + stroke * .27),
+      -math.pi / 2,
+      2 * math.pi * value,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3
+        ..strokeCap = StrokeCap.round
+        ..color = Colors.white.withValues(alpha: .28),
+    );
+    if (value < .995) {
+      final angle = value * 2 * math.pi - math.pi / 2;
+      canvas.drawCircle(
+        center + Offset(math.cos(angle), math.sin(angle)) * radius,
+        stroke * .16,
+        Paint()..color = Colors.white.withValues(alpha: .85),
+      );
+    }
   }
 
   @override
@@ -155,74 +187,59 @@ class _SproutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // The mark is designed on a 24 unit grid and scaled from there.
-    final s = size.shortestSide / 24;
-    final paint = Paint()..color = color;
-
-    // The stem first, so the leaves sit over its top.
-    canvas.drawLine(
-      Offset(12 * s, 22.2 * s),
-      Offset(12 * s, 15.2 * s),
+    canvas.save();
+    canvas.scale(size.shortestSide / 32);
+    final stem = Path()
+      ..moveTo(16, 29)
+      ..cubicTo(15, 23, 17, 16, 22, 10);
+    canvas.drawPath(
+      stem,
       Paint()
         ..color = color
-        ..strokeWidth = 1.6 * s
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8
         ..strokeCap = StrokeCap.round,
     );
-
-    _leaf(
-      canvas,
-      paint,
-      base: Offset(11.4 * s, 16.6 * s),
-      angle: -1.20,
-      length: 8.2 * s,
-      width: 0.36,
+    final leaves = [
+      Path()
+        ..moveTo(16, 21)
+        ..cubicTo(6, 22, 3, 15, 4, 9)
+        ..cubicTo(12, 9, 18, 12, 16, 21)
+        ..close(),
+      Path()
+        ..moveTo(17, 17)
+        ..cubicTo(15, 7, 22, 3, 29, 3)
+        ..cubicTo(29, 11, 25, 17, 17, 17)
+        ..close(),
+    ];
+    for (final leaf in leaves) {
+      canvas.drawPath(
+        leaf,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color.lerp(color, Colors.white, .22)!, color],
+          ).createShader(const Rect.fromLTWH(3, 3, 26, 21)),
+      );
+    }
+    final vein = Paint()
+      ..color = Colors.white.withValues(alpha: .35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(7, 12)
+        ..quadraticBezierTo(11, 13, 15, 19),
+      vein,
     );
-    _leaf(
-      canvas,
-      paint,
-      base: Offset(12.6 * s, 16.6 * s),
-      angle: 1.20,
-      length: 8.2 * s,
-      width: 0.36,
+    canvas.drawPath(
+      Path()
+        ..moveTo(19, 14)
+        ..quadraticBezierTo(22, 9, 26, 6),
+      vein,
     );
-    // Last, so the pair tucks under it rather than crowding its base.
-    _leaf(
-      canvas,
-      paint,
-      base: Offset(12 * s, 14.6 * s),
-      angle: 0,
-      length: 11.4 * s,
-      width: 0.32,
-    );
-  }
-
-  /// One pointed leaf growing from [base] at [angle] — zero points straight
-  /// up, and [width] is its half-width as a fraction of its length.
-  ///
-  /// Widest a little under halfway up and tapered at both ends: a leaf that
-  /// stayed wide at its base would merge into the two beside it, and three
-  /// leaves in a heap read as one blob rather than as a sprout.
-  void _leaf(
-    Canvas canvas,
-    Paint paint, {
-    required Offset base,
-    required double angle,
-    required double length,
-    required double width,
-  }) {
-    final w = length * width;
-    final path = Path()
-      ..moveTo(0, -length)
-      ..quadraticBezierTo(-w * 0.42, -length * 0.86, -w, -length * 0.44)
-      ..quadraticBezierTo(-w * 0.66, -length * 0.10, 0, 0)
-      ..quadraticBezierTo(w * 0.66, -length * 0.10, w, -length * 0.44)
-      ..quadraticBezierTo(w * 0.42, -length * 0.86, 0, -length)
-      ..close();
-
-    canvas.save();
-    canvas.translate(base.dx, base.dy);
-    canvas.rotate(angle);
-    canvas.drawPath(path, paint);
     canvas.restore();
   }
 

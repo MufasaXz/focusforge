@@ -712,6 +712,11 @@ class TimerNotifier extends Notifier<TimerState> {
       ref.read(localStoreProvider).setMap(StoreKeys.presets, {
         'presetIndex': state.presetIndex,
         'subjectId': state.subjectId,
+        'subjectName': ref
+            .read(subjectsProvider)
+            .where((s) => s.id == state.subjectId)
+            .firstOrNull
+            ?.name,
         'phase': state.phase.name,
         'running': state.running,
         'targetEnd': state.targetEnd?.millisecondsSinceEpoch,

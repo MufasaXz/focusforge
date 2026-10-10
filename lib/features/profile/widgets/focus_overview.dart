@@ -9,6 +9,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
 import '../../../shared/widgets/tonal_panel.dart';
+import '../../../shared/widgets/glass_surface.dart';
 import '../../dashboard/widgets/daily_goal_sheet.dart';
 
 /// A recap derived from completed sessions, with direct access to daily goals.
@@ -147,14 +148,26 @@ class ProfileShortcuts extends StatelessWidget {
                     : Icons.play_arrow_rounded,
                 guardian ? 'Parent dashboard' : 'Start focusing',
                 guardian ? AppRoutes.parentControl : AppRoutes.focus,
+                guardian
+                    ? 'Support their study rhythm'
+                    : 'One subject. A clear mind.',
+                cs.primary,
               ),
-              (Icons.shield_outlined, 'Manage Shield', AppRoutes.shield),
+              (
+                Icons.shield_outlined,
+                'Manage Shield',
+                AppRoutes.shield,
+                'Keep distractions outside',
+                cs.tertiary,
+              ),
             ])
               SizedBox(
                 width: width,
-                child: Material(
-                  color: cs.secondaryContainer.withValues(alpha: .6),
-                  borderRadius: BorderRadius.circular(Radii.item),
+                child: GlassCard(
+                  color: Color.alphaBlend(
+                    action.$5.withValues(alpha: .08),
+                    cs.surfaceContainerLow,
+                  ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(Radii.item),
                     onTap: () => context.goNamed(action.$3),
@@ -163,12 +176,45 @@ class ProfileShortcuts extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(action.$1, color: cs.onSecondaryContainer),
-                          const SizedBox(height: Gap.md),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: action.$5.withValues(alpha: .12),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: action.$5.withValues(alpha: .18),
+                                  ),
+                                ),
+                                child: Icon(
+                                  action.$1,
+                                  color: action.$5,
+                                  size: 26,
+                                ),
+                              ),
+                              Icon(
+                                Icons.north_east_rounded,
+                                color: cs.onSurfaceVariant,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: Gap.lg),
                           Text(
                             action.$2,
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(color: cs.onSecondaryContainer),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: Gap.sm),
+                          Text(
+                            action.$4,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),

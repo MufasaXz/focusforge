@@ -21,9 +21,17 @@ import java.util.Locale
 import kotlin.math.*
 
 /** Widgets read the same local deadline and completed sessions as Flutter. */
-class FocusWidget : AppWidgetProvider() {
+open class FocusWidget : AppWidgetProvider() {
+    protected open val kind = "clock"
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        ids.forEach { update(context, manager, it) }
+        ids.forEach { update(context, manager, it, kind) }
+    }
+    override fun onDeleted(context: Context, ids: IntArray) {
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        ids.forEach { id ->
+            val intent = Intent(context, FocusWidget::class.java).apply { action = ACTION_REFRESH }
+            alarm.cancel(PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        }
     }
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
@@ -34,9 +42,11 @@ class FocusWidget : AppWidgetProvider() {
         const val ACTION_REFRESH = "dev.focusforge.focusforge.WIDGET_REFRESH"
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            manager.getAppWidgetIds(ComponentName(context, FocusWidget::class.java)).forEach { update(context, manager, it) }
+            listOf(FocusWidget::class.java to "clock", DailyGoalWidget::class.java to "goal", StudyWidget::class.java to "study").forEach { (provider, kind) ->
+                manager.getAppWidgetIds(ComponentName(context, provider)).forEach { update(context, manager, it, kind) }
+            }
         }
-        private fun update(context: Context, manager: AppWidgetManager, id: Int) {
+        private fun update(context: Context, manager: AppWidgetManager, id: Int, kind: String) {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val dark = when (prefs.getString("flutter.ff.theme", "system")) {
                 "dark" -> true
@@ -71,45 +81,106 @@ class FocusWidget : AppWidgetProvider() {
                 }
             } catch (_: Exception) { }
             val timer = try { JSONObject(prefs.getString("flutter.ff.focus.presets", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+            val subjectId = timer.optString("subjectId")
+            var subject = timer.optString("subjectName").takeIf { it.isNotBlank() && it != "null" } ?: "Choose a subject"
+            try {
+                val subjects = JSONArray(prefs.getString("flutter.ff.subjects", "[]"))
+                if (prefs.contains("flutter.ff.subjects")) subject = "Choose a subject"
+                for (i in 0 until subjects.length()) {
+                    val item = subjects.optJSONObject(i) ?: continue
+                    if (item.optString("id") == subjectId) subject = item.optString("name", subject)
+                }
+            } catch (_: Exception) { }
+            val weekday = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+            val defaultGoal = prefs.getLong("flutter.ff.goal.daily", 300).toInt().coerceIn(30, 480)
+            val overrides = try { JSONObject(prefs.getString("flutter.ff.goal.days", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+            val override = overrides.optInt(weekday.toString(), 0)
+            val goal = if (override > 0) override.coerceIn(30, 480) else defaultGoal
+            val phase = when (timer.optString("phase", "focus")) {
+                "shortBreak" -> "Short break"
+                "longBreak" -> "Long break"
+                else -> "Focus"
+            }
             val target = timer.optLong("targetEnd", 0)
             val running = timer.optBoolean("running") && target > now
             val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val refreshIntent = Intent(context, FocusWidget::class.java).apply { action = ACTION_REFRESH }
             val pending = PendingIntent.getBroadcast(context, id, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             alarm.cancel(pending)
-            if (running) alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, target, pending)
+            val midnight = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, if (running) minOf(target, midnight) else midnight, pending)
             val remaining = if (running) target - now else if (timer.optBoolean("running")) 0L else timer.optLong("remainingMs", 25 * 60_000L)
-            val views = RemoteViews(context.packageName, R.layout.ff_focus_widget)
+            val views = RemoteViews(context.packageName, when(kind) {
+                "goal" -> R.layout.ff_goal_widget
+                "study" -> R.layout.ff_study_widget
+                else -> R.layout.ff_focus_widget
+            })
             views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.ff_widget_dark else R.drawable.ff_widget_day)
-            listOf(R.id.widget_title, R.id.widget_time, R.id.widget_live, R.id.widget_progress).forEach { views.setTextColor(it, ink) }
+            listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_subject).forEach { views.setTextColor(it, ink) }
+            if (kind != "goal") listOf(R.id.widget_time, R.id.widget_live).forEach { views.setTextColor(it, ink) }
             views.setTextColor(R.id.widget_caption, secondary)
-            views.setTextViewText(R.id.widget_title, "FOCUSFORGE")
-            views.setTextViewText(R.id.widget_progress, minutes.toString() + " min today")
-            views.setTextViewText(R.id.widget_caption, count.toString() + " completed " + (if (count == 1) "session" else "sessions") + " · Tap to focus")
-            views.setImageViewBitmap(R.id.widget_dial, dial(dark, secondary, accent))
-            views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
-            if (running) {
-                views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining, "%s", true)
-                views.setChronometerCountDown(R.id.widget_live, true)
+            views.setTextViewText(R.id.widget_title, if (kind == "goal") "DAILY GOAL" else "FOCUSFORGE · " + phase.uppercase(Locale.ROOT))
+            views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
+            views.setTextViewText(R.id.widget_progress, minutes.toString() + " / " + goal + " min today")
+            views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
+                if (minutes >= goal) "Goal complete · Keep growing" else (goal - minutes).toString() + " min to grow · Tap to view"
+            } else if (running) phase + " in progress · Tap to open" else if (remaining <= 0) "Block ended · Open to continue" else "Ready when you are · Tap to focus")
+            if (kind == "goal") {
+                views.setImageViewBitmap(R.id.widget_dial, goalRing(minutes.toFloat() / goal, dark, accent, ink))
+                views.setContentDescription(R.id.widget_dial, (minutes * 100 / goal).coerceIn(0, 100).toString() + " percent of today's goal complete")
             } else {
-                val seconds = remaining.coerceAtLeast(0) / 1000
-                views.setTextViewText(R.id.widget_time, String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60))
-                views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime(), "%s", false)
+                if (kind == "clock") views.setImageViewBitmap(R.id.widget_dial, dial(dark, secondary, accent))
+                views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
+                if (running) {
+                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining, "%s", true)
+                    views.setChronometerCountDown(R.id.widget_live, true)
+                } else {
+                    val seconds = remaining.coerceAtLeast(0) / 1000
+                    views.setTextViewText(R.id.widget_time, String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60))
+                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime(), "%s", false)
+                }
             }
             val intent = Intent(context, MainActivity::class.java).apply {
-                action = "dev.focusforge.focusforge.OPEN_FOCUS"
-                putExtra("open_focus", true)
+                action = "dev.focusforge.focusforge.OPEN_" + kind.uppercase(Locale.ROOT)
+                putExtra(if (kind == "goal") "open_dashboard" else "open_focus", true)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             manager.updateAppWidget(id, views)
         }
+        private fun goalRing(progress: Float, dark: Boolean, accent: Int, ink: Int): Bitmap {
+            val bitmap = Bitmap.createBitmap(320, 320, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 20f; strokeCap = Paint.Cap.ROUND }
+            pen.color = Color.parseColor(if (dark) "#444541" else "#DED1B9")
+            canvas.drawCircle(160f, 160f, 137f, pen)
+            pen.shader = LinearGradient(20f, 20f, 300f, 300f, intArrayOf(accent, Color.parseColor(if (dark) "#8DBA95" else "#56765B")), null, Shader.TileMode.CLAMP)
+            canvas.drawArc(RectF(23f, 23f, 297f, 297f), -90f, 360f * progress.coerceIn(0f, 1f), false, pen)
+            pen.shader = null
+            pen.style = Paint.Style.FILL
+            pen.color = ink
+            pen.textAlign = Paint.Align.CENTER
+            pen.typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            pen.textSize = 54f
+            canvas.drawText((progress.coerceIn(0f, 1f) * 100).roundToInt().toString() + "%", 160f, 189f, pen)
+            pen.color = accent
+            val leaf = Path().apply { moveTo(160f, 124f); cubicTo(146f, 101f, 166f, 82f, 190f, 80f); cubicTo(191f, 106f, 180f, 121f, 160f, 124f); close() }
+            canvas.drawPath(leaf, pen)
+            val left = Path().apply { moveTo(160f, 126f); cubicTo(139f, 130f, 126f, 114f, 125f, 98f); cubicTo(147f, 98f, 162f, 111f, 160f, 126f); close() }
+            canvas.drawPath(left, pen)
+            pen.style = Paint.Style.STROKE; pen.strokeWidth = 3f
+            canvas.drawLine(160f, 135f, 165f, 112f, pen)
+            return bitmap
+        }
         private fun dial(dark: Boolean, marks: Int, accent: Int): Bitmap {
             val bitmap = Bitmap.createBitmap(360, 360, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.shader = LinearGradient(0f, 0f, 360f, 360f, Color.parseColor(if (dark) "#373735" else "#EEE2CE"), Color.parseColor(if (dark) "#232426" else "#DFD1B8"), Shader.TileMode.CLAMP)
+            paint.shader = LinearGradient(0f, 0f, 360f, 360f, Color.parseColor(if (dark) "#373735" else "#E7DEC9"), Color.parseColor(if (dark) "#232426" else "#D4C8AD"), Shader.TileMode.CLAMP)
             canvas.drawCircle(180f, 180f, 173f, paint)
             paint.shader = null
             paint.style = Paint.Style.STROKE
@@ -139,3 +210,7 @@ class FocusWidget : AppWidgetProvider() {
         }
     }
 }
+
+class DailyGoalWidget : FocusWidget() { override val kind = "goal" }
+
+class StudyWidget : FocusWidget() { override val kind = "study" }

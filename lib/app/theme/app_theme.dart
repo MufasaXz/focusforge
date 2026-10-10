@@ -161,10 +161,10 @@ class AppTheme {
   static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return cs.copyWith(
-      surface: Color(dark ? 0xFF191A1C : 0xFFF5EBDE),
+      surface: Color(dark ? 0xFF191A1C : 0xFFF4EADB),
       surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFCF7),
-      surfaceContainerLow: Color(dark ? 0xFF222326 : 0xFFF9F2E8),
-      surfaceContainer: Color(dark ? 0xFF292A2D : 0xFFEFE4D4),
+      surfaceContainerLow: Color(dark ? 0xFF222326 : 0xFFFAF4E9),
+      surfaceContainer: Color(dark ? 0xFF292A2D : 0xFFEDE2CF),
       surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE8DCC8),
       surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDFD1BA),
       onSurface: Color(dark ? 0xFFF4EEE3 : 0xFF302D26),
