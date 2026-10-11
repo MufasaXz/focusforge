@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -94,21 +95,24 @@ class LeaderboardScreen extends ConsumerWidget {
           if (!available)
             const _NoBackendCard()
           else ...[
-            if (loading && board.isEmpty)
-              const _BoardLoading()
-            else if (board.isEmpty)
-              _EmptyBoard(optedIn: optedIn)
-            else
-              for (var i = 0; i < board.length; i++) ...[
-                if (i > 0) const SizedBox(height: Gap.sm),
-                _BoardRowTile(
-                  rank: i + 1,
-                  entry: board[i],
-                  accent: SubjectPalette.harmonized(
-                    Theme.of(context).colorScheme.primary,
-                  )[i % SubjectPalette.count],
-                ),
-              ],
+            GlassCard(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (loading && board.isEmpty)
+                    const _BoardLoading()
+                  else if (board.isEmpty)
+                    _EmptyBoard(optedIn: optedIn)
+                  else
+                    for (var i = 0; i < board.length; i++) ...[
+                      if (i > 0) const Divider(height: 1),
+                      _BoardRowTile(rank: i + 1, entry: board[i]),
+                    ],
+                ],
+              ),
+            ),
             const SizedBox(height: Gap.md),
             _BoardSwitch(
               optedIn: optedIn,
@@ -125,69 +129,44 @@ class LeaderboardScreen extends ConsumerWidget {
 /// One row of the board. The user's own row is the one that has to be findable
 /// at a glance, so it is the only one that gets a fill.
 class _BoardRowTile extends StatelessWidget {
-  const _BoardRowTile({
-    required this.rank,
-    required this.entry,
-    required this.accent,
-  });
+  const _BoardRowTile({required this.rank, required this.entry});
 
   final int rank;
   final LeaderboardEntry entry;
-  final Color accent;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final rankStyle =
+        (rank == 1 ? theme.textTheme.titleLarge : theme.textTheme.titleMedium)
+            ?.copyWith(
+              color: entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            );
 
-    return GlassCard(
-      color: entry.isMe ? cs.primaryContainer : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Gap.lg,
-          vertical: Gap.md,
+    return ListTile(
+      tileColor: entry.isMe ? cs.primaryContainer : null,
+      leading: SizedBox(width: 28, child: Text('$rank', style: rankStyle)),
+      title: Text(
+        entry.isMe ? '${entry.name} (you)' : entry.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: entry.isMe ? cs.onPrimaryContainer : null,
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 28,
-              child: Text(
-                '$rank',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-            const SizedBox(width: Gap.sm),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: accent.withValues(alpha: 0.22),
-              child: Text(
-                entry.initials,
-                style: theme.textTheme.labelMedium?.copyWith(color: accent),
-              ),
-            ),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Text(
-                entry.isMe ? '${entry.name} (you)' : entry.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: entry.isMe ? cs.onPrimaryContainer : null,
-                ),
-              ),
-            ),
-            Text(
+      ),
+      subtitle: MediaQuery.textScalerOf(context).scale(14) > 19
+          ? Text(formatHoursShort(entry.hours))
+          : null,
+      trailing: MediaQuery.textScalerOf(context).scale(14) > 19
+          ? null
+          : Text(
               formatHoursShort(entry.hours),
               style: theme.textTheme.titleSmall?.copyWith(
                 color: entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant,
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -213,11 +192,7 @@ class _BoardSwitch extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Card.outlined(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
+    return GlassCard(
       child: Column(
         children: [
           SwitchListTile.adaptive(
@@ -273,31 +248,28 @@ class _EmptyBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Row(
-          children: [
-            Icon(
-              Icons.people_outline_rounded,
-              size: 20,
-              color: cs.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.all(Gap.lg),
+      child: Row(
+        children: [
+          Icon(
+            Icons.people_outline_rounded,
+            size: 20,
+            color: cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Text(
+              optedIn
+                  ? 'Nobody else is on the board this week yet. Yours '
+                        'appears as soon as you log a session.'
+                  : 'Nobody is on the board this week yet. Turn the switch '
+                        'on and yours is the first row.',
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Text(
-                optedIn
-                    ? 'Nobody else is on the board this week yet. Yours '
-                          'appears as soon as you log a session.'
-                    : 'Nobody is on the board this week yet. Turn the switch '
-                          'on and yours is the first row.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -308,15 +280,13 @@ class _BoardLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const GlassCard(
-      child: Padding(
-        padding: EdgeInsets.all(Gap.xl),
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+    return const Padding(
+      padding: EdgeInsets.all(Gap.xl),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );
@@ -343,10 +313,8 @@ class _NoBackendCard extends StatelessWidget {
               child: Text(
                 'This build has no backend, so there is no board to read. '
                 'Your own week above is measured here, on this device.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
               ),
             ),
           ],
@@ -380,37 +348,44 @@ class _WeekCard extends StatelessWidget {
     final ceiling = thisWeek > lastWeek ? thisWeek : lastWeek;
     final progress = ceiling <= 0 ? 0.0 : (thisWeek / ceiling).clamp(0.0, 1.0);
 
-    return Card.outlined(
+    return GlassCard(
+      key: const ValueKey('leaderboard-week'),
+      color: Color.alphaBlend(
+        cs.primary.withValues(alpha: .09),
+        cs.surfaceContainerLow,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
-        side: BorderSide(color: cs.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SectionHeader(
+              title: 'Your weekly rhythm',
+              icon: Icons.insights_outlined,
+            ),
+            Wrap(
+              spacing: Gap.md,
+              runSpacing: Gap.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatHoursShort(thisWeek),
-                        style: Theme.of(context).textTheme.displaySmall,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'focused this week',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatHoursShort(thisWeek),
+                      style: Theme.of(context).textTheme.displaySmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'focused this week',
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
                 ),
                 if (lastWeek > 0)
                   Chip(
@@ -428,7 +403,7 @@ class _WeekCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: Gap.lg),
+            const SizedBox(height: Gap.md),
             Semantics(
               label: 'This week against last week',
               value: '${(progress * 100).round()} percent',
@@ -440,20 +415,21 @@ class _WeekCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Gap.sm),
-            Row(
+            Wrap(
+              spacing: Gap.lg,
+              runSpacing: Gap.sm,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 Text(
                   sessions == 1 ? '1 session' : '$sessions sessions',
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
-                const Spacer(),
                 Text(
                   lastWeek > 0
                       ? 'Last week ${formatHoursShort(lastWeek)}'
                       : 'No week before this one yet',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
