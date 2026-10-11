@@ -18,14 +18,38 @@ A study companion that protects your attention and makes your progress visible.
 
 <br>
 
+<p><strong>Preview theme</strong> · <a href="#day-mode">Day</a> / <a href="#dark-mode">Dark</a></p>
+<sub>Jump to either gallery below; expand Dark to view it.</sub>
+
+<h3 id="day-mode">Day mode</h3>
+
 <p>
-  <img src="docs/screenshots/01-dashboard.png" width="186" alt="Home — day theme with daily goal, focus totals and weekly progress">
-  <img src="docs/screenshots/02-shield.png" width="186" alt="Shield — day theme with app filters and distraction rules">
-  <img src="docs/screenshots/03-focus.png" width="186" alt="Focus — day theme with tan retro countdown dial and current study subject">
-  <img src="docs/screenshots/04-you.png" width="186" alt="You — dark theme with profile progress and weekly study recap">
+  <img src="docs/screenshots/01-dashboard.png" width="186" alt="Home — Day mode with sample focus totals">
+  <img src="docs/screenshots/02-shield.png" width="186" alt="Shield — Day mode with a demo app catalog">
+  <img src="docs/screenshots/03-focus.png" width="186" alt="Focus — Day mode with a sample study timer">
+  <img src="docs/screenshots/04-you.png" width="186" alt="You — Day mode with Demo Student's profile">
 </p>
 
-<sub>Home · Day &nbsp; / &nbsp; Shield · Day &nbsp; / &nbsp; Focus · Day &nbsp; / &nbsp; You · Dark</sub>
+<sub>Home / Shield / Focus / You · Day</sub>
+
+<h3 id="dark-mode">Dark mode</h3>
+
+<details>
+<summary>Show Dark phone gallery</summary>
+
+<p>
+  <img src="docs/screenshots/dark/01-dashboard.png" width="186" alt="Home — Dark mode with sample focus totals">
+  <img src="docs/screenshots/dark/02-shield.png" width="186" alt="Shield — Dark mode with a demo app catalog">
+  <img src="docs/screenshots/dark/03-focus.png" width="186" alt="Focus — Dark mode with a sample study timer">
+  <img src="docs/screenshots/dark/04-you.png" width="186" alt="You — Dark mode with Demo Student's profile">
+</p>
+
+<sub>Home / Shield / Focus / You · Dark</sub>
+
+</details>
+
+<br>
+<sub>Actual app widget-test renders with fictional local demo data, composed in stylized phone frames; not physical-device screenshots. [Screenshot provenance](docs/screenshots/README.md).</sub>
 
 </div>
 
