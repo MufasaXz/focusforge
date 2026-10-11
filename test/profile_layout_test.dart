@@ -56,6 +56,15 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('Alexandria Morgan Rivera'), findsOneWidget);
+        expect(find.byKey(const ValueKey('profile-hero')), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Semantics &&
+                (w.properties.label?.startsWith('Level ') ?? false),
+          ),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
         await tester.scrollUntilVisible(
           find.text('Tide'),

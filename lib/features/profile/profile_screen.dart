@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -192,8 +193,6 @@ class ProfileScreen extends ConsumerWidget {
     // other. Stacked — which is every phone — it is the same page it has
     // always been, in the same order.
     final identity = <Widget>[
-      stagger(const Eyebrow('YOUR SPACE', icon: Icons.person_outline_rounded)),
-      const SizedBox(height: Gap.lg),
       stagger(
         _HeroCard(
           user: user,
@@ -256,8 +255,13 @@ class ProfileScreen extends ConsumerWidget {
         ('App & privacy', settings.skip(6)),
       ])
         prefStagger(
-          AppSection(
+          _ProfileSection(
             title: group.$1,
+            icon: group.$1 == 'Progress & community'
+                ? Icons.explore_outlined
+                : group.$1 == 'Focus & protection'
+                ? Icons.shield_outlined
+                : Icons.tune_rounded,
             children: [
               for (final (i, spec) in group.$2.indexed) ...[
                 if (i > 0)
@@ -291,9 +295,19 @@ class ProfileScreen extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Column(children: identity)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: identity,
+                  ),
+                ),
                 const SizedBox(width: Gap.xl),
-                Expanded(child: Column(children: prefs)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: prefs,
+                  ),
+                ),
               ],
             )
           else ...[
@@ -333,14 +347,23 @@ class _HeroCard extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 380 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    return TonalPanel(
-      accent: true,
-      padding: EdgeInsets.zero,
+    return GlassCard(
+      key: const ValueKey('profile-hero'),
+      color: Color.alphaBlend(
+        t.primary.withValues(alpha: .10),
+        t.surfaceContainerLow,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.hero),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           children: [
-            const Eyebrow('A LITTLE BETTER, EVERY DAY'),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Eyebrow('YOUR SPACE', icon: Icons.person_outline_rounded),
+            ),
             const SizedBox(height: Gap.xl),
             if (compact) ...[
               Row(
@@ -364,32 +387,44 @@ class _HeroCard extends StatelessWidget {
                 ],
               ),
             const SizedBox(height: Gap.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: _HeroStat(
-                    value: _hours(stats.totalFocusHours),
-                    label: 'Total focus',
-                  ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: t.surface.withValues(alpha: .45),
+                borderRadius: BorderRadius.circular(Radii.item),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: Gap.lg,
+                  horizontal: Gap.sm,
                 ),
-                _Divider(t: t),
-                Expanded(
-                  child: _HeroStat(
-                    value: '$streak',
-                    label: 'Day streak',
-                    accent: t.tertiary,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _HeroStat(
+                        value: _hours(stats.totalFocusHours),
+                        label: 'Total focus',
+                      ),
+                    ),
+                    _Divider(t: t),
+                    Expanded(
+                      child: _HeroStat(
+                        value: '$streak',
+                        label: 'Day streak',
+                        accent: t.tertiary,
+                      ),
+                    ),
+                    _Divider(t: t),
+                    Expanded(
+                      child: _HeroStat(
+                        value: '$unlocked/$totalBadges',
+                        label: 'Badges',
+                      ),
+                    ),
+                  ],
                 ),
-                _Divider(t: t),
-                Expanded(
-                  child: _HeroStat(
-                    value: '$unlocked/$totalBadges',
-                    label: 'Badges',
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: Gap.xl),
+            const SizedBox(height: Gap.lg),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               spacing: Gap.lg,
@@ -562,7 +597,11 @@ class _AnonymousCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
-    return Card.outlined(
+    return GlassCard(
+      color: Color.alphaBlend(
+        t.secondary.withValues(alpha: .06),
+        t.surfaceContainerLow,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
@@ -664,6 +703,8 @@ class _AppearanceCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Eyebrow('MAKE IT YOURS', icon: Icons.palette_outlined),
+            const SizedBox(height: Gap.lg),
             AppSegmentedControl<ThemePreference>(
               options: {for (final p in ThemePreference.values) p: p.label},
               selected: settings.mode,
@@ -692,7 +733,8 @@ class _AppearanceCard extends ConsumerWidget {
             Text(
               'Open your Android home screen’s Widgets menu to add the Retro clock, '
               'Study session or Daily goal. See your subject, countdown and progress at a glance.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: t.onSurfaceVariant),
             ),
             if (isDark) ...[
               const SizedBox(height: Gap.lg),
@@ -852,7 +894,9 @@ class _SubjectGoalCard extends StatelessWidget {
               children: [
                 MiniRing(
                   value: s.weekProgress,
-                  color: harmonize(s.color, t.primary),
+                  color: s.metTarget
+                      ? t.tertiary
+                      : harmonize(s.color, t.primary),
                   size: 54,
                   label: '${(s.weekProgress * 100).round()}%',
                 ),
@@ -884,8 +928,10 @@ class _SubjectGoalCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Icon(
-                          Icons.tune_rounded,
-                          size: 12,
+                          s.metTarget
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.tune_rounded,
+                          size: 16,
                           color: t.onSurfaceVariant,
                         ),
                       ],
@@ -895,6 +941,44 @@ class _SubjectGoalCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A single frosted settings surface, with its heading inside the rim.
+class _ProfileSection extends StatelessWidget {
+  const _ProfileSection({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.lg),
+      child: GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Gap.lg,
+                Gap.lg,
+                Gap.lg,
+                Gap.sm,
+              ),
+              child: SectionHeader(title: title, icon: icon),
+            ),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .4)),
+            ...children,
+          ],
         ),
       ),
     );

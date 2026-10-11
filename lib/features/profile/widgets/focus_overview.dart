@@ -30,93 +30,95 @@ class FocusOverview extends ConsumerWidget {
     final today = ref.watch(focusMinutesTodayProvider);
     final goal = ref.watch(todayGoalMinutesProvider);
 
-    return TonalPanel(
-      padding: const EdgeInsets.all(Gap.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Eyebrow('YOUR WEEK IN FOCUS', icon: Icons.insights_rounded),
-          const SizedBox(height: Gap.md),
-          Text(
-            formatMinutes((total * 60).round()),
-            style: tt.headlineMedium?.copyWith(
-              letterSpacing: -1,
-              fontWeight: FontWeight.w700,
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Eyebrow('YOUR WEEK IN FOCUS', icon: Icons.insights_rounded),
+            const SizedBox(height: Gap.md),
+            Text(
+              formatMinutes((total * 60).round()),
+              style: tt.headlineMedium?.copyWith(
+                letterSpacing: -1,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: Gap.xs),
-          Text(
-            '$active active ${active == 1 ? 'day' : 'days'} in the last 7 days',
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: Gap.lg),
-          Semantics(
-            label: days
-                .map(
-                  (day) =>
-                      '${day.label}: ${formatMinutes((day.hours * 60).round())}',
-                )
-                .join(', '),
-            child: ExcludeSemantics(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (final day in days)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              height: 58,
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Container(
-                                  height: 5 + 53 * day.hours / maximum,
-                                  decoration: BoxDecoration(
-                                    color: day.hours > 0
-                                        ? cs.primary
-                                        : cs.outlineVariant.withValues(
-                                            alpha: .45,
-                                          ),
-                                    borderRadius: BorderRadius.circular(6),
+            const SizedBox(height: Gap.xs),
+            Text(
+              '$active active ${active == 1 ? 'day' : 'days'} in the last 7 days',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.lg),
+            Semantics(
+              label: days
+                  .map(
+                    (day) =>
+                        '${day.label}: ${formatMinutes((day.hours * 60).round())}',
+                  )
+                  .join(', '),
+              child: ExcludeSemantics(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final day in days)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: 58,
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    height: 5 + 53 * day.hours / maximum,
+                                    decoration: BoxDecoration(
+                                      color: day.hours > 0
+                                          ? cs.primary
+                                          : cs.outlineVariant.withValues(
+                                              alpha: .45,
+                                            ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: Gap.sm),
-                            FittedBox(
-                              child: Text(day.label, style: tt.labelSmall),
-                            ),
-                          ],
+                              const SizedBox(height: Gap.sm),
+                              FittedBox(
+                                child: Text(day.label, style: tt.labelSmall),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: Gap.lg),
-          Divider(color: cs.outlineVariant.withValues(alpha: .45)),
-          const SizedBox(height: Gap.sm),
-          Wrap(
-            spacing: Gap.md,
-            runSpacing: Gap.sm,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Today: ${formatMinutes(today)} / ${formatMinutes(goal)}',
-                style: tt.labelMedium,
-              ),
-              TextButton.icon(
-                onPressed: () => showDailyGoalSheet(context),
-                icon: const Icon(Icons.tune_rounded, size: 16),
-                label: const Text('Adjust goal'),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: Gap.lg),
+            Divider(color: cs.outlineVariant.withValues(alpha: .45)),
+            const SizedBox(height: Gap.sm),
+            Wrap(
+              spacing: Gap.md,
+              runSpacing: Gap.sm,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Today: ${formatMinutes(today)} / ${formatMinutes(goal)}',
+                  style: tt.labelMedium,
+                ),
+                TextButton.icon(
+                  onPressed: () => showDailyGoalSheet(context),
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text('Adjust goal'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
