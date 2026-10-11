@@ -1,5 +1,6 @@
 import '../../shared/widgets/glass_surface.dart';
 import '../../core/services/widget_service.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -97,10 +98,14 @@ class _AppShellState extends ConsumerState<AppShell>
   /// The package travels with the gate rather than being dropped here — it is
   /// what the gate hands back when the pause is over.
   Future<void> _checkBlockedLaunch() async {
-    if (await WidgetService.takeFocusLaunch() && mounted && !ref.read(userProvider).isGuardian) {
+    if (await WidgetService.takeFocusLaunch() &&
+        mounted &&
+        !ref.read(userProvider).isGuardian) {
       widget.navigationShell.goBranch(2);
     }
-    if (await WidgetService.takeDashboardLaunch() && mounted && !ref.read(userProvider).isGuardian) {
+    if (await WidgetService.takeDashboardLaunch() &&
+        mounted &&
+        !ref.read(userProvider).isGuardian) {
       widget.navigationShell.goBranch(0);
     }
     final service = ref.read(shieldServiceProvider);
@@ -214,7 +219,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         );
       },
-      child: widget.navigationShell,
+      child: RepaintBoundary(child: widget.navigationShell),
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -232,96 +237,105 @@ class _AppShellState extends ConsumerState<AppShell>
       ),
       child: GlassBackdrop(
         child: wide
-          // A tablet gets the rail. The bar is not stretched across it: a
-          // four-item bar spanning 1200dp puts Home and You a hand apart, and
-          // it costs a strip of height the content could use.
-          ? Scaffold(
-              backgroundColor: Colors.transparent,
-              body: Row(
-                children: [
-                  SafeArea(
-                    right: false,
-                    child: NavigationRail(
-                      selectedIndex: selectedIndex,
-                      onDestinationSelected: _select,
-                      labelType: NavigationRailLabelType.all,
-                      backgroundColor: cs.surfaceContainerLow,
-                      // Compact: icons and their labels, no extended drawer.
-                      // The rail is navigation, not a place to put things.
-                      minWidth: 76,
-                      groupAlignment: -0.6,
-                      destinations: [
-                        for (final d in destinations)
-                          NavigationRailDestination(
-                            icon: d.icon,
-                            selectedIcon: d.selectedIcon,
-                            label: Text(d.label),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: AppShell.maxWideContentWidth,
-                        ),
-                        // The branch body is its own semantics container, and
-                        // that is load-bearing rather than tidiness: every
-                        // route carries a [ModalBarrier], and a barrier wraps
-                        // [BlockSemantics], which drops the semantics of
-                        // everything painted before it. The rail is painted
-                        // before the body, so without this boundary the whole
-                        // navigation disappears from the screen reader the
-                        // moment a real screen is on the other side of it.
-                        // The bottom bar has no such problem — a Scaffold
-                        // paints it after the body.
-                        child: Semantics(
-                          container: true,
-                          explicitChildNodes: true,
-                          child: body,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : Scaffold(
-              backgroundColor: Colors.transparent,
-              extendBody: true,
-              body: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppShell.maxContentWidth,
-                  ),
-                  child: body,
-                ),
-              ),
-              // The glass navigation pill floats above the scrolling body.
-              bottomNavigationBar: Center(
-                heightFactor: 1,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppShell.maxContentWidth,
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: GlassCard(
-                      shape: const StadiumBorder(),
-                      child: NavigationBar(
-                        height: 72,
-                        backgroundColor: Colors.transparent,
+            // A tablet gets the rail. The bar is not stretched across it: a
+            // four-item bar spanning 1200dp puts Home and You a hand apart, and
+            // it costs a strip of height the content could use.
+            ? Scaffold(
+                backgroundColor: Colors.transparent,
+                body: Row(
+                  children: [
+                    SafeArea(
+                      right: false,
+                      child: NavigationRail(
                         selectedIndex: selectedIndex,
                         onDestinationSelected: _select,
-                        destinations: destinations,
+                        labelType: NavigationRailLabelType.all,
+                        backgroundColor: cs.surfaceContainerLow,
+                        // Compact: icons and their labels, no extended drawer.
+                        // The rail is navigation, not a place to put things.
+                        minWidth: 76,
+                        groupAlignment: -0.6,
+                        destinations: [
+                          for (final d in destinations)
+                            NavigationRailDestination(
+                              icon: d.icon,
+                              selectedIcon: d.selectedIcon,
+                              label: Text(d.label),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: AppShell.maxWideContentWidth,
+                          ),
+                          // The branch body is its own semantics container, and
+                          // that is load-bearing rather than tidiness: every
+                          // route carries a [ModalBarrier], and a barrier wraps
+                          // [BlockSemantics], which drops the semantics of
+                          // everything painted before it. The rail is painted
+                          // before the body, so without this boundary the whole
+                          // navigation disappears from the screen reader the
+                          // moment a real screen is on the other side of it.
+                          // The bottom bar has no such problem — a Scaffold
+                          // paints it after the body.
+                          child: Semantics(
+                            container: true,
+                            explicitChildNodes: true,
+                            child: body,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Scaffold(
+                backgroundColor: Colors.transparent,
+                extendBody: true,
+                body: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppShell.maxContentWidth,
+                    ),
+                    child: body,
+                  ),
+                ),
+                // The glass navigation pill floats above the scrolling body.
+                bottomNavigationBar: Center(
+                  heightFactor: 1,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppShell.maxContentWidth,
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: RepaintBoundary(
+                        child: DecoratedBox(
+                          key: const ValueKey('nav-pill'),
+                          decoration: ShapeDecoration(
+                            shape: const StadiumBorder(),
+                            color: cs.surfaceContainerLow,
+                          ),
+                          child: GlassCard(
+                            shape: const StadiumBorder(),
+                            child: NavigationBar(
+                              height: 72,
+                              backgroundColor: Colors.transparent,
+                              selectedIndex: selectedIndex,
+                              onDestinationSelected: _select,
+                              destinations: destinations,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
       ),
     );
   }

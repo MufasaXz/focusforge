@@ -131,6 +131,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('phone pill retains an opaque underlay during branch fades', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpApp(tester, freshContainer());
+      for (final index in [3, 0, 2, 1, 3]) {
+        final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+        bar.onDestinationSelected!(index);
+        for (var frame = 0; frame < 4; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final underlay = tester.widget<DecoratedBox>(
+            find.byKey(const ValueKey('nav-pill')),
+          );
+          final decoration = underlay.decoration as ShapeDecoration;
+          expect(decoration.color!.a, 1);
+          expect(decoration.shape, isA<StadiumBorder>());
+          expect(find.byType(NavigationBar).hitTestable(), findsOneWidget);
+        }
+        await settle(tester);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a phone keeps the bar', (tester) async {
       usePhone(tester);
       await pumpApp(tester, freshContainer());
