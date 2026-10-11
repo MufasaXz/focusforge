@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,6 +46,46 @@ class ParentControlScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          GlassCard(
+            key: const ValueKey('parent-hero'),
+            color: Color.alphaBlend(
+              Theme.of(context).colorScheme.primary.withValues(alpha: .09),
+              Theme.of(context).colorScheme.surfaceContainerLow,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.hero),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconBadge(
+                    icon: isGuardian
+                        ? Icons.family_restroom_rounded
+                        : Icons.phonelink_lock_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 48,
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  Text(
+                    isGuardian
+                        ? 'Support their study rhythm'
+                        : 'Your device, connected',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    isGuardian
+                        ? 'Each child gets their own dashboard and their own block list.'
+                        : 'A parent types the code into their own phone. Nothing is shared until they do.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
           if (!available) ...[
             const _NoBackendCard(),
             const SizedBox(height: Gap.xl),
@@ -69,11 +111,7 @@ class _NoBackendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card.outlined(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(
@@ -518,22 +556,40 @@ class _WhatATParentSeesNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline_rounded, size: 15, color: cs.onSurfaceVariant),
-        const SizedBox(width: Gap.sm),
-        Expanded(
-          child: Text(
-            'A linked parent sees daily and weekly study totals, your goal, '
-            'streak and leading subject. Your installed app names are shared '
-            'so they can choose Shield rules. Messages, screen contents and '
-            'your detailed session log stay private.',
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: cs.onSurfaceVariant),
-          ),
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SectionHeader(
+              title: 'Summary only. Always private.',
+              icon: Icons.privacy_tip_outlined,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 15,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(
+                    'A linked parent sees daily and weekly study totals, your goal, '
+                    'streak and leading subject. Your installed app names are shared '
+                    'so they can choose Shield rules. Messages, screen contents and '
+                    'your detailed session log stay private.',
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

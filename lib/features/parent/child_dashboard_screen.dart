@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -275,17 +276,33 @@ class _ProgressCard extends StatelessWidget {
     final today = _todayKey();
     final stale = progress.day != null && progress.day != today;
 
-    return Card.outlined(
+    return GlassCard(
+      key: const ValueKey('child-progress'),
+      color: Color.alphaBlend(
+        cs.primary.withValues(alpha: .09),
+        cs.surfaceContainerLow,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
-        side: BorderSide(color: cs.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
+            SectionHeader(
+              title: stale ? 'Last reported study' : 'Today’s study',
+              icon: Icons.menu_book_outlined,
+            ),
+            Flex(
+              mainAxisSize: MainAxisSize.min,
+              direction: MediaQuery.textScalerOf(context).scale(14) > 19
+                  ? Axis.vertical
+                  : Axis.horizontal,
+              crossAxisAlignment:
+                  MediaQuery.textScalerOf(context).scale(14) > 19
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
               children: [
                 ProgressRing(
                   value: progress.goalProgress,
@@ -299,8 +316,9 @@ class _ProgressCard extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                const SizedBox(width: Gap.lg),
-                Expanded(
+                const SizedBox(width: Gap.lg, height: Gap.lg),
+                Flexible(
+                  fit: FlexFit.loose,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -344,7 +362,16 @@ class _ProgressCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Gap.lg),
-            WeekStrip(progress: progress),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.surface.withValues(alpha: .45),
+                borderRadius: BorderRadius.circular(Radii.item),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(Gap.md),
+                child: WeekStrip(progress: progress),
+              ),
+            ),
             const SizedBox(height: Gap.md),
             Row(
               children: [
@@ -394,7 +421,9 @@ class _Chip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: cs.onSurfaceVariant),
           const SizedBox(width: 4),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          Flexible(
+            child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+          ),
         ],
       ),
     );
@@ -445,9 +474,7 @@ class _BlocksSection extends ConsumerWidget {
                     icon: app.focusOnly
                         ? Icons.hourglass_bottom_rounded
                         : Icons.block_rounded,
-                    color: app.focusOnly
-                        ? const Color(0xFFFFD08A)
-                        : const Color(0xFFB79CFF),
+                    color: app.focusOnly ? cs.tertiary : cs.primary,
                   ),
                   title: Text(app.name),
                   subtitle: Text(
@@ -468,10 +495,7 @@ class _BlocksSection extends ConsumerWidget {
                   subtitle: const Text('Add one from their app list'),
                 ),
               ListTile(
-                leading: const IconBadge(
-                  icon: Icons.add_rounded,
-                  color: Color(0xFF7FA9FF),
-                ),
+                leading: IconBadge(icon: Icons.add_rounded, color: cs.primary),
                 title: const Text('Add apps to block'),
                 subtitle: const Text('From the apps on their device'),
                 onTap: () => unawaited(_addApps(context, ref, childUid)),
@@ -752,7 +776,7 @@ class _SecurityCodeSection extends ConsumerWidget {
           child: ListTile(
             leading: IconBadge(
               icon: code == null ? Icons.lock_open_rounded : Icons.lock_rounded,
-              color: const Color(0xFFFFD08A),
+              color: cs.tertiary,
             ),
             title: Text(
               code == null

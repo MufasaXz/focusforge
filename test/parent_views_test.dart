@@ -282,6 +282,58 @@ void main() {
     expect(find.text('Set a four-digit code'), findsOneWidget);
   });
 
+  testWidgets('child glass summary and controls fit 320dp with 2x text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final parent = FakeParent();
+    final container = parentDevice(parent);
+    await tester.pumpWidget(
+      wrap(
+        container,
+        const ChildDashboardScreen(childUid: 'child-1'),
+        textScale: 2,
+      ),
+    );
+    await settle(tester);
+    expect(find.byKey(const ValueKey('child-progress')), findsOneWidget);
+    expect(find.text('0.8h'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.scrollUntilVisible(find.text('Enforce these blocks'), 180);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(Switch).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Switch).first);
+    await tester.pump();
+    expect(parent.published.last.enforced, isFalse);
+    expect(parent.published.last.apps.single.name, 'Instagram');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'parent overview fits narrow enlarged text without mixing roles',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final container = parentDevice(FakeParent());
+      await tester.pumpWidget(
+        wrap(container, const ParentControlScreen(), textScale: 2),
+      );
+      await settle(tester);
+      expect(find.byKey(const ValueKey('parent-hero')), findsOneWidget);
+      expect(find.text('This device'), findsNothing);
+      await tester.scrollUntilVisible(find.text('Add a child'), 180);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Add a child'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add a child').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('parent Shield fits a narrow phone with enlarged text', (
     tester,
   ) async {

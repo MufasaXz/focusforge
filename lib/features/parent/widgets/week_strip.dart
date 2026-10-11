@@ -30,15 +30,16 @@ class WeekStrip extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: Gap.md,
+          runSpacing: Gap.sm,
           children: [
-            Expanded(
-              child: Text(
-                'This week',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 1.1,
-                ),
+            Text(
+              'This week',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                letterSpacing: 1.1,
               ),
             ),
             Text(
