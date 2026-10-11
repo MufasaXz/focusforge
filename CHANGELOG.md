@@ -1,8 +1,17 @@
 # Changelog
 
-## 1.0.3 — 2026-10-10
+## 1.0.3 — 2026-10-11
 
-Android build 2015.
+Android build 2016.
+
+- Refreshed weekly leaderboard standings, study groups, profile identity and
+  insights, settings, parent controls and child progress with responsive glass
+  cards and clearer hierarchy.
+- Stabilized floating navigation pill transparency during tab transitions and
+  added layout regression coverage. Physical-device flash elimination has not
+  been verified.
+- Updated the GitHub gallery with four phone-only light-theme app renders.
+  All sample study and profile data is fictional.
 
 - Setup flow polish: frosted pinned footer, per-stage progress stepper,
   product promise on the splash, and a tonal celebration hero. Guardian and
@@ -42,7 +51,9 @@ Android build 2015.
 - Recovered sessions stop reading providers if the container is disposed while
   a save is in progress.
 
-### Release details
+### Earlier build-2015 validation (historical)
+
+The following checks describe the previous build, not final build 2016.
 
 - Version 1.0.3 (2015), signed with the existing Android release certificate.
   The build number exceeds the earlier architecture-specific version codes.

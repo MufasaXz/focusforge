@@ -19,13 +19,14 @@ A study companion that protects your attention and makes your progress visible.
 <br>
 
 <p>
-  <img src="docs/screenshots/01-dashboard.png" width="186" alt="Home — day theme with daily goal, focus totals and weekly progress">
-  <img src="docs/screenshots/02-shield.png" width="186" alt="Shield — day theme with app filters and distraction rules">
-  <img src="docs/screenshots/03-focus.png" width="186" alt="Focus — day theme with tan retro countdown dial and current study subject">
-  <img src="docs/screenshots/04-you.png" width="186" alt="You — dark theme with profile progress and weekly study recap">
+  <img src="docs/screenshots/01-dashboard.png" width="186" alt="Home in a stylized phone frame — light theme with sample daily focus totals and weekly progress">
+  <img src="docs/screenshots/02-shield.png" width="186" alt="Shield in a stylized phone frame — light theme with a demonstration app catalog and distraction rules">
+  <img src="docs/screenshots/03-focus.png" width="186" alt="Focus in a stylized phone frame — light theme with the countdown dial and a sample study session">
+  <img src="docs/screenshots/04-you.png" width="186" alt="You in a stylized phone frame — light theme with Demo Student's profile and sample study progress">
 </p>
 
-<sub>Home · Day &nbsp; / &nbsp; Shield · Day &nbsp; / &nbsp; Focus · Day &nbsp; / &nbsp; You · Dark</sub>
+<sub>Home / Shield / Focus / You · Light theme</sub><br>
+<sub>Actual app widget-test renders with fictional local demo data, composed in stylized phone frames; not physical-device screenshots. [Screenshot provenance](docs/screenshots/README.md).</sub>
 
 </div>
 
