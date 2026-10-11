@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -137,14 +138,23 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GlassCard(
+                  key: const ValueKey('groups-hero'),
+                  color: Color.alphaBlend(
+                    Theme.of(context).colorScheme.primary
+                        .withValues(alpha: .09),
+                    Theme.of(context).colorScheme.surfaceContainerLow,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.hero),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(Gap.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconBadge(
+                        const SectionHeader(
+                          title: 'A shared rhythm',
                           icon: Icons.groups_outlined,
-                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(height: Gap.md),
                         Text(
@@ -220,15 +230,32 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                               'Your next study circle starts here. Create a group, then share its code.',
                             ),
                           ),
-                        for (final group in list)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: Gap.md),
-                            child: Stagger(
-                              key: ValueKey(group.id),
-                              index: list.indexOf(group),
-                              child: _GroupCard(group: group),
-                            ),
-                          ),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final twoColumns =
+                                constraints.maxWidth >= 600 &&
+                                MediaQuery.textScalerOf(context).scale(14) <=
+                                    19;
+                            final width = twoColumns
+                                ? (constraints.maxWidth - Gap.md) / 2
+                                : constraints.maxWidth;
+                            return Wrap(
+                              spacing: Gap.md,
+                              runSpacing: Gap.md,
+                              children: [
+                                for (final group in list)
+                                  SizedBox(
+                                    width: width,
+                                    child: Stagger(
+                                      key: ValueKey(group.id),
+                                      index: list.indexOf(group),
+                                      child: _GroupCard(group: group),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -283,9 +310,23 @@ class _GroupCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: Gap.md),
-              Text(
-                '${group.memberCount} members · $focusing focusing now',
-                style: Theme.of(context).textTheme.bodySmall,
+              Row(
+                children: [
+                  Icon(
+                    focusing > 0
+                        ? Icons.timer_rounded
+                        : Icons.people_outline_rounded,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      '${group.memberCount} members · $focusing focusing now',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: Gap.lg),
               if (members.isLoading)

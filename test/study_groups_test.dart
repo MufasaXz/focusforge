@@ -197,6 +197,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('groups-hero')), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Join with code'), 150);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Join with code'));
+    await tester.pumpAndSettle();
+    expect(find.text('Join with code').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.scrollUntilVisible(find.text('Sunday study circle'), 200);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Sunday study circle'));
