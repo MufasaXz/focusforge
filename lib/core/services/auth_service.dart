@@ -42,7 +42,7 @@ class AuthException implements Exception {
       'For security, sign out and back in, then retry.',
     AuthFailure.providerUnavailable =>
       'That sign-in method is not connected yet.',
-    AuthFailure.cleanupFailed => 'Cloud cleanup could not finish. Your account and local history are kept. Check your connection and try again.',
+    AuthFailure.cleanupFailed => 'Cloud cleanup could not finish. Your sign-in and local history are kept; some shared records may already be removed. Check your connection and retry.',
     AuthFailure.unknown => 'Something went wrong.',
   };
 
@@ -214,7 +214,7 @@ class LocalAuthService extends AuthService {
       throw const AuthException(AuthFailure.wrongPassword);
     }
     final base = await _baseProfile();
-    _returning = _returning || (base.onboardingComplete && !base.isAnonymous);
+    _returning = _returning || base.onboardingComplete;
     return _persist(_withCredential(base, email: email));
   }
 

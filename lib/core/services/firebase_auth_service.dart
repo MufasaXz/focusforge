@@ -366,7 +366,11 @@ class FirebaseAuthService extends AuthService {
             await FirebaseStudyGroupService().leave(group);
           }
         }
-        await _removeSharedRecords(user.uid);
+        // A network loss can leave Firestore writes queued. Limit the UI wait;
+        // deletion of the credential/local history only follows a completed
+        // cleanup. A timed-out cleanup may still remove shared rows later.
+        await _removeSharedRecords(user.uid)
+            .timeout(const Duration(seconds: 45));
       } catch (_) {
         throw const AuthException(AuthFailure.cleanupFailed);
       }

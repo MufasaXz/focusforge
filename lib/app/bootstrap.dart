@@ -58,6 +58,32 @@ Future<ProviderContainer> bootstrap() async {
         .hydrate(UserProfile.fromJson(userJson));
   }
 
+  // Install before optional sharing starts. SDK-originated sign-out keeps
+  // local history but must close account gates, just like the UI action.
+  authService.changes.listen((profile) {
+    if (profile != null) {
+      container.read(userProvider.notifier).hydrate(profile);
+    } else {
+      final local = container.read(userProvider);
+      if (!local.isAnonymous) {
+        container
+            .read(userProvider.notifier)
+            .save(local.copyWith(isAnonymous: true));
+      }
+    }
+  });
+  final restored = await authService.restore();
+  if (restored != null) {
+    container.read(userProvider.notifier).hydrate(restored);
+  } else if (authService.usesRemoteCredentials) {
+    final local = container.read(userProvider);
+    if (!local.isAnonymous) {
+      await container
+          .read(userProvider.notifier)
+          .save(local.copyWith(isAnonymous: true));
+    }
+  }
+
   final statsJson = store.getMap(StoreKeys.stats);
   if (statsJson != null) {
     container
@@ -161,20 +187,6 @@ Future<ProviderContainer> bootstrap() async {
             .toSet(),
         store.getDoubleMap(StoreKeys.ambientVolumes),
       );
-
-  // Bridge the auth layer into the user store.
-  //
-  // `AuthService` owns minting an identity; `UserNotifier` owns everything
-  // else about the profile. Without this subscription the two can disagree —
-  // the auth call succeeds, writes a real account to storage, and then the
-  // next `UserNotifier.save()` from any later screen overwrites it with the
-  // blank cold-install record. Subscribing here means every present and future
-  // sign-in path is covered, rather than each call site having to remember.
-  // Never cancelled on purpose: this container is the app's root scope and
-  // lives exactly as long as the process does.
-  container.read(authServiceProvider).changes.listen((profile) {
-    if (profile != null) container.read(userProvider.notifier).hydrate(profile);
-  });
 
   // Warm the router so the first navigation resolves its redirect immediately
   // rather than after a frame.
