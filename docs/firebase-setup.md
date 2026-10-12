@@ -1,6 +1,6 @@
 # Firebase: groups and parent control
 
-FocusForge's Android configuration points to focusforge-1edf7. This release
+The published Android APK uses the maintainer's Firebase project. Client configuration is supplied locally and is no longer tracked; download your Android app's google-services.json from Firebase Settings into android/app/ before building. A placeholder example is included, but cannot authenticate or be used unchanged. This release
 uses Firestore directly; there is no Cloud Function to deploy and no new paid
 service dependency. Web previews deliberately use the local auth backend.
 
@@ -37,9 +37,7 @@ environment, so production rules have **not** been deployed by the coding agent.
 - Set a rule, then unlink from either phone. The parent list and source rules
   disappear together. The child's service updates when it receives the change.
 
-Both devices need this release for strengthened pairing/unlink operations.
-Existing guardian links still work. Older APKs must update before creating or
-removing links: the new rules deliberately reject their non-atomic flow.
+Both devices need build 2018 and these revised rules before creating new parent links. New pairing uses sixteen random symbols, shown in four groups. Six-digit pairing is rejected after publishing these rules. Existing guardian links still work and can be removed atomically.
 Local-only group entries were never shared and are not converted into real
 memberships. Create a cloud group to get a valid invite.
 
@@ -64,7 +62,7 @@ native service is updated on launch. Failed reads retain this protection; a
 confirmed unlink clears it.
 
 Groups are capped at 32 members. Invite codes use secure randomness and cannot
-be enumerated through the rules. Six-digit parent codes expire in 15 minutes,
+be enumerated through the rules. Parent tokens use 80 bits of secure randomness and expire in 15 minutes,
 with one atomic claim. Security rules are not a rate limiter. For a large public
 rollout, configure App Check and move claims behind a rate-limited backend before
 promising abuse resistance. The four-digit parent code is a local commitment aid,
@@ -72,7 +70,7 @@ not Android device management or a server-enforced security boundary.
 
 Account deletion removes group rows before deleting the credential and requires
 a recent sign-in, confirmed in the app with the account password or Google.
-Build 2017 also unlinks both sides of parent relationships, removes this user's
+Build 2018 also unlinks both sides of parent relationships, removes this user's
 progress/catalog records, removes the linked pairing code and withdraws public
 board entries for weeks found in this device's local session log (plus the
 current week). Optional publishers pause during deletion. If cleanup fails
@@ -96,3 +94,13 @@ Use Java 21+ and Node 22:
 Tests run against demo-focusforge in a local Firestore emulator, never production.
 They cover valid/expired/competing pairing, atomic unlink, private group queries,
 invite abuse, progress ownership and ownership transfer.
+
+## Repository and device privacy hardening (build 2018)
+
+See [the security audit](security-audit-2026-10-12.md). Automatic Android cloud backups and device transfers are disabled, and shared Firestore records use memory-only caching after clearing old persistence at launch. Account changes clear retained private family/group views and reset leaderboard consent. Detailed setup/history remains device-local; it is not restored from Firebase after an uninstall or on a new phone.
+
+The Firebase client API key remains public inside APKs and historical git commits. Configure API/application restrictions compatible with Firebase Authentication and rotate it in the project console if necessary. Removing the file from git does not revoke a key. Production key restrictions and rule deployment were not performed here.
+
+Rules restrict shared top-level schemas and current records, foreign profile reads, and inactive pairing lookup. Variable app-list members are not deeply validated by Firestore Rules; a per-app document schema or backend validator would be needed for that.
+
+Rules tooling now uses Firebase CLI 15.33.0, firebase 13.0.0 and rules-unit-testing 6.0.0. NPM development dependencies still report upstream advisories; they are not included in the APK. Avoid automated major downgrades from npm audit fix --force.

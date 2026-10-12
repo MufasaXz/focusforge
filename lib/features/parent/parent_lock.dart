@@ -30,7 +30,7 @@ Future<bool> confirmParentUnlock(
     keyboardType: TextInputType.number,
     footnote:
         'This is the four digits your parent set on their own phone, not the '
-        'six-digit pairing code.',
+        'longer pairing code.',
   );
   if (code == null) return false;
 

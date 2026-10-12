@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/study.dart';
-import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/form_controls.dart';
 import '../../shared/widgets/sheet_chrome.dart';
@@ -19,17 +17,21 @@ import '../../shared/widgets/sheet_chrome.dart';
 /// a matter of preference, and showing the consequence while the slider moves
 /// is what lets the user see that a 4-hour goal at 50 minutes is five blocks,
 /// not four and a bit.
-Future<CustomPlan?> showCustomPlanSheet(BuildContext context) {
+Future<CustomPlan?> showCustomPlanSheet(
+  BuildContext context, {
+  CustomPlan? initial,
+}) {
   return showModalBottomSheet<CustomPlan>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => const _CustomPlanSheet(),
+    builder: (_) => _CustomPlanSheet(initial: initial),
   );
 }
 
 class _CustomPlanSheet extends ConsumerStatefulWidget {
-  const _CustomPlanSheet();
+  const _CustomPlanSheet({this.initial});
+  final CustomPlan? initial;
 
   @override
   ConsumerState<_CustomPlanSheet> createState() => _CustomPlanSheetState();
@@ -38,10 +40,27 @@ class _CustomPlanSheet extends ConsumerStatefulWidget {
 class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
   /// Seeded from the plan already in use, so opening the sheet to adjust one
   /// number does not silently reset the other.
-  late int _goal = ref.read(customPlanProvider)?.goalMinutes ?? 4 * 60;
-  late int _focus = ref.read(customPlanProvider)?.focusMinutes ?? 50;
+  late int _goal = widget.initial?.goalMinutes ?? 4 * 60;
+  late int _focus = widget.initial?.focusMinutes ?? 50;
+  late final String _id =
+      widget.initial?.id ??
+      DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  late final _name = TextEditingController(
+    text: widget.initial?.name ?? 'Custom',
+  );
 
-  CustomPlan get _plan => CustomPlan(goalMinutes: _goal, focusMinutes: _focus);
+  CustomPlan get _plan => CustomPlan(
+    id: _id,
+    name: _name.text.trim(),
+    goalMinutes: _goal,
+    focusMinutes: _focus,
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +72,9 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
         Gap.lg,
         Gap.lg,
         Gap.lg,
-        kNavBarClearance + MediaQuery.paddingOf(context).bottom,
+        Gap.lg +
+            MediaQuery.paddingOf(context).bottom +
+            MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: SheetSurface(
         borderRadius: BorderRadius.circular(Radii.hero),
@@ -77,6 +98,17 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.lg),
+              TextField(
+                controller: _name,
+                maxLength: 40,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Plan name',
+                  hintText: 'e.g. Exam revision',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: Gap.md),
               _NumberSlider(
                 label: 'Study goal',
                 value: _goal,
@@ -101,6 +133,7 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
               const SizedBox(height: Gap.lg),
               PrimaryAction(
                 label: 'Use this plan',
+                enabled: _name.text.trim().isNotEmpty,
                 icon: Icons.check_rounded,
                 onTap: () => Navigator.of(context).pop(plan),
               ),

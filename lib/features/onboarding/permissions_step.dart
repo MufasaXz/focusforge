@@ -131,38 +131,6 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
           'Optional. Access is confirmed by your device, and you can revoke '
           'it in system settings.',
       children: [
-        ContentCard(
-          color: cs.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(Gap.lg),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.timer_outlined, color: cs.onPrimaryContainer),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your timer is ready',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(color: cs.onPrimaryContainer),
-                      ),
-                      const SizedBox(height: Gap.xs),
-                      Text(
-                        'Add the access you need below. You can start studying with none of it.',
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: cs.onPrimaryContainer),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
         if (permissions.isEmpty)
           const Text('No extra permissions are needed on this device.')
         else ...[

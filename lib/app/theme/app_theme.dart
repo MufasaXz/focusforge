@@ -6,7 +6,7 @@ import 'typography.dart';
 
 /// The app's Material 3 theme.
 ///
-/// Accent palettes share warm paper surfaces by day and charcoal at night.
+/// Accent palettes share neutral surfaces by day and charcoal at night.
 /// Solid content surfaces and restrained floating glass share scheme roles.
 class AppTheme {
   const AppTheme._();
@@ -161,16 +161,16 @@ class AppTheme {
   static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return cs.copyWith(
-      surface: Color(dark ? 0xFF17191C : 0xFFF5F0E7),
-      surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFCF7),
-      surfaceContainerLow: Color(dark ? 0xFF23262A : 0xFFFFFCF6),
-      surfaceContainer: Color(dark ? 0xFF2A2D31 : 0xFFEEE7DC),
-      surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE8DCC8),
-      surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDFD1BA),
-      onSurface: Color(dark ? 0xFFF4EEE3 : 0xFF302D26),
-      onSurfaceVariant: Color(dark ? 0xFFBDB6AA : 0xFF6C6557),
-      outline: Color(dark ? 0xFF77766F : 0xFF978D7B),
-      outlineVariant: Color(dark ? 0xFF454641 : 0xFFD6CAB7),
+      surface: Color(dark ? 0xFF17191C : 0xFFF6F7F9),
+      surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFFFF),
+      surfaceContainerLow: Color(dark ? 0xFF23262A : 0xFFFFFFFF),
+      surfaceContainer: Color(dark ? 0xFF2A2D31 : 0xFFEEF0F4),
+      surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE7EAF0),
+      surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDEE2E9),
+      onSurface: Color(dark ? 0xFFF2F4F7 : 0xFF252B35),
+      onSurfaceVariant: Color(dark ? 0xFFB8C0CC : 0xFF606977),
+      outline: Color(dark ? 0xFF798491 : 0xFF8993A1),
+      outlineVariant: Color(dark ? 0xFF424A55 : 0xFFD2D8E0),
     );
   }
 

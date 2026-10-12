@@ -9,18 +9,19 @@ const db = (uid, anonymous = false) => env.authenticatedContext(uid, {
 }).firestore();
 before(async () => {
   env = await initializeTestEnvironment({projectId:'demo-focusforge', firestore: {
-    rules: readFileSync('../../firestore.rules', 'utf8'), host:'127.0.0.1', port:8080,
+    rules: readFileSync('../../firestore.rules', 'utf8'), host:'127.0.0.1',
+    port: Number(process.env.FIRESTORE_EMULATOR_HOST?.split(':').at(-1) || 8080),
   }});
 });
 after(async () => { await env?.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
 const now = () => Date.now();
-async function seedCode(code = '123456', expiresAt = now() + 900000) {
+async function seedCode(code = 'ABCD2345EFGH6789', expiresAt = now() + 900000) {
   await assertSucceeds(setDoc(doc(db('child'), 'pairCodes', code), {
     childUid:'child', childName:'Alex', createdAt:now(), expiresAt,
   }));
 }
-function pair(parent, code = '123456') {
+function pair(parent, code = 'ABCD2345EFGH6789') {
   const store = db(parent), batch = writeBatch(store), linkedAt = now();
   batch.set(doc(store,'users/child/guardian/link'), {
     parentUid:parent, parentName:'Sam', linkedAt, pairCode:code,
@@ -51,7 +52,7 @@ function join(uid, code = 'ABCD234567') {
 test('pairing requires a live code and an atomic two-sided link', async () => {
   await seedCode();
   await assertFails(setDoc(doc(db('attacker'),'users/child/guardian/link'), {
-    parentUid:'attacker',parentName:'Sam',linkedAt:now(),pairCode:'123456'}));
+    parentUid:'attacker',parentName:'Sam',linkedAt:now(),pairCode:'ABCD2345EFGH6789'}));
   await assertFails(setDoc(doc(db('attacker'),'users/attacker/children/child'), {name:'Alex',linkedAt:now()}));
   await assertSucceeds(pair('parent'));
   await assertFails(pair('attacker'));
@@ -60,14 +61,14 @@ test('pairing requires a live code and an atomic two-sided link', async () => {
   await assertFails(getDocs(collection(db('parent'), 'pairCodes')));
 });
 test('expired and self-pairing are rejected on the server', async () => {
-  await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(),'pairCodes/123456'), {
+  await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(),'pairCodes/ABCD2345EFGH6789'), {
     childUid:'child',childName:'Alex',createdAt:now()-1000000,expiresAt:now()-1000}));
   await assertFails(pair('parent'));
   await assertFails(pair('child'));
 });
 test('unlink cleans the parent list and remote rules atomically', async () => {
   await seedCode(); await assertSucceeds(pair('parent'));
-  await assertSucceeds(setDoc(doc(db('parent'),'users/child/remoteRules/current'), {watchingOnly:false}));
+  await assertSucceeds(setDoc(doc(db('parent'),'users/child/remoteRules/current'), {apps:[],youtube:{shorts:false,feed:false,focusOnly:false},enforced:true,updatedAt:now()}));
   await assertFails(deleteDoc(doc(db('child'),'users/child/guardian/link')));
   const store = db('child'), batch = writeBatch(store);
   batch.delete(doc(store,'users/child/guardian/link'));
@@ -130,6 +131,100 @@ test('linked parent can retire a device atomically; strangers cannot', async () 
   await seedCode(); await assertSucceeds(pair('parent'));
   await assertFails(deleteDoc(doc(db('stranger'),'users/child/guardian/link')));
   const store = db('parent'), batch = writeBatch(store);
+  batch.delete(doc(store,'users/child/guardian/link'));
+  batch.delete(doc(store,'users/parent/children/child'));
+  batch.delete(doc(store,'users/child/remoteRules/current'));
+  await assertSucceeds(batch.commit());
+});
+test('expired and claimed pairing records are private to owner and claimant', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(),'pairCodes/123456'), {
+      childUid:'child',childName:'Private',createdAt:now()-1000000,expiresAt:now()-1000});
+    await setDoc(doc(c.firestore(),'pairCodes/234567'), {
+      childUid:'child',childName:'Private',createdAt:now(),expiresAt:now()+900000,claimedBy:'parent'});
+    await setDoc(doc(c.firestore(),'pairCodes/ABCD2345EFGH6789'), {
+      childUid:'child',childName:'Private',createdAt:now()-1000000,expiresAt:now()-1000});
+    await setDoc(doc(c.firestore(),'pairCodes/JKLM2345NPQR6789'), {
+      childUid:'child',childName:'Private',createdAt:now(),expiresAt:now()+900000,claimedBy:'parent'});
+  });
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/123456')));
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/234567')));
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/ABCD2345EFGH6789')));
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/JKLM2345NPQR6789')));
+  await assertSucceeds(getDoc(doc(db('child'),'pairCodes/123456')));
+  await assertSucceeds(getDoc(doc(db('parent'),'pairCodes/234567')));
+});
+test('a live strong token permits its bearer lookup while legacy short tokens cannot be claimed', async () => {
+  await seedCode();
+  await assertSucceeds(getDoc(doc(db('parent'),'pairCodes/ABCD2345EFGH6789')));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'pairCodes/ABCD2345EFGH6789')));
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),'pairCodes/123456'), {
+    childUid:'child',childName:'Private',createdAt:now(),expiresAt:now()+900000}));
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/123456')));
+  await assertFails(pair('parent','123456'));
+});
+test('pairing mint requires high entropy token and allows missing-token uniqueness lookup', async () => {
+  await assertFails(setDoc(doc(db('child'),'pairCodes/123456'), {
+    childUid:'child',childName:'Alex',createdAt:now(),expiresAt:now()+900000}));
+  await assertSucceeds(getDoc(doc(db('child'),'pairCodes/ABCD2345EFGH6789')));
+  await assertFails(getDoc(doc(db('stranger'),'pairCodes/123456')));
+});
+test('guardian sees shared summaries but cannot read private root profile', async () => {
+  await seedCode(); await assertSucceeds(pair('parent'));
+  await assertSucceeds(setDoc(doc(db('child'),'users/child'), {privateProfile:'local identity'}));
+  await assertFails(getDoc(doc(db('parent'),'users/child')));
+  await assertSucceeds(getDoc(doc(db('child'),'users/child')));
+});
+function progress(overrides = {}) {
+  return {minutes:30,sessions:1,goalMinutes:180,streak:2,day:'2026-10-12',updatedAt:now(),
+    weekMinutes:90,weekSessions:3,weekDays:[0,0,0,30,0,30,30],...overrides};
+}
+test('parent summary schema rejects private fields, arbitrary records and invalid totals', async () => {
+  await assertSucceeds(setDoc(doc(db('child'),'users/child/progress/current'),progress()));
+  await assertFails(setDoc(doc(db('child'),'users/child/progress/current'),progress({email:'private@example.invalid'})));
+  await assertFails(setDoc(doc(db('child'),'users/child/progress/logs'),progress()));
+  await assertFails(setDoc(doc(db('child'),'users/child/progress/current'),progress({minutes:-1})));
+  await assertFails(setDoc(doc(db('child'),'users/child/progress/current'),progress({weekDays:[0,0,0,0,0,0,999999]})));
+});
+test('parent catalog and remote rules reject undocumented top-level data', async () => {
+  await seedCode(); await assertSucceeds(pair('parent'));
+  await assertSucceeds(setDoc(doc(db('child'),'users/child/catalog/current'),{apps:[{packageId:'com.example.app',name:'Example'}],updatedAt:now()}));
+  await assertFails(setDoc(doc(db('child'),'users/child/catalog/current'),{apps:[],updatedAt:now(),usageHistory:[]}));
+  const rules={apps:[],youtube:{shorts:false,feed:false,focusOnly:false},enforced:true,updatedAt:now()};
+  await assertSucceeds(setDoc(doc(db('parent'),'users/child/remoteRules/current'),rules));
+  await assertFails(setDoc(doc(db('parent'),'users/child/remoteRules/current'),{...rules,email:'private@example.invalid'}));
+  await assertFails(setDoc(doc(db('parent'),'users/child/remoteRules/other'),rules));
+  await assertFails(setDoc(doc(db('parent'),'users/child/remoteRules/current'),{...rules,youtube:{shorts:false,feed:false,focusOnly:false,extra:'private'}}));
+});
+test('leaderboard accepts bounded weekly summary and rejects invalid timestamp or totals', async () => {
+  const ref=doc(db('student'),'leaderboard/2026-10-12/entries/student');
+  await assertSucceeds(setDoc(ref,{name:'Alex',minutes:10080,updatedAt:now()}));
+  await assertFails(setDoc(ref,{name:'Alex',minutes:10081,updatedAt:now()}));
+  await assertFails(setDoc(ref,{name:'Alex',minutes:30,updatedAt:'private'}));
+  await assertFails(setDoc(doc(db('student'),'leaderboard/invalid-week/entries/student'),{name:'Alex',minutes:30,updatedAt:now()}));
+});
+test('legacy cloud records remain removable during account cleanup', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    const store=c.firestore();
+    await setDoc(doc(store,'users/child/progress/legacy'),{old:'schema'});
+    await setDoc(doc(store,'users/child/catalog/legacy'),{old:'schema'});
+    await setDoc(doc(store,'leaderboard/legacy/entries/child'),{old:'schema'});
+  });
+  await assertSucceeds(deleteDoc(doc(db('child'),'users/child/progress/legacy')));
+  await assertSucceeds(deleteDoc(doc(db('child'),'users/child/catalog/legacy')));
+  await assertSucceeds(deleteDoc(doc(db('child'),'leaderboard/legacy/entries/child')));
+});
+test('legacy six-digit guardian links remain readable and can be unlinked atomically', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    const store=c.firestore();
+    await setDoc(doc(store,'users/child/guardian/link'),{parentUid:'parent',parentName:'Parent',linkedAt:now(),pairCode:'123456'});
+    await setDoc(doc(store,'users/parent/children/child'),{name:'Child',linkedAt:now()});
+    await setDoc(doc(store,'users/child/remoteRules/current'),{old:'schema'});
+    await setDoc(doc(store,'users/child/progress/legacy-log'),{privateEmail:'private@example.invalid'});
+  });
+  await assertSucceeds(getDoc(doc(db('parent'),'users/child/guardian/link')));
+  await assertFails(getDoc(doc(db('parent'),'users/child/progress/legacy-log')));
+  const store=db('child'), batch=writeBatch(store);
   batch.delete(doc(store,'users/child/guardian/link'));
   batch.delete(doc(store,'users/parent/children/child'));
   batch.delete(doc(store,'users/child/remoteRules/current'));

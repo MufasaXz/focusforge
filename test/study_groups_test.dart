@@ -73,6 +73,21 @@ class FakeGroups implements StudyGroupService {
   }
 }
 
+class PrivateGroups extends FakeGroups {
+  final lists = <String, StreamController<List<StudyGroup>>>{};
+  final members = StreamController<List<GroupMember>>.broadcast();
+  int reads = 0;
+  @override
+  Stream<List<StudyGroup>> watchGroups(String uid) => lists
+      .putIfAbsent(uid, () => StreamController<List<StudyGroup>>.broadcast())
+      .stream;
+  @override
+  Stream<List<GroupMember>> watchMembers(String groupId) {
+    reads++;
+    return members.stream;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late LocalStore store;
@@ -140,6 +155,53 @@ void main() {
     expect(c.read(groupWeekProvider), '2026-10-05');
     expect(c.read(groupWeekMinutesProvider), 50);
   });
+  test(
+    'account switch clears private group members before membership arrives',
+    () async {
+      final service = PrivateGroups();
+      final c = container(service);
+      c.listen(groupsProvider, (_, _) {});
+      c.listen(groupMembersProvider('circle'), (_, _) {});
+      await c.pump();
+      expect(service.reads, 0);
+      service.lists['me']!.add([service.group]);
+      await c.pump();
+      expect(c.read(groupsProvider), hasLength(1));
+      c.read(groupMembersProvider('circle'));
+      expect(service.reads, 1);
+      service.members.add([
+        GroupMember(
+          uid: 'friend',
+          name: 'Private name',
+          week: '2026-10-05',
+          minutes: 73,
+        ),
+      ]);
+      await c.pump();
+      expect(c.read(groupMembersProvider('circle')).valueOrNull, hasLength(1));
+      c
+          .read(userProvider.notifier)
+          .hydrate(const UserProfile(uid: 'other', isAnonymous: false));
+      expect(c.read(groupsProvider), isEmpty);
+      expect(c.read(groupMembersProvider('circle')).valueOrNull ?? [], isEmpty);
+      await c.pump();
+      service.members.add([
+        GroupMember(
+          uid: 'friend',
+          name: 'Private name',
+          week: '2026-10-05',
+          minutes: 99,
+        ),
+      ]);
+      await c.pump();
+      expect(c.read(groupMembersProvider('circle')).valueOrNull ?? [], isEmpty);
+      c.dispose();
+      await Future.wait([
+        service.members.close(),
+        for (final list in service.lists.values) list.close(),
+      ]);
+    },
+  );
   test('publishing queues a newer total behind an in-flight write and avoids duplicate writes', () async {
     final service = FakeGroups()..pending = Completer<void>();
     final c = container(service);

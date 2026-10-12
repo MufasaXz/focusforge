@@ -112,6 +112,26 @@ class FocusLiveActivity : BroadcastReceiver() {
             @Suppress("DEPRECATION")
             val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL)
                 else Notification.Builder(context).setPriority(Notification.PRIORITY_LOW)
+            // The selected subject may be personal. A lock screen configured
+            // to hide sensitive notifications receives only this countdown;
+            // the full subject stays available after unlocking.
+            @Suppress("DEPRECATION")
+            val publicBuilder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL)
+                else Notification.Builder(context).setPriority(Notification.PRIORITY_LOW)
+            val publicVersion = publicBuilder
+                .setSmallIcon(R.drawable.ic_focus_live)
+                .setContentTitle("FocusForge timer")
+                .setContentText("Unlock to see your timer details")
+                .setCategory(Notification.CATEGORY_STOPWATCH)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setLocalOnly(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setWhen(target)
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .setChronometerCountDown(true)
+                .build()
             builder
                 .setSmallIcon(R.drawable.ic_focus_live)
                 .setContentTitle(if (phase == "Focus") "Focusing · $subject" else "$phase · Recharge")
@@ -122,7 +142,8 @@ class FocusLiveActivity : BroadcastReceiver() {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setLocalOnly(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setPublicVersion(publicVersion)
                 .setColor(Color.rgb(118, 103, 71))
                 .setWhen(target)
                 .setShowWhen(true)

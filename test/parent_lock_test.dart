@@ -61,7 +61,7 @@ class PairedParentService implements ParentService {
 
   @override
   Future<PairCode> mintPairCode({required String childName}) async => PairCode(
-    code: '123456',
+    code: 'ABCD2345EFGH6789',
     expiresAt: DateTime.now().add(PairCode.lifetime),
   );
 

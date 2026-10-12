@@ -8,7 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
-import '../../core/data/seed.dart';
+import '../../core/models/study.dart';
+import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -531,7 +532,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   ),
                   const SizedBox(width: Gap.sm),
                   Expanded(
-                    child: ContentCard(
+                    child: GlassCard(
                       color: t.surfaceContainerHigh,
                       shape: const StadiumBorder(),
                       clipBehavior: Clip.antiAlias,
@@ -758,102 +759,173 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   }
 
   void _showPresetSheet(BuildContext context) {
-    final presets = ref.read(presetsProvider);
-    final current = ref.read(timerProvider).presetIndex;
-
     showModalBottomSheet<void>(
       context: context,
-      // Root navigator: the sheet has to float over the nav bar, not under it.
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          Gap.lg,
-          Gap.lg,
-          Gap.lg,
-          Gap.lg + MediaQuery.paddingOf(sheetContext).bottom,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.85 - Gap.xxl,
-          ),
-          child: SheetSurface(
-            borderRadius: BorderRadius.circular(Radii.hero),
-            padding: const EdgeInsets.all(Gap.lg),
-            child: Material(
-              type: MaterialType.transparency,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SheetHandle(),
-                    const SizedBox(height: Gap.lg),
-                    Text(
-                      'Pomodoro presets',
-                      style: Theme.of(sheetContext).textTheme.titleMedium,
+      builder: (sheetContext) => Consumer(
+        builder: (context, sheetRef, _) {
+          final presets = sheetRef.watch(presetsProvider);
+          final current = sheetRef.watch(timerProvider).presetIndex;
+          final library = sheetRef.watch(planLibraryProvider);
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              Gap.lg,
+              Gap.lg,
+              Gap.lg,
+              Gap.lg + MediaQuery.paddingOf(context).bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .85,
+              ),
+              child: SheetSurface(
+                borderRadius: BorderRadius.circular(Radii.hero),
+                padding: const EdgeInsets.all(Gap.lg),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SheetHandle(),
+                        const SizedBox(height: Gap.lg),
+                        Text(
+                          'Pomodoro presets',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: Gap.sm),
+                        for (var i = 0; i < presets.length; i++) ...[
+                          _PresetRow(
+                            preset: presets[i],
+                            selected: i == current,
+                            onTap: () {
+                              final key = presets[i].key;
+                              Navigator.of(sheetContext).pop();
+                              if (i == ref.read(timerProvider).presetIndex) {
+                                return;
+                              }
+                              _changeTimer(
+                                title: 'Change the focus plan?',
+                                confirmLabel: 'Change plan',
+                                apply: () {
+                                  final index = ref
+                                      .read(presetsProvider)
+                                      .indexWhere((p) => p.key == key);
+                                  if (index >= 0) {
+                                    ref
+                                        .read(timerProvider.notifier)
+                                        .setPreset(index);
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            children: [
+                              if (library.plans.any(
+                                (p) => p.toPreset().key == presets[i].key,
+                              ))
+                                TextButton.icon(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text('Edit ${presets[i].name}'),
+                                  onPressed: () => _editPlan(
+                                    sheetContext,
+                                    library.plans.firstWhere(
+                                      (p) => p.toPreset().key == presets[i].key,
+                                    ),
+                                  ),
+                                ),
+                              TextButton.icon(
+                                icon: const Icon(
+                                  Icons.remove_circle_outline_rounded,
+                                  size: 18,
+                                ),
+                                label: Text('Remove ${presets[i].name}'),
+                                onPressed: presets.length <= 1
+                                    ? null
+                                    : () {
+                                        final key = presets[i].key;
+                                        if (i == current) {
+                                          Navigator.of(sheetContext).pop();
+                                          _changeTimer(
+                                            title: 'Remove the current plan?',
+                                            confirmLabel: 'Remove plan',
+                                            apply: () => unawaited(
+                                              ref
+                                                  .read(
+                                                    planLibraryProvider
+                                                        .notifier,
+                                                  )
+                                                  .remove(key),
+                                            ),
+                                          );
+                                        } else {
+                                          unawaited(
+                                            ref
+                                                .read(
+                                                  planLibraryProvider.notifier,
+                                                )
+                                                .remove(key),
+                                          );
+                                        }
+                                      },
+                              ),
+                            ],
+                          ),
+                        ],
+                        ListTile(
+                          leading: const Icon(Icons.add_rounded),
+                          title: const Text('Custom plan'),
+                          subtitle: const Text(
+                            'Set your own goal and block length',
+                          ),
+                          onTap: () => _editPlan(sheetContext, null),
+                        ),
+                        if (library.hidden.isNotEmpty)
+                          TextButton(
+                            onPressed: () => ref
+                                .read(planLibraryProvider.notifier)
+                                .restoreStock(),
+                            child: const Text('Restore default plans'),
+                          ),
+                        const SizedBox(height: Gap.sm),
+                        Text(
+                          'Keep at least one plan. Removing or changing the current plan resets its unfinished block.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: Gap.sm),
-                    // The shipped presets, then the user's own plan as one row
-                    // that both selects and edits it. The custom preset is
-                    // deliberately not listed as an ordinary row as well: the
-                    // same plan under two rows would leave the user guessing
-                    // which one is the one they set.
-                    for (var i = 0; i < SeedData.presets.length; i++)
-                      _PresetRow(
-                        preset: presets[i],
-                        selected: i == current,
-                        onTap: () {
-                          Navigator.of(sheetContext).pop();
-                          if (i == ref.read(timerProvider).presetIndex) return;
-                          _changeTimer(
-                            title: 'Change the focus plan?',
-                            confirmLabel: 'Change plan',
-                            apply: () =>
-                                ref.read(timerProvider.notifier).setPreset(i),
-                          );
-                        },
-                      ),
-                    _CustomPlanRow(
-                      plan: ref.read(customPlanProvider),
-                      selected: current >= SeedData.presets.length,
-                      onTap: () async {
-                        final plan = await showCustomPlanSheet(sheetContext);
-                        if (plan == null || !mounted) return;
-                        if (sheetContext.mounted) {
-                          Navigator.of(sheetContext).pop();
-                        }
-                        final previous = ref.read(customPlanProvider);
-                        if (ref.read(timerProvider).presetIndex >=
-                                SeedData.presets.length &&
-                            previous?.goalMinutes == plan.goalMinutes &&
-                            previous?.focusMinutes == plan.focusMinutes) {
-                          return;
-                        }
-                        _changeTimer(
-                          title: 'Change the focus plan?',
-                          confirmLabel: 'Change plan',
-                          apply: () {
-                            unawaited(
-                              ref.read(customPlanProvider.notifier).set(plan),
-                            );
-                            ref
-                                .read(timerProvider.notifier)
-                                .setPreset(
-                                  ref.read(presetsProvider).length - 1,
-                                );
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Future<void> _editPlan(BuildContext sheetContext, CustomPlan? initial) async {
+    final plan = await showCustomPlanSheet(sheetContext, initial: initial);
+    if (plan == null || !mounted) return;
+    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+    await _changeTimer(
+      title: 'Change the focus plan?',
+      confirmLabel: 'Use plan',
+      apply: () {
+        unawaited(ref.read(planLibraryProvider.notifier).save(plan));
+        final index = ref
+            .read(presetsProvider)
+            .indexWhere((p) => p.key == plan.toPreset().key);
+        if (index >= 0) ref.read(timerProvider.notifier).setPreset(index);
+      },
     );
   }
 }
@@ -1076,55 +1148,6 @@ class _SegmentDot extends StatelessWidget {
   }
 }
 
-/// The user's own plan, as a row in the preset sheet.
-///
-/// It reads as a preset and behaves as an editor: the numbers it was built
-/// from are not on the row, so there is nothing here to change except by
-/// opening the sheet behind it.
-class _CustomPlanRow extends StatelessWidget {
-  const _CustomPlanRow({
-    required this.plan,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final CustomPlan? plan;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final summary = plan == null
-        ? 'Set your own goal and block length'
-        : '${formatMinutes(plan!.goalMinutes)} goal · ${plan!.blocks} × '
-              '${plan!.focusMinutes}m · ${plan!.shortBreak}m break';
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: 'Custom plan. $summary. Opens the editor',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: ListTile(
-        onTap: onTap,
-        selected: selected,
-        leading: IconBadge(
-          icon: Icons.tune_rounded,
-          color: t.primary,
-          size: 38,
-          radius: 11,
-        ),
-        title: const Text('Custom plan'),
-        subtitle: Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: selected
-            ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
-            : Icon(Icons.edit_outlined, size: 18, color: t.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
 class _PresetRow extends StatelessWidget {
   const _PresetRow({
     required this.preset,
@@ -1307,7 +1330,7 @@ class _DockNudge extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onTap : null,
         scale: 0.92,
-        child: ContentCard(
+        child: GlassCard(
           color: t.surfaceContainerHigh,
           shape: const StadiumBorder(),
           child: SizedBox(

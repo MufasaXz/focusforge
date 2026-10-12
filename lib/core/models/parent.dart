@@ -6,11 +6,11 @@ import 'package:flutter/foundation.dart';
 
 import 'shield.dart';
 
-/// The six digits a child's app shows and a parent types in.
+/// A one-time pairing token a child's app shows and a parent types in.
 ///
-/// Short on purpose: it is read off one screen and typed into another, by
-/// someone standing next to the child. The expiry is what keeps that trade
-/// honest — a code that leaks is only worth anything for a quarter of an hour.
+/// Sixteen unambiguous symbols provide 80 bits of secure randomness. This is
+/// a bearer token: share it only with the intended parent. It expires after
+/// fifteen minutes and the server permits only one atomic claim.
 @immutable
 class PairCode {
   const PairCode({required this.code, required this.expiresAt});
@@ -23,9 +23,20 @@ class PairCode {
   /// How long a freshly minted code is good for.
   static const lifetime = Duration(minutes: 15);
 
-  /// Exactly six digits, nothing else. Checked before a lookup so a typo is a
-  /// message rather than a round trip.
-  static bool looksValid(String value) => RegExp(r'^\d{6}$').hasMatch(value);
+  static const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  /// Accept spaces/hyphens for readable groups, while using one canonical
+  /// uppercase document ID for lookups and server validation.
+  static String normalize(String value) =>
+      value.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+
+  static bool looksValid(String value) =>
+      RegExp(r'^[A-HJ-NP-Z2-9]{16}$').hasMatch(normalize(value));
+
+  String get displayCode => [
+    for (var i = 0; i < code.length; i += 4)
+      code.substring(i, min(i + 4, code.length)),
+  ].join(' ');
 }
 
 /// The four digits a parent sets, and the digest their child's device checks

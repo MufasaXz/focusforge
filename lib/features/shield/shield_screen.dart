@@ -24,7 +24,6 @@ import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/accessibility_disclosure.dart';
 import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
@@ -35,6 +34,7 @@ import '../parent/parent_lock.dart';
 import '../parent/widgets/child_switcher.dart';
 import '../settings/settings_support.dart';
 import 'breath_gate.dart';
+import 'shield_access.dart';
 import 'shield_overview.dart';
 
 /// Tab 2 — the shielding engine.
@@ -823,8 +823,8 @@ class _AppsViewState extends ConsumerState<_AppsView> {
           ),
           sliver: SliverToBoxAdapter(
             child: Text(
-              'A rule applies the moment you switch it on — there is nothing '
-              'to enable afterwards.',
+              'Rules apply after Android access is allowed. You can change '
+              'or remove a rule at any time.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: cs.onSurfaceVariant),
@@ -886,7 +886,7 @@ class _NoChildrenYet extends StatelessWidget {
               const SizedBox(height: Gap.sm),
               Text(
                 'This tab closes apps on your child\'s phone. Open Profile → '
-                'Parent control and add a child with the six digits their '
+                'Parent control and add a child with the pairing code their '
                 'phone shows; their app list arrives here.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: cs.onSurfaceVariant),
@@ -1331,7 +1331,7 @@ class _ChildYoutubeView extends ConsumerWidget {
       children: [
         Stagger(
           index: 0,
-          child: ContentCard(
+          child: GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
@@ -1372,7 +1372,7 @@ class _ChildYoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 2,
-          child: ContentCard(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
@@ -1441,7 +1441,7 @@ class _ChildYoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 4,
-          child: ContentCard(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: ListTile(
               leading: Icon(
@@ -1633,15 +1633,7 @@ class _PermissionGate extends ConsumerWidget {
               const SizedBox(height: Gap.md),
               FilledButton(
                 onPressed: () async {
-                  if (permission == AppPermission.accessibility &&
-                      !await confirmShieldAccess(context)) {
-                    return;
-                  }
-                  await const PermissionManager().request(permission);
-                  // The answer arrives on resume, not here — the grant happens
-                  // in a settings page this app is not running behind.
-                  ref.invalidate(shieldEnabledProvider);
-                  ref.invalidate(usageAccessProvider);
+                  await requestShieldPermission(context, ref, permission);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: cs.onErrorContainer,
@@ -1866,8 +1858,8 @@ class _AppRuleRow extends ConsumerWidget {
                 // change itself may still be behind a parent's code.
                 onChanged: (on) => _setRestricted(context, ref, on),
                 semanticLabel: row.isRestricted
-                    ? 'Close ${row.name}'
-                    : 'Stop closing ${row.name}',
+                    ? 'Stop closing ${row.name}'
+                    : 'Close ${row.name}',
               ),
             ],
           ),
@@ -1882,6 +1874,8 @@ class _AppRuleRow extends ConsumerWidget {
     bool restricted,
   ) async {
     HapticFeedback.selectionClick();
+    if (restricted && !await ensureShieldAccess(context, ref)) return;
+    if (!context.mounted) return;
     await runWithParentUnlock(context, ref, () async {
       final notifier = ref.read(whitelistProvider.notifier);
 
@@ -2121,6 +2115,15 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
       .firstOrNull;
 
   Future<void> _apply() async {
+    if (_tier.isEnforced &&
+        !await ensureShieldAccess(
+          context,
+          ref,
+          requiresUsageAccess: _tier == WhitelistTier.budgeted,
+        )) {
+      return;
+    }
+    if (!mounted) return;
     if (!await confirmParentUnlock(context, ref)) return;
     if (!mounted) return;
     final notifier = ref.read(whitelistProvider.notifier);
@@ -2509,7 +2512,7 @@ class _YoutubeView extends ConsumerWidget {
       children: [
         Stagger(
           index: 0,
-          child: ContentCard(
+          child: GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
@@ -2553,7 +2556,7 @@ class _YoutubeView extends ConsumerWidget {
         ),
         Stagger(
           index: 2,
-          child: ContentCard(
+          child: GlassCard(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
@@ -2564,13 +2567,11 @@ class _YoutubeView extends ConsumerWidget {
                       'The Shorts player closes. Ordinary videos keep playing, '
                       'so a lecture link still works.',
                   value: rules.shorts,
-                  onChanged: (v) => unawaited(
-                    runWithParentUnlock(
-                      context,
-                      ref,
-                      () =>
-                          ref.read(youtubeRulesProvider.notifier).setShorts(v),
-                    ),
+                  onChanged: (v) => _changeSurface(
+                    context,
+                    ref,
+                    v,
+                    () => ref.read(youtubeRulesProvider.notifier).setShorts(v),
                   ),
                 ),
                 Divider(color: cs.outlineVariant, height: 1),
@@ -2581,12 +2582,11 @@ class _YoutubeView extends ConsumerWidget {
                       'Removes the recommendation feed and search results. A '
                       'video has to be opened from a direct link.',
                   value: rules.feed,
-                  onChanged: (v) => unawaited(
-                    runWithParentUnlock(
-                      context,
-                      ref,
-                      () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
-                    ),
+                  onChanged: (v) => _changeSurface(
+                    context,
+                    ref,
+                    v,
+                    () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
                   ),
                 ),
                 // Only meaningful once something is being closed, and a
@@ -2661,7 +2661,7 @@ class _YoutubeView extends ConsumerWidget {
           ),
           Stagger(
             index: 5,
-            child: ContentCard(
+            child: GlassCard(
               clipBehavior: Clip.antiAlias,
               child: ListTile(
                 leading: Icon(
@@ -2680,7 +2680,12 @@ class _YoutubeView extends ConsumerWidget {
                       ? 'Removes it from the blocked list'
                       : 'Closes the app entirely, Shorts and lectures alike',
                 ),
-                onTap: () {
+                onTap: () async {
+                  if (!fullyBlocked &&
+                      !await ensureShieldAccess(context, ref)) {
+                    return;
+                  }
+                  if (!context.mounted) return;
                   HapticFeedback.selectionClick();
                   unawaited(
                     runWithParentUnlock(context, ref, () async {
@@ -2706,6 +2711,17 @@ class _YoutubeView extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _changeSurface(
+  BuildContext context,
+  WidgetRef ref,
+  bool enabling,
+  Future<void> Function() apply,
+) async {
+  if (enabling && !await ensureShieldAccess(context, ref)) return;
+  if (!context.mounted) return;
+  await runWithParentUnlock(context, ref, apply);
 }
 
 class _SurfaceSwitch extends StatelessWidget {

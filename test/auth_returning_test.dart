@@ -74,6 +74,35 @@ void main() {
     },
   );
 
+  test(
+    'Google relogin after signout and restart recognises completed local setup',
+    () async {
+      const profile = UserProfile(
+        uid: 'known-user',
+        displayName: 'Sam Rivera',
+        onboardingComplete: true,
+        isAnonymous: false,
+        dailyGoalMinutes: 45,
+      );
+      await auth.updateProfile(profile);
+      await auth.signOut();
+      // The UI closes account gates after sign-out while retaining this setup.
+      await store.setMap(
+        StoreKeys.user,
+        profile.copyWith(isAnonymous: true).toJson(),
+      );
+      final restarted = LocalAuthService(store);
+      addTearDown(restarted.dispose);
+      await restarted.restore();
+      final signedIn = await restarted.linkAccount(provider: 'google');
+      expect(restarted.isReturningUser, isTrue);
+      expect(restarted.welcomeMessage(signedIn), 'Welcome back, Sam.');
+      expect(signedIn.uid, profile.uid);
+      expect(signedIn.onboardingComplete, isTrue);
+      expect(signedIn.dailyGoalMinutes, 45);
+    },
+  );
+
   test('deletion clears the account, history and return recognition', () async {
     await auth.updateProfile(
       const UserProfile(

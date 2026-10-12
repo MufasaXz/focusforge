@@ -110,7 +110,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
           // holding the user's own choices, so the payoff reads as a single
           // object rather than as loose tiles floating on the page.
           child: TonalPanel(
-            accent: true,
+            accent: false,
             padding: const EdgeInsets.all(Gap.lg),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -231,9 +231,12 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // Glass over the hero panel's tonal fill: the tiles float above the
-    // summary instead of drawing another border inside it.
+    // Quiet accents distinguish choices against the neutral setup summary.
     return ContentCard(
+      color: Color.alphaBlend(
+        color.withValues(alpha: .035),
+        cs.surfaceContainerLow,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.item),
       ),
@@ -248,8 +251,6 @@ class _StatTile extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(letterSpacing: -0.4),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 1),
             Text(

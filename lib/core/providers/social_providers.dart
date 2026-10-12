@@ -308,11 +308,14 @@ double _subjectTargetFraction(
 /// There is no seeded group. A group nobody joined, with members nobody
 /// invited, is not a feature — it is a screenshot.
 final studyGroupServiceProvider = Provider<StudyGroupService>(
-  (ref) => FirebaseLeaderboardService.isSupported
+  (ref) =>
+      ref.watch(authServiceProvider).usesRemoteCredentials &&
+          FirebaseLeaderboardService.isSupported
       ? FirebaseStudyGroupService()
       : const UnavailableStudyGroupService(),
 );
 final cloudGroupsProvider = StreamProvider<List<StudyGroup>>((ref) {
+  if (ref.state.hasValue) ref.state = const AsyncData([]);
   final service = ref.watch(studyGroupServiceProvider);
   final uid = ref.watch(accountUidProvider);
   if (!service.available || uid == null || !ref.watch(canUseGroupsProvider)) {
@@ -320,13 +323,24 @@ final cloudGroupsProvider = StreamProvider<List<StudyGroup>>((ref) {
   }
   return service.watchGroups(uid);
 });
-final groupsProvider = Provider<List<StudyGroup>>(
-  (ref) => ref.watch(cloudGroupsProvider).valueOrNull ?? [],
-);
+final groupsProvider = Provider<List<StudyGroup>>((ref) {
+  final groups = ref.watch(cloudGroupsProvider);
+  if (groups.isLoading || groups.hasError) return [];
+  return groups.asData?.value ?? [];
+});
 final groupMembersProvider = StreamProvider.autoDispose
-    .family<List<GroupMember>, String>(
-      (ref, id) => ref.watch(studyGroupServiceProvider).watchMembers(id),
-    );
+    .family<List<GroupMember>, String>((ref, id) {
+      ref.state = const AsyncData([]);
+      final uid = ref.watch(accountUidProvider);
+      final allowed = ref.watch(canUseGroupsProvider);
+      final groups = ref.watch(groupsProvider);
+      if (uid == null ||
+          !allowed ||
+          !groups.any((g) => g.id == id && g.memberIds.contains(uid))) {
+        return Stream.value(const <GroupMember>[]);
+      }
+      return ref.watch(studyGroupServiceProvider).watchMembers(id);
+    });
 final canUseGroupsProvider = Provider<bool>(
   (ref) => !ref.watch(userProvider).isAnonymous,
 );
@@ -494,7 +508,9 @@ final myRankProvider = Provider<LeaderboardEntry?>(
 
 /// The backend the board is read from and written to.
 final leaderboardServiceProvider = Provider<LeaderboardService>((ref) {
-  final service = FirebaseLeaderboardService.isSupported
+  final service =
+      ref.watch(authServiceProvider).usesRemoteCredentials &&
+          FirebaseLeaderboardService.isSupported
       ? FirebaseLeaderboardService()
       : const UnavailableLeaderboardService();
   ref.onDispose(service.dispose);
@@ -531,8 +547,12 @@ final currentWeekKeyProvider = Provider<String>(
 
 /// This week's rows, best first.
 final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
+  ref.state = const AsyncData([]);
+  final uid = ref.watch(accountUidProvider);
   final service = ref.watch(leaderboardServiceProvider);
-  if (!service.available) return Stream.value(const <BoardRow>[]);
+  if (!service.available || uid == null) {
+    return Stream.value(const <BoardRow>[]);
+  }
   return service.watch(ref.watch(currentWeekKeyProvider));
 });
 

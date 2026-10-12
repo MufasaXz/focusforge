@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'social_providers.dart';
+
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/local_store.dart';
@@ -35,10 +37,22 @@ class UserNotifier extends Notifier<UserProfile> {
 
   /// Called during bootstrap with whatever the auth service restored.
   void hydrate(UserProfile? stored) {
-    if (stored != null) state = stored;
+    if (stored != null) {
+      _resetConsentFor(stored);
+      state = stored;
+    }
+  }
+
+  void _resetConsentFor(UserProfile profile) {
+    if (state.uid.isNotEmpty && state.uid != profile.uid) {
+      ref.read(boardOptInProvider.notifier).hydrate(false);
+    }
   }
 
   Future<void> save(UserProfile profile) async {
+    final identityChanged = state.uid.isNotEmpty && state.uid != profile.uid;
+    _resetConsentFor(profile);
+    if (identityChanged) await _store.setBool(StoreKeys.boardOptIn, false);
     state = profile;
     await _store.setMap(StoreKeys.user, profile.toJson());
   }

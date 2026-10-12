@@ -168,7 +168,10 @@ class FirebaseParentService implements ParentService {
   Future<PairCode> mintPairCode({required String childName}) async {
     final me = _requireUid();
     for (var attempt = 0; attempt < 5; attempt++) {
-      final code = List.generate(6, (_) => _random.nextInt(10)).join();
+      final code = List.generate(
+        16,
+        (_) => PairCode.alphabet[_random.nextInt(PairCode.alphabet.length)],
+      ).join();
       final expires = DateTime.now().add(PairCode.lifetime);
       final created = await _guard(
         () => _db.runTransaction((tx) async {
@@ -195,7 +198,7 @@ class FirebaseParentService implements ParentService {
   @override
   Future<ChildLink> linkChild(String code, {required String parentName}) async {
     final me = _requireUid();
-    final clean = code.trim();
+    final clean = PairCode.normalize(code);
     if (!PairCode.looksValid(clean)) {
       throw const PairException(PairFailure.badCode);
     }

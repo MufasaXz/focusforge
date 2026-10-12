@@ -635,6 +635,9 @@ class FocusAccessibilityService : AccessibilityService() {
     ): String? {
         if (root == null) return null
         if (!youtubeArmed(current)) return null
+        // Window events and the active window can change between capture and
+        // inspection. Never walk another app's content after a YouTube event.
+        if (root.packageName?.toString() != YOUTUBE) return null
 
         val youtube = current.youtube
         var shorts = false

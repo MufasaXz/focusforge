@@ -16,7 +16,9 @@ import 'study_providers.dart';
 /// connection at launch. Screens ask [ParentService.available] before offering
 /// a control, so the refusal is never something the user walks into.
 final parentServiceProvider = Provider<ParentService>((ref) {
-  final service = FirebaseParentService.isSupported
+  final service =
+      ref.watch(authServiceProvider).usesRemoteCredentials &&
+          FirebaseParentService.isSupported
       ? FirebaseParentService()
       : const UnavailableParentService();
   ref.onDispose(service.dispose);
@@ -39,6 +41,7 @@ final accountUidProvider = Provider<String?>((ref) {
 
 /// The parent this device is linked to, if any.
 final guardianProvider = StreamProvider<GuardianLink?>((ref) {
+  if (ref.state.hasValue) ref.state = const AsyncData(null);
   final service = ref.watch(parentServiceProvider);
   final uid = ref.watch(accountUidProvider);
   if (!service.available || uid == null) return Stream.value(null);
@@ -72,6 +75,7 @@ final parentCodeProvider = Provider<ParentCode?>(
 
 /// The children on this parent's list.
 final childrenProvider = StreamProvider<List<ChildLink>>((ref) {
+  if (ref.state.hasValue) ref.state = const AsyncData([]);
   final service = ref.watch(parentServiceProvider);
   final uid = ref.watch(accountUidProvider);
   if (!service.available || uid == null) {
@@ -105,48 +109,63 @@ final activeChildProvider = Provider<ChildLink?>((ref) {
   return children.where((c) => c.uid == selected).firstOrNull ?? children.first;
 });
 
+/// A private child record is readable only after this account's current list
+/// confirms the link. Loading/error states can carry previous AsyncData, which
+/// must not authorise reads after sign-out, account changes or an unlink.
+bool _canReadChild(Ref ref, String childUid) {
+  if (ref.watch(accountUidProvider) == null) return false;
+  final children = ref.watch(childrenProvider);
+  if (children.isLoading || children.hasError) return false;
+  return children.asData?.value.any((child) => child.uid == childUid) == true;
+}
+
 /// The selected child's summary.
-final childProgressProvider = StreamProvider.family<ChildProgress?, String>((
-  ref,
-  childUid,
-) {
-  final service = ref.watch(parentServiceProvider);
-  if (!service.available) return Stream.value(null);
-  return service.watchProgress(childUid);
-});
+final childProgressProvider = StreamProvider.autoDispose
+    .family<ChildProgress?, String>((ref, childUid) {
+      // Discard a previous account's AsyncData before waiting for a new stream.
+      ref.state = const AsyncData(null);
+      final service = ref.watch(parentServiceProvider);
+      if (!service.available || !_canReadChild(ref, childUid)) {
+        return Stream.value(null);
+      }
+      return service.watchProgress(childUid);
+    });
 
 /// The block list set for the selected child.
-final childBlocksProvider = StreamProvider.family<RemoteBlocks?, String>((
-  ref,
-  childUid,
-) {
-  final service = ref.watch(parentServiceProvider);
-  if (!service.available) return Stream.value(null);
-  return service.watchBlocks(childUid);
-});
+final childBlocksProvider = StreamProvider.autoDispose
+    .family<RemoteBlocks?, String>((ref, childUid) {
+      ref.state = const AsyncData(null);
+      final service = ref.watch(parentServiceProvider);
+      if (!service.available || !_canReadChild(ref, childUid)) {
+        return Stream.value(null);
+      }
+      return service.watchBlocks(childUid);
+    });
 
 /// The apps on the selected child's device, for the parent's picker.
-final childCatalogProvider = StreamProvider.family<List<CatalogApp>, String>((
-  ref,
-  childUid,
-) {
-  final service = ref.watch(parentServiceProvider);
-  if (!service.available) return Stream.value(const <CatalogApp>[]);
-  return service.watchCatalog(childUid);
-});
+final childCatalogProvider = StreamProvider.autoDispose
+    .family<List<CatalogApp>, String>((ref, childUid) {
+      ref.state = const AsyncData([]);
+      final service = ref.watch(parentServiceProvider);
+      if (!service.available || !_canReadChild(ref, childUid)) {
+        return Stream.value(const <CatalogApp>[]);
+      }
+      return service.watchCatalog(childUid);
+    });
 
 /// The link record of one child, as their parent sees it.
 ///
 /// The parent's copy of the record is where the code lives, so this is how a
 /// parent finds out whether one is set before they offer to change it.
-final childGuardianProvider = StreamProvider.family<GuardianLink?, String>((
-  ref,
-  childUid,
-) {
-  final service = ref.watch(parentServiceProvider);
-  if (!service.available) return Stream.value(null);
-  return service.watchGuardian(childUid);
-});
+final childGuardianProvider = StreamProvider.autoDispose
+    .family<GuardianLink?, String>((ref, childUid) {
+      ref.state = const AsyncData(null);
+      final service = ref.watch(parentServiceProvider);
+      if (!service.available || !_canReadChild(ref, childUid)) {
+        return Stream.value(null);
+      }
+      return service.watchGuardian(childUid);
+    });
 
 /// Whether the parent's security code has been entered on this run.
 ///

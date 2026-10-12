@@ -711,6 +711,7 @@ class TimerNotifier extends Notifier<TimerState> {
   Future<void> _persist() =>
       ref.read(localStoreProvider).setMap(StoreKeys.presets, {
         'presetIndex': state.presetIndex,
+        'presetKey': preset.key,
         'subjectId': state.subjectId,
         'subjectName': ref
             .read(subjectsProvider)
@@ -740,10 +741,10 @@ class TimerNotifier extends Notifier<TimerState> {
     if (stored == null) return;
 
     final presets = _presets;
-    final presetIndex = _intOr(
-      stored['presetIndex'],
-      0,
-    ).clamp(0, presets.length - 1).toInt();
+    final keyedIndex = presets.indexWhere((p) => p.key == stored['presetKey']);
+    final presetIndex = keyedIndex >= 0
+        ? keyedIndex
+        : _intOr(stored['presetIndex'], 0).clamp(0, presets.length - 1).toInt();
     final preset = presets[presetIndex];
     final subjectId = _stringOrNull(stored['subjectId']);
     final segments = _intOr(stored['completedFocusSegments'], 0);
@@ -860,6 +861,30 @@ class TimerNotifier extends Notifier<TimerState> {
       subjectId: state.subjectId,
       remaining: preset.focusDuration,
     );
+    unawaited(_persist());
+  }
+
+  /// Keep a running block when another plan is removed; reset when this plan
+  /// is removed or its timing changes. The completion stream stays attached.
+  void reconcilePresets(
+    List<PomodoroPreset> previous,
+    List<PomodoroPreset> next,
+  ) {
+    final old = previous[state.presetIndex.clamp(0, previous.length - 1)];
+    final index = next.indexWhere((p) => p.key == old.key);
+    if (index < 0) {
+      setPreset(0);
+      return;
+    }
+    final current = next[index];
+    if (current.focus != old.focus ||
+        current.shortBreak != old.shortBreak ||
+        current.longBreak != old.longBreak ||
+        current.segments != old.segments) {
+      setPreset(index);
+      return;
+    }
+    state = state.copyWith(presetIndex: index);
     unawaited(_persist());
   }
 
@@ -1149,23 +1174,134 @@ final todayGoalProgressProvider = Provider<double>((ref) {
 
 // -- Presets -----------------------------------------------------------------
 
-/// The plan the user set by hand, or null while they are on a shipped preset.
+/// Saved custom plans and stock presets the user chose to remove.
+@immutable
+class PlanLibrary {
+  const PlanLibrary({this.plans = const [], this.hidden = const {}});
+
+  final List<CustomPlan> plans;
+  final Set<String> hidden;
+
+  List<PomodoroPreset> get presets => [
+    for (final preset in SeedData.presets)
+      if (!hidden.contains(preset.key)) preset,
+    for (final plan in plans) plan.toPreset(),
+  ];
+
+  Map<String, dynamic> toJson() => {
+    'version': 1,
+    'plans': [for (final plan in plans) plan.toJson()],
+    'hidden': hidden.toList(),
+  };
+}
+
+class PlanLibraryNotifier extends Notifier<PlanLibrary> {
+  @override
+  PlanLibrary build() => const PlanLibrary();
+
+  void hydrate(Map<String, dynamic>? stored, {Map<String, dynamic>? legacy}) {
+    if (stored == null) {
+      final plan = legacy == null ? null : CustomPlan.fromJson(legacy);
+      state = PlanLibrary(plans: plan == null ? const [] : [plan]);
+      return;
+    }
+    final plans = <CustomPlan>[];
+    final rawPlans = stored['plans'];
+    if (rawPlans is List) {
+      for (final raw in rawPlans) {
+        if (raw is! Map<String, dynamic>) continue;
+        final plan = CustomPlan.fromJson(raw);
+        if (plan != null && !plans.any((item) => item.id == plan.id)) {
+          plans.add(plan);
+        }
+      }
+    }
+    final stockKeys = SeedData.presets.map((preset) => preset.key).toSet();
+    final rawHidden = stored['hidden'];
+    final hidden = rawHidden is List
+        ? rawHidden.whereType<String>().where(stockKeys.contains).toSet()
+        : <String>{};
+    var next = PlanLibrary(plans: List.unmodifiable(plans), hidden: hidden);
+    // Corrupt or obsolete configuration must never leave a timer without a
+    // plan. Restore one stock plan rather than dropping valid custom plans.
+    if (next.presets.isEmpty) {
+      hidden.remove(SeedData.presets.first.key);
+      next = PlanLibrary(plans: List.unmodifiable(plans), hidden: hidden);
+    }
+    state = next;
+  }
+
+  Future<void> _apply(PlanLibrary next) async {
+    final previous = state.presets;
+    final timer = ref.read(timerProvider.notifier);
+    state = next;
+    timer.reconcilePresets(previous, next.presets);
+    await ref
+        .read(localStoreProvider)
+        .setMap(StoreKeys.planLibrary, next.toJson());
+  }
+
+  Future<void> save(CustomPlan plan) async {
+    // Normalize names and duration bounds through the same path as hydration.
+    final normalized = CustomPlan.fromJson(plan.toJson());
+    if (normalized == null) return;
+    final plans = [...state.plans];
+    final index = plans.indexWhere((item) => item.id == normalized.id);
+    if (index < 0) {
+      plans.add(normalized);
+    } else {
+      plans[index] = normalized;
+    }
+    await _apply(
+      PlanLibrary(plans: List.unmodifiable(plans), hidden: state.hidden),
+    );
+  }
+
+  /// Returns false when the requested removal would leave no usable plan.
+  Future<bool> remove(String key) async {
+    final next = PlanLibrary(
+      plans: List.unmodifiable(
+        state.plans.where((plan) => plan.toPreset().key != key),
+      ),
+      hidden: Set.unmodifiable({
+        ...state.hidden,
+        if (SeedData.presets.any((preset) => preset.key == key)) key,
+      }),
+    );
+    if (next.presets.isEmpty) return false;
+    await _apply(next);
+    return true;
+  }
+
+  Future<void> restoreStock() => _apply(PlanLibrary(plans: state.plans));
+
+  Future<void> clear() => _apply(const PlanLibrary());
+}
+
+final planLibraryProvider = NotifierProvider<PlanLibraryNotifier, PlanLibrary>(
+  PlanLibraryNotifier.new,
+);
+
+/// Compatibility facade for the single-plan storage used by older versions.
 class CustomPlanNotifier extends Notifier<CustomPlan?> {
   @override
-  CustomPlan? build() => null;
+  CustomPlan? build() => ref.watch(planLibraryProvider).plans.lastOrNull;
 
   /// Reads the stored plan. An unreadable one leaves the user on the shipped
   /// presets rather than opening the timer on a plan they cannot see.
   void hydrate(Map<String, dynamic>? stored) {
-    if (stored == null) return;
-    state = CustomPlan.fromJson(stored);
+    ref
+        .read(planLibraryProvider.notifier)
+        .hydrate(
+          ref.read(localStoreProvider).getMap(StoreKeys.planLibrary),
+          legacy: stored,
+        );
   }
 
   Future<void> set(CustomPlan plan) async {
-    state = plan;
-    await ref
-        .read(localStoreProvider)
-        .setMap(StoreKeys.customPlan, plan.toJson());
+    final store = ref.read(localStoreProvider);
+    await ref.read(planLibraryProvider.notifier).save(plan);
+    await store.setMap(StoreKeys.customPlan, plan.toJson());
   }
 }
 
@@ -1181,6 +1317,5 @@ final customPlanProvider = NotifierProvider<CustomPlanNotifier, CustomPlan?>(
 /// moved around the list would be a plan the timer could come back to wearing
 /// the wrong numbers.
 final presetsProvider = Provider<List<PomodoroPreset>>((ref) {
-  final custom = ref.watch(customPlanProvider);
-  return [...SeedData.presets, if (custom != null) custom.toPreset()];
+  return ref.watch(planLibraryProvider).presets;
 });

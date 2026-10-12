@@ -26,7 +26,7 @@ class TopSubjectCard extends ConsumerWidget {
     final top = ref.watch(topSubjectProvider(range));
     final span = range == StudyRange.week ? 'week' : 'month';
 
-    return ContentCard(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: top == null

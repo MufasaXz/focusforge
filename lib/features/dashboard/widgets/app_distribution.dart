@@ -29,7 +29,7 @@ class AppDistribution extends ConsumerWidget {
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
 
     if (rules.isEmpty) {
-      return ContentCard(
+      return GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.lg),
           child: Row(

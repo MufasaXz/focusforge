@@ -222,7 +222,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Focus heatmap',
             icon: Icons.calendar_month_rounded,
           ),
-          ContentCard(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: FocusHeatmap(
@@ -243,7 +243,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: 'Screen time today',
         icon: Icons.hourglass_bottom_rounded,
       ),
-      const ContentCard(
+      const GlassCard(
         child: Padding(
           padding: EdgeInsets.all(Gap.lg),
           child: ScreenTimeCard(),
@@ -255,7 +255,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'Subject breakdown',
           icon: Icons.donut_large_rounded,
         ),
-        ContentCard(
+        GlassCard(
           child: Padding(
             padding: const EdgeInsets.all(Gap.lg),
             child: SubjectBreakdown(subjects: subjects),
@@ -461,7 +461,7 @@ class _DailyOverview extends ConsumerWidget {
     final progress = ref.watch(todayGoalProgressProvider);
     final minutesToday = ref.watch(liveFocusSecondsTodayProvider) ~/ 60;
 
-    return ContentCard(
+    return GlassCard(
       color: cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
@@ -673,7 +673,7 @@ class _TrackerPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return ContentCard(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
         child: Column(
@@ -713,7 +713,7 @@ class _NoSessions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ContentCard(
+    return GlassCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),

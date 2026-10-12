@@ -38,6 +38,18 @@ migrate_working_dir/
 /android/*.jks
 /android/*.keystore
 
+# Firebase client configuration is supplied locally. It is extractable from an
+# APK and is not a database password; keep real project identifiers out of git.
+/android/app/google-services.json
+**/.env
+**/.env.*
+!**/.env.example
+**/*service-account*.json
+**/*adminsdk*.json
+*.pem
+*.p12
+/output/
+
 # Symbolication related
 app.*.symbols
 

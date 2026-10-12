@@ -37,7 +37,13 @@ import 'package:focusforge/features/shield/shield_screen.dart';
 
 /// A paired parent with two children, and switches for making reads fail.
 class FakeParent implements ParentService {
-  FakeParent({this.failing = false, this.childrenFailing = false});
+  FakeParent({
+    this.failing = false,
+    this.childrenFailing = false,
+    this.paired = true,
+  });
+
+  final bool paired;
 
   /// True while the child's documents answer with an error, which is what a
   /// denied read looks like from the app's side. The list of children is
@@ -73,8 +79,9 @@ class FakeParent implements ParentService {
       : Stream.value(children);
 
   @override
-  Stream<GuardianLink?> watchGuardian(String uid) =>
-      Stream.value(const GuardianLink(uid: 'parent-1', name: 'Amma'));
+  Stream<GuardianLink?> watchGuardian(String uid) => Stream.value(
+    paired ? const GuardianLink(uid: 'parent-1', name: 'Amma') : null,
+  );
 
   @override
   Stream<ChildProgress?> watchProgress(String childUid) => failing
@@ -111,7 +118,7 @@ class FakeParent implements ParentService {
 
   @override
   Future<PairCode> mintPairCode({required String childName}) async => PairCode(
-    code: '123456',
+    code: 'ABCD2345EFGH6789',
     expiresAt: DateTime.now().add(PairCode.lifetime),
   );
 
@@ -448,6 +455,46 @@ void main() {
     expect(find.text('Set a security code'), findsNothing);
     expect(find.text('This device'), findsNothing);
   });
+
+  testWidgets(
+    'strong pairing token remains readable on a narrow enlarged-text screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final container = parentDevice(FakeParent(paired: false));
+      container
+          .read(userProvider.notifier)
+          .save(
+            const UserProfile(
+              uid: 'child-device',
+              displayName: 'Ravi',
+              persona: Persona.student,
+              onboardingComplete: true,
+            ),
+          );
+      await tester.pumpWidget(
+        wrap(container, const ParentControlScreen(), textScale: 2),
+      );
+      await settle(tester);
+      final showCode = find.text("Show this device's code");
+      await tester.ensureVisible(showCode);
+      await settle(tester);
+      await tester.tap(showCode);
+      await settle(tester);
+      final token = find.text('ABCD 2345 EFGH 6789');
+      expect(token, findsOneWidget);
+      expect(
+        find.ancestor(of: token, matching: find.byType(FittedBox)),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Close'));
+      await settle(tester);
+      await tester.tap(find.text('Close'));
+      await settle(tester);
+    },
+  );
 
   testWidgets('the dashboard leads with the selected child\'s study', (
     tester,

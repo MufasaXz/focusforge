@@ -5,6 +5,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../profile/widgets/link_account_sheet.dart';
 import 'settings_support.dart';
 
 /// The one place that asks a local account to become a real one.
@@ -57,17 +58,17 @@ class _AccountGateState extends ConsumerState<AccountGate> {
     setState(() => _linking = true);
     try {
       final auth = ref.read(authServiceProvider);
-      // bootstrap() hydrates the store directly, so the service has no live
-      // session yet. Restoring first is what lets linkAccount() upgrade the
-      // existing uid in place instead of minting a fresh anonymous profile.
-      await auth.restore();
-      final profile = await auth.linkAccount(
-        provider: 'email',
-        displayName: ref.read(userProvider).displayName,
-      );
+      // A provider name alone is not a credential. Use the same Google/email
+      // flow as the profile so opening a gate cannot claim a linked account
+      // without proving ownership. Dismissal keeps the local session intact.
+      final profile = await showLinkAccountSheet(context);
+      if (profile == null || !mounted) return;
       await ref.read(userProvider.notifier).save(profile);
       if (!mounted) return;
-      showAppSnack(context, 'Account linked. ${widget.unlocked}');
+      showAppSnack(
+        context,
+        '${auth.welcomeMessage(profile)} ${widget.unlocked}',
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       showAppSnack(context, e.friendly);

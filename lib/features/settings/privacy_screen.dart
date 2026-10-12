@@ -109,8 +109,10 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 title: const Text('Your detailed history stays here'),
                 subtitle: const Text(
                   'Focus sessions, shield events, badges and settings '
-                  'are stored locally. Optional social and parent features '
-                  'share only the summaries described below.',
+                  'are stored locally and kept when you sign out. They belong '
+                  'to this device, so signing in again restores its setup. '
+                  'Optional sharing uses this device’s totals. Clear local '
+                  'analytics before handing your phone to someone else.',
                 ),
               ),
             ],
@@ -124,8 +126,10 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       'or pair with a parent.',
             children: const [
               ListTile(
-                title: Text('Your profile'),
-                subtitle: Text('Display name and avatar'),
+                title: Text('Your account'),
+                subtitle: Text(
+                  'Sign-in credentials are handled by Firebase. Profile choices and avatar stay on this device.',
+                ),
                 leading: Icon(Icons.person_outline),
               ),
               ListTile(
@@ -137,13 +141,15 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               ),
               ListTile(
                 title: Text('Leaderboard scores'),
-                subtitle: Text('Weekly focus hours only'),
+                subtitle: Text(
+                  'Display name, account ID and weekly focus minutes · Visible to signed-in users when you opt in',
+                ),
                 leading: Icon(Icons.leaderboard_outlined),
               ),
               ListTile(
                 title: Text('Parent control'),
                 subtitle: Text(
-                  'Paired study summaries, installed app names and rules set by your parent',
+                  'Paired device totals, top subject, installed app names and package IDs, and parent rules · Your linked parent only',
                 ),
                 leading: Icon(Icons.shield_outlined),
               ),

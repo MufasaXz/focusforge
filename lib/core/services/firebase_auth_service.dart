@@ -152,7 +152,6 @@ class FirebaseAuthService extends AuthService {
   @override
   Set<String> get supportedProviders => {
     'email',
-    'local',
     if (defaultTargetPlatform == TargetPlatform.android) 'google',
   };
 
@@ -177,22 +176,12 @@ class FirebaseAuthService extends AuthService {
     String? displayName,
     String? email,
   }) async {
-    if (!supportedProviders.contains(provider)) {
+    // This API receives no password/OAuth credential for email or local.
+    // Email uses signInWithEmail/signUpWithEmail through EmailAuthSheet.
+    if (provider != 'google' || !supportedProviders.contains(provider)) {
       throw const AuthException(AuthFailure.providerUnavailable);
     }
-    if (provider == 'google') {
-      return _linkWithGoogle();
-    }
-    final user =
-        _auth.currentUser ??
-        (await _guard(() => _auth.signInAnonymously())).user!;
-    return _persist(
-      _profileFor(
-        user,
-        displayName: displayName,
-        email: email,
-      ).copyWith(isAnonymous: false),
-    );
+    return _linkWithGoogle();
   }
 
   /// Runs the interactive Google round-trip and applies the credential it
@@ -516,6 +505,10 @@ class FirebaseAuthService extends AuthService {
   }
 
   Future<UserProfile> _persist(UserProfile profile) async {
+    final oldUid = _store.getMap(StoreKeys.user)?['uid'];
+    if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
+      await _store.setBool(StoreKeys.boardOptIn, false);
+    }
     _current = profile;
     await _store.setMap(StoreKeys.user, profile.toJson());
     _controller.add(profile);

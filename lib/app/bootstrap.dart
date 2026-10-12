@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -115,9 +116,7 @@ Future<ProviderContainer> bootstrap() async {
   container
       .read(sessionsProvider.notifier)
       .hydrate(store.getList(StoreKeys.sessions));
-  // The custom plan goes in before the timer: the timer stores an index into
-  // the preset list, and a plan hydrated after it would leave the index
-  // pointing one slot past the end of a list that had not grown yet.
+  // Restore the plan library before the timer resolves its saved identity.
   container
       .read(customPlanProvider.notifier)
       .hydrate(store.getMap(StoreKeys.customPlan));
@@ -215,12 +214,20 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 
   try {
     await Firebase.initializeApp();
+    // Clear any disk cache left by older releases before opening listeners.
+    // A failure keeps cloud features closed; never treat uncleared cache as safe.
+    await FirebaseFirestore.instance.clearPersistence().timeout(
+      const Duration(seconds: 8),
+    );
+    // Shared summaries remain in memory for this run, without a disk cache
+    // that could be recovered by a later user of this device.
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+    );
     debugPrint('[auth] Firebase initialised: using FirebaseAuthService.');
     return FirebaseAuthService(store);
-  } catch (error) {
-    debugPrint(
-      '[auth] Firebase unavailable ($error): using the local account store.',
-    );
+  } catch (_) {
+    debugPrint('[auth] Firebase unavailable: using the local account store.');
     return LocalAuthService(store);
   }
 }
@@ -298,6 +305,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // invalidating: the focus screen subscribes to `completions` once in
   // initState, and a rebuilt notifier would close that stream under it.
   final timer = container.read(timerProvider.notifier);
+  await container.read(planLibraryProvider.notifier).clear();
   timer.setPreset(0);
   timer.setSubject(null);
 

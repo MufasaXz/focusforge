@@ -190,7 +190,7 @@ class _ThisDeviceSection extends ConsumerWidget {
                   ? 'Preparing your pairing code…'
                   : 'Show this device\'s code',
             ),
-            subtitle: const Text('Six digits, good for 15 minutes'),
+            subtitle: const Text('One-time code, good for 15 minutes'),
             enabled: enabled && !busy,
             onTap: enabled && !busy
                 ? () => unawaited(_showPairCode(context, ref))
@@ -321,7 +321,7 @@ class _PairCodeBodyState extends ConsumerState<_PairCodeBody> {
         const SizedBox(height: Gap.md),
         Text(
           'Type this into the parent\'s phone, in Parent control → Add a '
-          'child.',
+          'child. Share it only with the intended parent.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: Gap.lg),
@@ -333,15 +333,12 @@ class _PairCodeBodyState extends ConsumerState<_PairCodeBody> {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                code.expired ? 'Expired' : code.code,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  letterSpacing: 5,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+            child: Text(
+              code.expired ? 'Expired' : code.displayCode,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                letterSpacing: 2,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -498,7 +495,7 @@ class _ChildrenSection extends ConsumerWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             title: Text(busy ? 'Linking device…' : 'Add a child'),
-            subtitle: const Text('Enter the six digits from their phone'),
+            subtitle: const Text('Enter the pairing code from their phone'),
             enabled: enabled && !busy,
             onTap: enabled && !busy
                 ? () => unawaited(_addChild(context, ref))
@@ -516,16 +513,19 @@ Future<void> _addChild(BuildContext context, WidgetRef ref) async {
     title: 'Add a child',
     message:
         'Open FocusForge on your child\'s phone, go to Profile → Parent '
-        'control, and type the six digits it shows.',
+        'control, and type the 16-character pairing code it shows. Share it only with the intended parent.',
     actionLabel: 'Link',
-    hintText: 'Six digits',
+    hintText: 'ABCD 2345 EFGH 6789',
     icon: Icons.child_care_rounded,
-    keyboardType: TextInputType.number,
+    keyboardType: TextInputType.text,
   );
   if (code == null) return;
   if (!PairCode.looksValid(code)) {
     if (context.mounted) {
-      showAppSnack(context, 'A pairing code is six digits.');
+      showAppSnack(
+        context,
+        'Use the 16-character pairing code from their phone.',
+      );
     }
     return;
   }

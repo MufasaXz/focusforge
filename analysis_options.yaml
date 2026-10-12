@@ -15,6 +15,7 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    - tool/firebase/node_modules/**
 
 linter:
   # The lint rules applied to this project can be customized in the

@@ -126,6 +126,7 @@ class FocusSession {
 @immutable
 class PomodoroPreset {
   const PomodoroPreset({
+    this.id,
     required this.name,
     required this.icon,
     required this.focus,
@@ -135,7 +136,11 @@ class PomodoroPreset {
   });
 
   final String name;
+  final String? id;
   final IconData icon;
+
+  /// Stable identity survives removal or reordering of other plans.
+  String get key => id ?? 'stock:$name';
 
   /// Minutes.
   final int focus;
@@ -160,7 +165,15 @@ class PomodoroPreset {
 /// getting it wrong would mean a plan that quietly misses the goal.
 @immutable
 class CustomPlan {
-  const CustomPlan({required this.goalMinutes, required this.focusMinutes});
+  const CustomPlan({
+    this.id = 'legacy-custom',
+    this.name = 'Custom',
+    required this.goalMinutes,
+    required this.focusMinutes,
+  });
+
+  final String id;
+  final String name;
 
   /// The focus time the session is aiming at.
   final int goalMinutes;
@@ -191,7 +204,8 @@ class CustomPlan {
   int get plannedMinutes => blocks * focusMinutes;
 
   PomodoroPreset toPreset() => PomodoroPreset(
-    name: 'Custom',
+    id: 'custom:$id',
+    name: name,
     icon: Icons.tune_rounded,
     focus: focusMinutes,
     shortBreak: shortBreak,
@@ -200,6 +214,8 @@ class CustomPlan {
   );
 
   Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
     'goalMinutes': goalMinutes,
     'focusMinutes': focusMinutes,
   };
@@ -213,7 +229,23 @@ class CustomPlan {
     final goal = _intOr(j['goalMinutes'], 0);
     final focus = _intOr(j['focusMinutes'], 0);
     if (goal <= 0 || focus <= 0) return null;
+    final rawId = j['id'];
+    final id =
+        rawId is String && RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(rawId)
+        ? rawId
+        : 'legacy-custom';
+    final rawName = j['name'];
+    final name = rawName is String
+        ? rawName
+              .trim()
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .characters
+              .take(40)
+              .toString()
+        : '';
     return CustomPlan(
+      id: id,
+      name: name.isEmpty ? 'Custom' : name,
       goalMinutes: goal.clamp(minGoal, maxGoal),
       focusMinutes: focus.clamp(minFocus, maxFocus),
     );

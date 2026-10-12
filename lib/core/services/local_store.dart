@@ -200,6 +200,7 @@ class StoreKeys {
   static const dailyGoalDays = 'goal.days';
   static const presets = 'focus.presets';
   static const customPlan = 'focus.customPlan';
+  static const planLibrary = 'focus.planLibrary';
   static const coachSeen = 'coachmarks.seen';
   static const clockFace = 'focus.clock';
 

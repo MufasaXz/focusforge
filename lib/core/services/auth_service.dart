@@ -186,6 +186,10 @@ class LocalAuthService extends AuthService {
   }
 
   Future<UserProfile> _persist(UserProfile profile) async {
+    final oldUid = _store.getMap(StoreKeys.user)?['uid'];
+    if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
+      await _store.setBool(StoreKeys.boardOptIn, false);
+    }
     _current = profile;
     await _store.setMap(StoreKeys.user, profile.toJson());
     _controller.add(profile);
@@ -242,7 +246,10 @@ class LocalAuthService extends AuthService {
     String? email,
   }) async {
     final base = await _baseProfile();
-    _returning = base.onboardingComplete && !base.isAnonymous;
+    // restore() recognises this completed setup after a process restart.
+    // Sign-out deliberately changes the live profile to anonymous, so its
+    // flag alone cannot distinguish that return from a first account link.
+    _returning = _returning || (base.onboardingComplete && !base.isAnonymous);
     return _persist(
       _withCredential(base, displayName: displayName, email: email),
     );

@@ -2,10 +2,11 @@
 
 ## 1.0.3 refresh — 2026-10-12
 
-Android build 2017. Replaces the downloadable APK on the existing 1.0.3 release.
+Android build 2018. Replaces the downloadable APK on the existing 1.0.3 release.
 
-- Replaced repeated frosted content boxes with opaque tonal surfaces while
-  retaining glass for floating navigation and dialogs. Refined day/dark themes.
+- Restored the earlier frosted Home, YouTube and Focus surfaces while keeping
+  varied solid cards elsewhere. Neutral day/dark surfaces remove the yellow
+  cast while retaining the selected accent. Tuned setup summary tile colors.
 - Simplified You: removed Shield/Focus shortcuts and weekly progress; kept
   identity, achievements, appearance and clearly grouped preferences.
 - Added a discoverable Account & privacy page with sign-out, return greetings,
@@ -17,6 +18,8 @@ Android build 2017. Replaces the downloadable APK on the existing 1.0.3 release.
   from other devices need backend cleanup; see Firebase setup documentation.
 - Redesigned App access with plain permission explanations, accessibility setup
   instructions, retry states and a settings entry available after onboarding.
+  Removed the timer-ready banner. Local Shield enables now explain and request
+  missing accessibility/usage access before activating a rule.
 - Added an ongoing system countdown for running focus/break timers, including
   eligibility for supported Android 16/OEM live bars. Actual promotion depends
   on device software and notification settings.
@@ -25,11 +28,27 @@ Android build 2017. Replaces the downloadable APK on the existing 1.0.3 release.
 - Fixed missing Material ancestry in settings dialogs and large-text overflows
   in permission guidance and the dashboard goal ring.
 
-Validation: static analysis passed and 251 Flutter tests passed, including
-320dp/DPR3 layouts at 2×/3× text. Native Kotlin/resources and signed release APK
-builds passed. Physical-device live bars, widget hosting, Firebase authentication
-and production cloud cleanup still require device/backend verification. Firebase
-rules were not modified or deployed.
+- Added multiple named custom Pomodoro plans, edit/remove controls, removable
+  stock plans and default restoration. Stable plan identities preserve running
+  timers when other presets are removed; unfinished current changes confirm.
+- Disabled Android backups and cleartext traffic, redacted timer subjects on
+  sensitive lock screens, and constrained YouTube accessibility inspection.
+- Removed real Firebase client configuration from tracked source. Historical
+  client identifiers remain public; no administrator/signing secrets were found
+  by the 209-commit history scan. Key revocation/restrictions need project admin.
+- Hardened local Firestore rules and pairing tokens, removed persistent shared
+  cache, cleared retained family/group views on identity changes, reset board
+  consent for new accounts, and removed credentialless account-link claims.
+
+Validation: 271 Flutter tests and 18 local Firestore rules tests passed; static
+analysis clean. Signed release APK built with valid v2/v3 signatures and the
+existing certificate. Merged manifest confirms disabled backup/cleartext.
+The day/dark/tablet UI render capture harness also passed.
+
+Production rules were not deployed. New pairing needs the revised rules and
+both devices on this build. See docs/firebase-setup.md and the security audit.
+Device-native live bars/widgets and real Firebase login/deletion still require
+runtime verification; no successful physical-device/emulator QA is claimed.
 
 ## 1.0.3 — 2026-10-11
 

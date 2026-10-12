@@ -52,7 +52,7 @@ class AmbientMixerSection extends ConsumerWidget {
                   ),
           ),
         ),
-        ContentCard(
+        GlassCard(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, Gap.md),
             child: Column(

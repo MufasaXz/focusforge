@@ -114,7 +114,7 @@ class _PairingHint extends StatelessWidget {
             Expanded(
               child: Text(
                 'You will need your child\'s phone once. Install FocusForge '
-                'there too, open Parent control on it, and type its six-digit '
+                'there too, open Parent control on it, and enter its pairing '
                 'code into this device.',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(height: 1.4),
