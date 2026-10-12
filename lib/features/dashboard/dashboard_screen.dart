@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -221,7 +222,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Focus heatmap',
             icon: Icons.calendar_month_rounded,
           ),
-          GlassCard(
+          ContentCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.lg),
               child: FocusHeatmap(
@@ -242,7 +243,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: 'Screen time today',
         icon: Icons.hourglass_bottom_rounded,
       ),
-      const GlassCard(
+      const ContentCard(
         child: Padding(
           padding: EdgeInsets.all(Gap.lg),
           child: ScreenTimeCard(),
@@ -254,7 +255,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'Subject breakdown',
           icon: Icons.donut_large_rounded,
         ),
-        GlassCard(
+        ContentCard(
           child: Padding(
             padding: const EdgeInsets.all(Gap.lg),
             child: SubjectBreakdown(subjects: subjects),
@@ -460,7 +461,7 @@ class _DailyOverview extends ConsumerWidget {
     final progress = ref.watch(todayGoalProgressProvider);
     final minutesToday = ref.watch(liveFocusSecondsTodayProvider) ~/ 60;
 
-    return GlassCard(
+    return ContentCard(
       color: cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
@@ -483,11 +484,13 @@ class _DailyOverview extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SproutMark(
-                      size: 32,
-                      color: GoalRingPalette.leaf(brightness),
-                    ),
-                    const SizedBox(height: Gap.sm),
+                    if (MediaQuery.textScalerOf(context).scale(14) <= 28) ...[
+                      SproutMark(
+                        size: 32,
+                        color: GoalRingPalette.leaf(brightness),
+                      ),
+                      const SizedBox(height: Gap.sm),
+                    ],
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -670,7 +673,7 @@ class _TrackerPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
         child: Column(
@@ -710,7 +713,7 @@ class _NoSessions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    return ContentCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),

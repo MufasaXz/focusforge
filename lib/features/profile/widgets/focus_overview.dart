@@ -30,7 +30,7 @@ class FocusOverview extends ConsumerWidget {
     final today = ref.watch(focusMinutesTodayProvider);
     final goal = ref.watch(todayGoalMinutesProvider);
 
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
@@ -165,7 +165,7 @@ class ProfileShortcuts extends StatelessWidget {
             ])
               SizedBox(
                 width: width,
-                child: GlassCard(
+                child: ContentCard(
                   color: Color.alphaBlend(
                     action.$5.withValues(alpha: .08),
                     cs.surfaceContainerLow,

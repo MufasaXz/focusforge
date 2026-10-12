@@ -361,7 +361,7 @@ final groupPublisherProvider = Provider<void>((ref) {
   Object? lastPublished;
   ref.onDispose(() => disposed = true);
   Future<void> publish() async {
-    if (disposed) return;
+    if (disposed || ref.read(accountMutationProvider)) return;
     if (sending) {
       queued = true;
       return;
@@ -543,6 +543,7 @@ final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
 /// immediate rather than at the end of the week.
 final leaderboardPublisherProvider = Provider<void>((ref) {
   Future<void> publish() async {
+    if (ref.read(accountMutationProvider)) return;
     final service = ref.read(leaderboardServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -562,6 +563,7 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
   }
 
   Future<void> withdraw() async {
+    if (ref.read(accountMutationProvider)) return;
     final service = ref.read(leaderboardServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;

@@ -10,7 +10,6 @@ import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/parent.dart';
-import '../../core/models/study.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/parent_providers.dart';
@@ -21,16 +20,13 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
-import '../../shared/widgets/progress_ring.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/tonal_panel.dart';
-import 'widgets/focus_overview.dart';
 import '../settings/account_gate.dart';
 import '../settings/settings_support.dart';
 import 'widgets/avatar_sheet.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/link_account_sheet.dart';
-import 'widgets/subject_target_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
 /// so the version is a constant — keep it in step with `pubspec.yaml`.
@@ -65,8 +61,10 @@ Future<void> _openSetting(
     if (profile == null || !context.mounted) return;
     await ref.read(userProvider.notifier).save(profile);
     if (!context.mounted) return;
-    final name = profile.displayName.trim();
-    showAppSnack(context, name.isEmpty ? 'Signed in.' : 'Signed in as $name.');
+    showAppSnack(
+      context,
+      ref.read(authServiceProvider).welcomeMessage(profile),
+    );
   }
 
   if (context.mounted) context.goNamed(route);
@@ -87,7 +85,6 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
     final streak = ref.watch(currentStreakProvider);
-    final subjects = ref.watch(subjectsProvider);
     final groups = ref.watch(groupsProvider);
     final achievements = ref.watch(achievementsProvider);
     final unlocked = ref.watch(unlockedCountProvider);
@@ -161,9 +158,16 @@ class ProfileScreen extends ConsumerWidget {
         routeName: AppRoutes.notifications,
       ),
       _SettingSpec(
-        icon: Icons.shield_outlined,
-        label: 'Data & Privacy',
+        icon: Icons.key_outlined,
+        label: 'App access',
+        routeName: AppRoutes.permissions,
+        trailing: 'Manage',
+      ),
+      _SettingSpec(
+        icon: Icons.manage_accounts_outlined,
+        label: 'Account',
         routeName: AppRoutes.privacy,
+        trailing: user.isAnonymous ? 'On this device' : 'Linked',
       ),
       _SettingSpec(
         icon: Icons.info_outlined,
@@ -203,44 +207,10 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: Gap.lg),
-      stagger(ProfileShortcuts(guardian: user.isGuardian)),
-      const SizedBox(height: Gap.lg),
       if (user.isAnonymous) ...[
         stagger(const _AnonymousCard()),
         const SizedBox(height: Gap.lg),
       ],
-      if (!user.isGuardian) ...[
-        stagger(const FocusOverview()),
-        const SizedBox(height: Gap.xl),
-      ],
-      stagger(
-        SectionHeader(
-          title: 'Weekly study goals',
-          icon: Icons.flag_outlined,
-          trailing: Text(
-            'Tap to edit',
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: t.onSurfaceVariant),
-          ),
-        ),
-      ),
-      stagger(
-        EdgeFade(
-          trailing: 32,
-          child: SizedBox(
-            height: MediaQuery.textScalerOf(context).scale(14) > 19 ? 164 : 118,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: subjects.length,
-              separatorBuilder: (_, _) => const SizedBox(width: Gap.md),
-              itemBuilder: (context, i) => _SubjectGoalCard(
-                subject: subjects[i],
-                onTap: () => showSubjectTargetSheet(context, subjects[i]),
-              ),
-            ),
-          ),
-        ),
-      ),
     ];
 
     final prefs = <Widget>[
@@ -251,7 +221,7 @@ class ProfileScreen extends ConsumerWidget {
       const SizedBox(height: Gap.xl),
       for (final group in [
         ('Progress & community', settings.take(3)),
-        ('Focus & protection', settings.skip(3).take(3)),
+        ('Preferences', settings.skip(3).take(3)),
         ('App & privacy', settings.skip(6)),
       ])
         prefStagger(
@@ -259,8 +229,8 @@ class ProfileScreen extends ConsumerWidget {
             title: group.$1,
             icon: group.$1 == 'Progress & community'
                 ? Icons.explore_outlined
-                : group.$1 == 'Focus & protection'
-                ? Icons.shield_outlined
+                : group.$1 == 'Preferences'
+                ? Icons.settings_outlined
                 : Icons.tune_rounded,
             children: [
               for (final (i, spec) in group.$2.indexed) ...[
@@ -283,7 +253,10 @@ class ProfileScreen extends ConsumerWidget {
 
     return _TabEntrance(
       // The entrance waits for the branch to be on screen; see [_TabEntrance].
+      // Keyed so the motion-capture harness can grab this vertical list
+      // directly instead of the horizontal subject carousel inside it.
       child: ListView(
+        key: const ValueKey('profile-scroll'),
         padding: EdgeInsets.fromLTRB(
           Gap.lg + 4,
           MediaQuery.paddingOf(context).top + Gap.xl,
@@ -347,12 +320,9 @@ class _HeroCard extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 380 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    return GlassCard(
+    return ContentCard(
       key: const ValueKey('profile-hero'),
-      color: Color.alphaBlend(
-        t.primary.withValues(alpha: .10),
-        t.surfaceContainerLow,
-      ),
+      color: t.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),
@@ -389,7 +359,7 @@ class _HeroCard extends StatelessWidget {
             const SizedBox(height: Gap.xl),
             DecoratedBox(
               decoration: BoxDecoration(
-                color: t.surface.withValues(alpha: .45),
+                color: t.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(Radii.item),
               ),
               child: Padding(
@@ -583,12 +553,11 @@ class _AnonymousCard extends ConsumerWidget {
     final profile = await showLinkAccountSheet(context);
     if (profile == null || !context.mounted) return;
     await ref.read(userProvider.notifier).save(profile);
-    final name = profile.displayName.trim();
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          '${name.isEmpty ? 'Signed in' : 'Signed in as $name'}. Study '
-          'groups and the leaderboard are unlocked.',
+          '${ref.read(authServiceProvider).welcomeMessage(profile)} '
+          'Your focus history is ready. Study groups are now available.',
         ),
       ),
     );
@@ -597,7 +566,7 @@ class _AnonymousCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
-    return GlassCard(
+    return ContentCard(
       color: Color.alphaBlend(
         t.secondary.withValues(alpha: .06),
         t.surfaceContainerLow,
@@ -697,7 +666,7 @@ class _AppearanceCard extends ConsumerWidget {
     // light mode would offer a control that cannot do anything.
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
@@ -861,93 +830,7 @@ class _PaletteSwatch extends StatelessWidget {
   }
 }
 
-/// One subject goal. Tapping opens the target editor.
-class _SubjectGoalCard extends StatelessWidget {
-  const _SubjectGoalCard({required this.subject, required this.onTap});
-
-  final Subject subject;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final s = subject;
-    final spoken =
-        '${s.name}, ${_hours(s.weekDone)} of ${_hours(s.weekTarget)} '
-        'this week. Change the weekly target.';
-
-    return Semantics(
-      button: true,
-      label: spoken,
-      excludeSemantics: true,
-      onTap: onTap,
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.97,
-        child: GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.lg,
-              vertical: Gap.md,
-            ),
-            child: Row(
-              children: [
-                MiniRing(
-                  value: s.weekProgress,
-                  color: s.metTarget
-                      ? t.tertiary
-                      : harmonize(s.color, t.primary),
-                  size: 54,
-                  label: '${(s.weekProgress * 100).round()}%',
-                ),
-                const SizedBox(width: Gap.md),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          s.icon,
-                          size: 16,
-                          color: harmonize(s.color, t.primary),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          s.name,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(
-                          '${_hours(s.weekDone)} / ${_hours(s.weekTarget)}',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          s.metTarget
-                              ? Icons.check_circle_outline_rounded
-                              : Icons.tune_rounded,
-                          size: 16,
-                          color: t.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A single frosted settings surface, with its heading inside the rim.
+/// Solid grouped settings rows with a quiet section heading.
 class _ProfileSection extends StatelessWidget {
   const _ProfileSection({
     required this.title,
@@ -963,7 +846,7 @@ class _ProfileSection extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.lg),
-      child: GlassCard(
+      child: ContentCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

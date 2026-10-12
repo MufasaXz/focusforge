@@ -15,6 +15,7 @@ enum AuthFailure {
   tooManyRequests,
   requiresRecentLogin,
   providerUnavailable,
+  cleanupFailed,
   unknown,
 }
 
@@ -41,6 +42,7 @@ class AuthException implements Exception {
       'For security, sign out and back in, then retry.',
     AuthFailure.providerUnavailable =>
       'That sign-in method is not connected yet.',
+    AuthFailure.cleanupFailed => 'Cloud cleanup could not finish. Your account and local history are kept. Check your connection and try again.',
     AuthFailure.unknown => 'Something went wrong.',
   };
 
@@ -60,6 +62,23 @@ class AuthException implements Exception {
 /// Whichever backend runs, the profile record lives in [LocalStore]. Only the
 /// credential is remote; how the app is used never leaves the device.
 abstract class AuthService {
+  /// Whether the most recent successful credential flow opened an account
+  /// already used here or recognised by the account provider.
+  bool get isReturningUser => false;
+
+  String welcomeMessage(UserProfile profile) {
+    final name = profile.firstName;
+    final greeting = isReturningUser ? 'Welcome back' : 'Welcome';
+    return name.isEmpty ? '$greeting.' : '$greeting, $name.';
+  }
+
+  /// The password re-authentication form is offered only for this provider.
+  bool get supportsPasswordReauthentication => false;
+
+  /// Confirms ownership immediately before deleting a remote credential.
+  /// Device-only accounts have no remote credential to re-authenticate.
+  Future<void> reauthenticate({String? password}) async {}
+
   /// Whether credentials are handled by a remote account service.
   bool get usesRemoteCredentials => false;
 
@@ -133,6 +152,10 @@ class LocalAuthService extends AuthService {
 
   final _controller = StreamController<UserProfile?>.broadcast();
   UserProfile? _current;
+  bool _returning = false;
+
+  @override
+  bool get isReturningUser => _returning;
 
   @override
   UserProfile? get current => _current;
@@ -158,6 +181,7 @@ class LocalAuthService extends AuthService {
   Future<UserProfile?> restore() async {
     final json = _store.getMap(StoreKeys.user);
     _current = json == null ? null : UserProfile.fromJson(json);
+    _returning = _current?.onboardingComplete == true;
     return _current;
   }
 
@@ -189,7 +213,9 @@ class LocalAuthService extends AuthService {
     if (password.isEmpty) {
       throw const AuthException(AuthFailure.wrongPassword);
     }
-    return _persist(_withCredential(await _baseProfile(), email: email));
+    final base = await _baseProfile();
+    _returning = _returning || (base.onboardingComplete && !base.isAnonymous);
+    return _persist(_withCredential(base, email: email));
   }
 
   /// Same base and same fill-only-what-is-missing rule as [signInWithEmail]:
@@ -201,6 +227,7 @@ class LocalAuthService extends AuthService {
     if (password.length < 8) {
       throw const AuthException(AuthFailure.weakPassword);
     }
+    _returning = false;
     return _persist(_withCredential(await _baseProfile(), email: email));
   }
 
@@ -215,6 +242,7 @@ class LocalAuthService extends AuthService {
     String? email,
   }) async {
     final base = await _baseProfile();
+    _returning = base.onboardingComplete && !base.isAnonymous;
     return _persist(
       _withCredential(base, displayName: displayName, email: email),
     );
@@ -229,6 +257,8 @@ class LocalAuthService extends AuthService {
 
   @override
   Future<void> signOut() async {
+    _returning =
+        _current?.onboardingComplete == true && _current?.isAnonymous == false;
     _current = null;
     _controller.add(null);
   }
@@ -237,6 +267,7 @@ class LocalAuthService extends AuthService {
   Future<void> deleteAccount() async {
     await _store.clearAll();
     _current = null;
+    _returning = false;
     _controller.add(null);
   }
 

@@ -71,9 +71,20 @@ promising abuse resistance. The four-digit parent code is a local commitment aid
 not Android device management or a server-enforced security boundary.
 
 Account deletion removes group rows before deleting the credential and requires
-a recent sign-in. Older parent and public-board records are not automatically
-purged: unlink and opt out first. If cloud cleanup fails partway, the local
-account remains so deletion can be retried.
+a recent sign-in, confirmed in the app with the account password or Google.
+Build 2017 also unlinks both sides of parent relationships, removes this user's
+progress/catalog records, removes the linked pairing code and withdraws public
+board entries for weeks found in this device's local session log (plus the
+current week). Optional publishers pause during deletion. If cleanup fails
+partway, the credential and local history remain so deletion can be retried;
+already-removed shared records are not restored.
+
+Complete erasure across devices needs a privileged backend deletion job. The
+client cannot enumerate old pairing codes under the current rules, and boards
+from another device may have no corresponding local history. The confirmation
+discloses this limit. Configure your backend to delete those remaining records
+when an Auth user is deleted; no such function or rule deployment is included
+in this refresh. Rules remain under your control.
 
 ## Reproducible rules tests
 

@@ -262,6 +262,9 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(achievementsProvider);
   container.invalidate(notificationsProvider);
   container.invalidate(volumesProvider);
+  container.invalidate(boardOptInProvider);
+  container.invalidate(selectedChildProvider);
+  container.invalidate(parentLockProvider);
 
   // Every shield mutation funnels through `syncShield`, so invalidation alone
   // would leave the platform layer holding the deleted configuration. Writing

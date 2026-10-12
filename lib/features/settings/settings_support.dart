@@ -53,7 +53,10 @@ Future<T?> showAppDialog<T>({
                     borderRadius: BorderRadius.circular(Radii.hero),
                   ),
                   padding: const EdgeInsets.all(Gap.xl),
-                  child: builder(context),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: builder(context),
+                  ),
                 ),
               ),
             ),
@@ -255,7 +258,10 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
             IconBadge(icon: widget.icon, color: accent, size: 40, radius: 12),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                widget.title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ],
         ),
@@ -265,7 +271,8 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
           const SizedBox(height: Gap.lg),
           Text(
             'Type “${widget.requirePhrase}” to continue.',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: Gap.sm),
           _DialogField(
@@ -278,7 +285,8 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
           const SizedBox(height: Gap.md),
           Text(
             widget.footnote!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
         const SizedBox(height: Gap.xl),
@@ -351,10 +359,18 @@ class _InputBodyState extends State<_InputBody> {
       children: [
         Row(
           children: [
-            IconBadge(icon: widget.icon, color: cs.primary, size: 40, radius: 12),
+            IconBadge(
+              icon: widget.icon,
+              color: cs.primary,
+              size: 40,
+              radius: 12,
+            ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                widget.title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ],
         ),
@@ -372,7 +388,8 @@ class _InputBodyState extends State<_InputBody> {
           const SizedBox(height: Gap.md),
           Text(
             widget.footnote!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
         const SizedBox(height: Gap.xl),
@@ -438,7 +455,8 @@ class _DialogField extends StatelessWidget {
           isDense: true,
           border: InputBorder.none,
           hintText: hintText,
-          hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          hintStyle: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: Gap.md,
             vertical: 14,
@@ -465,7 +483,10 @@ class _DialogButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final text = Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
+    final text = Padding(
+      padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+      child: Text(label, textAlign: TextAlign.center),
+    );
 
     if (!filled) {
       return TextButton(

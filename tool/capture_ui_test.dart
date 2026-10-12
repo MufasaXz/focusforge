@@ -29,6 +29,7 @@ import 'package:focusforge/features/onboarding/persona_step.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/onboarding/profile_step.dart';
 import 'package:focusforge/features/onboarding/subjects_step.dart';
+import 'package:focusforge/features/onboarding/permissions_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -169,12 +170,6 @@ void main() {
         }
         if (route == 'profile') {
           await tester.scrollUntilVisible(
-            find.text('YOUR WEEK IN FOCUS'),
-            140,
-            scrollable: find.byType(Scrollable).last,
-          );
-          await capture('profile-recap-${mode.name}');
-          await tester.scrollUntilVisible(
             find.text('Tide'),
             180,
             scrollable: find.byType(Scrollable).last,
@@ -189,6 +184,7 @@ void main() {
         'login': const AuthScreen(),
         'setup-profile': ProfileStep(onNext: () {}),
         'setup-subjects': SubjectsStep(onNext: () {}),
+        'permissions': PermissionsStep(onNext: () {}),
       }.entries) {
         await tester.pumpWidget(
           scope(

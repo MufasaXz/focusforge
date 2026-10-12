@@ -2,6 +2,8 @@ package dev.focusforge.focusforge
 
 import android.content.Intent
 import dev.focusforge.focusforge.widgets.FocusWidget
+import dev.focusforge.focusforge.widgets.FocusLiveActivity
+import android.content.res.Configuration
 import io.flutter.plugin.common.MethodChannel
 import dev.focusforge.focusforge.shield.ShieldBridge
 import io.flutter.embedding.android.FlutterActivity
@@ -28,7 +30,11 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "focusforge/widgets").setMethodCallHandler { call, result ->
             when (call.method) {
-                "refresh" -> { FocusWidget.refresh(applicationContext); result.success(null) }
+                "refresh" -> {
+                    FocusWidget.refresh(applicationContext)
+                    FocusLiveActivity.refresh(applicationContext)
+                    result.success(null)
+                }
                 "takeFocusLaunch" -> {
                     val open = intent?.getBooleanExtra("open_focus", false) ?: false
                     intent?.removeExtra("open_focus")
@@ -54,6 +60,18 @@ class MainActivity : FlutterActivity() {
         // new intent has to be adopted rather than ignored.
         setIntent(intent)
         ShieldBridge.recordLaunch(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Includes returning from notification permission/settings changes.
+        FocusWidget.refresh(applicationContext)
+        FocusLiveActivity.refresh(applicationContext)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        FocusWidget.refresh(applicationContext)
     }
 
     override fun onDestroy() {

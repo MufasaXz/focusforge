@@ -118,7 +118,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   void _finish() {
+    final profile = ref.read(userProvider);
+    if (profile.onboardingComplete) {
+      context.goNamed(AppRoutes.dashboard);
+      showAppSnack(
+        context,
+        '${_auth.welcomeMessage(profile)} Your setup and focus history are ready.',
+      );
+      return;
+    }
     final done = widget.onAuthenticated;
+    if (_auth.isReturningUser) {
+      showAppSnack(
+        context,
+        '${_auth.welcomeMessage(profile)} Let’s finish setting up this device.',
+      );
+    }
     if (done != null) {
       done();
       return;

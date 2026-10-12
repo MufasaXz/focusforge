@@ -327,7 +327,7 @@ void main() {
       await tester.pumpWidget(profileHarness());
       await tester.pumpAndSettle();
 
-      final goals = tester.getRect(find.text('Weekly study goals'));
+      final goals = tester.getRect(find.byKey(const ValueKey('profile-hero')));
       final appearance = tester.getRect(
         find.descendant(
           of: find.byType(SectionHeader),
@@ -344,7 +344,7 @@ void main() {
       );
       expect(
         appearance.top,
-        lessThan(goals.top),
+        lessThanOrEqualTo(goals.top),
         reason: 'both columns start at the top of the page',
       );
       expect(tester.takeException(), isNull);
@@ -355,7 +355,7 @@ void main() {
       await tester.pumpWidget(profileHarness());
       await tester.pumpAndSettle();
 
-      final goals = tester.getRect(find.text('Weekly study goals'));
+      final goals = tester.getRect(find.byKey(const ValueKey('profile-hero')));
       final appearance = tester.getRect(
         find.descendant(
           of: find.byType(SectionHeader),

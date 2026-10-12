@@ -3,7 +3,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
@@ -29,6 +31,19 @@ class NotificationsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AppSection(
+            title: 'Your running timer',
+            footnote: 'Dynamic bars are provided by your device software. Availability and appearance vary by device.',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.timer_outlined),
+                title: const Text('Countdown & dynamic bars'),
+                subtitle: const Text('Keep your subject and countdown in an ongoing notification. Allow notifications in App access.'),
+                trailing: const AppChevron(),
+                onTap: () => context.goNamed(AppRoutes.permissions),
+              ),
+            ],
+          ),
           AppSection(
             title: 'Focus reminders',
             children: [
@@ -196,13 +211,15 @@ class NotificationsScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: Gap.xl),
-                      Text('Quiet hours', style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'Quiet hours',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: Gap.xs),
                       Text(
                         'Mute every reminder between these times.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: Gap.lg),
                       _SwitchRow(

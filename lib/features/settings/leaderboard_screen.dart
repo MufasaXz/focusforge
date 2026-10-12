@@ -95,7 +95,7 @@ class LeaderboardScreen extends ConsumerWidget {
           if (!available)
             const _NoBackendCard()
           else ...[
-            GlassCard(
+            ContentCard(
               clipBehavior: Clip.antiAlias,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -192,7 +192,7 @@ class _BoardSwitch extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return GlassCard(
+    return ContentCard(
       child: Column(
         children: [
           SwitchListTile.adaptive(
@@ -301,7 +301,7 @@ class _NoBackendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(
@@ -348,7 +348,7 @@ class _WeekCard extends StatelessWidget {
     final ceiling = thisWeek > lastWeek ? thisWeek : lastWeek;
     final progress = ceiling <= 0 ? 0.0 : (thisWeek / ceiling).clamp(0.0, 1.0);
 
-    return GlassCard(
+    return ContentCard(
       key: const ValueKey('leaderboard-week'),
       color: Color.alphaBlend(
         cs.primary.withValues(alpha: .09),

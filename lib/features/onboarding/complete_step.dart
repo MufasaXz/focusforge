@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -112,57 +113,58 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
             accent: true,
             padding: const EdgeInsets.all(Gap.lg),
             child: LayoutBuilder(
-            builder: (context, constraints) {
-              final columns =
-                  constraints.maxWidth < 300 ||
-                      MediaQuery.textScalerOf(context).scale(14) > 20
-                  ? 1
-                  : 2;
-              final width =
-                  (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
-              final tiles = [
-                _StatTile(
-                  icon: persona.icon,
-                  color: harmonize(persona.color, cs.primary),
-                  value: persona.label,
-                  label: 'Profile',
-                ),
-                if (guardian)
+              builder: (context, constraints) {
+                final columns =
+                    constraints.maxWidth < 300 ||
+                        MediaQuery.textScalerOf(context).scale(14) > 20
+                    ? 1
+                    : 2;
+                final width =
+                    (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
+                final tiles = [
                   _StatTile(
-                    icon: Icons.family_restroom_rounded,
-                    color: cs.tertiary,
-                    value: 'Parent control',
-                    label: 'This phone',
-                  )
-                else ...[
-                  _StatTile(
-                    icon: Icons.menu_book_rounded,
-                    color: cs.secondary,
-                    value: '$subjectCount',
-                    label: subjectCount == 1 ? 'Subject' : 'Subjects',
+                    icon: persona.icon,
+                    color: harmonize(persona.color, cs.primary),
+                    value: persona.label,
+                    label: 'Profile',
                   ),
-                  _StatTile(
-                    icon: Icons.timer_outlined,
-                    color: cs.secondary,
-                    value: formatMinutes(preset.focus),
-                    label: 'Focus block',
-                  ),
-                  _StatTile(
-                    icon: Icons.timer_rounded,
-                    color: cs.tertiary,
-                    value: formatMinutes(goal),
-                    label: 'Daily goal',
-                  ),
-                ],
-              ];
-              return Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
-                children: [
-                  for (final tile in tiles) SizedBox(width: width, child: tile),
-                ],
-              );
-            },
+                  if (guardian)
+                    _StatTile(
+                      icon: Icons.family_restroom_rounded,
+                      color: cs.tertiary,
+                      value: 'Parent control',
+                      label: 'This phone',
+                    )
+                  else ...[
+                    _StatTile(
+                      icon: Icons.menu_book_rounded,
+                      color: cs.secondary,
+                      value: '$subjectCount',
+                      label: subjectCount == 1 ? 'Subject' : 'Subjects',
+                    ),
+                    _StatTile(
+                      icon: Icons.timer_outlined,
+                      color: cs.secondary,
+                      value: formatMinutes(preset.focus),
+                      label: 'Focus block',
+                    ),
+                    _StatTile(
+                      icon: Icons.timer_rounded,
+                      color: cs.tertiary,
+                      value: formatMinutes(goal),
+                      label: 'Daily goal',
+                    ),
+                  ],
+                ];
+                return Wrap(
+                  spacing: Gap.sm,
+                  runSpacing: Gap.sm,
+                  children: [
+                    for (final tile in tiles)
+                      SizedBox(width: width, child: tile),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -170,7 +172,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         const Stagger(index: 4, child: SectionHeader(title: 'Quick tips')),
         Stagger(
           index: 5,
-          child: GlassCard(
+          child: ContentCard(
             clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: Gap.xs),
@@ -231,7 +233,7 @@ class _StatTile extends StatelessWidget {
 
     // Glass over the hero panel's tonal fill: the tiles float above the
     // summary instead of drawing another border inside it.
-    return GlassCard(
+    return ContentCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.item),
       ),

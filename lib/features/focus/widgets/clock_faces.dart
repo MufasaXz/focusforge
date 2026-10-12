@@ -706,11 +706,7 @@ class _SerifClock extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         for (var i = 0; i < text.length; i++)
-          Text(
-            text[i],
-            style: text[i] == ':' ? colon : figures,
-            maxLines: 1,
-          ),
+          Text(text[i], style: text[i] == ':' ? colon : figures, maxLines: 1),
       ],
     );
   }

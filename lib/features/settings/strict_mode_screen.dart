@@ -1,4 +1,5 @@
 import '../../app/theme/app_theme.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -66,13 +67,15 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                   children: [
                     Row(
                       children: [
-                        Text('Lock length', style: Theme.of(context).textTheme.bodyMedium),
+                        Text(
+                          'Lock length',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                         const Spacer(),
                         Text(
                           _formatWindow(hours),
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: cs.error,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(color: cs.error),
                         ),
                       ],
                     ),
@@ -99,9 +102,15 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                     ),
                     Row(
                       children: [
-                        Text('15 min', style: Theme.of(context).textTheme.labelSmall),
+                        Text(
+                          '15 min',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
                         const Spacer(),
-                        Text('8 h', style: Theme.of(context).textTheme.labelSmall),
+                        Text(
+                          '8 h',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
                       ],
                     ),
                   ],
@@ -437,7 +446,8 @@ class _PhraseStep extends StatelessWidget {
       children: [
         Text(
           'Step 1 of 3 — type “$phrase” to continue.',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.sm),
         Container(
@@ -451,15 +461,15 @@ class _PhraseStep extends StatelessWidget {
             autofocus: true,
             textInputAction: TextInputAction.done,
             onChanged: (_) => onChanged(),
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15),
+            style: Theme.of(context).textTheme.bodyLarge
+                ?.copyWith(fontSize: 15),
             cursorColor: accent,
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
               hintText: 'Type the phrase',
-              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              hintStyle: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: Gap.md,
                 vertical: 14,
@@ -492,7 +502,8 @@ class _CooldownStep extends StatelessWidget {
       children: [
         Text(
           'Step 2 of 3 — wait without touching the screen.',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.lg),
         _CooldownRing(remaining: remaining, total: total, color: accent),
@@ -501,7 +512,8 @@ class _CooldownStep extends StatelessWidget {
           'The confirm unlocks when the ring empties. Dismissing this sheet '
           'cancels it.',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );
@@ -590,9 +602,8 @@ class _CooldownRing extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'seconds',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -731,9 +742,8 @@ class _WarningPanel extends StatelessWidget {
                   Text(
                     'You can’t change blocks or uninstall FocusForge until the '
                     'timer expires.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -770,14 +780,14 @@ class _Step extends StatelessWidget {
             ),
             child: Text(
               '$number',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontSize: 11.5,
-                color: cs.error,
-              ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(fontSize: 11.5, color: cs.error),
             ),
           ),
           const SizedBox(width: Gap.md),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          ),
         ],
       ),
     );

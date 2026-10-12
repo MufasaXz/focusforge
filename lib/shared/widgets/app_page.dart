@@ -1,4 +1,5 @@
 import 'glass_surface.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -167,7 +168,7 @@ class AppSection extends StatelessWidget {
             child: Text(title, style: theme.textTheme.titleSmall),
           ),
         ),
-        GlassCard(
+        ContentCard(
           // Without this the tile ripples paint square corners over the card's
           // rounded ones.
           clipBehavior: Clip.antiAlias,

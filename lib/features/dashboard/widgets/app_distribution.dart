@@ -1,4 +1,5 @@
 import '../../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +29,7 @@ class AppDistribution extends ConsumerWidget {
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
 
     if (rules.isEmpty) {
-      return GlassCard(
+      return ContentCard(
         child: Padding(
           padding: const EdgeInsets.all(Gap.lg),
           child: Row(
@@ -53,9 +54,8 @@ class AppDistribution extends ConsumerWidget {
                     Text(
                       'Pick the apps you open without meaning to and they '
                       'close themselves.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                     const SizedBox(height: Gap.sm),
                     TextButton(
@@ -219,7 +219,9 @@ class _RuleSummary extends StatelessWidget {
                           usageAccess ? formatMinutes(entry.usedMinutes) : '—',
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
-                                color: entry.overBudget ? cs.error : cs.onSurface,
+                                color: entry.overBudget
+                                    ? cs.error
+                                    : cs.onSurface,
                               ),
                         ),
                         Text(

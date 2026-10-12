@@ -7,7 +7,7 @@ import 'typography.dart';
 /// The app's Material 3 theme.
 ///
 /// Accent palettes share warm paper surfaces by day and charcoal at night.
-/// Widgets use scheme roles so their glass treatment follows both modes.
+/// Solid content surfaces and restrained floating glass share scheme roles.
 class AppTheme {
   const AppTheme._();
 
@@ -161,10 +161,10 @@ class AppTheme {
   static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return cs.copyWith(
-      surface: Color(dark ? 0xFF191A1C : 0xFFF4EADB),
+      surface: Color(dark ? 0xFF17191C : 0xFFF5F0E7),
       surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFCF7),
-      surfaceContainerLow: Color(dark ? 0xFF222326 : 0xFFFAF4E9),
-      surfaceContainer: Color(dark ? 0xFF292A2D : 0xFFEDE2CF),
+      surfaceContainerLow: Color(dark ? 0xFF23262A : 0xFFFFFCF6),
+      surfaceContainer: Color(dark ? 0xFF2A2D31 : 0xFFEEE7DC),
       surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE8DCC8),
       surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDFD1BA),
       onSurface: Color(dark ? 0xFFF4EEE3 : 0xFF302D26),

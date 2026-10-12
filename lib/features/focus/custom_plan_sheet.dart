@@ -38,12 +38,10 @@ class _CustomPlanSheet extends ConsumerStatefulWidget {
 class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
   /// Seeded from the plan already in use, so opening the sheet to adjust one
   /// number does not silently reset the other.
-  late int _goal =
-      ref.read(customPlanProvider)?.goalMinutes ?? 4 * 60;
+  late int _goal = ref.read(customPlanProvider)?.goalMinutes ?? 4 * 60;
   late int _focus = ref.read(customPlanProvider)?.focusMinutes ?? 50;
 
-  CustomPlan get _plan =>
-      CustomPlan(goalMinutes: _goal, focusMinutes: _focus);
+  CustomPlan get _plan => CustomPlan(goalMinutes: _goal, focusMinutes: _focus);
 
   @override
   Widget build(BuildContext context) {
@@ -149,9 +147,7 @@ class _NumberSlider extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(label, style: theme.textTheme.titleSmall),
-            ),
+            Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
             Text(
               readout,
               style: theme.textTheme.titleSmall?.copyWith(
@@ -216,8 +212,9 @@ class _PlanSummary extends StatelessWidget {
                 Expanded(
                   child: Text(
                     lines[i].$2,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],

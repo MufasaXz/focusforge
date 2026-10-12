@@ -46,7 +46,7 @@ class ParentControlScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GlassCard(
+          ContentCard(
             key: const ValueKey('parent-hero'),
             color: Color.alphaBlend(
               Theme.of(context).colorScheme.primary.withValues(alpha: .09),
@@ -111,7 +111,7 @@ class _NoBackendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Row(
@@ -556,7 +556,7 @@ class _WhatATParentSeesNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(

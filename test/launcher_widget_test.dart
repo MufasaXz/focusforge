@@ -87,6 +87,32 @@ void main() {
     expect(calls, ['takeFocusLaunch', 'takeDashboardLaunch']);
   });
 
+  test(
+    'native live progress uses the current segment length after nudging',
+    () async {
+      final store = await LocalStore.open();
+      await store.clearAll();
+      final container = ProviderContainer(
+        overrides: [localStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+      final timer = container.read(timerProvider.notifier);
+      timer.nudge(const Duration(minutes: 5));
+      timer.start();
+      await Future<void>.delayed(Duration.zero);
+      final active = store.getMap(StoreKeys.presets)!;
+      expect(active['plannedMs'], const Duration(minutes: 30).inMilliseconds);
+      expect(active['running'], isTrue);
+      expect(active['targetEnd'], isNotNull);
+      timer.pause();
+      await Future<void>.delayed(Duration.zero);
+      final paused = store.getMap(StoreKeys.presets)!;
+      expect(paused['running'], isFalse);
+      expect(paused['targetEnd'], isNull);
+      expect(paused['plannedMs'], active['plannedMs']);
+    },
+  );
+
   test('an embedding without widgets cannot break the focus app', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);

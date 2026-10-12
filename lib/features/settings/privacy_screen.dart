@@ -24,20 +24,78 @@ import 'settings_support.dart';
 /// Distinguishes detailed local records from optional shared summaries. On the web there is no
 /// file system to write an export to, so exporting copies to the clipboard
 /// instead — and says so, rather than pretending a download happened.
-class PrivacyScreen extends ConsumerWidget {
+class PrivacyScreen extends ConsumerStatefulWidget {
   const PrivacyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrivacyScreen> createState() => _PrivacyScreenState();
+}
+
+class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final user = ref.watch(userProvider);
 
     return AppPage(
-      title: 'Data & Privacy',
-      subtitle: 'Local-first by default',
+      title: 'Account & privacy',
+      subtitle: 'Your account. Your choices.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AppSection(
+            title: 'Account',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person_outline_rounded),
+                title: Text(
+                  user.displayName.isEmpty
+                      ? 'Your FocusForge account'
+                      : user.displayName,
+                ),
+                subtitle: Text(
+                  user.isAnonymous ? 'On this device · no account required' : 'Linked account · detailed history stays on this device',
+                ),
+              ),
+              ListTile(
+                leading: Icon(
+                  user.isAnonymous ? Icons.login_rounded : Icons.logout_rounded,
+                ),
+                title: Text(
+                  user.isAnonymous
+                      ? 'Sign in or create an account'
+                      : 'Sign out',
+                ),
+                subtitle: const Text(
+                  'Your setup and local focus history are kept',
+                ),
+                trailing: const AppChevron(),
+                onTap: _busy
+                    ? null
+                    : () => user.isAnonymous
+                          ? context.goNamed(AppRoutes.auth)
+                          : _signOut(context, ref),
+              ),
+              ListTile(
+                title: Text(_busy ? 'Working…' : 'Delete account'),
+                subtitle: Text(
+                  user.isAnonymous
+                      ? 'Erase your profile and every local record'
+                      : 'Delete your sign-in and remove local data',
+                ),
+                leading: _busy
+                    ? const SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.delete_outline, color: cs.error),
+                trailing: const AppChevron(),
+                onTap: _busy ? null : () => _deleteAccount(context, ref),
+              ),
+            ],
+          ),
           AppSection(
             title: 'Your data',
             children: [
@@ -116,13 +174,6 @@ class PrivacyScreen extends ConsumerWidget {
                 ),
                 trailing: const AppChevron(),
                 onTap: () => _clearAnalytics(context, ref),
-              ),
-              ListTile(
-                title: const Text('Delete account'),
-                subtitle: const Text('Erases every local record'),
-                leading: Icon(Icons.delete_outline, color: cs.error),
-                trailing: const AppChevron(),
-                onTap: () => _deleteAccount(context, ref),
               ),
             ],
           ),
@@ -246,6 +297,39 @@ class PrivacyScreen extends ConsumerWidget {
 
   // -- Delete account -------------------------------------------------------
 
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showAppConfirmDialog(
+      context: context,
+      title: 'Sign out?',
+      message: 'Your setup and detailed history stay on this device. Sign in again to reconnect sharing.',
+      confirmLabel: 'Sign out',
+      icon: Icons.logout_rounded,
+    );
+    if (!confirmed || !context.mounted) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(authServiceProvider).signOut();
+      // The local profile remains the base for a later sign-in, but cloud
+      // features should stop presenting it as a connected credential.
+      await ref
+          .read(userProvider.notifier)
+          .save(ref.read(userProvider).copyWith(isAnonymous: true));
+      if (context.mounted) {
+        context.goNamed(AppRoutes.auth);
+        showAppSnack(
+          context,
+          'Signed out. Your focus history is safe on this device.',
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        showAppSnack(context, 'Could not sign out. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
     final confirmed = await showAppConfirmDialog(
       context: context,
@@ -253,8 +337,9 @@ class PrivacyScreen extends ConsumerWidget {
       message:
           'Every local record is erased: profile, sessions, shields and '
           'badges. Group memberships and their progress rows are removed '
-          'before the account is deleted. Unlink parent control and opt out '
-          'of the public board first to remove those older records. This cannot be undone.',
+          'before the account is deleted. Parent links, shared summaries and '
+          'board entries known to this device are removed. Older board entries '
+          'or pairing codes from other devices may need support to remove. This cannot be undone.',
       requirePhrase: 'DELETE',
       fieldHint: 'Type DELETE',
       confirmLabel: 'Delete everything',
@@ -267,16 +352,42 @@ class PrivacyScreen extends ConsumerWidget {
     // Read while the context is certainly live: the credential call below
     // crosses an async gap before the reset needs the container.
     final container = ProviderScope.containerOf(context, listen: false);
+    final auth = ref.read(authServiceProvider);
+    String? password;
+    if (auth.usesRemoteCredentials &&
+        !ref.read(userProvider).isAnonymous &&
+        auth.supportsPasswordReauthentication) {
+      password = await showAppDialog<String>(
+        context: context,
+        builder: (_) => const _PasswordConfirmation(),
+      );
+      if (password == null || !context.mounted) return;
+    }
+    setState(() => _busy = true);
+    ref.read(accountMutationProvider.notifier).state = true;
 
     // The auth service removes group membership while it can still authorise
     // cloud writes. Local records are kept if cleanup or credential deletion
     // fails so the user can retry.
     try {
-      await ref.read(authServiceProvider).deleteAccount();
+      await auth.reauthenticate(password: password);
+      await auth.deleteAccount();
+      await resetPersistedState(container);
     } on AuthException catch (e) {
       if (!context.mounted) return;
       showAppSnack(context, e.friendly);
       return;
+    } catch (_) {
+      if (context.mounted) {
+        showAppSnack(
+          context,
+          'Could not delete your account. Your local history is kept. Please try again.',
+        );
+      }
+      return;
+    } finally {
+      container.read(accountMutationProvider.notifier).state = false;
+      if (mounted) setState(() => _busy = false);
     }
 
     // Clearing the store is not enough: the live notifiers still hold every
@@ -284,8 +395,6 @@ class PrivacyScreen extends ConsumerWidget {
     // their next save. `resetPersistedState` blanks them all in the one place
     // that knows how to hydrate them, and re-arms the demo-history marker so
     // the onboarding that follows starts from a genuinely empty slate.
-    await resetPersistedState(container);
-
     if (!context.mounted) return;
     context.go(AppRoutes.paths[AppRoutes.onboarding]!);
   }
@@ -296,7 +405,7 @@ class PrivacyScreen extends ConsumerWidget {
     showLicensePage(
       context: context,
       applicationName: 'FocusForge',
-      applicationVersion: '1.0.1',
+      applicationVersion: '1.0.3',
       applicationLegalese: 'MIT licensed · built with Flutter',
     );
   }
@@ -311,6 +420,57 @@ class PrivacyScreen extends ConsumerWidget {
       builder: (context) => _InfoBody(title: title, body: body),
     );
   }
+}
+
+class _PasswordConfirmation extends StatefulWidget {
+  const _PasswordConfirmation();
+
+  @override
+  State<_PasswordConfirmation> createState() => _PasswordConfirmationState();
+}
+
+class _PasswordConfirmationState extends State<_PasswordConfirmation> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text('Confirm it’s you', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: Gap.md),
+      const Text(
+        'Enter your account password to finish deleting your account.',
+      ),
+      const SizedBox(height: Gap.lg),
+      TextField(
+        controller: _password,
+        obscureText: true,
+        autofocus: true,
+        autocorrect: false,
+        enableSuggestions: false,
+        decoration: const InputDecoration(labelText: 'Password'),
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: Gap.lg),
+      FilledButton(
+        onPressed: _password.text.isEmpty
+            ? null
+            : () => Navigator.of(context).pop(_password.text),
+        child: const Text('Confirm and delete'),
+      ),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+    ],
+  );
 }
 
 class _ExportBody extends StatelessWidget {

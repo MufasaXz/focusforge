@@ -1,4 +1,5 @@
 import '../../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,8 +32,7 @@ class ChildStudyCard extends ConsumerWidget {
     final child = ref.watch(activeChildProvider);
     if (child == null) return const SizedBox.shrink();
 
-    final children =
-        ref.watch(childrenProvider).valueOrNull ?? const [];
+    final children = ref.watch(childrenProvider).valueOrNull ?? const [];
     final read = ref.watch(childProgressProvider(child.uid));
     final progress = read.valueOrNull;
 
@@ -41,7 +41,7 @@ class ChildStudyCard extends ConsumerWidget {
       pathParameters: {'uid': child.uid},
     );
 
-    return GlassCard(
+    return ContentCard(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),
@@ -90,9 +90,9 @@ class ChildStudyCard extends ConsumerWidget {
                                 'Their study',
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                     ),
                               ),
                             ],
@@ -139,18 +139,18 @@ class ChildStudyCard extends ConsumerWidget {
                               children: [
                                 Text(
                                   formatHoursShort(progress.minutes / 60),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall,
                                 ),
                                 Text(
                                   'of a ${formatMinutes(progress.goalMinutes)} '
                                   'goal today',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                 ),
                                 const SizedBox(height: 2),
@@ -164,9 +164,9 @@ class ChildStudyCard extends ConsumerWidget {
                                   ].join(' · '),
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                 ),
                               ],

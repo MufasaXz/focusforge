@@ -723,6 +723,7 @@ class TimerNotifier extends Notifier<TimerState> {
         'segmentStartedAt': state.segmentStartedAt?.millisecondsSinceEpoch,
         'completedFocusSegments': state.completedFocusSegments,
         'remainingMs': state.remaining.inMilliseconds,
+        'plannedMs': state.plannedDuration(preset).inMilliseconds,
         'segmentExtraMs': state.segmentExtra.inMilliseconds,
       });
 

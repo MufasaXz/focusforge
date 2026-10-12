@@ -276,7 +276,7 @@ class _ProgressCard extends StatelessWidget {
     final today = _todayKey();
     final stale = progress.day != null && progress.day != today;
 
-    return GlassCard(
+    return ContentCard(
       key: const ValueKey('child-progress'),
       color: Color.alphaBlend(
         cs.primary.withValues(alpha: .09),
@@ -452,7 +452,7 @@ class _BlocksSection extends ConsumerWidget {
           title: 'Blocks on their device',
           icon: Icons.block_rounded,
         ),
-        GlassCard(
+        ContentCard(
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
@@ -771,7 +771,7 @@ class _SecurityCodeSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SectionHeader(title: 'Security code', icon: Icons.lock_rounded),
-        GlassCard(
+        ContentCard(
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: IconBadge(

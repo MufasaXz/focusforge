@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -158,6 +159,46 @@ void main() {
       await tester.pumpAndSettle();
       expect(continued, isTrue);
     } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('permission guidance stays readable on narrow phones', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channels = [
+      MethodChannel('dev.focusforge/shield'),
+      MethodChannel('usage_stats'),
+      MethodChannel('flutter.baseflow.com/permissions/methods'),
+    ];
+    for (final channel in channels) {
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => channel.name.contains('permissions') ? 0 : false,
+      );
+    }
+    try {
+      viewport(tester, const Size(320, 640));
+      await tester.pumpWidget(wrap(PermissionsStep(onNext: () {}), scale: 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Make room for focus'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Block distractions'), 180);
+      await tester.pumpAndSettle();
+      expect(find.text('Block distractions').hitTestable(), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('How to enable Shield'), 180);
+      await tester.pumpAndSettle();
+      expect(find.text('How to enable Shield').hitTestable(), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Continue for now'), 180);
+      await tester.pumpAndSettle();
+      expect(find.text('Continue for now').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    } finally {
+      for (final channel in channels) {
+        messenger.setMockMethodCallHandler(channel, null);
+      }
       debugDefaultTargetPlatformOverride = null;
     }
   });

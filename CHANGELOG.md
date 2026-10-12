@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.0.3 refresh — 2026-10-12
+
+Android build 2017. Replaces the downloadable APK on the existing 1.0.3 release.
+
+- Replaced repeated frosted content boxes with opaque tonal surfaces while
+  retaining glass for floating navigation and dialogs. Refined day/dark themes.
+- Simplified You: removed Shield/Focus shortcuts and weekly progress; kept
+  identity, achievements, appearance and clearly grouped preferences.
+- Added a discoverable Account & privacy page with sign-out, return greetings,
+  and confirmed account deletion with email/Google reauthentication. Completed
+  local profiles skip onboarding on sign-in and keep their focus history.
+- Account deletion removes group memberships, parent links, shared summaries
+  and board weeks known to this device before deleting the Firebase credential.
+  Failures preserve the credential and local history for retry. Remote records
+  from other devices need backend cleanup; see Firebase setup documentation.
+- Redesigned App access with plain permission explanations, accessibility setup
+  instructions, retry states and a settings entry available after onboarding.
+- Added an ongoing system countdown for running focus/break timers, including
+  eligibility for supported Android 16/OEM live bars. Actual promotion depends
+  on device software and notification settings.
+- Fixed blank/white widget previews, added compact widget layouts, theme-aware
+  backgrounds and resizing/font-scale handling; corrected countdown formatting.
+- Fixed missing Material ancestry in settings dialogs and large-text overflows
+  in permission guidance and the dashboard goal ring.
+
+Validation: static analysis passed and 251 Flutter tests passed, including
+320dp/DPR3 layouts at 2×/3× text. Native Kotlin/resources and signed release APK
+builds passed. Physical-device live bars, widget hosting, Firebase authentication
+and production cloud cleanup still require device/backend verification. Firebase
+rules were not modified or deployed.
+
 ## 1.0.3 — 2026-10-11
 
 Android build 2016.

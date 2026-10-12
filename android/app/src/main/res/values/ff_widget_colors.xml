@@ -1,0 +1,6 @@
+<resources>
+    <color name="ff_widget_surface">#E8DFC9</color>
+    <color name="ff_widget_outline">#CFC4AB</color>
+    <color name="ff_widget_ink">#302D26</color>
+    <color name="ff_widget_secondary">#6C6557</color>
+</resources>

@@ -134,9 +134,8 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                       const Spacer(),
                       Text(
                         _hours(_target),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleSmall?.copyWith(color: s.color),
+                        style: Theme.of(context).textTheme.titleSmall
+                            ?.copyWith(color: s.color),
                       ),
                     ],
                   ),
@@ -179,9 +178,8 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                         ? 'You are already past this target for the week.'
                         : 'A target is a floor, not a ceiling — it only drives the '
                               'progress ring.',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: Gap.lg),
                   FilledButton.icon(

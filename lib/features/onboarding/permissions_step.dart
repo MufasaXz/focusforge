@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,7 +59,12 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
   Future<void> _refresh() async {
     final next = <AppPermission, PermissionOutcome>{};
     for (final permission in AppPermission.values) {
-      next[permission] = await _manager.check(permission);
+      next[permission] = await _manager
+          .check(permission)
+          .timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => PermissionOutcome.denied,
+          );
     }
     if (!mounted) return;
     setState(() => _status.addAll(next));
@@ -71,6 +77,16 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
       return;
     }
     if (!mounted) return;
+    showAppSnack(context, switch (permission) {
+      AppPermission.accessibility =>
+        'Choose FocusForge in Accessibility, then allow access.',
+      AppPermission.usageAccess =>
+        'Choose FocusForge, then allow usage access.',
+      AppPermission.doNotDisturb =>
+        'Allow FocusForge in Do Not Disturb access.',
+      AppPermission.notifications =>
+        'Allow notifications to keep your timer visible.',
+    });
     setState(() => _requesting = permission);
     final outcome = await _manager.request(permission);
     if (!mounted) return;
@@ -102,7 +118,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
         .length;
 
     return StepScaffold(
-      title: 'Choose your permissions',
+      title: 'Make room for focus',
       subtitle:
           'Enable the features you want. The focus timer works without '
           'these, and you can return to permissions later.',
@@ -115,6 +131,38 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
           'Optional. Access is confirmed by your device, and you can revoke '
           'it in system settings.',
       children: [
+        ContentCard(
+          color: cs.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(Gap.lg),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.timer_outlined, color: cs.onPrimaryContainer),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your timer is ready',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: cs.onPrimaryContainer),
+                      ),
+                      const SizedBox(height: Gap.xs),
+                      Text(
+                        'Add the access you need below. You can start studying with none of it.',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: cs.onPrimaryContainer),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
         if (permissions.isEmpty)
           const Text('No extra permissions are needed on this device.')
         else ...[
@@ -190,8 +238,8 @@ class _Permission {
 const _permissions = <_Permission>[
   _Permission(
     kind: AppPermission.accessibility,
-    title: 'Accessibility Service',
-    icon: Icons.visibility_rounded,
+    title: 'Block distractions',
+    icon: Icons.shield_outlined,
     why:
         'Lets Shield block selected apps and distracting feeds such as '
         'Reels and Shorts.',
@@ -202,9 +250,9 @@ const _permissions = <_Permission>[
   ),
   _Permission(
     kind: AppPermission.notifications,
-    title: 'Notifications',
+    title: 'Keep your timer in view',
     icon: Icons.notifications_active_rounded,
-    why: 'Allows FocusForge to show notifications on this device.',
+    why: 'Shows your running countdown and subject in a quiet ongoing notification. Compatible dynamic bars can pick it up.',
     privacy:
         'Notifications are generated on-device. Nothing is pushed from a '
         'server.',
@@ -212,7 +260,7 @@ const _permissions = <_Permission>[
   ),
   _Permission(
     kind: AppPermission.usageAccess,
-    title: 'Usage Access',
+    title: 'Understand your screen time',
     icon: Icons.query_stats_rounded,
     why:
         'Reads screen time per app so the dashboard can show where your day '
@@ -222,7 +270,7 @@ const _permissions = <_Permission>[
   ),
   _Permission(
     kind: AppPermission.doNotDisturb,
-    title: 'Do Not Disturb',
+    title: 'Quiet interruptions',
     icon: Icons.do_not_disturb_on_rounded,
     why: 'Allows FocusForge to manage your device’s Do Not Disturb mode.',
     privacy:
@@ -253,13 +301,14 @@ class _PermissionCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final granted = status == PermissionOutcome.granted;
 
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconBadge(
                   icon: permission.icon,
@@ -274,18 +323,6 @@ class _PermissionCard extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                Chip(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
-                  labelPadding: EdgeInsets.zero,
-                  label: Text(
-                    permission.platform,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: Gap.md),
@@ -296,6 +333,15 @@ class _PermissionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Gap.sm),
+            if (permission.kind == AppPermission.accessibility) ...[
+              Text('How to enable Shield', style: theme.textTheme.labelLarge),
+              const SizedBox(height: Gap.xs),
+              Text(
+                '1. Open Accessibility settings.\n2. Choose FocusForge under downloaded apps.\n3. Allow access, then return here.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: Gap.md),
+            ],
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -409,16 +455,16 @@ class _Action extends StatelessWidget {
     // "Enable" again would do nothing at all, so the button goes to the only
     // screen that can still change the answer.
     if (status == PermissionOutcome.permanentlyDenied) {
-      return Row(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Text(
-              'Turned off — only Settings can change it',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+          Text(
+            'Turned off — only Settings can change it',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: Gap.sm),
           TextButton(
             onPressed: onOpenSettings,
             child: const Text('Open Settings'),
@@ -428,16 +474,16 @@ class _Action extends StatelessWidget {
     }
 
     if (status == PermissionOutcome.openedSettings) {
-      return Row(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Text(
-              'Waiting for you to turn it on in Settings',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+          Text(
+            'Waiting for you to turn it on in Settings',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: Gap.sm),
           TextButton(onPressed: onEnable, child: const Text('Open again')),
         ],
       );

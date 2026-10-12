@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:gravity="center"
     android:padding="12dp"
-    android:background="@drawable/ff_widget_day">
+    android:background="@drawable/ff_widget_background">
     <TextView
         android:id="@+id/widget_title"
         android:layout_width="match_parent"
@@ -14,9 +14,9 @@
         android:text="DAILY GOAL"
         android:textSize="10sp"
         android:letterSpacing="0.16"
-        android:textStyle="bold" />
+        android:textStyle="bold" android:textColor="@color/ff_widget_ink" />
     <ImageView
-        android:id="@+id/widget_dial"
+        android:id="@+id/widget_dial" android:src="@drawable/ff_widget_goal_preview"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -30,20 +30,20 @@
         android:gravity="center"
         android:text="0 / 300 min today"
         android:textSize="15sp"
-        android:textStyle="bold" />
+        android:textStyle="bold" android:textColor="@color/ff_widget_ink" />
     <TextView
         android:id="@+id/widget_subject"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:textSize="11sp"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="4dp" android:textColor="@color/ff_widget_ink" />
     <TextView
         android:id="@+id/widget_caption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:textSize="10sp"
-        android:maxLines="2"
-        android:layout_marginTop="3dp" />
+        android:maxLines="1" android:ellipsize="end"
+        android:layout_marginTop="3dp" android:textColor="@color/ff_widget_ink" />
 </LinearLayout>

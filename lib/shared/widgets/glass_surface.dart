@@ -40,6 +40,42 @@ class GlassBackdrop extends StatelessWidget {
   }
 }
 
+/// Opaque content surface, distinct from the glass of floating controls.
+class ContentCard extends StatelessWidget {
+  const ContentCard({
+    super.key,
+    required this.child,
+    this.color,
+    this.shape,
+    this.clipBehavior = Clip.antiAlias,
+    this.outlined = false,
+  });
+
+  final Widget child;
+  final Color? color;
+  final ShapeBorder? shape;
+  final Clip clipBehavior;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: color ?? cs.surfaceContainerLow,
+      shape:
+          shape ??
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.card),
+            side: outlined
+                ? BorderSide(color: cs.outlineVariant.withValues(alpha: .6))
+                : BorderSide.none,
+          ),
+      clipBehavior: clipBehavior,
+      child: child,
+    );
+  }
+}
+
 /// Frosted material with a bright upper rim and a quiet lower shadow.
 /// Only the background is blurred; text, charts and taps stay crisp.
 class GlassCard extends StatelessWidget {

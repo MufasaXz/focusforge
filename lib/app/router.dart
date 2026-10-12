@@ -7,6 +7,7 @@ import '../features/dashboard/dashboard_screen.dart';
 import '../features/focus/focus_screen.dart';
 import '../features/onboarding/auth_screen.dart';
 import '../features/onboarding/onboarding_flow.dart';
+import '../features/onboarding/permissions_step.dart';
 import '../features/parent/child_dashboard_screen.dart';
 import '../features/parent/parent_control_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -44,6 +45,7 @@ class AppRoutes {
   static const privacy = 'privacy';
   static const about = 'about';
   static const clockFace = 'clock-face';
+  static const permissions = 'permissions';
   static const parentControl = 'parent-control';
   static const parentChild = 'parent-child';
 
@@ -62,6 +64,7 @@ class AppRoutes {
     notifications: '/profile/notifications',
     privacy: '/profile/privacy',
     clockFace: '/profile/clock-face',
+    permissions: '/profile/permissions',
     about: '/profile/about',
     parentControl: '/profile/parent-control',
     // Reached only from the Parent control page, so the path is absolute
@@ -95,7 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!onboarded && !inOnboarding) {
         return AppRoutes.paths[AppRoutes.onboarding];
       }
-      if (onboarded && inOnboarding) {
+      if (onboarded && location.startsWith('/onboarding')) {
         return AppRoutes.paths[AppRoutes.dashboard];
       }
       return null;
@@ -198,6 +201,23 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'privacy',
                     name: AppRoutes.privacy,
                     builder: (context, state) => const PrivacyScreen(),
+                  ),
+                  GoRoute(
+                    path: 'permissions',
+                    name: AppRoutes.permissions,
+                    builder: (context, state) => Scaffold(
+                      appBar: AppBar(title: const Text('App access')),
+                      body: SafeArea(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 640),
+                            child: PermissionsStep(
+                              onNext: () => context.goNamed(AppRoutes.profile),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                   GoRoute(
                     path: 'clock-face',

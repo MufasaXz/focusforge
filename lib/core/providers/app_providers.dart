@@ -17,6 +17,9 @@ final authServiceProvider = Provider<AuthService>(
   (ref) => LocalAuthService(ref.watch(localStoreProvider)),
 );
 
+/// Stops optional sharing while account cleanup is in progress.
+final accountMutationProvider = StateProvider<bool>((ref) => false);
+
 // -- Account -----------------------------------------------------------------
 
 class UserNotifier extends Notifier<UserProfile> {

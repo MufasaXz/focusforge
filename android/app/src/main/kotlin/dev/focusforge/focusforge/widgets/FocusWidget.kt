@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.*
 import android.os.SystemClock
+import android.os.Bundle
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import dev.focusforge.focusforge.MainActivity
@@ -26,6 +28,9 @@ open class FocusWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { update(context, manager, it, kind) }
     }
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        update(context, manager, id, kind)
+    }
     override fun onDeleted(context: Context, ids: IntArray) {
         val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         ids.forEach { id ->
@@ -35,7 +40,7 @@ open class FocusWidget : AppWidgetProvider() {
     }
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH || intent.action == Intent.ACTION_DATE_CHANGED ||
+        if (intent.action == ACTION_REFRESH || intent.action == Intent.ACTION_CONFIGURATION_CHANGED || intent.action == Intent.ACTION_DATE_CHANGED ||
             intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED) refresh(context)
     }
     companion object {
@@ -111,28 +116,62 @@ open class FocusWidget : AppWidgetProvider() {
                 add(Calendar.DAY_OF_YEAR, 1)
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             }.timeInMillis
-            // Refresh when the native countdown needs a leading zero below ten minutes.
-            val leadingZeroBoundary = target - 599_000L
-            val nextRefresh = if (running) minOf(target, midnight,
-                if (leadingZeroBoundary > now) leadingZeroBoundary else Long.MAX_VALUE) else midnight
+            // Chronometer already renders MM:SS, including leading zeroes.
+            // A single boundary refresh stops it when the segment has ended.
+            val nextRefresh = if (running) minOf(target, midnight) else midnight
             alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextRefresh, pending)
             val remaining = if (running) target - now else if (timer.optBoolean("running")) 0L else timer.optLong("remainingMs", 25 * 60_000L)
+            val options = manager.getAppWidgetOptions(id)
+            val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
+            val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
+            val compact = width < 190 || height < 190 || context.resources.configuration.fontScale > 1.3f
             val views = RemoteViews(context.packageName, when(kind) {
-                "goal" -> R.layout.ff_goal_widget
+                "goal" -> if (compact) R.layout.ff_goal_widget_compact else R.layout.ff_goal_widget
                 "study" -> R.layout.ff_study_widget
-                else -> R.layout.ff_focus_widget
+                else -> if (compact) R.layout.ff_focus_widget_compact else R.layout.ff_focus_widget
             })
             views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.ff_widget_dark else R.drawable.ff_widget_day)
             listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_subject).forEach { views.setTextColor(it, ink) }
             if (kind != "goal") listOf(R.id.widget_time, R.id.widget_live).forEach { views.setTextColor(it, ink) }
             views.setTextColor(R.id.widget_caption, secondary)
-            views.setTextViewText(R.id.widget_title, if (kind == "goal") "DAILY GOAL" else phase.uppercase(Locale.ROOT))
+            val scaledHeight = height / context.resources.configuration.fontScale
+            views.setViewVisibility(R.id.widget_caption, if (scaledHeight < 160) View.GONE else View.VISIBLE)
+            if (scaledHeight < 120) {
+                // At 2× text the live value gets the space. Auxiliary labels
+                // disappear instead of covering the countdown or goal ring.
+                views.setViewVisibility(R.id.widget_title, View.GONE)
+                views.setViewVisibility(R.id.widget_subject, View.GONE)
+                if (kind == "clock") views.setViewVisibility(R.id.widget_phase, View.GONE)
+            }
+            if (kind == "study") {
+                views.setTextViewTextSize(R.id.widget_subject, TypedValue.COMPLEX_UNIT_SP, if (compact) 14f else 18f)
+                views.setViewVisibility(R.id.widget_progress, if (scaledHeight < 125) View.GONE else View.VISIBLE)
+            }
+            val padding = ((if (compact) 12 else 18) * context.resources.displayMetrics.density).toInt()
+            views.setViewPadding(R.id.widget_root, padding, padding, padding, padding)
+            if (kind != "goal") {
+                // Launcher dimensions are dp, so these constraints hold at
+                // both low and high screen densities and large text settings.
+                val availableWidth = width - 2 * (if (compact) 12 else 18)
+                val digits = if (remaining >= 3_600_000L) 7 else 5
+                val fittingSize = availableWidth / context.resources.configuration.fontScale / (digits * .58f)
+                val timeSize = fittingSize.coerceIn(14f, if (compact) 30f else 38f)
+                listOf(R.id.widget_time, R.id.widget_live).forEach {
+                    views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, timeSize)
+                }
+            }
+            views.setTextViewText(R.id.widget_title, when(kind) {
+                "goal" -> "DAILY GOAL"
+                "study" -> if (running) "${phase.uppercase(Locale.ROOT)} IN PROGRESS" else "YOUR NEXT SESSION"
+                else -> phase.uppercase(Locale.ROOT)
+            })
             if (kind == "clock") {
-                views.setTextViewText(R.id.widget_phase, (if (phase == "Focus") "○ FOCUS" else "○ BREAK"))
+                views.setTextViewText(R.id.widget_phase, if (running) "IN PROGRESS" else if (remaining <= 0) "COMPLETE" else "READY")
                 views.setTextColor(R.id.widget_phase, secondary)
             }
             views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
             views.setTextViewText(R.id.widget_progress, minutes.toString() + " / " + goal + " min today")
+            if (compact) views.setTextViewText(R.id.widget_progress, "$minutes / $goal min")
             views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
                 if (minutes >= goal) "Goal complete · Keep growing" else (goal - minutes).toString() + " min to grow · Tap to view"
             } else if (running) phase + " in progress · Tap to open" else if (remaining <= 0) "Block ended · Open to continue" else "Ready when you are · Tap to focus")
@@ -144,8 +183,7 @@ open class FocusWidget : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
                 views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
                 if (running) {
-                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining,
-                        if (remaining < 600_000L) "0%s" else "%s", true)
+                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining, "%s", true)
                     views.setChronometerCountDown(R.id.widget_live, true)
                 } else {
                     val seconds = remaining.coerceAtLeast(0) / 1000

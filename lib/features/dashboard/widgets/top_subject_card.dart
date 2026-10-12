@@ -1,4 +1,5 @@
 import '../../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,7 +26,7 @@ class TopSubjectCard extends ConsumerWidget {
     final top = ref.watch(topSubjectProvider(range));
     final span = range == StudyRange.week ? 'week' : 'month';
 
-    return GlassCard(
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
         child: top == null

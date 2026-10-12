@@ -137,7 +137,7 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                GlassCard(
+                ContentCard(
                   key: const ValueKey('groups-hero'),
                   color: Color.alphaBlend(
                     Theme.of(context).colorScheme.primary
@@ -285,7 +285,7 @@ class _GroupCard extends ConsumerWidget {
         60;
     final now = ref.watch(groupClockProvider).valueOrNull ?? DateTime.now();
     final focusing = rows.where((m) => m.focusingAt(now)).length;
-    return GlassCard(
+    return ContentCard(
       child: InkWell(
         borderRadius: BorderRadius.circular(Radii.card),
         onTap: () => Navigator.of(context).push(

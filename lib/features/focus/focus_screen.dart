@@ -531,7 +531,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   ),
                   const SizedBox(width: Gap.sm),
                   Expanded(
-                    child: GlassCard(
+                    child: ContentCard(
                       color: t.surfaceContainerHigh,
                       shape: const StadiumBorder(),
                       clipBehavior: Clip.antiAlias,
@@ -1307,7 +1307,7 @@ class _DockNudge extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onTap : null,
         scale: 0.92,
-        child: GlassCard(
+        child: ContentCard(
           color: t.surfaceContainerHigh,
           shape: const StadiumBorder(),
           child: SizedBox(

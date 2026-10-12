@@ -1,4 +1,5 @@
 import '../../shared/widgets/glass_surface.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -33,7 +34,7 @@ class AboutScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GlassCard(
+          ContentCard(
             child: Padding(
               padding: const EdgeInsets.all(Gap.xl),
               child: Column(
@@ -45,9 +46,15 @@ class AboutScreen extends StatelessWidget {
                     radius: 24,
                   ),
                   const SizedBox(height: Gap.lg),
-                  Text('FocusForge', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    'FocusForge',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: Gap.xs),
-                  Text('Version $_version', style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'Version $_version',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                   const SizedBox(height: Gap.lg),
                   Chip(
                     avatar: Icon(
@@ -63,9 +70,8 @@ class AboutScreen extends StatelessWidget {
                     'rules, the Pomodoro engine and the interface you are '
                     'looking at.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -99,7 +105,9 @@ class AboutScreen extends StatelessWidget {
             children: [
               const ListTile(
                 title: Text('Built with Flutter'),
-                subtitle: Text('Interface, engine and Material 3 design system'),
+                subtitle: Text(
+                  'Interface, engine and Material 3 design system',
+                ),
                 leading: Icon(Icons.flutter_dash),
               ),
               ListTile(
@@ -111,7 +119,9 @@ class AboutScreen extends StatelessWidget {
               ),
               const ListTile(
                 title: Text('Typeface'),
-                subtitle: Text('Inter and Inter Display, SIL Open Font License'),
+                subtitle: Text(
+                  'Inter and Inter Display, SIL Open Font License',
+                ),
                 leading: Icon(Icons.text_fields),
               ),
             ],
@@ -146,10 +156,8 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'v$_version · MIT',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10.5,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontSize: 10.5, color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -197,8 +205,11 @@ class _CopyGlyph extends StatelessWidget {
   const _CopyGlyph();
 
   @override
-  Widget build(BuildContext context) =>
-      Icon(Icons.copy_outlined, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant);
+  Widget build(BuildContext context) => Icon(
+    Icons.copy_outlined,
+    size: 17,
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+  );
 }
 
 class _AudioCreditsBody extends StatelessWidget {
@@ -230,7 +241,10 @@ class _AudioCreditsBody extends StatelessWidget {
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text('Ambient audio', style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Ambient audio',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ],
         ),
@@ -240,12 +254,16 @@ class _AudioCreditsBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
               children: [
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
                 Text(
                   author,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -255,7 +273,8 @@ class _AudioCreditsBody extends StatelessWidget {
           'All six loops are CC0 1.0 (public domain) and were sourced from '
           'freesound.org. Credit is given here although the licence does not '
           'require it.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.xl),
         AppActionButton(
@@ -300,7 +319,12 @@ class _TextBody extends StatelessWidget {
               radius: 12,
             ),
             const SizedBox(width: Gap.md),
-            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: Gap.lg),

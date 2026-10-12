@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,6 +9,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
+import 'leaderboard_service.dart';
+import 'parent_service.dart';
 import 'study_group_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
@@ -41,12 +44,29 @@ class FirebaseAuthService extends AuthService {
   final _controller = StreamController<UserProfile?>.broadcast();
   StreamSubscription<User?>? _authSub;
   UserProfile? _current;
+  bool _returning = false;
+  DateTime? _reauthenticatedAt;
+
+  @override
+  bool get isReturningUser => _returning;
+
+  @override
+  bool get supportsPasswordReauthentication =>
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ==
+      true;
+
+  void _recognise(UserCredential credential) {
+    _reauthenticatedAt = null;
+    _returning =
+        credential.additionalUserInfo?.isNewUser == false &&
+        !credential.user!.isAnonymous;
+  }
 
   @override
   UserProfile? get current => _current;
 
   @override
-  bool get signedIn => _current != null;
+  bool get signedIn => _auth.currentUser != null;
 
   @override
   Stream<UserProfile?> get changes => _controller.stream;
@@ -58,6 +78,7 @@ class FirebaseAuthService extends AuthService {
       _current = null;
       return null;
     }
+    _returning = !user.isAnonymous;
     return _persist(_profileFor(user));
   }
 
@@ -70,6 +91,10 @@ class FirebaseAuthService extends AuthService {
   /// silently reset everything the user edited during onboarding.
   @override
   Future<UserProfile> signInAnonymously() async {
+    if (_auth.currentUser case final user?) {
+      return _persist(_profileFor(user));
+    }
+    _returning = false;
     final credential = await _guard(() => _auth.signInAnonymously());
     return _persist(_profileFor(credential.user!));
   }
@@ -90,6 +115,7 @@ class FirebaseAuthService extends AuthService {
         password: password,
       ),
     );
+    _recognise(credential);
     return _persist(_profileFor(credential.user!, email: email));
   }
 
@@ -107,6 +133,7 @@ class FirebaseAuthService extends AuthService {
         password: password,
       ),
     );
+    _returning = false;
     return _persist(_profileFor(credential.user!, email: email));
   }
 
@@ -212,16 +239,19 @@ class FirebaseAuthService extends AuthService {
     final user = _auth.currentUser;
     if (user == null) {
       final result = await _guard(() => _auth.signInWithCredential(credential));
+      _recognise(result);
       return apply(result.user!);
     }
 
     try {
       final result = await user.linkWithCredential(credential);
+      _returning = false;
       return await apply(result.user!);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         // Already attached to this user: the requested end state is reached.
         case 'provider-already-linked':
+          _returning = true;
           return apply(user);
         // The Google account belongs to a different Firebase user. Ownership
         // was just proven, so signing into it is what the user asked for; the
@@ -230,6 +260,7 @@ class FirebaseAuthService extends AuthService {
           final result = await _guard(
             () => _auth.signInWithCredential(credential),
           );
+          _recognise(result);
           return apply(result.user!);
       }
       throw _translate(e);
@@ -254,9 +285,54 @@ class FirebaseAuthService extends AuthService {
 
   @override
   Future<void> signOut() async {
+    _reauthenticatedAt = null;
     await _guard(() => _auth.signOut());
+    try {
+      await _googleSignIn().signOut();
+    } catch (_) {
+      // The Firebase session is already closed. A provider cache error must
+      // not report a failed sign-out after it succeeded.
+    }
     _current = null;
     _controller.add(null);
+  }
+
+  @override
+  Future<void> reauthenticate({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) return;
+    if (supportsPasswordReauthentication) {
+      if (password == null || password.isEmpty) {
+        throw const AuthException(AuthFailure.wrongPassword);
+      }
+      await _guard(
+        () => user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: user.email!, password: password),
+        ),
+      );
+      _reauthenticatedAt = DateTime.now();
+      return;
+    }
+    if (user.providerData.any((p) => p.providerId == 'google.com')) {
+      try {
+        final account = await _googleSignIn().signIn();
+        if (account == null) throw const AuthException(AuthFailure.cancelled);
+        final tokens = await account.authentication;
+        await _guard(
+          () => user.reauthenticateWithCredential(
+            GoogleAuthProvider.credential(
+              idToken: tokens.idToken,
+              accessToken: tokens.accessToken,
+            ),
+          ),
+        );
+        _reauthenticatedAt = DateTime.now();
+        return;
+      } on PlatformException catch (e) {
+        throw _translateGoogle(e);
+      }
+    }
+    throw const AuthException(AuthFailure.requiresRecentLogin);
   }
 
   @override
@@ -265,13 +341,23 @@ class FirebaseAuthService extends AuthService {
     if (user != null) {
       // Group rows must be removed while the credential can still authorise
       // writes. Check login age first, before changing any cloud membership.
+      final recentlyConfirmed =
+          _reauthenticatedAt != null &&
+          DateTime.now().difference(_reauthenticatedAt!) <
+              const Duration(minutes: 5);
       if (!user.isAnonymous &&
+          !recentlyConfirmed &&
           (user.metadata.lastSignInTime == null ||
               DateTime.now().difference(user.metadata.lastSignInTime!) >
                   const Duration(minutes: 5))) {
         throw const AuthException(AuthFailure.requiresRecentLogin);
       }
       try {
+        // Finish queued sharing writes before removing their records. The UI
+        // suspends publishers for the duration of this operation.
+        await FirebaseFirestore.instance.waitForPendingWrites().timeout(
+          const Duration(seconds: 20),
+        );
         if (!user.isAnonymous) {
           final groups = await FirebaseStudyGroupService()
               .groupsForDeletion(user.uid)
@@ -280,14 +366,59 @@ class FirebaseAuthService extends AuthService {
             await FirebaseStudyGroupService().leave(group);
           }
         }
+        await _removeSharedRecords(user.uid);
       } catch (_) {
-        throw const AuthException(AuthFailure.network);
+        throw const AuthException(AuthFailure.cleanupFailed);
       }
       await _guard(() => user.delete());
     }
     await _store.clearAll();
     _current = null;
+    _returning = false;
     _controller.add(null);
+  }
+
+  Future<void> _removeSharedRecords(String uid) async {
+    final db = FirebaseFirestore.instance;
+    final parent = FirebaseParentService();
+    final link = await db
+        .doc('users/$uid/guardian/link')
+        .get(const GetOptions(source: Source.server));
+    final pairCode = link.data()?['pairCode'];
+    await parent.unlink(uid);
+    if (pairCode is String) await db.doc('pairCodes/$pairCode').delete();
+    final children = await db
+        .collection('users/$uid/children')
+        .get(const GetOptions(source: Source.server));
+    for (final child in children.docs) {
+      await parent.unlink(child.id);
+    }
+    for (final collection in ['progress', 'catalog']) {
+      final records = await db
+          .collection('users/$uid/$collection')
+          .get(const GetOptions(source: Source.server));
+      for (final record in records.docs) {
+        await record.reference.delete();
+      }
+    }
+    // Older weeks are recoverable from this device's history. Records from
+    // other devices need a backend deletion job; the confirmation says so.
+    final weeks = <String>{weekKey(DateTime.now())};
+    for (final raw in _store.getList(StoreKeys.sessions)) {
+      if (raw['startedAt'] is num) {
+        weeks.add(
+          weekKey(
+            DateTime.fromMillisecondsSinceEpoch(
+              (raw['startedAt'] as num).toInt(),
+            ),
+          ),
+        );
+      }
+    }
+    for (final week in weeks) {
+      await db.doc('leaderboard/$week/entries/$uid').delete();
+    }
+    await db.doc('users/$uid').delete();
   }
 
   @override
@@ -333,10 +464,8 @@ class FirebaseAuthService extends AuthService {
   /// silently reset the record the onboarding steps wrote, which is the exact
   /// failure `LocalAuthService._baseProfile` exists to prevent.
   ///
-  /// `isAnonymous` is monotonic: it clears when Firebase reports a
-  /// credential-backed user, and otherwise inherits the stored flag. That way
-  /// a link performed on the device cannot be undone by a later anonymous
-  /// session, which would silently re-lock study groups.
+  /// Credential state comes from Firebase. Keeping a previously linked flag
+  /// after sign-out would misrepresent a device-only session as authenticated.
   UserProfile _profileFor(
     User user, {
     String? displayName,
@@ -349,7 +478,7 @@ class FirebaseAuthService extends AuthService {
         : UserProfile.fromJson(stored);
     return base.copyWith(
       uid: user.uid,
-      isAnonymous: base.isAnonymous && user.isAnonymous,
+      isAnonymous: user.isAnonymous,
       displayName: _displayNameFor(
         base,
         user,

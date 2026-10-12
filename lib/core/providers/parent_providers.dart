@@ -28,7 +28,10 @@ final parentServiceProvider = Provider<ParentService>((ref) {
 /// The profile's uid is the backend's uid — the auth service re-keys the
 /// record when a session starts — so this is what Firestore's rules see.
 final accountUidProvider = Provider<String?>((ref) {
-  final uid = ref.watch(userProvider).uid;
+  final profile = ref.watch(userProvider);
+  final auth = ref.read(authServiceProvider);
+  if (auth.usesRemoteCredentials && !auth.signedIn) return null;
+  final uid = profile.uid;
   return uid.isEmpty ? null : uid;
 });
 
@@ -220,6 +223,7 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
 /// the child's whole day.
 final parentProgressPublisherProvider = Provider<void>((ref) {
   Future<void> send() async {
+    if (ref.read(accountMutationProvider)) return;
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -289,6 +293,7 @@ bool _withinLastWeek(DateTime at, DateTime now) {
 /// Nothing about how the apps are used travels with it.
 final catalogPublisherProvider = Provider<void>((ref) {
   Future<void> send() async {
+    if (ref.read(accountMutationProvider)) return;
     final service = ref.read(parentServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -297,6 +302,7 @@ final catalogPublisherProvider = Provider<void>((ref) {
     final installed = await AppCatalog.installed(
       excludePackage: AppCatalog.selfPackage,
     );
+    if (ref.read(accountMutationProvider)) return;
     // System apps are most of the list and none of the intent: a parent
     // blocking the settings app is not what "block their apps" means, and the
     // engine refuses several of them anyway.

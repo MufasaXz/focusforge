@@ -57,6 +57,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Alexandria Morgan Rivera'), findsOneWidget);
         expect(find.byKey(const ValueKey('profile-hero')), findsOneWidget);
+        expect(find.byKey(const ValueKey('profile-scroll')), findsOneWidget);
+        expect(find.text('Shield'), findsNothing);
+        expect(find.text('Focus'), findsNothing);
+        expect(find.text('YOUR WEEK IN FOCUS'), findsNothing);
+        expect(find.text('Weekly study goals'), findsNothing);
         expect(
           find.byWidgetPredicate(
             (w) =>
@@ -82,6 +87,12 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('About FocusForge').hitTestable(), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Account'),
+          160,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Account').hitTestable(), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
