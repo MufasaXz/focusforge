@@ -23,22 +23,14 @@ import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/models/shield.dart';
-import 'package:focusforge/core/models/social.dart';
-import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
-import 'package:focusforge/core/services/leaderboard_service.dart';
-import 'package:focusforge/core/services/study_group_service.dart';
-
-class _ReadmeGroups extends UnavailableStudyGroupService {
-  const _ReadmeGroups();
-  @override
-  bool get available => true;
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('capture four current screens and focus motion', (tester) async {
+  testWidgets('capture current Day and Dark screens and real focus motion', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -48,7 +40,8 @@ void main() {
         jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
     for (final entry in fontManifest.cast<Map<String, dynamic>>()) {
       final loader = FontLoader(entry['family'] as String);
-      for (final font in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
+      for (final font
+          in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
         loader.addFont(rootBundle.load(font['asset'] as String));
       }
       await loader.load();
@@ -60,16 +53,6 @@ void main() {
     await store.setBool(StoreKeys.coachSeen, true);
     final engine = RecordingShieldService();
     final now = DateTime.now();
-    final group = StudyGroup(
-      id: 'readme-circle',
-      name: 'The quiet corner',
-      icon: Icons.groups_rounded,
-      targetHours: 20,
-      createdAt: now,
-      inviteCode: 'STUDY23456',
-      ownerUid: 'alex',
-      memberIds: const ['alex', 'riley', 'maya'],
-    );
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
@@ -103,32 +86,6 @@ void main() {
         usageAccessProvider.overrideWith((ref) async => true),
         // Do not claim Android accessibility access in a widget capture.
         shieldEnabledProvider.overrideWith((ref) async => false),
-        studyGroupServiceProvider.overrideWithValue(const _ReadmeGroups()),
-        cloudGroupsProvider.overrideWith((ref) => Stream.value([group])),
-        groupClockProvider.overrideWith((ref) => Stream.value(now)),
-        groupMembersProvider('readme-circle').overrideWith(
-          (ref) => Stream.value([
-            GroupMember(
-              uid: 'alex',
-              name: 'Alex Morgan',
-              week: weekKey(now.toUtc()),
-              minutes: 180,
-            ),
-            GroupMember(
-              uid: 'riley',
-              name: 'Riley Chen',
-              week: weekKey(now.toUtc()),
-              minutes: 240,
-              focusUntil: now.add(const Duration(minutes: 20)),
-            ),
-            GroupMember(
-              uid: 'maya',
-              name: 'Maya Patel',
-              week: weekKey(now.toUtc()),
-              minutes: 150,
-            ),
-          ]),
-        ),
       ],
     );
     addTearDown(container.dispose);
@@ -206,22 +163,33 @@ void main() {
       });
     }
 
-    await container
-        .read(themeSettingsProvider.notifier)
-        .setMode(ThemePreference.dark);
+    await container.read(themeSettingsProvider.notifier).setAmoled(false);
     await tester.pumpWidget(scope(const FocusForgeApp()));
     Future<void> route(String path) async {
       container.read(routerProvider).go(path);
       await tester.pump();
       await tester.pumpAndSettle();
+      for (final state in tester.stateList<ScrollableState>(
+        find.byType(Scrollable),
+      )) {
+        if (state.position.axis == Axis.vertical) state.position.jumpTo(0);
+      }
+      await tester.pumpAndSettle();
     }
 
-    await route('/dashboard');
-    await capture('01-dashboard');
-    await route('/shield');
-    await capture('02-shield');
+    for (final mode in [ThemePreference.light, ThemePreference.dark]) {
+      await container.read(themeSettingsProvider.notifier).setMode(mode);
+      for (final entry in const {
+        '/dashboard': '01-dashboard',
+        '/shield': '02-shield',
+        '/focus': '03-focus',
+        '/profile': '04-you',
+      }.entries) {
+        await route(entry.key);
+        await capture('${mode.name}/${entry.value}');
+      }
+    }
     await route('/focus');
-    await capture('03-focus');
     // Capture the real press/release transition. Test pumps do not advance
     // DateTime.now, so this animation demonstrates the control rather than
     // fabricating an accelerated focus session.
@@ -242,12 +210,6 @@ void main() {
     container.read(timerProvider.notifier).pause();
     await tester.pump();
     await tester.pumpAndSettle();
-    await route('/profile/groups');
-    await tester.ensureVisible(find.text('The quiet corner'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('The quiet corner'));
-    await tester.pumpAndSettle();
-    await capture('04-groups');
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

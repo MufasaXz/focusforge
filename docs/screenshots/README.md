@@ -1,64 +1,66 @@
 # Screenshot gallery
 
-The Day and Dark galleries each contain four 680 × 1416 PNGs showing actual
-Flutter renders of the 1.0.3+2016 application, composed into illustrative OnePlus 15-inspired frames.
-They are not physical-device screenshots or official manufacturer renders.
-Personal progress and the Demo Student profile are fictional local sample data;
-no cloud memberships or leaderboard standings were fabricated.
+The Day and Dark galleries show the current FocusForge interface: Home, Shield,
+Focus and You. They were captured from the actual Flutter widgets at source
+commit `00a1cc820d0bf0523c18ecb50525c2752be4f513` on 13 October 2026. The app
+`lib/` tree was `4b0ed22ed7fddc9d2ef1e5f6c84be9f1ec96a485`.
 
-The capture source tree is `3f74e04d1424a561880812aa79c0ffb7b59633ff`,
-shared by the original build-2016 commit and the attribution-only rewritten
-commit `1e2f41619b648d99eff8814af238867e54c3d9f3`. Capture-only uncommitted
-changes were excluded. Screens were captured at 1272 × 2772 and resized
-proportionally for the phone interiors.
+These are reproducible widget-test renders with fictional local fixtures,
+composed inside neutral illustrative phone borders. They are not physical-device
+screenshots or manufacturer artwork. Alex Morgan, subject totals, study history
+and the installed app catalog are demonstration data. Android permissions and
+cloud memberships are not simulated as working production services.
 
-The separate Play Store artwork layout and headline treatment reference the supplied
-[banner](https://github.com/MufasaXz/che110-ca1/blob/main/IMG_20261011_162251_888.jpg).
-Marketing text uses Barlow Condensed Bold and Barlow Regular, licensed under
-[SIL Open Font License 1.1](https://github.com/jpt/barlow/blob/main/OFL.txt).
-The app's own typography is unchanged.
+## Reproduce the images
 
-Phone proportions reference [OnePlus 15 specifications](https://www.oneplus.com/us/15/specs).
-Corner radii, camera size and side keys are illustrative, not manufacturing drawings.
+From the app project root, with Flutter and Pillow installed:
 
-PNG decoding, OCR, image geometry and ZIP integrity were checked. The image
-bridge did not permit direct visual inspection; no subjective visual approval
-or real-device verification is claimed.
+```sh
+flutter test tool/capture_readme_test.dart
+python3 tool/compose_readme_assets.py
+```
 
-The four GitHub gallery files are RGBA PNGs with transparent backgrounds,
-not rectangular crops of the Play Store artwork. The original vector phone
-body and three side keys are recomposed directly onto transparency; the
-paper canvas and paper-colored offset shadow are omitted. No white-color
-removal is used, so light app content stays fully opaque.
+The capture harness loads the app's bundled text and Material icon fonts, then
+renders both actual theme modes at 390 × 844 logical pixels with 2× capture
+resolution. It runs outside the default test suite, writes intermediate files to
+`build/readme-captures`, and never accesses a user's stored data.
 
-Original 1080 × 1920 composition geometry: outer body rounded rectangle
-`(210,460)–(870,1850)`, radius 54; right keys `(867,702)–(872,802)` and
-`(867,824)–(872,883)`, radius 2; left key `(208,670)–(213,721)`, radius 2.
-The final 680 × 1416 canvas starts at original coordinate `(200,450)`.
-Only the silhouette's anti-aliased edge has partial alpha. Exterior pixels
-are transparent, solid frame/screen pixels are opaque, and central screen
-pixels were verified byte-for-byte against the source interiors.
-All eight output alpha channels match the independently rendered vector
-silhouette exactly. Gallery changes do not alter the separate Play Store artwork.
+The compositor preserves the original 780 × 1688 captures in `source/`, linked
+from the individual screens in each gallery. It also resizes them into
+680 × 1416 transparent PNGs.
+Only the border and rounded screen clipping are added; the app's controls, text,
+colors and layouts come directly from the Flutter render. Screen content stays
+opaque, including light surfaces. The transparent exterior is created from a
+vector silhouette rather than removing white pixels. No camera hole covers app
+content.
 
-## Day and Dark previews
+`gallery-day.png` and `gallery-dark.png` combine the four matching phone renders
+on transparent 2620 × 1340 canvases. Their Home, Shield, Focus and You captions
+use the app's bundled Inter typeface on opaque caption backgrounds that remain
+readable against either GitHub theme. The Day and Dark buttons open `day.md`
+or `dark.md`, where readers can switch to the other gallery or return to the
+main README.
 
-The original four Day PNGs remain byte-for-byte unchanged at their existing paths.
-The four `dark/` PNGs were captured from committed source `55ccc7099146e27cb3af230bc0efc497835c4f83`
-in an isolated archive, excluding the working tree's unrelated profile edits.
-Its `lib/` tree (`c7915a59e3e8a9d9c994c0b6d3eddf5439f1c247`) is identical to the original Day capture's app source.
-The same widget-test harness and fictional local fixtures were used, with
-`themeSettingsProvider` set to `ThemePreference.dark` and AMOLED disabled.
-`FocusForgeApp` derives its MaterialApp theme mode from that provider, so both
-app surfaces and provider-driven components use Dark mode. The capture test passed.
-No native-device output, cloud memberships or leaderboard standings are claimed.
+`03-focus.gif` is a 340 × 708 animation of the actual Focus Start control being
+pressed and released. It captures the real app transition at about 12 frames
+per second, with pauses at the beginning and end. It does not fabricate an
+accelerated focus countdown. Its palette is shared across frames to keep the
+static interface steady.
 
-Dark images use the exact silhouette, side keys, camera and transparent exterior
-of the Day images. Their central interiors were verified byte-for-byte against
-the proportionally resized Dark renders, and solid interiors remain opaque.
-Dark text is warm off-white; pure-white pixels are not required for this theme.
+## README theme selector
 
-The README's Day / Dark selector uses GitHub-supported section links and a native
-expandable Dark gallery. It is not a JavaScript toggle: GitHub sanitizes scripts
-and custom interactive CSS, so selecting a link navigates rather than changing
-an in-place image state. Expand “Show Dark phone gallery” to reveal its images.
+GitHub supports section links, expandable `<details>` galleries and
+theme-sensitive `<picture>` images. The README uses these supported elements;
+it does not depend on custom JavaScript, custom CSS or an embedded app. GitHub
+controls the surrounding font styling.
+
+## Validation and older artwork
+
+The fresh Flutter capture test passed. PNG/GIF decoding, dimensions, transparent
+exteriors, central screen pixels and readable screen labels were checked. The
+image bridge did not provide direct visual inspection, so no subjective visual
+approval or native-device verification is claimed.
+
+The older `04-groups.webp` remains an unused local-fixture preview from a prior
+capture. It is not part of the refreshed four-screen README gallery. Separate
+Play Store artwork and the design-review images are unchanged.
