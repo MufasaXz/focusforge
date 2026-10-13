@@ -10,6 +10,44 @@ service cloud.firestore {
     function localTimestamp(value) {
       return value is int && value >= 0 && value <= request.time.toMillis() + 60000;
     }
+    // Badges are a private, small union of earned IDs and original dates.
+    // Zero preserves older unlocks whose original date was never recorded.
+    function badgeDate(dates, id) {
+      let date = dates.get(id, 0);
+      return localTimestamp(date);
+    }
+    function achievementShape(d) {
+      let dates = d.unlockedAt;
+      return d.keys().hasOnly(['version','unlockedAt']) && d.version == 1 &&
+        dates is map && dates.keys().hasOnly([
+          'first_focus','week_warrior','century_club','night_owl',
+          'early_bird','deep_diver','steady_hand','month_king',
+          'hundred_hours','marathon','perfectionist','subject_master',
+          'night_shift','breath_master'
+        ]) &&
+        badgeDate(dates, 'first_focus') && badgeDate(dates, 'week_warrior') &&
+        badgeDate(dates, 'century_club') && badgeDate(dates, 'night_owl') &&
+        badgeDate(dates, 'early_bird') && badgeDate(dates, 'deep_diver') &&
+        badgeDate(dates, 'steady_hand') && badgeDate(dates, 'month_king') &&
+        badgeDate(dates, 'hundred_hours') && badgeDate(dates, 'marathon') &&
+        badgeDate(dates, 'perfectionist') && badgeDate(dates, 'subject_master') &&
+        badgeDate(dates, 'night_shift') && badgeDate(dates, 'breath_master');
+    }
+    function badgeKept(before, after, id) {
+      let oldDate = before.get(id, 0);
+      let newDate = after.get(id, 0);
+      return oldDate == 0 || (newDate > 0 && newDate <= oldDate);
+    }
+    function achievementsKept(before, after) {
+      return after.keys().hasAll(before.keys()) &&
+        badgeKept(before, after, 'first_focus') && badgeKept(before, after, 'week_warrior') &&
+        badgeKept(before, after, 'century_club') && badgeKept(before, after, 'night_owl') &&
+        badgeKept(before, after, 'early_bird') && badgeKept(before, after, 'deep_diver') &&
+        badgeKept(before, after, 'steady_hand') && badgeKept(before, after, 'month_king') &&
+        badgeKept(before, after, 'hundred_hours') && badgeKept(before, after, 'marathon') &&
+        badgeKept(before, after, 'perfectionist') && badgeKept(before, after, 'subject_master') &&
+        badgeKept(before, after, 'night_shift') && badgeKept(before, after, 'breath_master');
+    }
     function progressShape(d) {
       return d.keys().hasOnly(['minutes','sessions','goalMinutes','streak','topSubject','day','updatedAt','weekMinutes','weekSessions','weekDays']) &&
         boundedInt(d.minutes, 1440) && boundedInt(d.sessions, 1440) &&
@@ -75,6 +113,15 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if self(uid);
       allow write: if self(uid);
+      match /achievements/{doc} {
+        allow read: if account() && self(uid);
+        allow create: if account() && self(uid) && doc == 'earned' &&
+          achievementShape(request.resource.data);
+        allow update: if account() && self(uid) && doc == 'earned' &&
+          achievementShape(request.resource.data) &&
+          achievementsKept(resource.data.unlockedAt, request.resource.data.unlockedAt);
+        allow delete: if self(uid);
+      }
       match /children/{child} {
         allow read: if self(uid);
         allow create, update: if self(uid) &&

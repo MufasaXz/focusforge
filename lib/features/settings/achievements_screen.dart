@@ -27,6 +27,8 @@ class AchievementsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(achievementSyncProvider);
+    final backup = ref.watch(achievementBackupStatusProvider);
     final badges = ref.watch(achievementsProvider);
     final unlocked = ref.watch(unlockedCountProvider);
     final earned = badges.where((b) => b.unlocked).toList(growable: false);
@@ -44,6 +46,36 @@ class AchievementsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gap.lg),
+            child: Row(
+              children: [
+                Icon(
+                  backup == AchievementBackupStatus.saved
+                      ? Icons.cloud_done_outlined
+                      : Icons.cloud_outlined,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(switch (backup) {
+                    AchievementBackupStatus.localOnly => 'Saved on this device. Link an account for private backup.',
+                    AchievementBackupStatus.syncing =>
+                      'Saving your earned achievements…',
+                    AchievementBackupStatus.saved =>
+                      'Earned achievements saved to your account.',
+                    AchievementBackupStatus.pending => 'Saved on this device. Account backup is waiting to reconnect.',
+                  }, style: Theme.of(context).textTheme.bodySmall),
+                ),
+                if (backup == AchievementBackupStatus.pending)
+                  TextButton(
+                    onPressed: () => ref.read(achievementSyncProvider)(),
+                    child: const Text('Retry'),
+                  ),
+              ],
+            ),
+          ),
           const SectionHeader(
             title: 'Unlocked',
             icon: Icons.workspace_premium_rounded,

@@ -163,6 +163,7 @@ Future<ProviderContainer> bootstrap() async {
   container
       .read(achievementsProvider.notifier)
       .hydrate(store.getBoolMap(StoreKeys.achievements));
+  container.listen(achievementSyncProvider, (_, _) {});
   container
       .read(notificationsProvider.notifier)
       .hydrate(store.getMap(StoreKeys.notifications));
@@ -248,6 +249,7 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 /// or the seed catalogue — over the user's blank slate.
 Future<void> resetPersistedState(ProviderContainer container) async {
   final store = container.read(localStoreProvider);
+  await container.read(achievementsProvider.notifier).suspendForDeletion();
 
   // Subjects are user data, so the list is emptied outright rather than left
   // to fall back to the seed catalogue. Their counters are derived from the
@@ -278,7 +280,6 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(strictModeProvider);
   container.invalidate(remoteBlocksProvider);
   container.invalidate(breathEventsProvider);
-  container.invalidate(achievementsProvider);
   container.invalidate(notificationsProvider);
   container.invalidate(volumesProvider);
   container.invalidate(boardOptInProvider);
@@ -310,6 +311,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setSubject(null);
 
   await store.clearAll();
+  container.invalidate(achievementsProvider);
   // The wipe erased the empty subject list the removals above wrote, and
   // an absent key reads as a first run — which would restore the seed
   // catalogue. Writing the empty list back keeps the deleted state deleted.

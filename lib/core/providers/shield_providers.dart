@@ -450,7 +450,17 @@ class BreathEventsNotifier extends Notifier<List<BreathEvent>> {
   }
 
   Future<void> record(BreathEvent event) async {
-    state = [...state, event];
+    state = [
+      ...state,
+      BreathEvent(
+        appName: event.appName,
+        at: event.at,
+        walkedAway: event.walkedAway,
+        ownerUid: event.ownerUid.isEmpty
+            ? ref.read(userProvider).uid
+            : event.ownerUid,
+      ),
+    ];
     // Rolling window, not an archive — cap the log so storage stays bounded.
     if (state.length > 200) {
       state = state.sublist(state.length - 200);

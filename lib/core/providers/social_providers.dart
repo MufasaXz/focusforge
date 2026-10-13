@@ -6,6 +6,7 @@ import '../data/seed.dart';
 import '../services/leaderboard_service.dart';
 import '../services/study_group_service.dart';
 import '../services/local_store.dart';
+import '../services/achievement_service.dart';
 import 'app_providers.dart';
 import 'parent_providers.dart';
 import 'shield_providers.dart';
@@ -21,22 +22,7 @@ import 'study_providers.dart';
 /// nothing records any of that yet. They are left out rather than shown: a
 /// locked tile no user action can ever move is a goal in name only, and the
 /// whole point of the cabinet is that its numbers are true.
-const _measurableBadgeIds = <String>{
-  'first_focus',
-  'week_warrior',
-  'century_club',
-  'night_owl',
-  'early_bird',
-  'deep_diver',
-  'steady_hand',
-  'month_king',
-  'hundred_hours',
-  'marathon',
-  'perfectionist',
-  'subject_master',
-  'night_shift',
-  'breath_master',
-};
+const _measurableBadgeIds = achievementIds;
 
 /// Marks an unlock restored from a store written before timestamps were
 /// persisted. The cabinet renders it as "Earned earlier" rather than inventing
@@ -47,6 +33,14 @@ final _unknownUnlockTime = DateTime.fromMillisecondsSinceEpoch(0);
 bool isUnknownUnlockTime(DateTime? at) => at == _unknownUnlockTime;
 
 class AchievementsNotifier extends Notifier<List<Achievement>> {
+  String _uid = '';
+  String _historyOwner = '';
+  Map<String, dynamic> _accounts = {};
+  Map<String, bool> _linkedOwners = {};
+  Map<String, dynamic> _aliases = {};
+  Future<void> _writes = Future.value();
+  bool _suspended = false;
+
   /// Unlock timestamps live under their own key: [StoreKeys.achievements] is
   /// the bool map bootstrap already reads, and widening it to epoch millis
   /// would silently break that read. The dotted name follows the convention of
@@ -56,6 +50,56 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
 
   @override
   List<Achievement> build() {
+    _uid = ref.read(userProvider).uid;
+    _historyOwner = _store.getString(StoreKeys.achievementHistoryOwner) ?? _uid;
+    _accounts = _store.getMap(StoreKeys.achievementAccounts) ?? {};
+    _linkedOwners = _store.getBoolMap(StoreKeys.achievementLinkedOwners);
+    _aliases = _store.getMap(StoreKeys.achievementAliases) ?? {};
+    if (!ref.read(userProvider).isAnonymous) {
+      _linkedOwners = {..._linkedOwners, _uid: true};
+    }
+    ref.listen(userProvider, (previous, profile) {
+      final uid = profile.uid;
+      if (_suspended) {
+        _uid = uid;
+        state = _catalogue();
+        return;
+      }
+      if (uid == _uid) {
+        if (!profile.isAnonymous && _linkedOwners[uid] != true) {
+          _linkedOwners = {..._linkedOwners, uid: true};
+          unawaited(_persist());
+        }
+        return;
+      }
+      // A never-linked guest may carry its own earns into its first account.
+      // Signed-out registered accounts remain separate, even though the UI
+      // describes both signed-out and guest profiles as anonymous.
+      final firstLink =
+          previous?.isAnonymous == true &&
+          (_linkedOwners[_uid] == false ||
+              _store.getBool('achievements.linked.$_uid') == false) &&
+          !profile.isAnonymous;
+      if ((_uid.isEmpty && _historyOwner.isEmpty) || firstLink) {
+        _aliases = {..._aliases, _uid: uid};
+        _accounts = {
+          ..._accounts,
+          uid: mergeAchievementTimes(
+            readAchievementTimes(_accounts[uid]),
+            earnedTimes,
+          ),
+        }..remove(_uid);
+        if (_historyOwner == _uid) _historyOwner = uid;
+      }
+      if (!profile.isAnonymous) _linkedOwners = {..._linkedOwners, uid: true};
+      // Switch synchronously, before any cloud result or session event can
+      // present the previous account's cabinet.
+      _uid = uid;
+      state = _catalogue();
+      _applyTimes(readAchievementTimes(_accounts[uid]));
+      _recompute();
+      unawaited(_persist());
+    });
     // Every session-derived badge is measured from the session log, not the
     // stats aggregate (see [_recompute]), so the log's own event is the only
     // signal needed for it; subjects and breath events feed the rest. Keeping
@@ -64,11 +108,13 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     ref.listen(subjectsProvider, (_, _) => refresh());
     ref.listen(breathEventsProvider, (_, _) => refresh());
 
-    return [
-      for (final badge in SeedData.badges)
-        if (_measurableBadgeIds.contains(badge.id)) badge,
-    ];
+    return _catalogue();
   }
+
+  static List<Achievement> _catalogue() => [
+    for (final badge in SeedData.badges)
+      if (_measurableBadgeIds.contains(badge.id)) badge,
+  ];
 
   LocalStore get _store => ref.read(localStoreProvider);
 
@@ -76,7 +122,9 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
   /// this after the stats, subjects and session log are in, so the first frame
   /// already shows measured progress rather than zeros.
   void hydrate(Map<String, bool> unlocked) {
-    if (unlocked.isNotEmpty) {
+    if (_accounts.containsKey(_uid)) {
+      _applyTimes(readAchievementTimes(_accounts[_uid]));
+    } else if (_accounts.isEmpty && unlocked.isNotEmpty) {
       final times = _store.getMap(_unlockedAtKey);
       state = [
         for (final a in state)
@@ -89,15 +137,46 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
             a,
       ];
     }
-    if (_recompute()) unawaited(_persist());
+    _recompute();
+    // Migrate the old device cabinet once, including its original dates.
+    unawaited(_persist());
+  }
+
+  Map<String, int> get earnedTimes => {
+    for (final badge in state)
+      if (badge.unlocked) badge.id: badge.unlockedAt!.millisecondsSinceEpoch,
+  };
+
+  void _applyTimes(Map<String, int> times) {
+    state = [
+      for (final badge in state)
+        if (times.containsKey(badge.id))
+          badge.copyWith(
+            progress: badge.target,
+            unlockedAt: DateTime.fromMillisecondsSinceEpoch(times[badge.id]!),
+          )
+        else
+          badge,
+    ];
+  }
+
+  Future<void> restoreBackup(String uid, Map<String, int> remote) async {
+    if (_suspended || uid != _uid) return;
+    final merged = mergeAchievementTimes(earnedTimes, remote);
+    if (_sameAchievementTimes(earnedTimes, merged)) return;
+    _applyTimes(merged);
+    await _persist();
   }
 
   static DateTime _restoredTime(Map<String, dynamic>? times, String id) {
-    final millis = times?[id];
-    return millis is int
-        ? DateTime.fromMillisecondsSinceEpoch(millis)
-        : _unknownUnlockTime;
+    final millis = readAchievementTimes(times)[id];
+    return DateTime.fromMillisecondsSinceEpoch(millis ?? 0);
   }
+
+  bool _owns(String owner) =>
+      owner == _uid ||
+      _aliases[owner] == _uid ||
+      (owner.isEmpty && _historyOwner == _uid);
 
   /// Re-measures every badge from live state, moves the progress bars and
   /// permanently unlocks whatever is genuinely earned.
@@ -106,8 +185,12 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
   /// when the streak later lapses — which is why only the unlock and its
   /// timestamp are persisted and progress is recomputed from state instead.
   Future<void> refresh() async {
-    if (!_recompute()) return;
-    await _persist();
+    if (_suspended) return;
+    if (_recompute()) {
+      await _persist();
+    } else {
+      await _writes;
+    }
   }
 
   /// The synchronous half of [refresh]; true when something was newly unlocked
@@ -116,13 +199,18 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     // Measured from the session log, never from the stats aggregate: a badge
     // is a claim about the user, and the aggregate is a running total that a
     // cleared log would leave behind.
-    final sessions = ref.read(sessionsProvider).toList(growable: false);
+    final sessions = ref
+        .read(sessionsProvider)
+        .where((session) => _owns(session.ownerUid))
+        .toList(growable: false);
     final subjects = ref.read(subjectsProvider);
     final walkedAway = ref
         .read(breathEventsProvider)
-        .where((e) => e.walkedAway)
+        .where((e) => e.walkedAway && _owns(e.ownerUid))
         .length;
-    final now = DateTime.now();
+    final now = DateTime.fromMillisecondsSinceEpoch(
+      DateTime.now().millisecondsSinceEpoch,
+    );
 
     var changed = false;
     var unlockedNew = false;
@@ -151,14 +239,39 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     return unlockedNew;
   }
 
-  Future<void> _persist() async {
-    final unlocked = state.where((a) => a.unlocked).toList(growable: false);
-    await _store.setBoolMap(StoreKeys.achievements, {
-      for (final a in unlocked) a.id: true,
+  Future<void> _persist() {
+    if (_suspended) return _writes;
+    final times = earnedTimes;
+    _accounts = {..._accounts, _uid: times};
+    final accounts = Map<String, dynamic>.of(_accounts);
+    final historyOwner = _historyOwner;
+    final linkedOwners = Map<String, bool>.of(_linkedOwners);
+    final aliases = Map<String, dynamic>.of(_aliases);
+    final store = _store;
+    _writes = _writes.then((_) async {
+      await store.setString(StoreKeys.achievementHistoryOwner, historyOwner);
+      await store.setMap(StoreKeys.achievementAccounts, accounts);
+      await store.setBoolMap(StoreKeys.achievementLinkedOwners, linkedOwners);
+      await store.setMap(StoreKeys.achievementAliases, aliases);
+      // Keep the legacy read path compatible with old exports/bootstrap.
+      await store.setBoolMap(StoreKeys.achievements, {
+        for (final id in times.keys) id: true,
+      });
+      await store.setMap(_unlockedAtKey, times);
     });
-    await _store.setMap(_unlockedAtKey, {
-      for (final a in unlocked) a.id: a.unlockedAt!.millisecondsSinceEpoch,
-    });
+    return _writes;
+  }
+
+  Future<void> flushLocal() => _writes;
+
+  Future<void> suspendForDeletion() {
+    _suspended = true;
+    return _writes;
+  }
+
+  void resumeAfterFailedDeletion() {
+    _suspended = false;
+    unawaited(refresh());
   }
 
   List<Achievement> get unlockedList =>
@@ -173,6 +286,137 @@ final achievementsProvider =
 final unlockedCountProvider = Provider<int>(
   (ref) => ref.watch(achievementsProvider).where((a) => a.unlocked).length,
 );
+
+enum AchievementBackupStatus { localOnly, syncing, saved, pending }
+
+final achievementBackupStatusProvider = StateProvider<AchievementBackupStatus>((
+  ref,
+) {
+  ref.watch(userProvider.select((user) => (user.uid, user.isAnonymous)));
+  return AchievementBackupStatus.localOnly;
+});
+
+final achievementServiceProvider = Provider<AchievementService>(
+  (ref) =>
+      ref.watch(authServiceProvider).usesRemoteCredentials &&
+          FirebaseLeaderboardService.isSupported
+      ? FirebaseAchievementService()
+      : const UnavailableAchievementService(),
+);
+
+final achievementAccountProvider = Provider<String?>((ref) {
+  final profile = ref.watch(userProvider);
+  if (profile.isAnonymous ||
+      profile.uid.isEmpty ||
+      !ref.read(authServiceProvider).signedIn) {
+    return null;
+  }
+  return profile.uid;
+});
+
+final achievementCloudProvider = StreamProvider<Map<String, int>>((ref) {
+  ref.state = const AsyncData({});
+  final uid = ref.watch(achievementAccountProvider);
+  final service = ref.watch(achievementServiceProvider);
+  if (uid == null || !service.available) return Stream.value(const {});
+  return service.watch(uid);
+});
+
+bool _sameAchievementTimes(Map<String, int> a, Map<String, int> b) =>
+    a.length == b.length &&
+    a.entries.every((entry) => b[entry.key] == entry.value);
+
+/// Retries locally retained unlocks after connectivity/rules are repaired.
+/// An account change disposes the old publisher; late results cannot hydrate
+/// or mark the next account as backed up.
+final achievementSyncProvider = Provider<Future<void> Function()>((ref) {
+  final uid = ref.watch(achievementAccountProvider);
+  final service = ref.watch(achievementServiceProvider);
+  var disposed = false;
+  Future<void>? sending;
+  Map<String, int>? confirmed;
+  ref.onDispose(() => disposed = true);
+
+  void status(AchievementBackupStatus value) {
+    if (!disposed) {
+      ref.read(achievementBackupStatusProvider.notifier).state = value;
+    }
+  }
+
+  Future<void> publish() async {
+    if (disposed || ref.read(accountMutationProvider)) return;
+    final profile = ref.read(userProvider);
+    if (uid != null && (profile.uid != uid || profile.isAnonymous)) return;
+    if (uid == null || !service.available) {
+      status(AchievementBackupStatus.localOnly);
+      return;
+    }
+    if (sending != null) {
+      await sending;
+      if (!disposed) await publish();
+      return;
+    }
+    final earned = ref.read(achievementsProvider.notifier).earnedTimes;
+    if (confirmed != null && _sameAchievementTimes(confirmed!, earned)) {
+      status(AchievementBackupStatus.saved);
+      return;
+    }
+    if (earned.isEmpty) return;
+    status(AchievementBackupStatus.syncing);
+    sending = (() async {
+      try {
+        await service.save(uid, earned).timeout(const Duration(seconds: 12));
+        confirmed = earned;
+        status(AchievementBackupStatus.saved);
+      } catch (_) {
+        status(AchievementBackupStatus.pending);
+      }
+    })();
+    await sending;
+    sending = null;
+    if (!disposed &&
+        !_sameAchievementTimes(
+          earned,
+          ref.read(achievementsProvider.notifier).earnedTimes,
+        )) {
+      unawaited(publish());
+    }
+  }
+
+  ref.listen(achievementCloudProvider, (_, remote) {
+    unawaited(
+      Future<void>.microtask(() async {
+        if (disposed || uid == null || ref.read(accountMutationProvider)) {
+          return;
+        }
+        if (remote.hasError) {
+          status(AchievementBackupStatus.pending);
+          return;
+        }
+        if (remote.isLoading) {
+          status(AchievementBackupStatus.syncing);
+          return;
+        }
+        final times = remote.asData?.value;
+        if (times == null) return;
+        confirmed = times;
+        await ref.read(achievementsProvider.notifier).restoreBackup(uid, times);
+        if (!disposed) await publish();
+      }),
+    );
+  }, fireImmediately: true);
+  ref.listen(achievementsProvider, (_, _) => unawaited(publish()));
+  if (uid != null && service.available) {
+    final retry = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => unawaited(publish()),
+    );
+    ref.onDispose(retry.cancel);
+  }
+  // Provider listeners cannot modify another provider during construction.
+  unawaited(Future<void>.microtask(publish));
+  return publish;
+});
 
 /// Progress toward the badge with [id], measured from the user's own session
 /// log and the state the app really keeps. Returns null for an id nothing can

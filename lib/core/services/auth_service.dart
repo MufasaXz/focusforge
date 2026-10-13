@@ -60,7 +60,8 @@ class AuthException implements Exception {
 /// (offline, web, or a build with no Firebase project).
 ///
 /// Whichever backend runs, the profile record lives in [LocalStore]. Only the
-/// credential is remote; how the app is used never leaves the device.
+/// credential is remote. Separate services back up earned badge IDs and
+/// handle optional aggregate sharing; detailed session logs stay local.
 abstract class AuthService {
   /// Whether the most recent successful credential flow opened an account
   /// already used here or recognised by the account provider.
@@ -186,6 +187,11 @@ class LocalAuthService extends AuthService {
   }
 
   Future<UserProfile> _persist(UserProfile profile) async {
+    await _store.prepareAchievementIdentity(profile.uid);
+    final key = 'achievements.linked.${profile.uid}';
+    if (!profile.isAnonymous || _store.getBool(key) == null) {
+      await _store.setBool(key, !profile.isAnonymous);
+    }
     final oldUid = _store.getMap(StoreKeys.user)?['uid'];
     if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
       await _store.setBool(StoreKeys.boardOptIn, false);

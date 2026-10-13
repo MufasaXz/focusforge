@@ -230,3 +230,74 @@ test('legacy six-digit guardian links remain readable and can be unlinked atomic
   batch.delete(doc(store,'users/child/remoteRules/current'));
   await assertSucceeds(batch.commit());
 });
+
+const earnedBadgePath = 'users/student/achievements/earned';
+function earnedBadges(unlockedAt = {first_focus: now() - 1000}) {
+  return {version:1, unlockedAt};
+}
+test('earned badges are readable only by their linked account owner', async () => {
+  const store = db('student');
+  await assertSucceeds(setDoc(doc(store, earnedBadgePath), earnedBadges()));
+  await assertSucceeds(getDoc(doc(store, earnedBadgePath)));
+  await assertSucceeds(getDocs(collection(store, 'users/student/achievements')));
+  await assertFails(getDoc(doc(db('stranger'), earnedBadgePath)));
+  await assertFails(getDocs(collection(db('stranger'), 'users/student/achievements')));
+  await assertFails(getDoc(doc(db('student', true), earnedBadgePath)));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), earnedBadgePath)));
+});
+test('guardians cannot read or modify a child achievement cabinet', async () => {
+  await seedCode(); await assertSucceeds(pair('parent'));
+  const path = 'users/child/achievements/earned';
+  await assertSucceeds(setDoc(doc(db('child'), path), earnedBadges()));
+  await assertFails(getDoc(doc(db('parent'), path)));
+  await assertFails(setDoc(doc(db('parent'), path), earnedBadges({first_focus:0})));
+  await assertFails(deleteDoc(doc(db('parent'), path)));
+});
+test('earned badge writes require an authenticated linked owner', async () => {
+  await assertFails(setDoc(doc(db('stranger'), earnedBadgePath), earnedBadges()));
+  await assertFails(setDoc(doc(db('student', true), earnedBadgePath), earnedBadges()));
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), earnedBadgePath), earnedBadges()));
+  await assertSucceeds(setDoc(doc(db('student'), earnedBadgePath), earnedBadges()));
+  await assertFails(deleteDoc(doc(db('stranger'), earnedBadgePath)));
+  // Account cleanup can also remove legacy anonymous records owned by the UID.
+  await assertSucceeds(deleteDoc(doc(db('student', true), earnedBadgePath)));
+});
+test('achievement backup rejects unknown badge IDs, private fields and invalid dates', async () => {
+  const ref = doc(db('student'), earnedBadgePath);
+  await assertFails(setDoc(ref, {version:1, unlockedAt:{first_focus:now()}, sessionLog:[]}));
+  await assertFails(setDoc(ref, {version:2, unlockedAt:{first_focus:now()}}));
+  await assertFails(setDoc(ref, {version:1}));
+  await assertFails(setDoc(ref, {version:1, unlockedAt:[]}));
+  await assertFails(setDoc(ref, earnedBadges({private_email:'private@example.invalid'})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:'2026-01-01'})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:-1})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:now() + 86400000})));
+  await assertFails(setDoc(doc(db('student'), 'users/student/achievements/other'), earnedBadges()));
+  await assertSucceeds(setDoc(ref, earnedBadges({first_focus:0, week_warrior:now() - 1000})));
+});
+test('a complete achievement cabinet can preserve all fourteen earned badges', async () => {
+  const ref = doc(db('student'), earnedBadgePath), earnedAt = now() - 1000;
+  const unlockedAt = {
+    first_focus:earnedAt, week_warrior:earnedAt, century_club:earnedAt,
+    night_owl:earnedAt, early_bird:earnedAt, deep_diver:earnedAt,
+    steady_hand:earnedAt, month_king:earnedAt, hundred_hours:earnedAt,
+    marathon:earnedAt, perfectionist:earnedAt, subject_master:earnedAt,
+    night_shift:earnedAt, breath_master:earnedAt,
+  };
+  await assertSucceeds(setDoc(ref, earnedBadges(unlockedAt)));
+  await assertSucceeds(setDoc(ref, earnedBadges(unlockedAt)));
+  for (const id of Object.keys(unlockedAt)) {
+    await assertFails(setDoc(ref, earnedBadges({...unlockedAt, [id]:-1})));
+    await assertFails(setDoc(ref, earnedBadges({...unlockedAt, [id]:earnedAt + 1})));
+  }
+});
+test('achievement merge can add badges and refine their dates without losing past unlocks', async () => {
+  const ref = doc(db('student'), earnedBadgePath), early = now() - 5000, late = now() - 1000;
+  await assertSucceeds(setDoc(ref, earnedBadges({first_focus:late, night_owl:0})));
+  await assertSucceeds(setDoc(ref, earnedBadges({first_focus:early, night_owl:late, early_bird:0})));
+  await assertSucceeds(setDoc(ref, earnedBadges({first_focus:early, night_owl:late, early_bird:0})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:early, night_owl:late})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:late, night_owl:late, early_bird:0})));
+  await assertFails(setDoc(ref, earnedBadges({first_focus:0, night_owl:late, early_bird:0})));
+  await assertSucceeds(deleteDoc(ref));
+});

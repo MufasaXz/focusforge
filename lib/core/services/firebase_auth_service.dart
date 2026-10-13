@@ -394,6 +394,8 @@ class FirebaseAuthService extends AuthService {
         await record.reference.delete();
       }
     }
+    // Firestore does not cascade subcollections when the user doc is removed.
+    await db.doc('users/$uid/achievements/earned').delete();
     // Older weeks are recoverable from this device's history. Records from
     // other devices need a backend deletion job; the confirmation says so.
     final weeks = <String>{weekKey(DateTime.now())};
@@ -505,6 +507,11 @@ class FirebaseAuthService extends AuthService {
   }
 
   Future<UserProfile> _persist(UserProfile profile) async {
+    await _store.prepareAchievementIdentity(profile.uid);
+    final key = 'achievements.linked.${profile.uid}';
+    if (!profile.isAnonymous || _store.getBool(key) == null) {
+      await _store.setBool(key, !profile.isAnonymous);
+    }
     final oldUid = _store.getMap(StoreKeys.user)?['uid'];
     if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
       await _store.setBool(StoreKeys.boardOptIn, false);

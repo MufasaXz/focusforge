@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'widget_service.dart';
+import 'achievement_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -154,6 +155,27 @@ class LocalStore {
   Future<void> setDoubleMap(String key, Map<String, double> value) =>
       setString(key, jsonEncode(value));
 
+  /// Before Firebase replaces the stored identity, attribute the legacy
+  /// device cabinet/history to its previous owner. This also covers a restored
+  /// credential change before the achievement notifier exists at bootstrap.
+  Future<void> prepareAchievementIdentity(String nextUid) async {
+    final previousUid = getMap(StoreKeys.user)?['uid'];
+    if (previousUid is! String || previousUid.isEmpty) return;
+    if (getString(StoreKeys.achievementHistoryOwner) == null) {
+      await setString(StoreKeys.achievementHistoryOwner, previousUid);
+    }
+    if (previousUid == nextUid || getMap(StoreKeys.achievementAccounts) != null) {
+      return;
+    }
+    final times = readAchievementTimes(getMap('achievements.unlockedAt'));
+    final cabinet = {
+      for (final entry in getBoolMap(StoreKeys.achievements).entries)
+        if (entry.value && achievementIds.contains(entry.key))
+          entry.key: times[entry.key] ?? 0,
+    };
+    await setMap(StoreKeys.achievementAccounts, {previousUid: cabinet});
+  }
+
   // -- Maintenance -----------------------------------------------------------
 
   /// Clears the app's own keys. Deliberately not `prefs.clear()` — that would
@@ -194,6 +216,10 @@ class StoreKeys {
   static const breathEvents = 'shield.breathEvents';
   static const notifications = 'notifications';
   static const achievements = 'achievements';
+  static const achievementAccounts = 'achievements.accounts';
+  static const achievementHistoryOwner = 'achievements.historyOwner';
+  static const achievementLinkedOwners = 'achievements.linkedOwners';
+  static const achievementAliases = 'achievements.aliases';
   static const ambientVolumes = 'audio.volumes';
   static const ambientActive = 'audio.active';
   static const dailyGoal = 'goal.daily';

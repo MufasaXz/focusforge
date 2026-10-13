@@ -281,16 +281,19 @@ class BreathEvent {
     required this.appName,
     required this.at,
     required this.walkedAway,
+    this.ownerUid = '',
   });
 
   final String appName;
   final DateTime at;
   final bool walkedAway;
+  final String ownerUid;
 
   Map<String, dynamic> toJson() => {
     'appName': appName,
     'at': at.millisecondsSinceEpoch,
     'walkedAway': walkedAway,
+    'ownerUid': ownerUid,
   };
 
   /// Every field is defaulted: a schema-broken stored row must degrade to a
@@ -307,6 +310,7 @@ class BreathEvent {
     appName: j['appName'] is String ? j['appName'] as String : '',
     at: _dateOr(j['at']),
     walkedAway: j['walkedAway'] is bool ? j['walkedAway'] as bool : true,
+    ownerUid: j['ownerUid'] is String ? j['ownerUid'] as String : '',
   );
 }
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.3 achievement backup — 2026-10-13
+
+Android build 2019. Replaces the downloadable APK on the existing 1.0.3 release.
+
+- Earned badge IDs and original earned dates now back up privately to a linked
+  Firebase account. Signing out does not delete them; the same account can
+  recover them months later or on another device after the first online sync.
+- Offline unlocks remain local and retry automatically. The achievement page
+  shows whether backup is saved, syncing or waiting, with a manual retry.
+- Concurrent devices merge earned badges without removing existing unlocks.
+  Account changes restore separate cabinets and measure only owned sessions
+  and breath events; a first guest link keeps that guest's earns.
+- Account deletion removes the private cloud cabinet and drains local writes
+  before wiping data. Detailed session logs and setup still stay on-device.
+- Added private owner-only achievement rules and regression tests. Publish the
+  complete revised firestore.rules to enable cloud backup; production rules
+  have not been deployed here.
+
+Validation: 281 Flutter tests and 24 local Firestore rules tests passed; static
+analysis clean. Production Firebase restore still needs runtime verification.
+
 ## 1.0.3 refresh — 2026-10-12
 
 Android build 2018. Replaces the downloadable APK on the existing 1.0.3 release.

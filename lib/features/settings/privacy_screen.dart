@@ -12,6 +12,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
+import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
@@ -108,7 +109,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ),
                 title: const Text('Your detailed history stays here'),
                 subtitle: const Text(
-                  'Focus sessions, shield events, badges and settings '
+                  'Focus sessions, shield events and settings '
                   'are stored locally and kept when you sign out. They belong '
                   'to this device, so signing in again restores its setup. '
                   'Optional sharing uses this device’s totals. Clear local '
@@ -131,6 +132,14 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   'Sign-in credentials are handled by Firebase. Profile choices and avatar stay on this device.',
                 ),
                 leading: Icon(Icons.person_outline),
+              ),
+              ListTile(
+                title: Text('Earned achievements'),
+                subtitle: Text(
+                  'Badge IDs and earned dates are backed up privately for linked accounts. '
+                  'Sign in to the same account to recover them. Detailed sessions stay on this device.',
+                ),
+                leading: Icon(Icons.workspace_premium_outlined),
               ),
               ListTile(
                 title: Text('Study group membership'),
@@ -314,6 +323,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     if (!confirmed || !context.mounted) return;
     setState(() => _busy = true);
     try {
+      await ref.read(achievementsProvider.notifier).flushLocal();
+      await ref.read(achievementSyncProvider)();
       await ref.read(authServiceProvider).signOut();
       // The local profile remains the base for a later sign-in, but cloud
       // features should stop presenting it as a connected credential.
@@ -376,14 +387,17 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     // cloud writes. Local records are kept if cleanup or credential deletion
     // fails so the user can retry.
     try {
+      await ref.read(achievementsProvider.notifier).suspendForDeletion();
       await auth.reauthenticate(password: password);
       await auth.deleteAccount();
       await resetPersistedState(container);
     } on AuthException catch (e) {
+      container.read(achievementsProvider.notifier).resumeAfterFailedDeletion();
       if (!context.mounted) return;
       showAppSnack(context, e.friendly);
       return;
     } catch (_) {
+      container.read(achievementsProvider.notifier).resumeAfterFailedDeletion();
       if (context.mounted) {
         showAppSnack(
           context,

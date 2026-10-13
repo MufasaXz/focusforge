@@ -86,6 +86,7 @@ class FocusSession {
     required this.minutes,
     this.completed = true,
     this.label = '',
+    this.ownerUid = '',
   });
 
   final String id;
@@ -95,6 +96,9 @@ class FocusSession {
   final bool completed;
   final String label;
 
+  /// Used only to attribute badge progress on a shared device.
+  final String ownerUid;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'subjectId': subjectId,
@@ -102,6 +106,7 @@ class FocusSession {
     'minutes': minutes,
     'completed': completed,
     'label': label,
+    'ownerUid': ownerUid,
   };
 
   /// Every field falls back rather than throwing — see [Subject.fromJson].
@@ -118,6 +123,7 @@ class FocusSession {
       // `true` is the compatible default.
       completed: j['completed'] is bool ? j['completed'] as bool : true,
       label: _stringOr(j['label'], ''),
+      ownerUid: _stringOr(j['ownerUid'], ''),
     );
   }
 }

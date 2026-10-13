@@ -1,4 +1,4 @@
-# Firebase: groups and parent control
+# Firebase: achievements, groups and parent control
 
 The published Android APK uses the maintainer's Firebase project. Client configuration is supplied locally and is no longer tracked; download your Android app's google-services.json from Firebase Settings into android/app/ before building. A placeholder example is included, but cannot authenticate or be used unchanged. This release
 uses Firestore directly; there is no Cloud Function to deploy and no new paid
@@ -11,8 +11,8 @@ service dependency. Web previews deliberately use the local auth backend.
    your sign-in providers enabled: Anonymous for local/parent accounts, and
    Google and/or Email/Password for study groups.
 3. Copy the complete root firestore.rules into **Firestore → Rules**, then
-   select **Publish**. Keep the entire file together: it covers parent control,
-   groups and the existing public weekly board.
+   select **Publish**. Keep the entire file together: it covers private earned
+   achievements, parent control, groups and the existing public weekly board.
 4. Alternatively, run these commands from the repository with an administrator login:
 
        npm ci --prefix tool/firebase
@@ -40,6 +40,37 @@ environment, so production rules have **not** been deployed by the coding agent.
 Both devices need build 2018 and these revised rules before creating new parent links. New pairing uses sixteen random symbols, shown in four groups. Six-digit pairing is rejected after publishing these rules. Existing guardian links still work and can be removed atomically.
 Local-only group entries were never shared and are not converted into real
 memberships. Create a cloud group to get a valid invite.
+
+## Keep earned achievements after signing out
+
+The updated app backs up earned badges to the signed-in Firebase account at
+`users/{uid}/achievements/earned`. Each record contains a schema version and a
+small map of badge IDs to original earned dates. Older badges whose original
+date was not recorded use zero and continue to show "Earned earlier". Names,
+email addresses, session logs and detailed achievement progress are not sent
+in this backup.
+
+Publish the complete updated rules before checking cloud restore. Sign in with
+a linked Google or email/password account, open Achievements while online and
+allow the backup to finish. Signing out does not remove the backup. Signing
+back into the same account months later restores the earned badges once
+Firebase is reachable; there is no time-based expiry. The same backup can be
+restored on another phone or after reinstalling. Badges earned before this
+update must be synced from the device that still has them. An anonymous local
+session cannot create or read an account backup.
+
+Only the authenticated account owner can read or write this cabinet. Guardians,
+group members and unrelated accounts have no access. Concurrent devices merge
+their earned badge IDs, preserving the earliest known date instead of replacing
+each other's cabinet. The rules reject unknown badge IDs, extra private fields,
+invalid dates, removed unlocks and dates moved later. These are self-reported
+badges; the rules do not establish proof that a focus session happened.
+
+Offline badges remain on the device and sync when the app can reconnect. A new
+installation cannot restore a badge that never reached Firebase. Deleting the
+account removes its private achievement backup along with the local records.
+The production rules are maintained by you and have not been deployed by the
+coding agent.
 
 ## What is shared
 
@@ -93,11 +124,12 @@ Use Java 21+ and Node 22:
 
 Tests run against demo-focusforge in a local Firestore emulator, never production.
 They cover valid/expired/competing pairing, atomic unlink, private group queries,
-invite abuse, progress ownership and ownership transfer.
+invite abuse, progress ownership, ownership transfer and private achievement
+backups, including schema validation and preservation of earned badges.
 
 ## Repository and device privacy hardening (build 2018)
 
-See [the security audit](security-audit-2026-10-12.md). Automatic Android cloud backups and device transfers are disabled, and shared Firestore records use memory-only caching after clearing old persistence at launch. Account changes clear retained private family/group views and reset leaderboard consent. Detailed setup/history remains device-local; it is not restored from Firebase after an uninstall or on a new phone.
+See [the security audit](security-audit-2026-10-12.md). Automatic Android cloud backups and device transfers are disabled, and shared Firestore records use memory-only caching after clearing old persistence at launch. Account changes clear retained private family/group views and reset leaderboard consent. Detailed setup/history remains device-local; it is not restored from Firebase after an uninstall or on a new phone. The newer private achievement backup described above restores earned badges only; it does not upload that detailed history.
 
 The Firebase client API key remains public inside APKs and historical git commits. Configure API/application restrictions compatible with Firebase Authentication and rotate it in the project console if necessary. Removing the file from git does not revoke a key. Production key restrictions and rule deployment were not performed here.
 

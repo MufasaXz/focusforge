@@ -87,6 +87,7 @@ parent manage distraction rules.
 
 Start with your subjects and a daily goal. The timer works without an account;
 Shield uses optional Android permissions. Detailed session logs stay on your
-device. Groups and parent control share limited summaries when you choose them.
+device. Linked accounts privately back up earned badge IDs and dates for a
+later login. Groups and parent control share limited summaries when you choose them.
 
 <sub>[Firebase setup](docs/firebase-setup.md) · [Installation help](docs/play-protect.md) · [MIT license](LICENSE)</sub>

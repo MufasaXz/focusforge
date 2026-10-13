@@ -125,7 +125,18 @@ class SessionsNotifier extends Notifier<List<FocusSession>> {
   /// once — the original entry still holds the focus time, so nothing is lost.
   Future<bool> record(FocusSession session) async {
     if (state.any((s) => s.id == session.id)) return false;
-    state = [...state, session];
+    final owned = FocusSession(
+      id: session.id,
+      subjectId: session.subjectId,
+      startedAt: session.startedAt,
+      minutes: session.minutes,
+      completed: session.completed,
+      label: session.label,
+      ownerUid: session.ownerUid.isEmpty
+          ? ref.read(userProvider).uid
+          : session.ownerUid,
+    );
+    state = [...state, owned];
     await _persist();
     return true;
   }
@@ -534,6 +545,7 @@ class TimerState {
     this.presetIndex = 0,
     this.subjectId,
     this.segmentStartedAt,
+    this.segmentOwnerUid,
     this.segmentExtra = Duration.zero,
   });
 
@@ -556,6 +568,7 @@ class TimerState {
   /// When the current focus segment began, so a completed block can be logged
   /// with a real start time.
   final DateTime? segmentStartedAt;
+  final String? segmentOwnerUid;
 
   /// What the dock's ±5 controls have added to (or taken off) this segment.
   ///
@@ -581,6 +594,7 @@ class TimerState {
     String? subjectId,
     bool clearSubject = false,
     DateTime? segmentStartedAt,
+    String? segmentOwnerUid,
     Duration? segmentExtra,
   }) => TimerState(
     phase: phase ?? this.phase,
@@ -594,6 +608,7 @@ class TimerState {
     // "keep" — so clearing needs its own flag, exactly like [clearTargetEnd].
     subjectId: clearSubject ? null : (subjectId ?? this.subjectId),
     segmentStartedAt: segmentStartedAt ?? this.segmentStartedAt,
+    segmentOwnerUid: segmentOwnerUid ?? this.segmentOwnerUid,
     segmentExtra: segmentExtra ?? this.segmentExtra,
   );
 
@@ -722,6 +737,7 @@ class TimerNotifier extends Notifier<TimerState> {
         'running': state.running,
         'targetEnd': state.targetEnd?.millisecondsSinceEpoch,
         'segmentStartedAt': state.segmentStartedAt?.millisecondsSinceEpoch,
+        'segmentOwnerUid': state.segmentOwnerUid,
         'completedFocusSegments': state.completedFocusSegments,
         'remainingMs': state.remaining.inMilliseconds,
         'plannedMs': state.plannedDuration(preset).inMilliseconds,
@@ -752,6 +768,12 @@ class TimerNotifier extends Notifier<TimerState> {
         TimerPhase.values.asNameMap()[stored['phase']] ?? TimerPhase.focus;
     final targetEnd = _dateOrNull(stored['targetEnd']);
     final startedAt = _dateOrNull(stored['segmentStartedAt']);
+    final ownerUid =
+        _stringOrNull(stored['segmentOwnerUid']) ??
+        ref
+            .read(localStoreProvider)
+            .getString(StoreKeys.achievementHistoryOwner) ??
+        ref.read(userProvider).uid;
     final running = stored['running'] == true;
     final pausedMs = _intOr(
       stored['remainingMs'],
@@ -779,6 +801,7 @@ class TimerNotifier extends Notifier<TimerState> {
           subjectId: subjectId ?? '',
           startedAt: started,
           minutes: (preset.focusDuration + extra).inMinutes,
+          ownerUid: ownerUid,
         ),
       );
     }
@@ -793,6 +816,7 @@ class TimerNotifier extends Notifier<TimerState> {
         presetIndex: presetIndex,
         subjectId: subjectId,
         segmentStartedAt: startedAt,
+        segmentOwnerUid: ownerUid,
         segmentExtra: extra,
       );
       _startTicker();
@@ -812,6 +836,7 @@ class TimerNotifier extends Notifier<TimerState> {
       completedFocusSegments:
           segments + (finishedWhileAway && phase == TimerPhase.focus ? 1 : 0),
       segmentStartedAt: running ? null : startedAt,
+      segmentOwnerUid: running ? null : ownerUid,
       segmentExtra: running ? Duration.zero : extra,
     );
     unawaited(_persist());
@@ -902,6 +927,9 @@ class TimerNotifier extends Notifier<TimerState> {
       segmentStartedAt: state.phase == TimerPhase.focus
           ? (state.segmentStartedAt ?? now)
           : state.segmentStartedAt,
+      segmentOwnerUid: state.phase == TimerPhase.focus
+          ? (state.segmentOwnerUid ?? ref.read(userProvider).uid)
+          : state.segmentOwnerUid,
     );
     _startTicker();
     unawaited(_persist());
@@ -1028,6 +1056,7 @@ class TimerNotifier extends Notifier<TimerState> {
                 subjectId: state.subjectId ?? '',
                 startedAt: started,
                 minutes: minutes,
+                ownerUid: state.segmentOwnerUid ?? ref.read(userProvider).uid,
               ),
             );
         ref
@@ -1058,6 +1087,9 @@ class TimerNotifier extends Notifier<TimerState> {
       presetIndex: state.presetIndex,
       subjectId: state.subjectId,
       segmentStartedAt: nextPhase == TimerPhase.focus ? DateTime.now() : null,
+      segmentOwnerUid: nextPhase == TimerPhase.focus
+          ? ref.read(userProvider).uid
+          : null,
     );
     unawaited(_persist());
 
