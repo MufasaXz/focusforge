@@ -25,6 +25,7 @@ import 'widgets/day_summary_sheet.dart';
 import 'widgets/goal_ring.dart';
 import 'widgets/screen_time_card.dart';
 import 'widgets/session_shortcut.dart';
+import 'widgets/usage_access_card.dart';
 import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
 import 'widgets/top_subject_card.dart';
@@ -167,9 +168,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // log says. Only used when there is width for them.
     //
     final left = <Widget>[
-      if (sessions.isEmpty)
-        _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta)
-      else ...[
+      if (sessions.isEmpty) ...[
+        _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta),
+        const UsageAccessCard(),
+      ] else ...[
         _DailyOverview(
           sessionsToday: sessionsToday,
           totalHours: stats.totalFocusHours,
@@ -177,6 +179,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ringKey: targets.ring,
           onFocus: _startFocusing,
         ),
+        const UsageAccessCard(),
         const SizedBox(height: Gap.xl),
         SectionHeader(
           title: _range == StudyRange.week
@@ -713,7 +716,7 @@ class _NoSessions extends StatelessWidget {
           key: ctaKey,
           onPressed: onStart,
           icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: const Text('Start focusing'),
+          label: const Text('Start session'),
         ),
       ),
     );

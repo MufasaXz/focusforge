@@ -113,6 +113,7 @@ class FirebaseStudyGroupService implements StudyGroupService {
         ],
       );
   Map<String, dynamic> _member(String name) => {
+    'ownerUid': _uid,
     'name': name.trim().isEmpty
         ? 'A student'
         : name.trim().substring(0, min(name.trim().length, 60)),

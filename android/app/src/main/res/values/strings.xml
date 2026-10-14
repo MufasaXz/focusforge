@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ff_block_back">Back to what matters</string>
+    <string name="ff_block_anyway">Pause and breathe</string>
     <!-- Shown in Android's Accessibility settings list, next to the toggle the
          user has to flip by hand. It is the only explanation they get at the
          moment of granting, so it has to be exactly true — including the part

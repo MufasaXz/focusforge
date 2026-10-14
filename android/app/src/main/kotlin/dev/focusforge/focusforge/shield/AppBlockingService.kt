@@ -75,7 +75,7 @@ class AppBlockingService : Service() {
             instance?.stopSelf()
         }
 
-        /** Called only by the user enabling a rule or choosing Resume in Shield. */
+        /** Called only while the user enables a rule or restores missing app access. */
         fun resumeFromUser(context: Context): Boolean {
             if (!activityVisible || !hasUsageAccess(context) || !overlayAllowed(context)) return false
             context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(PAUSED, false).apply()

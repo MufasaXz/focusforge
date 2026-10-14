@@ -56,13 +56,16 @@ class ShieldOverview extends ConsumerWidget {
             !supported
                 ? 'App blocking runs on your Android device.'
                 : paused && rules.isNotEmpty
-                ? 'Stopped from the notification. Resume when you want your app rules active again.'
+                ? 'Your saved app rules are inactive. Enable an app rule when you want boundaries active again.'
                 : rules.isNotEmpty && !enabled
                 ? 'App boundaries need Usage access and Draw over other apps. Your saved rules are currently inactive.'
                 : 'Set boundaries for apps and feeds. You stay in control.',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
-          if (supported && rules.isNotEmpty && !enabled) ...[
+          if (supported &&
+              rules.isNotEmpty &&
+              !enabled &&
+              (!usage || !overlay)) ...[
             const SizedBox(height: Gap.md),
             Align(
               alignment: Alignment.centerLeft,
@@ -73,31 +76,10 @@ class ShieldOverview extends ConsumerWidget {
                     ref.invalidate(appBlockingPausedProvider);
                   }
                 },
-                icon: Icon(
-                  !usage || !overlay
-                      ? Icons.settings_outlined
-                      : Icons.play_arrow_rounded,
-                ),
+                icon: const Icon(Icons.settings_outlined),
                 label: Text(
-                  !usage || !overlay
-                      ? 'Check app access'
-                      : 'Resume app boundaries',
+                  !usage ? 'Review app usage on Home' : 'Check overlay access',
                 ),
-              ),
-            ),
-          ],
-          if (supported && enabled) ...[
-            const SizedBox(height: Gap.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () async {
-                  await NativeShieldService().pauseAppBlocking();
-                  ref.invalidate(appBlockingRunningProvider);
-                  ref.invalidate(appBlockingPausedProvider);
-                },
-                icon: const Icon(Icons.pause_rounded),
-                label: const Text('Pause app boundaries'),
               ),
             ),
           ],

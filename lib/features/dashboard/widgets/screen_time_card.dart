@@ -49,8 +49,8 @@ class ScreenTimeCard extends ConsumerWidget {
         icon: Icons.timelapse_rounded,
         body:
             'Android is not sharing app usage with FocusForge, so today\'s '
-            'screen time cannot be read. Grant usage access from the Shield '
-            'tab to see it here.',
+            'screen time cannot be read. Use Allow app usage on the Home '
+            'page below Start session to see it here.',
       );
     }
 

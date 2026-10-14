@@ -440,11 +440,11 @@ class _ShieldStatusSheet extends ConsumerWidget {
                                       'and nothing is closed.'
                                 : !enabled
                                 ? 'App boundaries are off. Check Usage access and '
-                                      'Draw over other apps, or resume boundaries '
-                                      'from the Apps tab.'
+                                      'Draw over other apps, then enable an app rule. '
+                                      'Review app usage on Home.'
                                 : 'Time budgets need usage access before they '
-                                      'can count anything. Grant it from the '
-                                      'Apps tab.',
+                                      'can count anything. Review app usage on '
+                                      'Home.',
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(height: 1.4),
                           ),
@@ -616,8 +616,8 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                   title: 'Time budgets are not counting',
                   body:
                       'A budget needs to read how long an app has been open. '
-                      'Without usage access it is armed but inert.',
-                  action: 'Open usage access settings',
+                      'Use Allow app usage on Home before enabling this rule.',
+                  action: 'Review app usage on Home',
                   permission: AppPermission.usageAccess,
                 ),
               _SearchField(

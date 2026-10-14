@@ -133,7 +133,7 @@ void main() {
       await tester.pumpWidget(
         wrap(scope, SessionShortcut(onOpen: () => opened++)),
       );
-      await tester.tap(find.text('Start focus'));
+      await tester.tap(find.text('Start session'));
       await tester.pump();
       expect(scope.read(timerProvider).running, isTrue);
       expect(scope.read(timerProvider).presetIndex, 1);

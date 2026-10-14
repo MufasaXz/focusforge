@@ -12,6 +12,7 @@ import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/firebase_auth_service.dart';
+import '../core/services/firestore_cache.dart';
 import '../core/services/local_store.dart';
 import 'router.dart';
 
@@ -200,16 +201,9 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 
   try {
     await Firebase.initializeApp();
-    // Clear any disk cache left by older releases before opening listeners.
-    // A failure keeps cloud features closed; never treat uncleared cache as safe.
-    await FirebaseFirestore.instance.clearPersistence().timeout(
-      const Duration(seconds: 8),
-    );
-    // Shared summaries remain in memory for this run, without a disk cache
-    // that could be recovered by a later user of this device.
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: false,
-    );
+    // Configure native persistence before its first platform call, then
+    // erase older disk data before opening cloud listeners.
+    await prepareFirestoreCache(FirebaseFirestore.instance);
     debugPrint('[auth] Firebase initialised: using FirebaseAuthService.');
     return FirebaseAuthService(store);
   } catch (_) {

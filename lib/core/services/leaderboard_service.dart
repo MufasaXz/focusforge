@@ -110,6 +110,7 @@ class FirebaseLeaderboardService implements LeaderboardService {
     required int minutes,
   }) async {
     await _entries(week).doc(uid).set({
+      'ownerUid': uid,
       'name': name,
       'minutes': minutes,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,

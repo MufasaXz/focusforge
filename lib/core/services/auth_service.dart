@@ -41,9 +41,9 @@ class AuthException implements Exception {
     AuthFailure.tooManyRequests =>
       'Too many attempts. Wait a few minutes and try again.',
     AuthFailure.requiresRecentLogin =>
-      'For security, sign out and back in, then retry.',
+      'Confirm your password or Google account again to continue deletion.',
     AuthFailure.providerUnavailable =>
-      'That sign-in method is not connected yet.',
+      'This sign-in method is disabled or not configured. Try another method or contact support.',
     AuthFailure.deletionUnavailable => 'Account deletion is unavailable right now. Your account and local history are kept. Use the account-deletion page below to contact support.',
     AuthFailure.cloudSyncPending => 'Your latest changes could not sync. Deletion has not started and your data is kept. Connect to the internet and retry.',
     AuthFailure.cleanupFailed => 'Deletion could not be confirmed. Your local history is kept; some cloud records may already be removed. Retry or contact support through the account-deletion page.',

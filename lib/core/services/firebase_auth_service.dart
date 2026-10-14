@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+
+import 'firestore_account_cleanup.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
@@ -28,11 +30,11 @@ class FirebaseAuthService extends AuthService {
     this._store, {
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
+    FirestoreAccountCleanup? accountCleanup,
     GoogleSignIn? googleSignIn,
   }) : _auth = firebaseAuth ?? FirebaseAuth.instance,
        _firestoreOverride = firestore,
-       _functionsOverride = functions,
+       _cleanupOverride = accountCleanup,
        _googleClient = googleSignIn {
     // `authStateChanges()` is the single source of stream events: it fires
     // both for sessions started through this class and for ones it never saw
@@ -48,7 +50,7 @@ class FirebaseAuthService extends AuthService {
   final LocalStore _store;
   final FirebaseAuth _auth;
   final FirebaseFirestore? _firestoreOverride;
-  final FirebaseFunctions? _functionsOverride;
+  final FirestoreAccountCleanup? _cleanupOverride;
 
   final _controller = StreamController<UserProfile?>.broadcast();
   StreamSubscription<User?>? _authSub;
@@ -322,6 +324,7 @@ class FirebaseAuthService extends AuthService {
     }
     if (user.providerData.any((p) => p.providerId == 'google.com')) {
       try {
+        await _googleSignIn().signOut();
         final account = await _googleSignIn().signIn();
         if (account == null) throw const AuthException(AuthFailure.cancelled);
         final tokens = await account.authentication;
@@ -346,85 +349,72 @@ class FirebaseAuthService extends AuthService {
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) {
-      throw const AuthException(AuthFailure.requiresRecentLogin);
-    }
-    {
-      // Group rows must be removed while the credential can still authorise
-      // writes. Check login age first, before changing any cloud membership.
-      final recentlyConfirmed =
-          _reauthenticatedAt != null &&
-          DateTime.now().difference(_reauthenticatedAt!) <
-              const Duration(minutes: 5);
-      if (!user.isAnonymous &&
-          !recentlyConfirmed &&
-          (user.metadata.lastSignInTime == null ||
-              DateTime.now().difference(user.metadata.lastSignInTime!) >
-                  const Duration(minutes: 5))) {
+      // Sign out leaves the cloud account intact. Erase only this device
+      // when no remote credential is available and the profile is anonymous.
+      if (_store.getMap(StoreKeys.user)?['isAnonymous'] == false) {
         throw const AuthException(AuthFailure.requiresRecentLogin);
       }
-      try {
-        // Finish queued sharing writes before removing their records. The UI
-        // suspends publishers for the duration of this operation.
-        await (_firestoreOverride ?? FirebaseFirestore.instance)
-            .waitForPendingWrites()
-            .timeout(const Duration(seconds: 20));
-      } on TimeoutException {
-        throw const AuthException(AuthFailure.cloudSyncPending);
-      } on FirebaseException catch (e) {
-        throw AuthException(AuthFailure.cloudSyncPending, e.code);
-      }
-      try {
-        // The callable uses the verified caller UID, blocks new cloud writes,
-        // removes records from every device and deletes Auth last.
-        await user.getIdToken(true);
-        final result =
-            await (_functionsOverride ??
-                    FirebaseFunctions.instanceFor(region: 'us-central1'))
-                .httpsCallable(
-                  'deleteFocusForgeAccount',
-                  options: HttpsCallableOptions(
-                    timeout: const Duration(minutes: 5),
-                  ),
-                )
-                .call<Map<String, dynamic>>();
-        if (result.data['deleted'] != true) {
-          throw const AuthException(AuthFailure.cleanupFailed);
-        }
-      } on AuthException {
-        rethrow;
-      } on FirebaseAuthException catch (e) {
-        throw _translate(e);
-      } on FirebaseFunctionsException catch (e) {
-        final failure = switch (e.code) {
-          'not-found' ||
-          'unimplemented' ||
-          'permission-denied' => AuthFailure.deletionUnavailable,
-          'unauthenticated' ||
-          'failed-precondition' => AuthFailure.requiresRecentLogin,
-          'resource-exhausted' => AuthFailure.tooManyRequests,
-          _ => AuthFailure.cleanupFailed,
-        };
-        // Retain a non-sensitive code for diagnostics; never surface the
-        // server's raw response or misreport a missing endpoint as bad rules.
-        throw AuthException(failure, e.code);
-      } catch (_) {
-        throw const AuthException(AuthFailure.cleanupFailed);
-      }
-      // Confirmation makes device erasure mandatory even if an SDK cache
-      // cannot sign out. A UID-only fence prevents that stale credential from
-      // restoring a deleted profile after a restart; no profile data is kept.
-      await _store.setString('auth.deletedCredential', user.uid);
-      try {
-        await _auth.signOut();
-      } catch (_) {
-        // The account was deleted by the server. Continue the local erase.
-      }
-      try {
-        await _googleSignIn().signOut();
-      } catch (_) {
-        // The server has confirmed deletion. A provider cache failure must
-        // not leave the device's history after that success.
-      }
+      await _store.clearAll();
+      _current = null;
+      _returning = false;
+      _reauthenticatedAt = null;
+      _controller.add(null);
+      return;
+    }
+    final recentlyConfirmed =
+        _reauthenticatedAt != null &&
+        DateTime.now().difference(_reauthenticatedAt!) <
+            const Duration(minutes: 5);
+    if (!user.isAnonymous && !recentlyConfirmed) {
+      throw const AuthException(AuthFailure.requiresRecentLogin);
+    }
+    final db = _firestoreOverride ?? FirebaseFirestore.instance;
+    try {
+      await db.waitForPendingWrites().timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      throw const AuthException(AuthFailure.cloudSyncPending);
+    } on FirebaseException catch (e) {
+      throw AuthException(AuthFailure.cloudSyncPending, e.code);
+    }
+    try {
+      await user.getIdToken(true);
+      await (_cleanupOverride ?? FirestoreAccountCleanup(db)).deleteUserData(
+        user.uid,
+      );
+      // Auth last: any unsuccessful cloud operation retains a credential for
+      // retry. This is a client SDK operation, with no paid backend dependency.
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      _reauthenticatedAt = null;
+      throw _translate(e);
+    } on FirebaseException catch (e) {
+      throw AuthException(
+        e.code == 'resource-exhausted'
+            ? AuthFailure.tooManyRequests
+            : AuthFailure.cleanupFailed,
+        e.code,
+      );
+    } catch (_) {
+      throw const AuthException(AuthFailure.cleanupFailed);
+    }
+    // user.delete() invalidates the session. Retain a UID-only fence until
+    // SDK signout succeeds, so a stale credential cannot restore the profile.
+    await _store.setString('auth.deletedCredential', user.uid);
+    try {
+      await _auth.signOut();
+    } catch (_) {}
+    try {
+      await _googleSignIn().signOut();
+    } catch (_) {}
+    // Startup already disables Firestore disk persistence. Terminate drops
+    // the old in-memory instance; clearPersistence also erases older disk
+    // caches. Android's FlutterFire plugin recreates an instance on next use.
+    try {
+      await db.terminate().timeout(const Duration(seconds: 10));
+      await db.clearPersistence().timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Cloud deletion is confirmed. Never preserve app history because a
+      // cache channel failed; startup repeats disk clearing before listeners.
     }
     await _store.clearAll();
     if (_auth.currentUser?.uid == user.uid) {

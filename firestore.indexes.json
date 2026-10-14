@@ -2,8 +2,8 @@
   "indexes": [],
   "fieldOverrides": [
     {
-      "collectionGroup": "guardian",
-      "fieldPath": "parentUid",
+      "collectionGroup": "entries",
+      "fieldPath": "ownerUid",
       "indexes": [
         {
           "order": "ASCENDING",
@@ -12,10 +12,14 @@
       ]
     },
     {
-      "collectionGroup": "accountDeletions",
-      "fieldPath": "expiresAt",
-      "ttl": true,
-      "indexes": []
+      "collectionGroup": "members",
+      "fieldPath": "ownerUid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
     }
   ]
 }

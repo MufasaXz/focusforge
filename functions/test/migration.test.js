@@ -1,0 +1,26 @@
+import {before, after, test} from 'node:test';
+import assert from 'node:assert/strict';
+import {initializeApp, deleteApp} from 'firebase-admin/app';
+import {getFirestore} from 'firebase-admin/firestore';
+import {migrateClientCleanup} from '../migrate-client-cleanup.js';
+let app, db;
+before(() => { app=initializeApp({projectId:'demo-focusforge'}, 'migration-test'); db=getFirestore(app); });
+after(async () => { await db.terminate(); await deleteApp(app); });
+test('migration inventories missing parents, indexes ownership and removes retired reverse links', async () => {
+  await db.doc('users/migration-owner/unknown/absent/nested/private').set({keep:'private'});
+  await db.doc('users/migration-other/children/migration-owner').set({name:'retired'});
+  await db.doc('pairCodes/migration-old').set({childUid:'migration-owner'});
+  await db.doc('leaderboard/2024-01-01/entries/migration-owner').set({name:'Owner',minutes:10});
+  await db.doc('studyGroups/migration-missing/members/migration-owner').set({name:'Owner'});
+  await migrateClientCleanup(db);
+  const inventory=await db.collection('users/migration-owner/deletionRefs').get();
+  assert.ok(inventory.docs.some(d=>d.data().path==='users/migration-owner/unknown/absent/nested/private'));
+  assert.equal((await db.doc('users/migration-owner/unknown/absent/nested/private').get()).data().keep,'private');
+  assert.equal((await db.doc('users/migration-other/children/migration-owner').get()).exists,false);
+  assert.equal((await db.doc('pairCodes/migration-old').get()).exists,false);
+  assert.equal((await db.doc('leaderboard/2024-01-01/entries/migration-owner').get()).data().ownerUid,'migration-owner');
+  assert.equal((await db.doc('studyGroups/migration-missing/members/migration-owner').get()).data().ownerUid,'migration-owner');
+  assert.equal((await db.doc('accountCleanup/schema').get()).data().version,2);
+  await migrateClientCleanup(db);
+  assert.equal((await db.collection('users/migration-owner/deletionRefs').get()).size,inventory.size);
+});

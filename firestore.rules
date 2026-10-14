@@ -7,6 +7,14 @@ service cloud.firestore {
     }
     function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
     function self(uid) { return signedIn() && request.auth.uid == uid; }
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function cleanupAccount() {
+      return request.auth != null &&
+        (request.auth.token.firebase.sign_in_provider != 'anonymous' || deleting(request.auth.uid));
+    }
+    function deleting(uid) {
+      return owner(uid) && exists(/databases/$(database)/documents/accountDeletions/$(uid));
+    }
     function boundedInt(value, maximum) { return value is int && value >= 0 && value <= maximum; }
     function dayKey(value) { return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function localTimestamp(value) {
@@ -43,39 +51,67 @@ service cloud.firestore {
         badgeDate(dates, before, 'five_sessions', latest) && badgeDate(dates, before, 'three_day_streak', latest) &&
         badgeDate(dates, before, 'five_hours', latest) && badgeDate(dates, before, 'ten_hours', latest);
     }
-    // Retired monitoring data is inaccessible even to older installed apps.
-    // Cleanup runs through trusted Admin SDK tooling, never client permissions.
+    // Retired monitoring cannot be recreated. Private owner reads/deletes
+    // below permit account cleanup without reintroducing sharing.
     match /pairCodes/{code} { allow read, write: if false; }
-    match /accountDeletions/{uid} { allow read, write: if false; }
+    match /accountCleanup/{doc} {
+      allow get: if request.auth != null && doc == 'schema';
+      allow list, write: if false;
+    }
+    match /accountDeletions/{uid} {
+      allow get: if owner(uid);
+      allow list, update, delete: if false;
+      // Immutable security fence. No profile, password or email is retained.
+      allow create: if owner(uid) &&
+        request.resource.data.keys().hasOnly(['requestedAt']) &&
+        request.resource.data.requestedAt == request.time &&
+        (request.auth.token.firebase.sign_in_provider == 'anonymous' ||
+          (request.auth.token.auth_time is int &&
+           request.auth.token.auth_time >= request.time.toMillis() / 1000 - 300 &&
+           request.auth.token.auth_time <= request.time.toMillis() / 1000 + 60));
+    }
     match /users/{uid} {
-      allow read: if self(uid);
-      allow write: if self(uid);
+      allow read, delete: if owner(uid);
+      allow create, update: if self(uid);
       match /achievements/{doc} {
-        allow read: if account() && self(uid);
+        allow read: if owner(uid) && (cleanupAccount() || deleting(uid));
         allow create: if account() && self(uid) && doc == 'earned' &&
           achievementShape(request.resource.data, {});
         allow update: if account() && self(uid) && doc == 'earned' &&
           achievementShape(request.resource.data, resource.data.unlockedAt);
-        allow delete: if self(uid);
+        allow delete: if owner(uid);
       }
-      match /{retired}/{record} {
-        allow read, write: if false;
+      match /achievements/{record=**} {
+        allow read: if owner(uid) && (cleanupAccount() || deleting(uid));
+        allow delete: if owner(uid);
+      }
+      match /{privateCollection}/{record=**} {
+        allow read, delete: if owner(uid) && privateCollection != 'achievements';
+        allow create, update: if false;
       }
     }
     match /leaderboard/{week}/entries/{uid} {
       allow read: if signedIn();
       allow create, update: if self(uid) && dayKey(week) &&
-        request.resource.data.keys().hasOnly(['name','minutes','updatedAt']) &&
+        request.resource.data.keys().hasOnly(['ownerUid','name','minutes','updatedAt']) &&
+        request.resource.data.ownerUid == uid &&
         boundedInt(request.resource.data.minutes, 10080) &&
         request.resource.data.name is string && request.resource.data.name.size() > 0 &&
         request.resource.data.name.size() <= 60 && localTimestamp(request.resource.data.updatedAt);
-      allow delete: if self(uid);
+      allow delete: if owner(uid);
+    }
+
+    match /{path=**}/entries/{entry} {
+      allow read: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+    match /{path=**}/members/{memberId} {
+      allow read: if request.auth != null && resource.data.ownerUid == request.auth.uid;
     }
 
     // Invites can be looked up by exact code, never enumerated. Only members
     // can read group metadata or progress. Session logs are never uploaded.
     function member(group) {
-      return account() && request.auth.uid in
+      return cleanupAccount() && request.auth.uid in
         get(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds;
     }
     function groupShape(data) {
@@ -103,15 +139,15 @@ service cloud.firestore {
         !existsAfter(/databases/$(database)/documents/studyGroups/$(resource.data.groupId));
     }
     match /studyGroups/{group} {
-      allow read: if account() && request.auth.uid in resource.data.memberIds;
+      allow read: if cleanupAccount() && request.auth.uid in resource.data.memberIds;
       allow create: if account() && groupShape(request.resource.data) &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.memberIds == [request.auth.uid] &&
         getAfter(/databases/$(database)/documents/groupInvites/$(request.resource.data.inviteCode)).data.groupId == group &&
         existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid));
-      allow update: if account() && groupShape(request.resource.data) &&
+      allow update: if cleanupAccount() && groupShape(request.resource.data) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds','ownerUid']) &&
-        ((!(request.auth.uid in resource.data.memberIds) &&
+        ((account() && !(request.auth.uid in resource.data.memberIds) &&
             request.resource.data.ownerUid == resource.data.ownerUid &&
             request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().union([request.auth.uid].toSet()) &&
             joining(group)) ||
@@ -119,15 +155,15 @@ service cloud.firestore {
             request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid]) &&
             (resource.data.ownerUid == request.auth.uid || request.resource.data.ownerUid == resource.data.ownerUid) &&
             !existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid))));
-      allow delete: if account() && resource.data.memberIds == [request.auth.uid] &&
+      allow delete: if cleanupAccount() && resource.data.memberIds == [request.auth.uid] &&
         !existsAfter(/databases/$(database)/documents/groupInvites/$(resource.data.inviteCode)) &&
         !existsAfter(/databases/$(database)/documents/studyGroups/$(group)/members/$(request.auth.uid));
       match /members/{uid} {
         allow read: if member(group);
         function validRow() {
           let d = request.resource.data;
-          return d.keys().hasOnly(['name','joinedAt','inviteCode','week','minutes','focusUntil','updatedAt']) &&
-            d.name is string && d.name.size() > 0 && d.name.size() <= 60 &&
+          return d.keys().hasOnly(['ownerUid','name','joinedAt','inviteCode','week','minutes','focusUntil','updatedAt']) &&
+            d.ownerUid == uid && d.name is string && d.name.size() > 0 && d.name.size() <= 60 &&
             d.joinedAt is int && d.inviteCode is string && d.week is string &&
             d.week.size() <= 10 && d.minutes is int && d.minutes >= 0 && d.minutes <= 10080 &&
             d.focusUntil is int && d.focusUntil >= 0 && d.focusUntil <= request.time.toMillis() + 86400000 &&
@@ -139,7 +175,10 @@ service cloud.firestore {
           getAfter(/databases/$(database)/documents/groupInvites/$(request.resource.data.inviteCode)).data.groupId == group;
         allow update: if account() && self(uid) && member(group) && validRow() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','week','minutes','focusUntil','updatedAt']);
-        allow delete: if account() && self(uid) && member(group) &&
+        allow delete: if deleting(uid) &&
+          (!exists(/databases/$(database)/documents/studyGroups/$(group)) ||
+           !(uid in get(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds));
+        allow delete: if cleanupAccount() && owner(uid) && member(group) &&
           (!existsAfter(/databases/$(database)/documents/studyGroups/$(group)) ||
             !(uid in getAfter(/databases/$(database)/documents/studyGroups/$(group)).data.memberIds));
       }

@@ -254,9 +254,9 @@ class FocusAccessibilityService : AccessibilityService() {
      *
      * The re-read is for a window that was still inflating, not a poll, so it
      * happens once per arrival: cleared when something else comes to the
-     * front, which is what gives the next visit its own second look.
+     * front or the block is dismissed, which gives the next visit its own second look.
      */
-    private var youtubeRetryFor: String? = null
+    private val windowVisit = YouTubeWindowVisit(DEBOUNCE_MS)
 
     private lateinit var windowManager: WindowManager
     private lateinit var inflater: LayoutInflater
@@ -332,10 +332,10 @@ class FocusAccessibilityService : AccessibilityService() {
             }
             val front = foregroundPackage()
 
-            if (front == null || (front != covered && front !in transient())) {
+            if (front != null && front != covered && front !in transient()) {
                 // The user really did move on.
                 dismissOverlay()
-                if (front != null) decide(front)
+                decide(front)
                 return
             }
 
@@ -354,9 +354,6 @@ class FocusAccessibilityService : AccessibilityService() {
     /** In-memory, so a kill or a restart clears it. That is the right lifetime
      *  for "you asked for five minutes of access". */
     private val graceUntil = HashMap<String, Long>()
-
-    private var lastPackage: String? = null
-    private var lastCheckAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -414,8 +411,7 @@ class FocusAccessibilityService : AccessibilityService() {
     fun recheckForeground() {
         val front = foregroundPackage() ?: return
         if (front in exempt) return
-        lastPackage = null
-        lastCheckAt = 0L
+        windowVisit.end()
         decide(front)
     }
 
@@ -452,6 +448,14 @@ class FocusAccessibilityService : AccessibilityService() {
         // our own package is not news: there is nothing to decide about it.
         if (foreground == packageName) return
 
+        // Returning to the same package is still news when its block window
+        // was detached during Recents. Recover before the ordinary debounce.
+        if (blockedPackage == foreground && overlay?.isAttachedToWindow != true &&
+            youtubeArmed(currentRules())) {
+            blockedReason?.let { showOverlay(foreground, it) }
+            return
+        }
+
         if (foreground in exempt) {
             if (blockedPackage != null) {
                 // Home is the one exempt package that means the user left; the
@@ -470,13 +474,7 @@ class FocusAccessibilityService : AccessibilityService() {
         // One launch produces a burst of window events. Re-deciding the same
         // package within a few frames is pure cost.
         val now = SystemClock.uptimeMillis()
-        if (foreground == lastPackage && now - lastCheckAt < DEBOUNCE_MS) return
-        lastPackage = foreground
-        lastCheckAt = now
-
-        // A different arrival gets its own delayed second look: the one just
-        // spent belonged to whatever came to the front before this.
-        if (foreground != youtubeRetryFor) youtubeRetryFor = null
+        if (!windowVisit.shouldInspect(foreground, now)) return
 
         if (blockedPackage == foreground) return
 
@@ -519,8 +517,7 @@ class FocusAccessibilityService : AccessibilityService() {
         // The first event for a launch arrives while the feed is still being
         // built, so a decision that finds nothing gets one delayed second look
         // — but only one, or a rule that does not match would poll forever.
-        val retry = youtubeRetryFor != packageName
-        youtubeRetryFor = packageName
+        val retry = windowVisit.claimLoadingRetry(packageName)
         inspector.post {
             // The flag is cleared in a `finally`: a walk that throws (a window
             // that went away mid-read, a node recycled under it) used to leave
@@ -682,11 +679,9 @@ class FocusAccessibilityService : AccessibilityService() {
             "Leave this app closed, or take three slow breaths before deciding to open it."
 
         view.findViewById<Button>(R.id.ff_block_back)?.apply {
-            text = "Back to what matters"
             setOnClickListener { leave(packageName, label) }
         }
         view.findViewById<Button>(R.id.ff_block_anyway)?.apply {
-            text = "Pause and breathe"
             setOnClickListener { openAnyway(packageName, label) }
         }
 
@@ -755,11 +750,15 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun dismissOverlay() {
         handler.removeCallbacks(watchdog)
-        val view = overlay ?: return
-        view.findViewById<View>(R.id.ff_block_content)?.animate()?.cancel()
+        val view = overlay
         overlay = null
         blockedPackage = null
         blockedReason = null
+        // Package-filtered events do not report the launcher. Clear the old
+        // visit here so a Recents return can inspect a loading surface again.
+        windowVisit.end()
+        if (view == null) return
+        view.findViewById<View>(R.id.ff_block_content)?.animate()?.cancel()
         try {
             windowManager.removeView(view)
         } catch (_: Exception) {

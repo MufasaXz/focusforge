@@ -16,6 +16,7 @@ import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/features/shield/shield_access.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
+import 'package:focusforge/features/shield/shield_overview.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,9 @@ void main() {
   ProviderContainer containerFor({
     bool accessible = false,
     bool usage = false,
+    bool? overlay,
+    bool? running,
+    bool? paused,
     bool Function()? accessibilityCheck,
     PermissionManager? manager,
   }) {
@@ -61,6 +65,12 @@ void main() {
         if (manager != null)
           shieldPermissionManagerProvider.overrideWithValue(manager),
         usageAccessProvider.overrideWith((ref) async => usage),
+        if (overlay != null)
+          overlayAccessProvider.overrideWith((ref) async => overlay),
+        if (running != null)
+          appBlockingRunningProvider.overrideWith((ref) async => running),
+        if (paused != null)
+          appBlockingPausedProvider.overrideWith((ref) async => paused),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
       ],
     );
@@ -110,6 +120,8 @@ void main() {
       expect(container.read(whitelistProvider), isEmpty);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(find.text('Later'), findsOneWidget);
+      expect(find.text('Go to Home'), findsOneWidget);
+      expect(find.text('Open usage settings'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },
@@ -173,6 +185,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(manager.requests, [AppPermission.overlay]);
     expect(container.read(whitelistProvider), isEmpty);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets(
+    'stopped boundaries show inactive status without a resume control',
+    (tester) async {
+      final container = containerFor(
+        usage: true,
+        overlay: true,
+        running: false,
+        paused: true,
+      );
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.instagram.android',
+            name: 'Instagram',
+            tier: WhitelistTier.blocked,
+          );
+      await mount(tester, container, const ShieldOverview());
+      expect(find.text('App boundaries are paused'), findsOneWidget);
+      expect(find.byType(TextButton), findsNothing);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets('active boundaries overview has no pause control', (
+    tester,
+  ) async {
+    final container = containerFor(usage: true, overlay: true, running: true);
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(
+          packageId: 'com.instagram.android',
+          name: 'Instagram',
+          tier: WhitelistTier.blocked,
+        );
+    await mount(tester, container, const ShieldOverview());
+    expect(find.text('A quieter phone starts here'), findsOneWidget);
+    expect(find.byType(TextButton), findsNothing);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });

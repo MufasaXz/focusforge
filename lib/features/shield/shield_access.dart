@@ -8,6 +8,10 @@ import '../../core/services/permission_manager.dart';
 import '../../shared/widgets/accessibility_disclosure.dart';
 import '../settings/settings_support.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../../app/router.dart';
+
 /// Shared by the Shield prompts so requesting access is injectable in tests.
 final shieldPermissionManagerProvider = Provider<PermissionManager>(
   (ref) => const PermissionManager(),
@@ -47,7 +51,7 @@ Future<bool> ensureShieldAccess(
   final usage = await _granted(ref.read(usageAccessProvider.future));
   if (!context.mounted) return false;
   if (!usage) {
-    await _offerAccess(context, ref, AppPermission.usageAccess);
+    await showUsageHomeGuidance(context);
     return false;
   }
   ref.invalidate(overlayAccessProvider);
@@ -127,6 +131,13 @@ Future<void> requestShieldPermission(
   AppPermission permission, {
   String? feature,
 }) async {
+  if (permission == AppPermission.usageAccess &&
+      GoRouter.maybeOf(context)?.routeInformationProvider.value.uri.path
+              .contains('shield') ==
+          true) {
+    await showUsageHomeGuidance(context);
+    return;
+  }
   if (permission == AppPermission.accessibility &&
       !await confirmShieldAccess(context, feature: feature)) {
     return;
@@ -153,4 +164,29 @@ Future<void> requestShieldPermission(
           : 'Open Android Settings → Usage access → FocusForge.',
     );
   }
+}
+
+/// Missing usage leaves the rule disabled; permission consent lives on Home.
+Future<void> showUsageHomeGuidance(BuildContext context) async {
+  final home = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('App usage is off'),
+      scrollable: true,
+      content: const Text(
+        'This app rule stays off because Usage Access is needed to detect when your chosen app is open and measure its budget. Open Home and use Allow app usage below Start session to review the explanation and choose access.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Later'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Go to Home'),
+        ),
+      ],
+    ),
+  );
+  if (home == true && context.mounted) context.goNamed(AppRoutes.dashboard);
 }

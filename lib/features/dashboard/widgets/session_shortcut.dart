@@ -29,7 +29,7 @@ class SessionShortcut extends ConsumerWidget {
         ? 'Resume'
         : timer.phase.isBreak
         ? 'Start break'
-        : 'Start focus';
+        : 'Start session';
     final detail = started
         ? '${timer.phase.label} · ${formatClock(timer.remaining)} ${timer.running ? 'left' : 'paused'}'
         : timer.phase.isBreak

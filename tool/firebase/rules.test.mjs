@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { before, after, beforeEach, test } from 'node:test';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, collection, query, where, setDoc, updateDoc,
+import { doc, getDoc, getDocs, collection, collectionGroup, query, where, setDoc, updateDoc,
   deleteDoc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
 let env;
 const db = (uid, anonymous = false) => env.authenticatedContext(uid, {
+  auth_time: Math.floor(Date.now()/1000),
   firebase: { sign_in_provider: anonymous ? 'anonymous' : 'google.com' },
 }).firestore();
 before(async () => {
@@ -26,13 +27,13 @@ async function seedGroup() {
   await assertSucceeds(batch.commit());
 }
 function row(code = 'ABCD234567') {
-  return {name:'Alex',joinedAt:now(),inviteCode:code,week:'2026-10-05',minutes:30,
+  return {ownerUid:'owner',name:'Alex',joinedAt:now(),inviteCode:code,week:'2026-10-05',minutes:30,
     focusUntil:0,updatedAt:serverTimestamp()};
 }
 function join(uid, code = 'ABCD234567') {
   const store = db(uid), batch = writeBatch(store);
   batch.update(doc(store,'studyGroups/group'), {memberIds:arrayUnion(uid)});
-  batch.set(doc(store,'studyGroups/group/members', uid), row(code));
+  batch.set(doc(store,'studyGroups/group/members', uid), {...row(code), ownerUid:uid});
   return batch.commit();
 }
 
@@ -84,10 +85,10 @@ test('group join cannot inject another member or create an invite for an existin
 
 test('leaderboard accepts bounded weekly summary and rejects invalid timestamp or totals', async () => {
   const ref=doc(db('student'),'leaderboard/2026-10-12/entries/student');
-  await assertSucceeds(setDoc(ref,{name:'Alex',minutes:10080,updatedAt:now()}));
-  await assertFails(setDoc(ref,{name:'Alex',minutes:10081,updatedAt:now()}));
-  await assertFails(setDoc(ref,{name:'Alex',minutes:30,updatedAt:'private'}));
-  await assertFails(setDoc(doc(db('student'),'leaderboard/invalid-week/entries/student'),{name:'Alex',minutes:30,updatedAt:now()}));
+  await assertSucceeds(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:10080,updatedAt:now()}));
+  await assertFails(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:10081,updatedAt:now()}));
+  await assertFails(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:30,updatedAt:'private'}));
+  await assertFails(setDoc(doc(db('student'),'leaderboard/invalid-week/entries/student'),{ownerUid:'student',name:'Alex',minutes:30,updatedAt:now()}));
 });
 
 const earnedBadgePath = 'users/student/achievements/earned';
@@ -173,28 +174,125 @@ test('achievement merge can add badges and refine their dates without losing pas
   await assertSucceeds(deleteDoc(ref));
 });
 
-test('retired monitoring paths deny owners, former guardians and strangers', async () => {
-  const paths = ['pairCodes/ABCD2345EFGH6789', 'users/child/guardian/link',
-    'users/parent/children/child', 'users/child/catalog/current',
+test('retired paths allow private owner cleanup but never new monitoring writes', async () => {
+  const paths = ['users/child/guardian/link', 'users/child/catalog/current',
     'users/child/progress/current', 'users/child/remoteRules/current'];
   await env.withSecurityRulesDisabled(async c => {
-    for (const path of paths) await setDoc(doc(c.firestore(), path), {parentUid:'parent',childUid:'child',private:'legacy'});
+    for (const path of paths) await setDoc(doc(c.firestore(), path), {parentUid:'parent',private:'legacy'});
   });
-  for (const uid of ['child','parent','stranger']) {
-    for (const path of paths) {
-      await assertFails(getDoc(doc(db(uid), path)));
-      await assertFails(setDoc(doc(db(uid), path), {parentUid:uid}));
-      await assertFails(deleteDoc(doc(db(uid), path)));
-    }
+  for (const path of paths) {
+    await assertSucceeds(getDoc(doc(db('child'), path)));
+    await assertFails(getDoc(doc(db('parent'), path)));
+    await assertFails(deleteDoc(doc(db('parent'), path)));
+    await assertFails(setDoc(doc(db('child'), path), {parentUid:'parent'}));
+    await assertSucceeds(deleteDoc(doc(db('child'), path)));
   }
+  await assertFails(getDocs(collection(db('child'), 'pairCodes')));
   await assertFails(setDoc(doc(db('child'), 'pairCodes/NEW23456ABCDEFGH'), {childUid:'child'}));
 });
 test('an account being deleted cannot republish badges, board rows or join groups', async () => {
   await seedGroup();
   await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'accountDeletions/student'), {requestedAt:now()}));
   await assertFails(setDoc(doc(db('student'), earnedBadgePath), earnedBadges()));
-  await assertFails(setDoc(doc(db('student'), 'leaderboard/2026-10-12/entries/student'), {name:'Alex',minutes:30,updatedAt:now()}));
+  await assertFails(setDoc(doc(db('student'), 'leaderboard/2026-10-12/entries/student'), {ownerUid:'student',name:'Alex',minutes:30,updatedAt:now()}));
   await assertFails(join('student'));
-  await assertFails(getDoc(doc(db('student'), 'accountDeletions/student')));
+  await assertSucceeds(getDoc(doc(db('student'), 'accountDeletions/student')));
   await assertFails(deleteDoc(doc(db('student'), 'accountDeletions/student')));
+});
+
+
+test('client deletion marker is owner-only, immutable and requires fresh authentication', async () => {
+  const store = db('student');
+  await assertFails(setDoc(doc(store, 'accountDeletions/stranger'), {requestedAt:serverTimestamp()}));
+  const stale = env.authenticatedContext('student', {auth_time:1, firebase:{sign_in_provider:'google.com'}}).firestore();
+  await assertFails(setDoc(doc(stale,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  await assertFails(updateDoc(doc(store,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  await assertFails(deleteDoc(doc(store,'accountDeletions/student')));
+  await assertFails(getDoc(doc(db('stranger'),'accountDeletions/student')));
+});
+test('deletion marker still permits owner cleanup and group departure', async () => {
+  await seedGroup(); await assertSucceeds(join('friend'));
+  const store = db('owner');
+  await assertSucceeds(setDoc(doc(store,'users/owner/achievements/earned'),earnedBadges()));
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/owner'),{requestedAt:serverTimestamp()}));
+  await assertSucceeds(getDoc(doc(store,'users/owner/achievements/earned')));
+  await assertSucceeds(deleteDoc(doc(store,'users/owner/achievements/earned')));
+  await assertFails(setDoc(doc(store,'users/owner'),{name:'Recreated'}));
+  const batch = writeBatch(store);
+  batch.update(doc(store,'studyGroups/group'),{memberIds:['friend'],ownerUid:'friend'});
+  batch.delete(doc(store,'studyGroups/group/members/owner'));
+  await assertSucceeds(batch.commit());
+});
+test('collection group cleanup sees only caller entries and orphaned members', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    const store = c.firestore();
+    await setDoc(doc(store,'leaderboard/2024-01-01/entries/student'),{ownerUid:'student',name:'Alex',minutes:10,updatedAt:now()});
+    await setDoc(doc(store,'leaderboard/2024-01-01/entries/other'),{ownerUid:'other',name:'Other',minutes:20,updatedAt:now()});
+    await setDoc(doc(store,'studyGroups/missing/members/student'),{ownerUid:'student',name:'Alex'});
+  });
+  const store = db('student');
+  const entries = await assertSucceeds(getDocs(query(collectionGroup(store,'entries'),where('ownerUid','==','student'))));
+  if (entries.size !== 1) throw Error('Missing historical row');
+  await assertFails(getDocs(query(collectionGroup(store,'members'),where('ownerUid','==','other'))));
+  const members = await assertSucceeds(getDocs(query(collectionGroup(store,'members'),where('ownerUid','==','student'))));
+  if (members.size !== 1) throw Error('Missing orphan member');
+  await assertFails(deleteDoc(doc(store,'studyGroups/missing/members/student')));
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/student'),{requestedAt:serverTimestamp()}));
+  await assertSucceeds(deleteDoc(doc(store,'studyGroups/missing/members/student')));
+  await assertSucceeds(deleteDoc(doc(store,'leaderboard/2024-01-01/entries/student')));
+  await assertFails(deleteDoc(doc(store,'leaderboard/2024-01-01/entries/other')));
+});
+test('nested owner cleanup and immutable inventory do not grant write or foreign access', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(),'users/student/archive/year/nested/session'),{private:'value'});
+    await setDoc(doc(c.firestore(),'users/student/deletionRefs/record'),{path:'users/student/archive/year/nested/session'});
+    await setDoc(doc(c.firestore(),'accountCleanup/schema'),{version:2});
+  });
+  const store = db('student');
+  await assertSucceeds(getDoc(doc(store,'accountCleanup/schema')));
+  await assertFails(setDoc(doc(store,'accountCleanup/schema'),{version:2}));
+  await assertSucceeds(getDocs(collection(store,'users/student/deletionRefs')));
+  await assertFails(getDoc(doc(db('stranger'),'users/student/archive/year/nested/session')));
+  await assertFails(setDoc(doc(store,'users/student/deletionRefs/fake'),{path:'users/other'}));
+  await assertFails(setDoc(doc(store,'users/student/archive/year/nested/session'),{private:'modified'}));
+  await assertSucceeds(deleteDoc(doc(store,'users/student/archive/year/nested/session')));
+});
+test('legacy anonymous credential can cleanup private records after confirming deletion', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(),'users/anon/achievements/earned'),earnedBadges());
+  });
+  const store = db('anon',true);
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/anon'),{requestedAt:serverTimestamp()}));
+  await assertSucceeds(getDocs(query(collection(store,'studyGroups'),where('memberIds','array-contains','anon'))));
+  await assertSucceeds(getDoc(doc(store,'users/anon/achievements/earned')));
+  await assertSucceeds(deleteDoc(doc(store,'users/anon/achievements/earned')));
+});
+test('orphan cleanup page fits security-call budget across eight different group parents', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    for (let i=0;i<8;i++) await setDoc(doc(c.firestore(),'studyGroups/missing-'+i+'/members/student'),{ownerUid:'student'});
+  });
+  const store = db('student');
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/student'),{requestedAt:serverTimestamp()}));
+  const batch=writeBatch(store);
+  for(let i=0;i<8;i++) batch.delete(doc(store,'studyGroups/missing-'+i+'/members/student'));
+  await assertSucceeds(batch.commit());
+});
+test('paged orphan cleanup removes thirty groups without exceeding batch rule calls', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    for(let i=0;i<30;i++) await setDoc(doc(c.firestore(),'studyGroups/old-'+i+'/members/student'),{ownerUid:'student'});
+  });
+  const store=db('student');
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/student'),{requestedAt:serverTimestamp()}));
+  let removed=0;
+  while(true) {
+    const snapshot=await getDocs(query(collectionGroup(store,'members'),where('ownerUid','==','student')));
+    const page=snapshot.docs.slice(0,8);
+    if(!page.length) break;
+    const batch=writeBatch(store);
+    for(const member of page) batch.delete(member.ref);
+    await assertSucceeds(batch.commit());
+    removed+=page.length;
+  }
+  if(removed!==30) throw Error('Missed orphan records');
 });

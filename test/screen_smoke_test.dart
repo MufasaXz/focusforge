@@ -384,7 +384,7 @@ void main() {
             find.textContaining('Your saved rules are currently inactive.'),
             findsOneWidget,
           );
-          expect(find.text('Check app access'), findsOneWidget);
+          expect(find.text('Review app usage on Home'), findsOneWidget);
           expect(tester.takeException(), isNull);
         });
       },

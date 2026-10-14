@@ -1,17 +1,16 @@
 # Google Play readiness: first-release candidate
 
-Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2023.
+Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2024.
 
-**Not ready for Play submission: in-app account deletion was removed at the
-owner's request while account creation remains available.** The external email
-request route remains, but does not replace Google Play's in-app deletion
-requirement. The special-use foreground-service declaration and real-device
-verification also remain. Google
-determines approval and enforcement. This document is a release checklist,
-not an approval or security certification.
+**Production activation and verification are required before Play submission.**
+The in-app deletion path is restored with Spark-compatible client cleanup.
+Publish rules/indexes and run the one-time legacy migration, then verify complete
+production deletion. Accessibility and special-use service declarations and
+real-device checks remain. Google determines approval; this document is not
+an approval or security certification.
 
 The displayed version may be 1.0.0 for the first Play release. Keep version code
-2023 greater than earlier distributed builds and retain the signing identity.
+2024 greater than earlier distributed builds and retain the signing identity.
 Changing the display version does not reset Android's update history. Never
 reuse a version code already uploaded to this package in Play Console.
 
@@ -21,28 +20,28 @@ reuse a version code already uploaded to this package in Play Console.
   progress uploads, and guardian navigation. Old profiles retain identity,
   goals, completed setup and history. Focus stays available; old routes redirect.
 - Native Shield receives only self-selected local rules. Cached remote rules
-  are ignored and replaced at launch. Revised rules deny retired monitoring
-  data to every client. Private achievements and private study groups remain.
-- Authenticated server cleanup covers historical boards, orphan member rows,
-  legacy pairing and account subcollections; owner transfer preserves other
-  members. Auth is last; private deletion markers block stale writes, hourly
-  retries resume failures, and a 24-hour TTL protects old ID tokens.
+  are ignored and replaced at launch. Revised rules prohibit retired monitoring
+  writes and permit private owner cleanup. Private achievements and private study groups remain.
+- Spark client cleanup covers private badges, inventoried legacy subcollections,
+  historical board rows and orphan members. Group ownership transfers; Auth is
+  last. An immutable fence blocks stale uploads. No paid backend, TTL or
+  automatic background completion is required.
 - Accessibility retains optional, separate disclosure/consent and
   isAccessibilityTool=false. First-run setup can finish without granting
   Shield permissions. Timer works without access. Settings, launcher,
   keyboard and emergency access are protected by Shield.
-- Account controls now offer Sign out only. This keeps local setup/history and
-  linked-account cloud records. The deletion backend code is retained for future
-  verified support cleanup, but has no in-app action in this candidate.
+- Account controls include Sign out and Delete account. Confirmation, fresh
+  Email/Google verification, loading guard, bounded reauthentication retry and
+  local/provider reset are implemented.
 - App and website source describe actual cloud data and account controls.
 
 ## Technical checks
 
-The updated 2023 candidate passes 299 Flutter tests, 30 native tests and clean
-Flutter analysis. Thirteen Firestore authorization tests and a full local
-Auth/Functions/Firestore account-deletion integration pass. Signed APK and AAB
-build successfully. Final artifact alignment and emulator checks are recorded
-in the delivery build notes; production backend remains undeployed.
+Build 2024 passed 328 Flutter tests, 33 native tests, 20 Firestore rules tests
+and the local migration integration check. A later Home placement/disclosure
+check passed at 320dp and 200% text. Final analyzer is clean; signed APK/AAB
+builds succeed, APK and all 12 bundled ELF libraries support 16 KB alignment.
+Production activation is owner-run and remains unverified here.
 
 On the Android 11 emulator, all four widgets loaded in a native widget host at
 140dp with 2× text and exposed their primary values. The weekly widget also
@@ -58,7 +57,7 @@ Launcher-app visibility uses the MAIN/LAUNCHER query for the actual app picker.
 Installed-app information remains sensitive even without QUERY_ALL_PACKAGES;
 use it only for the disclosed local feature.
 
-Recheck the final 1.0.0 (2023) merged manifest, signing, AAB and native-library
+Recheck the final 1.0.0 (2024) merged manifest, signing, AAB and native-library
 alignment after building. Checks from 1.0.3 (2021) do not prove the new artifact.
 Flutter includes native libraries, so verify 16 KB compatibility in App Bundle
 Explorer and on a suitable emulator/device. Use the AAB for Play upload; an APK
@@ -115,18 +114,10 @@ stored would conflict with the local pause history.
 
 ## Must finish before submission
 
-0. Restore an in-app account-deletion path before submitting an app that lets
-   users create accounts. Sign out is not deletion. The owner requested removal
-   of the broken delete button in build 2023; this does not waive Play policy.
-
-1. Publish firestore.rules and firestore.indexes.json; deploy cleanup functions.
-   Verify a disposable account's complete live deletion. **Rules alone do not
-   enable the new delete button.** On October 14 the configured us-central1
-   callable returned HTTP 404. After administrator login, deployment was
-   attempted but Firebase rejected it because the project needs Blaze billing.
-   Local Auth + Functions + Firestore emulator integration passed complete
-   deletion, but this does not create or verify a production endpoint. Follow
-   [Firebase setup](firebase-setup.md).
+1. Publish firestore.rules and firestore.indexes.json, wait for indexes, and
+   run the local administrator migration. Verify disposable Email/Google
+   accounts' complete deletion. Rules alone do not index historical data. Follow
+   [Firebase setup](firebase-setup.md). No Blaze upgrade is required.
 2. Deploy website privacy/deletion source to focusforgeorg.vercel.app. Pushing
    GitHub does not prove Vercel deployed. On October 14 the live privacy page
    still displayed October 11 and described parent sharing; the live deletion
@@ -164,7 +155,7 @@ stored would conflict with the local pause history.
    revocation, Shield, YouTube updates, OEM battery behavior, login, deletion,
    widgets and a 16 KB device. New personal accounts may need 12 opted-in
    testers for 14 days before applying for production access.
-7. Monitor the private deletion inbox and pending server failures; verify
+7. Monitor the private deletion inbox and failed client deletion reports; verify
    ownership, confirm fulfillment and explain any retention exceptions. The
    external route must remain usable after uninstall without requiring the app
    again. The website must clearly name FocusForge, describe the deletion path

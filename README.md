@@ -65,7 +65,7 @@ The timer works without an account. Detailed study history and setup stay on you
 - **Notifications:** Allow notifications to show the running countdown outside the app. Android 16 Live Updates and compatible device bars or islands depend on the device software, permissions, and user settings; presentation is not guaranteed on every phone.
 - **Widgets:** Add them from your launcher's Widgets menu. Refresh behavior can vary with launcher and battery settings.
 - **Achievement restore:** The revised Firebase rules must be published to enable the private backup. Offline unlocks stay local until they sync. A fresh installation can restore achievements that reached the account backup. See [Firebase setup](docs/firebase-setup.md).
-- **Account controls:** Sign out keeps your setup, local history and private badge backup. This build has no in-app account deletion; external requests use the website. See [Firebase setup](docs/firebase-setup.md#account-cleanup-and-retries) for the retained cleanup backend and deployment requirements.
+- **Account controls:** Sign out keeps your setup, local history and private badge backup. Delete account verifies your password or Google account, removes cloud records and then your login, and clears this device’s progress. The client flow works on Firebase Spark after the one-time [rules, indexes and migration setup](docs/firebase-setup.md). External requests remain available on the website.
 
 </details>
 

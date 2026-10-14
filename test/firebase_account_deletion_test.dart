@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:focusforge/core/services/firestore_account_cleanup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -15,11 +15,37 @@ class _User implements User {
   _User(this.events);
   final List<String> events;
   Object? tokenFailure;
+  Object? deleteFailure;
+  bool anonymous = true;
+  bool googleProvider = false;
+  Object? reauthFailure;
+  @override
+  String get email => 'sam@example.com';
+  @override
+  Future<UserCredential> reauthenticateWithCredential(
+    AuthCredential credential,
+  ) async {
+    events.add('reauthenticate:${credential.providerId}');
+    if (reauthFailure case final error?) throw error;
+    return _Credential(this);
+  }
+
+  @override
+  List<UserInfo> get providerData => anonymous
+      ? const []
+      : [_Info(googleProvider ? 'google.com' : 'password')];
+  @override
+  UserMetadata get metadata => UserMetadata(0, 0);
+  @override
+  Future<void> delete() async {
+    events.add('deleteAuth');
+    if (deleteFailure case final error?) throw error;
+  }
 
   @override
   String get uid => 'deletion-user';
   @override
-  bool get isAnonymous => true;
+  bool get isAnonymous => anonymous;
   @override
   String get displayName => 'Sam';
   @override
@@ -33,12 +59,37 @@ class _User implements User {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _Info implements UserInfo {
+  _Info(this.providerId);
+  @override
+  final String providerId;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _Credential implements UserCredential {
+  _Credential(this.user);
+  @override
+  final User user;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Auth implements FirebaseAuth {
   _Auth(this.user, this.events);
   final _User user;
   final List<String> events;
   bool closed = false;
   Object? signOutFailure;
+  Object? loginFailure;
+  @override
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    if (loginFailure case final error?) throw error;
+    throw StateError('Unexpected login');
+  }
 
   @override
   User? get currentUser => closed ? null : user;
@@ -61,6 +112,16 @@ class _Firestore implements FirebaseFirestore {
   Object? pendingFailure;
 
   @override
+  Future<void> terminate() async {
+    events.add('terminateCache');
+  }
+
+  @override
+  Future<void> clearPersistence() async {
+    events.add('clearCache');
+  }
+
+  @override
   Future<void> waitForPendingWrites() async {
     events.add('pendingWrites');
     if (pendingFailure case final failure?) throw failure;
@@ -70,52 +131,27 @@ class _Firestore implements FirebaseFirestore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _Result<T> implements HttpsCallableResult<T> {
-  _Result(this.data);
-  @override
-  final T data;
-}
-
-class _Callable implements HttpsCallable {
-  _Callable(this.events);
+class _Cleanup extends FirestoreAccountCleanup {
+  _Cleanup(super.db, this.events);
   final List<String> events;
   Object? failure;
-  Map<String, dynamic> result = {'deleted': true};
-
   @override
-  Future<HttpsCallableResult<T>> call<T>([dynamic parameters]) async {
-    events.add('deleteCloud');
-    expect(
-      parameters,
-      isNull,
-      reason: 'The server must derive the caller UID.',
-    );
+  Future<void> deleteUserData(String uid) async {
+    events.add('deleteCloud:$uid');
     if (failure case final error?) throw error;
-    return _Result(result as T);
   }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _Functions implements FirebaseFunctions {
-  _Functions(this.callable);
-  final _Callable callable;
-
-  @override
-  HttpsCallable httpsCallable(String name, {HttpsCallableOptions? options}) {
-    expect(name, 'deleteFocusForgeAccount');
-    return callable;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _Google implements GoogleSignIn {
   _Google(this.events);
   final List<String> events;
   Object? failure;
+  bool cancelled = false;
+  @override
+  Future<GoogleSignInAccount?> signIn() async {
+    events.add('googleSignIn');
+    return cancelled ? null : _GoogleAccount();
+  }
 
   @override
   Future<GoogleSignInAccount?> signOut() async {
@@ -128,13 +164,30 @@ class _Google implements GoogleSignIn {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _GoogleAccount implements GoogleSignInAccount {
+  @override
+  Future<GoogleSignInAuthentication> get authentication async =>
+      _GoogleTokens();
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _GoogleTokens implements GoogleSignInAuthentication {
+  @override
+  String get idToken => 'fake-test-token';
+  @override
+  String get accessToken => 'fake-test-access';
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late LocalStore store;
   late FirebaseAuthService service;
   late _Auth auth;
   late _Firestore firestore;
-  late _Callable callable;
+  late _Cleanup cleanup;
   late _Google google;
   late List<String> events;
 
@@ -148,13 +201,13 @@ void main() {
     events = [];
     auth = _Auth(_User(events), events);
     firestore = _Firestore(events);
-    callable = _Callable(events);
+    cleanup = _Cleanup(firestore, events);
     google = _Google(events);
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
       firestore: firestore,
-      functions: _Functions(callable),
+      accountCleanup: cleanup,
       googleSignIn: google,
     );
     await service.restore();
@@ -176,23 +229,39 @@ void main() {
   }
 
   test(
-    'missing deletion endpoint gives a support error and preserves local data',
+    'Firestore permission failure preserves Auth and local history',
     () async {
-      callable.failure = FirebaseFunctionsException(
-        code: 'not-found',
-        message: 'NOT FOUND',
+      cleanup.failure = FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
       );
-      await expectFailure('deletionUnavailable');
-      expect(events, ['pendingWrites', 'refresh:true', 'deleteCloud']);
+      await expectFailure('cleanupFailed');
+      expect(events, [
+        'pendingWrites',
+        'refresh:true',
+        'deleteCloud:deletion-user',
+      ]);
     },
   );
-
-  test('server recent-login rejection stays actionable instead of becoming cleanup failure', () async {
-    callable.failure = FirebaseFunctionsException(
-      code: 'failed-precondition',
-      message: 'recent login required',
-    );
+  test(
+    'Auth recent-login rejection keeps retryable identity and local data',
+    () async {
+      auth.user.deleteFailure = FirebaseAuthException(
+        code: 'requires-recent-login',
+      );
+      await expectFailure('requiresRecentLogin');
+      expect(events, [
+        'pendingWrites',
+        'refresh:true',
+        'deleteCloud:deletion-user',
+        'deleteAuth',
+      ]);
+    },
+  );
+  test('stale login cannot begin Firestore cleanup', () async {
+    auth.user.anonymous = false;
     await expectFailure('requiresRecentLogin');
+    expect(events, isEmpty);
   });
 
   test(
@@ -215,29 +284,25 @@ void main() {
     },
   );
 
-  test(
-    'a partial or unconfirmed server result never wipes the device',
-    () async {
-      callable.result = {'deleted': false};
-      await expectFailure('cleanupFailed');
-    },
-  );
-
   test('an interrupted cleanup remains retryable with local data until confirmation', () async {
-    callable.failure = FirebaseFunctionsException(
+    cleanup.failure = FirebaseException(
+      plugin: 'cloud_firestore',
       code: 'unavailable',
       message: 'Cleanup is not finished.',
     );
     await expectFailure('cleanupFailed');
-    callable.failure = null;
+    cleanup.failure = null;
     events.clear();
     await service.deleteAccount();
     expect(events, [
       'pendingWrites',
       'refresh:true',
-      'deleteCloud',
+      'deleteCloud:deletion-user',
+      'deleteAuth',
       'signOut',
       'providerSignOut',
+      'terminateCache',
+      'clearCache',
     ]);
     expect(auth.closed, isTrue);
     expect(service.current, isNull);
@@ -265,7 +330,7 @@ void main() {
         store,
         firebaseAuth: auth,
         firestore: firestore,
-        functions: _Functions(callable),
+        accountCleanup: cleanup,
         googleSignIn: google,
       );
       expect(await service.restore(), isNull);
@@ -273,6 +338,98 @@ void main() {
       expect(store.getMap(StoreKeys.user), isNull);
     },
   );
+
+  test('disabled email provider gives an actionable error before local profile changes', () async {
+    auth.loginFailure = FirebaseAuthException(code: 'operation-not-allowed');
+    await expectLater(
+      service.signInWithEmail('sam@example.com', 'password'),
+      throwsA(
+        isA<AuthException>().having(
+          (e) => e.failure,
+          'failure',
+          AuthFailure.providerUnavailable,
+        ),
+      ),
+    );
+    expect(store.getList(StoreKeys.sessions), isNotEmpty);
+  });
+
+  test(
+    'email reauthentication permits data cleanup then Auth deletion',
+    () async {
+      auth.user.anonymous = false;
+      await service.reauthenticate(password: 'secret-not-logged');
+      await service.deleteAccount();
+      expect(events.take(5), [
+        'reauthenticate:password',
+        'pendingWrites',
+        'refresh:true',
+        'deleteCloud:deletion-user',
+        'deleteAuth',
+      ]);
+      expect(store.getList(StoreKeys.sessions), isEmpty);
+    },
+  );
+  test('wrong password cannot authorise destructive cleanup', () async {
+    auth.user.anonymous = false;
+    auth.user.reauthFailure = FirebaseAuthException(code: 'invalid-credential');
+    await expectLater(
+      service.reauthenticate(password: 'incorrect'),
+      throwsA(
+        isA<AuthException>().having(
+          (e) => e.failure,
+          'failure',
+          AuthFailure.wrongPassword,
+        ),
+      ),
+    );
+    await expectFailure('requiresRecentLogin');
+    expect(events, ['reauthenticate:password']);
+  });
+
+  test(
+    'Google account chooser reauthenticates before destructive cleanup',
+    () async {
+      auth.user.anonymous = false;
+      auth.user.googleProvider = true;
+      await service.reauthenticate();
+      await service.deleteAccount();
+      expect(events.take(7), [
+        'providerSignOut',
+        'googleSignIn',
+        'reauthenticate:google.com',
+        'pendingWrites',
+        'refresh:true',
+        'deleteCloud:deletion-user',
+        'deleteAuth',
+      ]);
+    },
+  );
+  test('cancelled Google confirmation never authorises cleanup', () async {
+    auth.user.anonymous = false;
+    auth.user.googleProvider = true;
+    google.cancelled = true;
+    await expectLater(
+      service.reauthenticate(),
+      throwsA(
+        isA<AuthException>().having(
+          (e) => e.failure,
+          'failure',
+          AuthFailure.cancelled,
+        ),
+      ),
+    );
+    await expectFailure('requiresRecentLogin');
+    expect(events, ['providerSignOut', 'googleSignIn']);
+  });
+
+  test('signed-out local erase leaves the remote account alone', () async {
+    auth.closed = true;
+    await service.deleteAccount();
+    expect(events, isEmpty);
+    expect(store.getList(StoreKeys.sessions), isEmpty);
+    expect(service.current, isNull);
+  });
 
   test(
     'provider-cache cleanup failure cannot undo confirmed deletion',
