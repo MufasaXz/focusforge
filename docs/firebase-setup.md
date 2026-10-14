@@ -100,3 +100,29 @@ both files together and is less error-prone. This setup uses no TTL policy.
 
 Local tests do not activate production. No production migration or disposable
 account deletion was performed here. Verify those before Play submission.
+
+## Email ownership (build 2025)
+
+Enable Email/Password in Authentication → Sign-in method. A password account is
+pending until the owner opens Firebase's verification email. Signup sends the
+message; sign-in and restored sessions show Verify your email until verified.
+The app offers resend (60-second cooldown), refresh, and a different-account
+option. Returning from a mail/browser refreshes verification; the ID token is
+refreshed before private badge/social sync. Google and anonymous sessions are
+unchanged. A pending Auth record can exist; creating it does not unlock the app
+or create normal Firestore profile/social records. Do not promise that a regex
+proves mailbox existence.
+
+Firestore requires email_verified for password-provider normal writes; owner
+cleanup/deletion remains possible. Deploy the updated rules together with the
+new build. Older unverified email accounts must update and verify before
+normal cloud sharing. The completed schema2 migration does not need rerunning
+for this change. Firebase-unavailable builds offer guest use only, and cannot
+pretend to authenticate email credentials or send reset mail.
+
+Review Authentication → Templates → Email address verification: sender name,
+FocusForge wording, default Firebase-hosted action handler and a valid reply-to
+contact. No custom action URL or SMTP dependency is needed for the standard
+handler. Test a real inbox's verification and password-reset email plus spam
+folder. Set the Play reviewer account up and verify it before submission.
+Firebase email sending/provider quotas still apply on the Spark plan.

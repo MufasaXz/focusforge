@@ -127,15 +127,6 @@ class ProfileScreen extends ConsumerWidget {
         trailingColor: strict.enabled ? t.error : null,
       ),
       _SettingSpec(
-        icon: Icons.timer_outlined,
-        label: 'Clock face',
-        routeName: AppRoutes.clockFace,
-        // Named rather than counted: "5 options" says nothing about which one
-        // is running, and this row is the only place the current one is
-        // visible without opening the page.
-        trailing: ref.watch(clockFaceProvider).label,
-      ),
-      _SettingSpec(
         icon: Icons.notifications_active_outlined,
         label: 'Notifications',
         routeName: AppRoutes.notifications,
@@ -204,8 +195,8 @@ class ProfileScreen extends ConsumerWidget {
       const SizedBox(height: Gap.xl),
       for (final group in [
         ('Progress & community', settings.take(3)),
-        ('Preferences', settings.skip(3).take(3)),
-        ('App & privacy', settings.skip(6)),
+        ('Preferences', settings.skip(3).take(2)),
+        ('App & privacy', settings.skip(5)),
       ])
         prefStagger(
           _ProfileSection(
@@ -655,23 +646,37 @@ class _AppearanceCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Eyebrow('MAKE IT YOURS', icon: Icons.palette_outlined),
-            const SizedBox(height: Gap.lg),
+            Text('Theme', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: Gap.md),
             AppSegmentedControl<ThemePreference>(
               options: {for (final p in ThemePreference.values) p: p.label},
               selected: settings.mode,
               onChanged: notifier.setMode,
             ),
-            const SizedBox(height: Gap.xl),
-            Text('Palette', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: Gap.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Accent color',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                Text(
+                  settings.palette.label,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: t.onSurfaceVariant),
+                ),
+              ],
+            ),
             const SizedBox(height: Gap.md),
             // Wrap rather than Row: six swatches fit on the tablet this app
             // is built for, but a 320dp phone would clip the last one, and a
             // picker that hides a choice is worse than one that uses two
             // lines.
             Wrap(
-              spacing: Gap.md,
-              runSpacing: Gap.md,
+              spacing: Gap.sm,
+              runSpacing: Gap.sm,
               children: [
                 for (final p in AppPalette.values)
                   _PaletteSwatch(
@@ -682,14 +687,18 @@ class _AppearanceCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Gap.lg),
-            Text(
-              'Open your Android home screen’s Widgets menu to add the Retro clock, '
-              'Study session or Daily goal. See your subject, countdown and progress at a glance.',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: t.onSurfaceVariant),
+            Divider(height: 1, color: t.outlineVariant.withValues(alpha: .4)),
+            const SizedBox(height: Gap.sm),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.timer_outlined, color: t.onSurfaceVariant),
+              title: const Text('Clock face'),
+              subtitle: Text(ref.watch(clockFaceProvider).label),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.goNamed(AppRoutes.clockFace),
             ),
             if (isDark) ...[
-              const SizedBox(height: Gap.lg),
+              const SizedBox(height: Gap.sm),
               Row(
                 children: [
                   Expanded(
@@ -701,7 +710,7 @@ class _AppearanceCard extends ConsumerWidget {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         Text(
-                          'Turns dark surfaces fully off, for OLED panels.',
+                          'Use a black background in dark mode.',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: t.onSurfaceVariant),
                         ),

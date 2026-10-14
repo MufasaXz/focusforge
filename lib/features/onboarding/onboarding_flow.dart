@@ -9,7 +9,6 @@ import '../../core/services/local_store.dart';
 import 'auth_screen.dart';
 import 'onboarding_chrome.dart';
 import 'complete_step.dart';
-import 'goal_step.dart';
 import 'starting_plan_step.dart';
 import 'persona_step.dart';
 import 'profile_step.dart';
@@ -20,7 +19,7 @@ import 'subjects_step.dart';
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
 /// widget owns the whole journey: splash, account, persona, profile, subjects,
-/// goal, starting plan and celebration. The last step flips `completeOnboarding()` and
+/// starting plan and celebration. The last step flips `completeOnboarding()` and
 /// the router takes it from there.
 ///
 /// A [PageView] rather than an [AnimatedSwitcher] because it keeps each step
@@ -69,7 +68,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     super.dispose();
   }
 
-  List<int> get _steps => const [0, 1, 2, 4, 5, 6, 7, 8];
+  List<int> get _steps => const [0, 1, 2, 4, 5, 7, 8];
 
   Future<void> _go(int step) async {
     final page = _steps.indexOf(step);
@@ -139,7 +138,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     final progress = ref
         .read(localStoreProvider)
         .getMap(StoreKeys.setupProgress);
-    final step = progress?['step'];
+    // Drafts saved on the retired goal screen return to subjects.
+    final storedStep = progress?['step'];
+    final step = storedStep == 6 ? 5 : storedStep;
     return !profile.onboardingComplete &&
             progress?['uid'] == profile.uid &&
             step is int &&
@@ -155,7 +156,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
-    // Refresh subject and goal suggestions after the persona answer changes.
+    // Refresh subject suggestions after the persona answer changes.
     ref.watch(userProvider.select((u) => u.persona));
     final steps = _steps;
     final total = steps.length - 1;
@@ -223,10 +224,6 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     5 => SubjectsStep(
       key: ValueKey(ref.read(userProvider).persona),
       onNext: () => _advanceFrom(5),
-    ),
-    6 => GoalStep(
-      key: ValueKey(ref.read(userProvider).persona),
-      onNext: () => _advanceFrom(6),
     ),
     7 => StartingPlanStep(onNext: () => _advanceFrom(7)),
     _ => const CompleteStep(),

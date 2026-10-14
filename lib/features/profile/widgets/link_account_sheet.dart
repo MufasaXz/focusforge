@@ -131,7 +131,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
               label: 'Continue with Email',
               leading: const MailMark(),
               busy: _busy == 'email',
-              onTap: _email,
+              onTap: providers.contains('email') ? _email : null,
             ),
             const SizedBox(height: Gap.sm),
             const PrivacyPolicyLink(),

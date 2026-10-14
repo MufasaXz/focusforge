@@ -65,6 +65,8 @@ void main() {
     List<InstalledApp> apps = const [],
     Map<String, int> usage = const {},
     bool usageAccess = false,
+    bool overlayAccess = false,
+    bool appBlockingRunning = false,
     bool shieldEnabled = false,
     Set<String> protectedPackages = const {},
   }) {
@@ -83,9 +85,11 @@ void main() {
         appUsageTodayProvider.overrideWith((ref) async => usage),
         usageAccessProvider.overrideWith((ref) async => usageAccess),
         shieldEnabledProvider.overrideWith((ref) async => shieldEnabled),
-        appBlockingRunningProvider.overrideWith((ref) async => false),
+        appBlockingRunningProvider.overrideWith(
+          (ref) async => appBlockingRunning,
+        ),
         appBlockingPausedProvider.overrideWith((ref) async => false),
-        overlayAccessProvider.overrideWith((ref) async => false),
+        overlayAccessProvider.overrideWith((ref) async => overlayAccess),
       ],
     );
     addTearDown(container.dispose);
@@ -218,6 +222,9 @@ void main() {
     testWidgets('a rule shows on the app it applies to', (tester) async {
       useTallPhone(tester);
       final container = freshContainer(
+        usageAccess: true,
+        overlayAccess: true,
+        appBlockingRunning: true,
         apps: const [
           InstalledApp(
             packageId: 'com.example.blocked',
@@ -276,6 +283,8 @@ void main() {
         ],
         usage: const {'com.example.budget': 12},
         usageAccess: true,
+        overlayAccess: true,
+        appBlockingRunning: true,
       );
       await container
           .read(whitelistProvider.notifier)
@@ -358,37 +367,47 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-      'saved app rules without a running engine say they are inactive',
-      (tester) async {
-        useTallPhone(tester);
-        await onAndroid(tester, () async {
-          final container = freshContainer(
-            shieldEnabled: true,
-            usageAccess: false,
-          );
-          await container
-              .read(whitelistProvider.notifier)
-              .addInstalledApp(
-                packageId: 'com.example.budget',
-                name: 'Budgeted App',
-                tier: WhitelistTier.budgeted,
-                budgetMinutes: 30,
-              );
+    testWidgets('saved app rules without usage access say they are inactive', (
+      tester,
+    ) async {
+      useTallPhone(tester);
+      await onAndroid(tester, () async {
+        final container = freshContainer(
+          apps: const [
+            InstalledApp(
+              packageId: 'com.example.budget',
+              name: 'Budgeted App',
+              isSystem: false,
+            ),
+          ],
+          shieldEnabled: true,
+          usageAccess: false,
+          overlayAccess: true,
+        );
+        await container
+            .read(whitelistProvider.notifier)
+            .addInstalledApp(
+              packageId: 'com.example.budget',
+              name: 'Budgeted App',
+              tier: WhitelistTier.budgeted,
+              budgetMinutes: 30,
+            );
 
-          await tester.pumpWidget(wrap(container, const ShieldScreen()));
-          await settle(tester);
+        await tester.pumpWidget(wrap(container, const ShieldScreen()));
+        await settle(tester);
 
-          expect(find.text('Your app rules need attention'), findsOneWidget);
-          expect(
-            find.textContaining('Your saved rules are currently inactive.'),
-            findsOneWidget,
-          );
-          expect(find.text('Review app usage on Home'), findsOneWidget);
-          expect(tester.takeException(), isNull);
-        });
-      },
-    );
+        expect(find.text('Your app rules need attention'), findsOneWidget);
+        expect(
+          find.textContaining('Inactive · Your app rules are saved.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Allow app usage on Home'), findsOneWidget);
+        expect(find.text('Inactive · Rule saved'), findsOneWidget);
+        expect(find.text('0m of 30m used today'), findsNothing);
+        expect(find.text('Check overlay access'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    });
 
     testWidgets('Android lists apps before requesting blocking access', (
       tester,
@@ -447,7 +466,7 @@ void main() {
       await tester.pumpWidget(wrap(freshContainer(), const DashboardScreen()));
       await settle(tester);
 
-      expect(find.text('No sessions yet'), findsOneWidget);
+      expect(find.text("Set today's goal"), findsOneWidget);
       expect(
         find.text('Screen time today'),
         findsOneWidget,

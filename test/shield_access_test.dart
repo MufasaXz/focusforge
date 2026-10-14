@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +43,7 @@ void main() {
     bool usage = false,
     bool? overlay,
     bool? running,
+    Future<bool> Function()? runningCheck,
     bool? paused,
     bool Function()? accessibilityCheck,
     PermissionManager? manager,
@@ -67,8 +70,10 @@ void main() {
         usageAccessProvider.overrideWith((ref) async => usage),
         if (overlay != null)
           overlayAccessProvider.overrideWith((ref) async => overlay),
-        if (running != null)
-          appBlockingRunningProvider.overrideWith((ref) async => running),
+        if (running != null || runningCheck != null)
+          appBlockingRunningProvider.overrideWith(
+            (ref) => runningCheck?.call() ?? Future.value(running!),
+          ),
         if (paused != null)
           appBlockingPausedProvider.overrideWith((ref) async => paused),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
@@ -102,9 +107,9 @@ void main() {
   }
 
   testWidgets(
-    'enabling an app without usage access asks for access and saves no rule',
+    'enabling an app without usage access requests overlay only',
     (tester) async {
-      final container = containerFor();
+      final container = containerFor(overlay: false);
       await mount(tester, container, const ShieldScreen());
       expect(find.text('Turn on app blocking'), findsNothing);
       expect(find.text('1 apps'), findsNothing);
@@ -120,12 +125,71 @@ void main() {
       expect(container.read(whitelistProvider), isEmpty);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(find.text('Later'), findsOneWidget);
-      expect(find.text('Go to Home'), findsOneWidget);
+      expect(find.text('Allow draw over other apps'), findsOneWidget);
+      expect(find.text('Go to Home'), findsNothing);
       expect(find.text('Open usage settings'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },
   );
+
+  testWidgets(
+    'overlay grant saves a pending app rule without requesting usage access',
+    (tester) async {
+      final manager = SettingsPermissionManager();
+      final container = containerFor(overlay: true, manager: manager);
+      await mount(tester, container, const ShieldScreen());
+      final row = find.ancestor(
+        of: find.text('Instagram'),
+        matching: find.byType(InkWell),
+      );
+      await tester.tap(
+        find.descendant(of: row, matching: find.byType(GestureDetector)).last,
+      );
+      await tester.pumpAndSettle();
+
+      expect(container.read(whitelistProvider), hasLength(1));
+      expect(manager.requests, isEmpty);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('Inactive'), findsWidgets);
+      expect(find.text('A quieter phone starts here'), findsNothing);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets('Shield keeps its verified status visible during refresh', (
+    tester,
+  ) async {
+    var refresh = false;
+    final pending = Completer<bool>();
+    final container = containerFor(
+      usage: true,
+      overlay: true,
+      runningCheck: () => refresh ? pending.future : Future.value(true),
+    );
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(
+          packageId: 'com.instagram.android',
+          name: 'Instagram',
+          tier: WhitelistTier.blocked,
+        );
+    await mount(tester, container, const ShieldOverview());
+    expect(find.text('A quieter phone starts here'), findsOneWidget);
+    refresh = true;
+    container.invalidate(appBlockingRunningProvider);
+    expect(container.read(appBlockingRunningProvider).isLoading, isTrue);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('A quieter phone starts here'), findsOneWidget);
+    expect(find.text('Checking your Shield'), findsNothing);
+    pending.complete(false);
+    await tester.pumpAndSettle();
+    expect(find.text('Your app rules need attention'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'normal app blocking works with usage and overlay without accessibility',
@@ -278,7 +342,7 @@ void main() {
   testWidgets('a budget without usage access is not saved as an active rule', (
     tester,
   ) async {
-    final container = containerFor(accessible: true);
+    final container = containerFor(accessible: true, overlay: false);
     await mount(
       tester,
       container,

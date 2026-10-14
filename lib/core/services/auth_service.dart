@@ -18,6 +18,7 @@ enum AuthFailure {
   deletionUnavailable,
   cloudSyncPending,
   cleanupFailed,
+  emailVerificationRequired,
   unknown,
 }
 
@@ -42,11 +43,11 @@ class AuthException implements Exception {
       'Too many attempts. Wait a few minutes and try again.',
     AuthFailure.requiresRecentLogin =>
       'Confirm your password or Google account again to continue deletion.',
-    AuthFailure.providerUnavailable =>
-      'This sign-in method is disabled or not configured. Try another method or contact support.',
+    AuthFailure.providerUnavailable => 'This sign-in method is disabled or not configured. Try another method or contact support.',
     AuthFailure.deletionUnavailable => 'Account deletion is unavailable right now. Your account and local history are kept. Use the account-deletion page below to contact support.',
     AuthFailure.cloudSyncPending => 'Your latest changes could not sync. Deletion has not started and your data is kept. Connect to the internet and retry.',
     AuthFailure.cleanupFailed => 'Deletion could not be confirmed. Your local history is kept; some cloud records may already be removed. Retry or contact support through the account-deletion page.',
+    AuthFailure.emailVerificationRequired => 'Verify your email address before signing in. Open the link in your inbox, then return here.',
     AuthFailure.unknown => 'Something went wrong.',
   };
 
@@ -67,6 +68,15 @@ class AuthException implements Exception {
 /// credential is remote. Separate services back up earned badge IDs and
 /// handle optional aggregate sharing; detailed session logs stay local.
 abstract class AuthService {
+  bool get needsEmailVerification => false;
+  String? get verificationEmail => null;
+  DateTime? get verificationResendAvailableAt => null;
+  Future<void> sendEmailVerification() async {
+    throw const AuthException(AuthFailure.providerUnavailable);
+  }
+
+  Future<UserProfile?> refreshEmailVerification() async => null;
+
   /// Whether the most recent successful credential flow opened an account
   /// already used here or recognised by the account provider.
   bool get isReturningUser => false;
@@ -140,6 +150,43 @@ abstract class AuthService {
 
   /// Releases the [changes] stream.
   void dispose();
+}
+
+/// Production fallback supports guest use only; it cannot verify credentials.
+class GuestOnlyAuthService extends LocalAuthService {
+  GuestOnlyAuthService(super.store);
+
+  @override
+  Future<UserProfile?> restore() async {
+    final profile = await super.restore();
+    if (profile == null) return null;
+    if (profile.isAnonymous) return profile;
+    final guest = profile.copyWith(isAnonymous: true);
+    await updateProfile(guest);
+    return guest;
+  }
+
+  @override
+  Set<String> get supportedProviders => const {'local'};
+
+  @override
+  Future<UserProfile> signInWithEmail(String email, String password) async =>
+      throw const AuthException(AuthFailure.providerUnavailable);
+
+  @override
+  Future<UserProfile> signUpWithEmail(String email, String password) async =>
+      throw const AuthException(AuthFailure.providerUnavailable);
+
+  @override
+  Future<UserProfile> linkAccount({
+    required String provider,
+    String? displayName,
+    String? email,
+  }) async => throw const AuthException(AuthFailure.providerUnavailable);
+
+  @override
+  Future<void> sendPasswordReset(String email) async =>
+      throw const AuthException(AuthFailure.providerUnavailable);
 }
 
 /// The on-device implementation of [AuthService].

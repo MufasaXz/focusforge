@@ -3,6 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null &&
+        (request.auth.token.firebase.sign_in_provider != 'password' ||
+          request.auth.token.get('email_verified', false) == true) &&
         !exists(/databases/$(database)/documents/accountDeletions/$(request.auth.uid));
     }
     function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }

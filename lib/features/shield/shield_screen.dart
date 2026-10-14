@@ -315,14 +315,18 @@ class _ShieldStatusSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final enabled = ref.watch(appBlockingRunningProvider).valueOrNull ?? false;
+    final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final overlay = ref.watch(overlayAccessProvider).valueOrNull ?? false;
+    final enabled =
+        usageAccess &&
+        overlay &&
+        (ref.watch(appBlockingRunningProvider).valueOrNull ?? false);
     final native = NativeShieldService.isSupported;
     final blocked = ref.watch(blockedAppsProvider).length;
     final budgeted = ref.watch(budgetedAppsProvider).length;
     final youtube = ref.watch(youtubeRulesProvider);
     final youtubeAccess = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
     final strict = ref.watch(strictModeProvider);
-    final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
     final inert = budgeted > 0 && !usageAccess;
 
     return SheetSurface(
@@ -375,7 +379,9 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 icon: Icons.block_rounded,
                 color: blocked > 0 ? cs.tertiary : cs.onSurfaceVariant,
                 label: 'Apps blocked',
-                value: '$blocked',
+                value: blocked > 0 && native && !enabled
+                    ? '$blocked inactive'
+                    : '$blocked',
               ),
               _StatusLine(
                 icon: Icons.hourglass_bottom_rounded,
@@ -1008,10 +1014,18 @@ class _AppRuleRow extends ConsumerWidget {
     final tt = Theme.of(context).textTheme;
     final tier = row.rule?.tier;
     final accent = harmonize(tier?.color ?? cs.primary, cs.primary);
+    final usage = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final overlay = ref.watch(overlayAccessProvider).valueOrNull ?? false;
+    final running = ref.watch(appBlockingRunningProvider).valueOrNull ?? false;
+    final inactive =
+        NativeShieldService.isSupported &&
+        row.isRestricted &&
+        (!usage || !overlay || !running);
+    final meta = inactive ? 'Inactive · Rule saved' : _meta;
 
     return Semantics(
       button: true,
-      label: _semanticLabel,
+      label: inactive ? '${row.name}, saved rule, inactive' : _semanticLabel,
       child: InkWell(
         onTap: onOpen,
         child: Padding(
@@ -1048,7 +1062,7 @@ class _AppRuleRow extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _meta,
+                      meta,
                       style: tt.labelSmall?.copyWith(
                         color: row.isRestricted ? accent : cs.onSurfaceVariant,
                       ),

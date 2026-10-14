@@ -19,8 +19,7 @@ import 'onboarding_chrome.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
 ///
-/// It reflects the user's own choices back at them — persona, subjects, blocks,
-/// goal — because the fastest way to make a setup feel worth it is to show
+/// It reflects the user's own choices back at them — persona, subjects and blocks — because the fastest way to make a setup feel worth it is to show
 /// that it actually configured something. The final action
 /// flips the onboarding flag and hands over to the dashboard, which is what
 /// the router has been waiting for.
@@ -78,7 +77,6 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final user = ref.watch(userProvider);
     final persona = user.persona;
     final subjectCount = ref.watch(subjectsProvider).length;
-    final goal = ref.watch(todayGoalMinutesProvider);
     // The preset the timer will actually start with, not a claim about the
     // shield: apps are chosen in the Shield tab now, so a count here would be
     // a zero dressed up as a fact.
@@ -141,10 +139,10 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                         label: 'Focus block',
                       ),
                       _StatTile(
-                        icon: Icons.timer_rounded,
+                        icon: Icons.flag_outlined,
                         color: cs.tertiary,
-                        value: formatMinutes(goal),
-                        label: 'Daily goal',
+                        value: 'Plan from Home',
+                        label: 'Your next step',
                       ),
                     ],
                   ];
@@ -196,8 +194,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   }
 }
 
-/// One reflected choice on the celebration screen — persona, subjects, blocks,
-/// goal — so the user sees the setup actually configured something.
+/// One reflected choice on the celebration screen — persona, subjects and blocks — so the user sees the setup actually configured something.
 class _StatTile extends StatelessWidget {
   const _StatTile({
     required this.icon,

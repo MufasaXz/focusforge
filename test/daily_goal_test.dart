@@ -18,6 +18,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/data/seed.dart';
+import 'package:focusforge/core/models/focus_goal.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
+import 'package:focusforge/features/dashboard/widgets/goal_ring.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
@@ -249,53 +252,60 @@ void main() {
     });
   });
 
-  group('the goal editor', () {
-    testWidgets('the dashboard row opens it and a day can be moved', (
+  group('the Home goal planner', () {
+    testWidgets(
+      'a new Home offers planning and shows a ring immediately after saving a goal',
+      (tester) async {
+        useTallPhone(tester);
+        await store.setBool(StoreKeys.coachSeen, true);
+        final container = freshContainer();
+        await tester.pumpWidget(wrap(container, const DashboardScreen()));
+        await settle(tester);
+        expect(find.text('No sessions yet'), findsNothing);
+        expect(find.text("Set today's goal"), findsOneWidget);
+        expect(find.byType(GoalRing), findsNothing);
+        await container
+            .read(focusGoalPlannerProvider.notifier)
+            .save(
+              FocusGoalPlan(
+                scope: FocusGoalScope.day,
+                date: DateTime.now(),
+                totalMinutes: 480,
+                subjectMinutes: const {'math': 240, 'physics': 240},
+              ),
+            );
+        await settle(tester);
+        expect(find.byType(GoalRing), findsOneWidget);
+        expect(find.text("Today's goal"), findsOneWidget);
+        expect(find.text('Start session'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('the Home goal row opens the current goal plan editor', (
       tester,
     ) async {
       useTallPhone(tester);
       await store.setBool(StoreKeys.coachSeen, true);
-
       final container = freshContainer();
-      final now = DateTime.now();
       await container
-          .read(sessionsProvider.notifier)
-          .record(
-            FocusSession(
-              id: 's-editor',
-              subjectId: 'math',
-              startedAt: DateTime(now.year, now.month, now.day, 9),
-              minutes: 50,
+          .read(focusGoalPlannerProvider.notifier)
+          .save(
+            FocusGoalPlan(
+              scope: FocusGoalScope.day,
+              date: DateTime.now(),
+              totalMinutes: 60,
+              subjectMinutes: const {'math': 60},
             ),
           );
-
       await tester.pumpWidget(wrap(container, const DashboardScreen()));
       await settle(tester);
-
       await tester.tap(find.text("Today's goal"));
       await settle(tester);
-
-      expect(find.text('Daily goal'), findsOneWidget);
-      expect(
-        find.textContaining('Every day can have its own target'),
-        findsOneWidget,
-        reason: 'the sheet is where the per-day idea is explained',
-      );
-
-      // Sunday is the last row. Dragged to the end of its range it becomes the
-      // eight-hour day the week is meant to be able to hold.
-      await tester.drag(find.byType(Slider).last, const Offset(600, 0));
-      await settle(tester);
-
-      final goals = container.read(dailyGoalProvider);
-      expect(goals.forWeekday(DateTime.sunday), DailyGoals.maxMinutes);
-      expect(
-        goals.forWeekday(DateTime.monday),
-        SeedData.focusGoalMinutes,
-        reason: 'a day of its own leaves the rest of the week alone',
-      );
-
-      await tester.tap(find.text('Done'));
+      expect(find.text('For one day'), findsOneWidget);
+      expect(find.text('For a week'), findsOneWidget);
+      expect(find.text('Time for each subject'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
       await settle(tester);
       expect(tester.takeException(), isNull);
     });

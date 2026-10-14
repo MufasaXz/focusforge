@@ -1,16 +1,16 @@
 # Google Play readiness: first-release candidate
 
-Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2024.
+Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2025.
 
-**Production activation and verification are required before Play submission.**
+**Owner Play declarations and real-device verification remain before submission.**
 The in-app deletion path is restored with Spark-compatible client cleanup.
-Publish rules/indexes and run the one-time legacy migration, then verify complete
-production deletion. Accessibility and special-use service declarations and
+The owner completed the one-time migration and confirmed production deletion.
+Updated email-verification rules/indexes were deployed on October 14. Accessibility and special-use service declarations and
 real-device checks remain. Google determines approval; this document is not
 an approval or security certification.
 
 The displayed version may be 1.0.0 for the first Play release. Keep version code
-2024 greater than earlier distributed builds and retain the signing identity.
+2025 greater than earlier distributed builds and retain the signing identity.
 Changing the display version does not reset Android's update history. Never
 reuse a version code already uploaded to this package in Play Console.
 
@@ -41,7 +41,8 @@ Build 2024 passed 328 Flutter tests, 33 native tests, 20 Firestore rules tests
 and the local migration integration check. A later Home placement/disclosure
 check passed at 320dp and 200% text. Final analyzer is clean; signed APK/AAB
 builds succeed, APK and all 12 bundled ELF libraries support 16 KB alignment.
-Production activation is owner-run and remains unverified here.
+The owner completed production activation and confirmed account deletion.
+Updated email-verification rules/indexes were deployed on October 14.
 
 On the Android 11 emulator, all four widgets loaded in a native widget host at
 140dp with 2× text and exposed their primary values. The weekly widget also
@@ -57,18 +58,40 @@ Launcher-app visibility uses the MAIN/LAUNCHER query for the actual app picker.
 Installed-app information remains sensitive even without QUERY_ALL_PACKAGES;
 use it only for the disclosed local feature.
 
-Recheck the final 1.0.0 (2024) merged manifest, signing, AAB and native-library
+Recheck the final 1.0.0 (2025) merged manifest, signing, AAB and native-library
 alignment after building. Checks from 1.0.3 (2021) do not prove the new artifact.
 Flutter includes native libraries, so verify 16 KB compatibility in App Bundle
 Explorer and on a suitable emulator/device. Use the AAB for Play upload; an APK
 download or GoFile link is for direct installation and testing.
+
+## Build 2025 update
+
+Final source passed 364 Flutter tests, 37 native tests and 22 Firestore rules
+tests with a clean analyzer. Signed APK/AAB build as 1.0.0 (2025), min API 24
+and target API 36 with the original release certificate. APK ZIP alignment
+and all 12 native libraries passed 16 KB alignment checks. The widget's Java
+date APIs are desugared for Android 7/7.1.
+
+Home offers a 0–12 hour day/week planner with exact subject allocation. Weekly
+plans repeat and progress resets Monday. Saving a weekly plan replaces the daily
+override; a daily plan saved afterwards overrides that day. Goal progress uses
+the same account attribution as badges/widgets. Email/password accounts require
+inbox verification before normal app/cloud access. Pending Auth records can
+exist before verification; Google and guest flows remain available.
+
+The final APK installed over build 2024 on the Android 11 emulator. At 320dp,
+the planner saved exact subject allocations and immediately showed its weekly
+ring; preset removal appeared only in manage mode. Emulator checks do not
+establish real inbox delivery, supported YouTube behavior or OEM live surfaces.
+Use the [plain text Play Console guide](PLAY-CONSOLE-PUBLISHING-GUIDE.txt) for
+the remaining owner submission steps. The legacy migration is one-time.
 
 ## Why each access is requested
 
 | Access | Implemented purpose | Timing and refusal behavior |
 | --- | --- | --- |
 | Accessibility service | Local YouTube view-ID checks and a pause screen for supported Shorts/feed filters | Separate disclosure and affirmative agreement before Android Settings when a YouTube filter is enabled. Refusal leaves the filter off. |
-| Usage access | Local screen-time totals, budgets and foreground-app detection for selected whole-app rules | Request when a user enables normal app shielding or screen-time features. Whole-app rules also require overlay access. |
+| Usage access | Local screen-time totals, budgets and foreground-app detection for selected whole-app rules | Optional Home card below Start session, with disclosure before Android Settings. Shield can save pending rules without this grant; enforcement stays inactive until Usage and Overlay access are both granted. |
 | Draw over other apps | A pause screen over a whole app selected by the user | Request in context for normal app rules. Missing/revoked access leaves enforcement inactive. No Accessibility grant is needed for this path. |
 | Foreground service (specialUse) | Continue local selected-app detection while FocusForge is in the background | Started from the visible app, with a persistent notification and Stop action. Declare and demonstrate this use in Play Console; approval is reviewed separately. |
 | Notifications | The user's running timer countdown and subject | Optional. Timer remains usable if notifications are refused. |
@@ -114,10 +137,12 @@ stored would conflict with the local pause history.
 
 ## Must finish before submission
 
-1. Publish firestore.rules and firestore.indexes.json, wait for indexes, and
-   run the local administrator migration. Verify disposable Email/Google
-   accounts' complete deletion. Rules alone do not index historical data. Follow
-   [Firebase setup](firebase-setup.md). No Blaze upgrade is required.
+1. Production rules/indexes are deployed and the owner completed the one-time
+   administrator migration and confirmed deletion. Do not repeat the migration
+   for each release or each day. Before Play submission verify disposable
+   Email/Google accounts with the final artifact, including a real inbox
+   verification link. Follow [Firebase setup](firebase-setup.md). No Blaze
+   upgrade is required.
 2. Deploy website privacy/deletion source to focusforgeorg.vercel.app. Pushing
    GitHub does not prove Vercel deployed. On October 14 the live privacy page
    still displayed October 11 and described parent sharing; the live deletion

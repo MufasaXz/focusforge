@@ -91,11 +91,16 @@ open class FocusWidget : AppWidgetProvider() {
                     if (item.optString("id") == subjectId) subject = item.optString("name", subject)
                 }
             } catch (_: Exception) { }
-            val weekday = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
-            val defaultGoal = prefs.getLong("flutter.ff.goal.daily", 300).toInt().coerceIn(30, 480)
-            val overrides = try { JSONObject(prefs.getString("flutter.ff.goal.days", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
-            val override = overrides.optInt(weekday.toString(), 0)
-            val goal = if (override > 0) override.coerceIn(30, 480) else defaultGoal
+            val savedPlan = try { JSONObject(prefs.getString("flutter.ff.goal.planner", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+            val goalPlan = WidgetGoalPlan.resolve(savedPlan, java.time.LocalDate.now())
+            val goal = goalPlan?.totalMinutes ?: 0
+            val goalMinutes = if (goalPlan?.weekly == true) summary.totalMinutes else minutes
+            val goalPeriod = if (goalPlan?.weekly == true) "this week" else "today"
+            val goalText = when {
+                goalPlan == null -> "Set a goal in FocusForge"
+                goal == 0 -> if (goalPlan.weekly) "Rest week · No target" else "Rest day · No target"
+                else -> "$goalMinutes / $goal min $goalPeriod"
+            }
             val phase = when (timer.optString("phase", "focus")) {
                 "shortBreak" -> "Short break"
                 "longBreak" -> "Long break"
@@ -177,7 +182,7 @@ open class FocusWidget : AppWidgetProvider() {
                 }
             }
             views.setTextViewText(R.id.widget_title, when(kind) {
-                "goal" -> "DAILY GOAL"
+                "goal" -> if (goalPlan?.weekly == true) "WEEKLY GOAL" else "TODAY’S GOAL"
                 "study" -> if (running) "${phase.uppercase(Locale.ROOT)} IN PROGRESS" else "YOUR NEXT SESSION"
                 else -> phase.uppercase(Locale.ROOT)
             })
@@ -187,20 +192,27 @@ open class FocusWidget : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_phase, View.GONE)
             }
             views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
-            views.setTextViewText(R.id.widget_progress, minutes.toString() + " / " + goal + " min today")
-            if (compact) views.setTextViewText(R.id.widget_progress, "$minutes / $goal min")
+            val goalDisplayText = if (compact && goalPlan != null && goal > 0) "$goalMinutes / $goal min" else goalText
+            views.setTextViewText(R.id.widget_progress, if (kind == "goal") goalDisplayText else WidgetSessionSummary.formatMinutes(minutes) + " focused today")
             if (kind == "goal") {
-                val progressText = if (compact) "$minutes / $goal min" else "$minutes / $goal min today"
+                val progressText = goalDisplayText
                 val availableWidth = width - 2 * (if (compact) 12 else 18)
                 val progressSp = min(if (compact) 12f else 15f, availableWidth / (context.resources.configuration.fontScale * progressText.length * .6f))
                 views.setTextViewTextSize(R.id.widget_progress, TypedValue.COMPLEX_UNIT_SP, progressSp)
             }
             views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
-                if (minutes >= goal) "Goal complete · Keep growing" else (goal - minutes).toString() + " min to grow · Tap to view"
+                when {
+                    goalPlan == null -> "Tap to plan your subjects"
+                    goal == 0 -> "Take your time · Tap to view"
+                    goalMinutes >= goal -> "Goal complete · Keep growing"
+                    else -> (goal - goalMinutes).toString() + " min to grow · Tap to view"
+                }
             } else if (running) phase + " in progress · Tap to open" else if (remaining <= 0) "Block ended · Open to continue" else "Ready when you are · Tap to focus")
             if (kind == "goal") {
-                views.setImageViewBitmap(R.id.widget_dial, goalRing(minutes.toFloat() / goal, dark, accent, ink, widgetTypeface(context), context.resources.configuration.fontScale))
-                views.setContentDescription(R.id.widget_dial, (minutes.toLong() * 100 / goal).coerceIn(0, 100).toString() + " percent of today's goal complete")
+                views.setViewVisibility(R.id.widget_dial, if (goalPlan == null || goal == 0) View.GONE else View.VISIBLE)
+                val progress = if (goal > 0) goalMinutes.toFloat() / goal else 0f
+                views.setImageViewBitmap(R.id.widget_dial, goalRing(progress, dark, accent, ink, widgetTypeface(context), context.resources.configuration.fontScale))
+                views.setContentDescription(R.id.widget_dial, if (goal > 0) (goalMinutes.toLong() * 100 / goal).coerceIn(0, 100).toString() + " percent of your goal $goalPeriod complete" else "No study target")
             } else {
                 if (kind == "clock") {
                     val labelTypeface = widgetTypeface(context)

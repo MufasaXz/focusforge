@@ -109,4 +109,52 @@ void main() {
     container.read(timerProvider.notifier).pause();
     expect(engine.lastApplied!.focusUntil, isNull);
   });
+
+  testWidgets('countdown ticks do not repeatedly send the same Shield config', (
+    tester,
+  ) async {
+    final engine = _CountingShieldService();
+    addTearDown(engine.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        shieldServiceProvider.overrideWithValue(engine),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(shieldSyncBridgeProvider);
+    final timer = container.read(timerProvider.notifier);
+    timer.start();
+    final startedCalls = engine.appliedCount;
+    final deadline = engine.lastApplied!.focusUntil;
+    await tester.pump(const Duration(seconds: 2));
+    expect(engine.appliedCount, startedCalls);
+    expect(engine.lastApplied!.focusUntil, deadline);
+    timer.nudge(const Duration(minutes: 5));
+    expect(engine.appliedCount, startedCalls + 1);
+    expect(
+      engine.lastApplied!.focusUntil,
+      deadline!.add(const Duration(minutes: 5)),
+    );
+    timer.pause();
+    expect(engine.appliedCount, startedCalls + 2);
+    expect(engine.lastApplied!.focusUntil, isNull);
+    timer.start();
+    expect(engine.appliedCount, startedCalls + 3);
+    timer.skip();
+    expect(engine.appliedCount, startedCalls + 4);
+    expect(engine.lastApplied!.focusUntil, isNull);
+    timer.pause();
+    expect(engine.appliedCount, startedCalls + 4);
+  });
+}
+
+class _CountingShieldService extends RecordingShieldService {
+  int appliedCount = 0;
+
+  @override
+  Future<void> applyConfig(ShieldConfig config) async {
+    appliedCount++;
+    await super.applyConfig(config);
+  }
 }

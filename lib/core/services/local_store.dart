@@ -61,6 +61,7 @@ class LocalStore {
       StoreKeys.palette,
       StoreKeys.subjects,
       StoreKeys.dailyGoalDays,
+      'goal.planner',
       StoreKeys.user,
       StoreKeys.achievementHistoryOwner,
       StoreKeys.achievementAliases,

@@ -10,6 +10,7 @@ import '../../core/services/auth_service.dart';
 import 'form_controls.dart';
 import 'tonal_panel.dart';
 import 'privacy_policy_link.dart';
+import 'email_verification_panel.dart';
 
 /// Email sign-in / sign-up sheet.
 ///
@@ -76,8 +77,8 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
   }
 
   /// Deliberately permissive: one `@`, a dot in the domain, no spaces. Anything
-  /// stricter rejects addresses that are legal, and the backend is the real
-  /// authority on whether an address exists.
+  /// stricter rejects addresses that are legal. Ownership is proven by the
+  /// verification link, rather than by this format check.
   static final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
   String get _emailValue => _email.text.trim();
@@ -151,6 +152,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
+      if (e.failure == AuthFailure.emailVerificationRequired) return;
       _shakeIt();
       showAppSnack(
         context,
@@ -210,6 +212,19 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    if (widget.service.needsEmailVerification) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.xl + keyboard),
+        child: EmailVerificationPanel(
+          service: widget.service,
+          onVerified: (profile) => Navigator.of(context).pop(profile),
+          onSignedOut: () => setState(() {
+            _succeeded = false;
+            _password.clear();
+          }),
+        ),
+      );
+    }
 
     return AnimatedBuilder(
       animation: _shake,
@@ -251,8 +266,8 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               const SizedBox(height: Gap.xs),
               Text(
                 widget.service.usesRemoteCredentials
-                    ? 'Sign-in is handled by Firebase. Your detailed study log stays on this device.'
-                    : 'Stored on this device for now — nothing is sent to a server.',
+                    ? 'Use an email you can open. New accounts need email verification. Your detailed study log stays on this device.'
+                    : 'Account sign-in is unavailable. You can study on this device without an account.',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),

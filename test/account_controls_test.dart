@@ -10,8 +10,10 @@ import 'package:focusforge/app/router.dart';
 import 'package:focusforge/app/bootstrap.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/user.dart';
+import 'package:focusforge/core/models/focus_goal.dart';
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
@@ -561,6 +563,17 @@ void main() {
 
   test('deletion reset clears live timer and sharing consent', () async {
     await container.read(boardOptInProvider.notifier).set(true);
+    await container
+        .read(focusGoalPlannerProvider.notifier)
+        .save(
+          FocusGoalPlan(
+            scope: FocusGoalScope.week,
+            date: DateTime.now(),
+            totalMinutes: 480,
+            subjectMinutes: const {'math': 480},
+          ),
+        );
+    expect(container.read(activeFocusGoalProvider), isNotNull);
     container.read(timerProvider.notifier).start();
     await store.setString('auth.deletedCredential', 'stale-deleted-uid');
     await resetPersistedState(container);
@@ -569,5 +582,8 @@ void main() {
     expect(container.read(userProvider).uid, isEmpty);
     expect(container.read(boardOptInProvider), isFalse);
     expect(store.getBool(StoreKeys.boardOptIn), isNull);
+    expect(container.read(activeFocusGoalProvider), isNull);
+    expect(container.read(focusGoalPlannerProvider).week, isNull);
+    expect(store.getMap(FocusGoalPlannerNotifier.storageKey), isNull);
   });
 }

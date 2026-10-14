@@ -17,7 +17,8 @@ final shieldPermissionManagerProvider = Provider<PermissionManager>(
   (ref) => const PermissionManager(),
 );
 
-/// Checks the grants for a local rule before the UI can save it as enabled.
+/// Checks access for a local rule. Whole-app rules may be saved pending Home
+/// usage consent, but are only enforced after both Android grants are present.
 ///
 /// Browser and desktop previews can still configure rules without Android APIs.
 Future<bool> ensureShieldAccess(
@@ -46,14 +47,6 @@ Future<bool> ensureShieldAccess(
     return true;
   }
 
-  // Usage access provides foreground detection for every whole-app rule.
-  ref.invalidate(usageAccessProvider);
-  final usage = await _granted(ref.read(usageAccessProvider.future));
-  if (!context.mounted) return false;
-  if (!usage) {
-    await showUsageHomeGuidance(context);
-    return false;
-  }
   ref.invalidate(overlayAccessProvider);
   final overlay = await _granted(ref.read(overlayAccessProvider.future));
   if (!context.mounted) return false;
@@ -61,6 +54,12 @@ Future<bool> ensureShieldAccess(
     await _offerAccess(context, ref, AppPermission.overlay);
     return false;
   }
+  // Usage consent belongs on Home. Saving this rule never sends the user to
+  // Usage settings; the native engine remains inactive without that grant.
+  ref.invalidate(usageAccessProvider);
+  final usage = await _granted(ref.read(usageAccessProvider.future));
+  if (!context.mounted) return false;
+  if (!usage) return true;
   // An explicit rule enable can resume a notification-paused engine. Background sync cannot.
   final started = await NativeShieldService().resumeAppBlocking();
   if (!context.mounted) return false;

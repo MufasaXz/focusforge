@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -11,11 +13,12 @@ import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/models/focus_goal.dart';
+import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/app_segmented_control.dart';
-import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
@@ -46,6 +49,23 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  late final StreamSubscription<DateTime> _calendar;
+
+  @override
+  void initState() {
+    super.initState();
+    _calendar = Stream<DateTime>.periodic(
+      const Duration(minutes: 1),
+      (_) => DateTime.now(),
+    ).listen((_) => ref.read(focusCalendarDateProvider.notifier).refresh());
+  }
+
+  @override
+  void dispose() {
+    _calendar.cancel();
+    super.dispose();
+  }
+
   /// Which window the tracker is showing. Local state rather than a provider:
   /// it is a way of looking at the log, not a fact about the user, and it
   /// should start on the week every time the app opens.
@@ -53,6 +73,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _refresh() async {
     ref.read(timerProvider.notifier).sync();
+    ref.read(focusCalendarDateProvider.notifier).refresh();
     ref.invalidate(usageAccessProvider);
     ref.invalidate(appUsageTodayProvider);
     ref.invalidate(installedAppsProvider);
@@ -79,12 +100,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    ref.watch(focusCalendarDateProvider);
     final now = DateTime.now();
 
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
+    final goal = ref.watch(activeFocusGoalProvider);
     // Derived from the session log, not read from the stats aggregate: a
     // streak is a fact about dates and the aggregate carries none.
     final streak = ref.watch(currentStreakProvider);
@@ -114,14 +137,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // chip at zero — is left out rather than pointed at nothing.
     final targets = ref.watch(coachTargetsProvider);
     final spots = <CoachSpot>[
-      if (sessions.isEmpty)
+      if (goal == null)
         CoachSpot(
           target: targets.emptyCta,
           icon: Icons.play_arrow_rounded,
-          title: 'Start your first session',
+          title: 'Plan your focus time',
           body:
-              'Your study log, charts and heatmap all grow from finished '
-              'sessions. This button starts one.',
+              'Set a goal for today or the week, then divide your time '
+              'between subjects. Your progress ring appears when you save.',
         )
       else
         CoachSpot(
@@ -168,10 +191,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // log says. Only used when there is width for them.
     //
     final left = <Widget>[
-      if (sessions.isEmpty) ...[
-        _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta),
-        const UsageAccessCard(),
-      ] else ...[
+      if (goal == null)
+        _PlanGoalCard(
+          onPlan: () => showDailyGoalSheet(context),
+          ctaKey: targets.emptyCta,
+          onStart: _startFocusing,
+        )
+      else
         _DailyOverview(
           sessionsToday: sessionsToday,
           totalHours: stats.totalFocusHours,
@@ -179,7 +205,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ringKey: targets.ring,
           onFocus: _startFocusing,
         ),
-        const UsageAccessCard(),
+      const UsageAccessCard(),
+      if (sessions.isNotEmpty) ...[
         const SizedBox(height: Gap.xl),
         SectionHeader(
           title: _range == StudyRange.week
@@ -446,9 +473,12 @@ class _DailyOverview extends ConsumerWidget {
     final tt = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
 
-    final goalMinutes = ref.watch(todayGoalMinutesProvider);
-    final progress = ref.watch(todayGoalProgressProvider);
-    final minutesToday = ref.watch(liveFocusSecondsTodayProvider) ~/ 60;
+    final plan = ref.watch(activeFocusGoalProvider);
+    if (plan == null) return const SizedBox.shrink();
+    final goalMinutes = plan.totalMinutes;
+    final progress = ref.watch(activeFocusGoalProgressProvider);
+    final minutesToday = ref.watch(activeFocusGoalSecondsProvider) ~/ 60;
+    final weekly = plan.scope == FocusGoalScope.week;
 
     return GlassCard(
       color: cs.surfaceContainerLow,
@@ -465,7 +495,7 @@ class _DailyOverview extends ConsumerWidget {
               size: 224,
               stroke: 16,
               semanticLabel:
-                  'Daily focus, ${_spokenMinutes(minutesToday)} of '
+                  'Focus goal, ${_spokenMinutes(minutesToday)} of '
                   '${_spokenMinutes(goalMinutes)}, '
                   '${(progress * 100).round()} percent of goal',
               child: Padding(
@@ -492,7 +522,7 @@ class _DailyOverview extends ConsumerWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      'Focus today',
+                      weekly ? 'Focus this week' : 'Focus today',
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -502,8 +532,11 @@ class _DailyOverview extends ConsumerWidget {
             const SizedBox(height: Gap.lg),
             _GoalRow(
               goalMinutes: goalMinutes,
+              label: weekly ? "This week's goal" : "Today's goal",
               onTap: () => showDailyGoalSheet(context),
             ),
+            const SizedBox(height: Gap.md),
+            _SubjectGoalProgress(plan: plan),
             const SizedBox(height: Gap.md),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -580,9 +613,14 @@ class _DailyOverview extends ConsumerWidget {
 /// the number beside it is that day's, and the one thing this row has to say
 /// is that the days do not share a target.
 class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.goalMinutes, required this.onTap});
+  const _GoalRow({
+    required this.goalMinutes,
+    required this.onTap,
+    required this.label,
+  });
 
   final int goalMinutes;
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -594,7 +632,7 @@ class _GoalRow extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          "Today's goal, $today, ${_spokenMinutes(goalMinutes)}. "
+          "$label, $today, ${_spokenMinutes(goalMinutes)}. "
           'Opens the goal editor',
       excludeSemantics: true,
       onTap: onTap,
@@ -619,7 +657,7 @@ class _GoalRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Today's goal", style: tt.bodySmall),
+                    Text(label, style: tt.bodySmall),
                     Text(
                       formatMinutes(goalMinutes),
                       style: tt.titleMedium?.copyWith(
@@ -639,7 +677,7 @@ class _GoalRow extends StatelessWidget {
   }
 }
 
-/// The weekly panel: headline total, average pill and the tappable chart.
+/// Completed focus across the selected week or month.
 class _TrackerPanel extends StatelessWidget {
   const _TrackerPanel({
     required this.range,
@@ -662,28 +700,63 @@ class _TrackerPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return GlassCard(
+    final activeDays = days.where((day) => day.hours > 0).length;
+    final month = range == StudyRange.month;
+    return ContentCard(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              month ? 'This month' : 'Last 7 days',
+              style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.md),
             AppSegmentedControl<StudyRange>(
               options: {for (final r in StudyRange.values) r: r.label},
               selected: range,
               onChanged: onRangeChanged,
             ),
-            const SizedBox(height: Gap.xl),
-            Text(formatHoursShort(total), style: tt.displaySmall),
+            const SizedBox(height: Gap.lg),
+            Text(
+              formatHoursShort(total),
+              style: tt.displaySmall?.copyWith(
+                letterSpacing: -1.4,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
             const SizedBox(height: Gap.xs),
             Text(
               total <= 0
-                  ? 'Nothing logged yet'
-                  : '${formatHoursShort(average)} on an average day',
+                  ? 'Your finished focus sessions will appear here.'
+                  : 'Total completed focus',
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
-            StudyTracker(days: days, onDayTap: onDayTap),
+            Wrap(
+              spacing: Gap.lg,
+              runSpacing: Gap.sm,
+              children: [
+                Text(
+                  '$activeDays active ${activeDays == 1 ? 'day' : 'days'}',
+                  style: tt.labelMedium,
+                ),
+                Text(
+                  '${formatHoursShort(average)} / active day',
+                  style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            StudyTracker(days: days, onDayTap: onDayTap, month: month),
+            const SizedBox(height: Gap.md),
+            Text(
+              month
+                  ? 'Swipe through the dates. Tap a day for its subjects.'
+                  : 'Tap a day to see the subjects you focused on.',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
           ],
         ),
       ),
@@ -691,34 +764,116 @@ class _TrackerPanel extends StatelessWidget {
   }
 }
 
-/// Designed first-run state — shown whenever there is nothing to chart.
-class _NoSessions extends StatelessWidget {
-  const _NoSessions({required this.onStart, this.ctaKey});
-
+/// A first target is an explicit choice, rather than a shipped default.
+class _PlanGoalCard extends StatelessWidget {
+  const _PlanGoalCard({
+    required this.onPlan,
+    required this.onStart,
+    this.ctaKey,
+  });
+  final VoidCallback onPlan;
   final VoidCallback onStart;
-
-  /// Anchor for the first-run tip about starting a session.
   final Key? ctaKey;
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Card.filled(
+      color: cs.surfaceContainerLow,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
       ),
-      child: EmptyState(
-        icon: Icons.timer_outlined,
-        title: 'No sessions yet',
-        subtitle:
-            'Choose a subject and start a focus block. '
-            'Your time and progress will appear here when you finish.',
-        action: FilledButton.icon(
-          key: ctaKey,
-          onPressed: onStart,
-          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: const Text('Start session'),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.flag_outlined, color: cs.primary, size: 34),
+            const SizedBox(height: Gap.md),
+            Text(
+              'Make room for focus',
+              textAlign: TextAlign.center,
+              style: tt.headlineSmall,
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(
+              'Plan one day or a whole week. Choose your hours and give each subject its share.',
+              textAlign: TextAlign.center,
+              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.lg),
+            FilledButton.icon(
+              key: ctaKey,
+              onPressed: onPlan,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text("Set today's goal"),
+            ),
+            const SizedBox(height: Gap.lg),
+            const Divider(),
+            const SizedBox(height: Gap.md),
+            SessionShortcut(onOpen: onStart),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _SubjectGoalProgress extends ConsumerWidget {
+  const _SubjectGoalProgress({required this.plan});
+  final FocusGoalPlan plan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final subjects = {for (final s in ref.watch(subjectsProvider)) s.id: s};
+    final totals = ref.watch(activeSubjectGoalMinutesProvider);
+    final allocations = plan.subjectMinutes.entries
+        .where((e) => e.value > 0)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in allocations)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gap.sm),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        subjects[entry.key]?.name ?? 'Removed subject',
+                        style: tt.labelMedium,
+                      ),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                    Text(
+                      '${formatMinutes(totals[entry.key] ?? 0)} / ${formatMinutes(entry.value)}',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gap.xs),
+                LinearProgressIndicator(
+                  value: ((totals[entry.key] ?? 0) / entry.value).clamp(
+                    0.0,
+                    1.0,
+                  ),
+                  color: subjects[entry.key] == null
+                      ? cs.primary
+                      : harmonize(subjects[entry.key]!.color, cs.primary),
+                  backgroundColor: cs.surfaceContainerHighest,
+                  minHeight: 4,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

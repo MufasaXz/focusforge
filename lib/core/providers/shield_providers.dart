@@ -115,7 +115,13 @@ DateTime? focusWindowEnd(TimerState timer) {
 
 /// Push local rules at launch and whenever the focus timer changes.
 final shieldSyncBridgeProvider = Provider<void>((ref) {
-  ref.listen(timerProvider, (_, next) => syncShield(ref));
+  // The native rule uses a deadline, so countdown ticks do not change its
+  // configuration. Only starting, pausing or moving to a different phase/end
+  // should push another config and refresh the running-state futures.
+  ref.listen(
+    timerProvider.select(focusWindowEnd),
+    (_, next) => syncShield(ref),
+  );
   syncShield(ref);
 });
 

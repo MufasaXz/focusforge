@@ -759,155 +759,189 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   }
 
   void _showPresetSheet(BuildContext context) {
+    var managing = false;
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetContext) => Consumer(
-        builder: (context, sheetRef, _) {
-          final presets = sheetRef.watch(presetsProvider);
-          final current = sheetRef.watch(timerProvider).presetIndex;
-          final library = sheetRef.watch(planLibraryProvider);
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              Gap.lg,
-              Gap.lg,
-              Gap.lg,
-              Gap.lg + MediaQuery.paddingOf(context).bottom,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .85,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Consumer(
+          builder: (context, sheetRef, _) {
+            final presets = sheetRef.watch(presetsProvider);
+            final current = sheetRef.watch(timerProvider).presetIndex;
+            final library = sheetRef.watch(planLibraryProvider);
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                Gap.lg,
+                Gap.lg,
+                Gap.lg,
+                Gap.lg + MediaQuery.paddingOf(context).bottom,
               ),
-              child: SheetSurface(
-                borderRadius: BorderRadius.circular(Radii.hero),
-                padding: const EdgeInsets.all(Gap.lg),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SheetHandle(),
-                        const SizedBox(height: Gap.lg),
-                        Text(
-                          'Pomodoro presets',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: Gap.sm),
-                        for (var i = 0; i < presets.length; i++) ...[
-                          _PresetRow(
-                            preset: presets[i],
-                            selected: i == current,
-                            onTap: () {
-                              final key = presets[i].key;
-                              Navigator.of(sheetContext).pop();
-                              if (i == ref.read(timerProvider).presetIndex) {
-                                return;
-                              }
-                              _changeTimer(
-                                title: 'Change the focus plan?',
-                                confirmLabel: 'Change plan',
-                                apply: () {
-                                  final index = ref
-                                      .read(presetsProvider)
-                                      .indexWhere((p) => p.key == key);
-                                  if (index >= 0) {
-                                    ref
-                                        .read(timerProvider.notifier)
-                                        .setPreset(index);
-                                  }
-                                },
-                              );
-                            },
-                          ),
-                          Wrap(
-                            alignment: WrapAlignment.end,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * .85,
+                ),
+                child: SheetSurface(
+                  borderRadius: BorderRadius.circular(Radii.hero),
+                  padding: const EdgeInsets.all(Gap.lg),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SheetHandle(),
+                          const SizedBox(height: Gap.lg),
+                          Row(
                             children: [
-                              if (library.plans.any(
-                                (p) => p.toPreset().key == presets[i].key,
-                              ))
-                                TextButton.icon(
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 18,
-                                  ),
-                                  label: Text('Edit ${presets[i].name}'),
-                                  onPressed: () => _editPlan(
-                                    sheetContext,
-                                    library.plans.firstWhere(
-                                      (p) => p.toPreset().key == presets[i].key,
-                                    ),
-                                  ),
+                              Expanded(
+                                child: Text(
+                                  'Pomodoro presets',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
                                 ),
-                              TextButton.icon(
-                                icon: const Icon(
-                                  Icons.remove_circle_outline_rounded,
-                                  size: 18,
+                              ),
+                              IconButton(
+                                tooltip: managing
+                                    ? 'Done managing presets'
+                                    : 'Manage presets',
+                                icon: Icon(
+                                  managing
+                                      ? Icons.check_rounded
+                                      : Icons.edit_outlined,
                                 ),
-                                label: Text('Remove ${presets[i].name}'),
-                                onPressed: presets.length <= 1
-                                    ? null
-                                    : () {
-                                        final key = presets[i].key;
-                                        if (i == current) {
-                                          Navigator.of(sheetContext).pop();
-                                          _changeTimer(
-                                            title: 'Remove the current plan?',
-                                            confirmLabel: 'Remove plan',
-                                            apply: () => unawaited(
-                                              ref
-                                                  .read(
-                                                    planLibraryProvider
-                                                        .notifier,
-                                                  )
-                                                  .remove(key),
-                                            ),
-                                          );
-                                        } else {
-                                          unawaited(
-                                            ref
-                                                .read(
-                                                  planLibraryProvider.notifier,
-                                                )
-                                                .remove(key),
-                                          );
-                                        }
-                                      },
+                                onPressed: () =>
+                                    setSheetState(() => managing = !managing),
                               ),
                             ],
                           ),
+                          if (managing)
+                            Text(
+                              'Remove any plan, or edit one you created.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          const SizedBox(height: Gap.sm),
+                          for (var i = 0; i < presets.length; i++) ...[
+                            _PresetRow(
+                              preset: presets[i],
+                              selected: i == current,
+                              onTap: () {
+                                final key = presets[i].key;
+                                Navigator.of(sheetContext).pop();
+                                if (i == ref.read(timerProvider).presetIndex) {
+                                  return;
+                                }
+                                _changeTimer(
+                                  title: 'Change the focus plan?',
+                                  confirmLabel: 'Change plan',
+                                  apply: () {
+                                    final index = ref
+                                        .read(presetsProvider)
+                                        .indexWhere((p) => p.key == key);
+                                    if (index >= 0) {
+                                      ref
+                                          .read(timerProvider.notifier)
+                                          .setPreset(index);
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                            if (managing)
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                children: [
+                                  if (library.plans.any(
+                                    (p) => p.toPreset().key == presets[i].key,
+                                  ))
+                                    IconButton(
+                                      tooltip: 'Edit ${presets[i].name}',
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                      ),
+                                      onPressed: () => _editPlan(
+                                        sheetContext,
+                                        library.plans.firstWhere(
+                                          (p) =>
+                                              p.toPreset().key ==
+                                              presets[i].key,
+                                        ),
+                                      ),
+                                    ),
+                                  IconButton(
+                                    tooltip: 'Remove ${presets[i].name}',
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    onPressed: presets.length <= 1
+                                        ? null
+                                        : () {
+                                            final key = presets[i].key;
+                                            if (i == current) {
+                                              Navigator.of(sheetContext).pop();
+                                              _changeTimer(
+                                                title:
+                                                    'Remove the current plan?',
+                                                confirmLabel: 'Remove plan',
+                                                apply: () => unawaited(
+                                                  ref
+                                                      .read(
+                                                        planLibraryProvider
+                                                            .notifier,
+                                                      )
+                                                      .remove(key),
+                                                ),
+                                              );
+                                            } else {
+                                              unawaited(
+                                                ref
+                                                    .read(
+                                                      planLibraryProvider
+                                                          .notifier,
+                                                    )
+                                                    .remove(key),
+                                              );
+                                            }
+                                          },
+                                  ),
+                                ],
+                              ),
+                          ],
+                          ListTile(
+                            leading: const Icon(Icons.add_rounded),
+                            title: const Text('Custom plan'),
+                            subtitle: const Text(
+                              'Set your own goal and block length',
+                            ),
+                            onTap: () => _editPlan(sheetContext, null),
+                          ),
+                          if (managing && library.hidden.isNotEmpty)
+                            TextButton(
+                              onPressed: () => ref
+                                  .read(planLibraryProvider.notifier)
+                                  .restoreStock(),
+                              child: const Text('Restore default plans'),
+                            ),
+                          const SizedBox(height: Gap.sm),
+                          if (managing)
+                            Text(
+                              'Keep at least one plan. Removing or changing the current plan resets its unfinished block.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                         ],
-                        ListTile(
-                          leading: const Icon(Icons.add_rounded),
-                          title: const Text('Custom plan'),
-                          subtitle: const Text(
-                            'Set your own goal and block length',
-                          ),
-                          onTap: () => _editPlan(sheetContext, null),
-                        ),
-                        if (library.hidden.isNotEmpty)
-                          TextButton(
-                            onPressed: () => ref
-                                .read(planLibraryProvider.notifier)
-                                .restoreStock(),
-                            child: const Text('Restore default plans'),
-                          ),
-                        const SizedBox(height: Gap.sm),
-                        Text(
-                          'Keep at least one plan. Removing or changing the current plan resets its unfinished block.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

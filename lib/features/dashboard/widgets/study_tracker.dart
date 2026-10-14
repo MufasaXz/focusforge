@@ -16,16 +16,15 @@ import '../../../shared/widgets/pressable.dart';
 /// highlighted while the summary is open, so the sheet and the bar it
 /// describes are never in doubt.
 ///
-/// The heights are scaled by a 0.75 power rather than linearly. On a window
-/// with one long day and six short ones, a linear scale flattens the six into
-/// an unreadable stub row; the power curve keeps the tall day dominant while
-/// leaving the others distinguishable.
+/// Bars use one visible, linear hours scale. Month windows scroll horizontally
+/// so each date retains a readable label and a usable touch target.
 class StudyTracker extends StatefulWidget {
   const StudyTracker({
     super.key,
     required this.days,
     required this.onDayTap,
-    this.height = 148,
+    this.height = 170,
+    this.month = false,
   });
 
   final List<DayBar> days;
@@ -35,6 +34,7 @@ class StudyTracker extends StatefulWidget {
   final ValueChanged<DayBar> onDayTap;
 
   final double height;
+  final bool month;
 
   @override
   State<StudyTracker> createState() => _StudyTrackerState();
@@ -90,52 +90,118 @@ class _StudyTrackerState extends State<StudyTracker>
     final cs = Theme.of(context).colorScheme;
     final maxHours = days
         .map((d) => d.hours)
-        .fold<double>(1, (a, b) => a > b ? a : b);
+        .fold<double>(1, (a, b) => a > b ? a : b)
+        .ceilToDouble();
+    final dense = widget.month || days.length > 10;
 
     return Semantics(
       container: true,
       label: _summary(days),
       child: SizedBox(
         height: widget.height,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (var i = 0; i < days.length; i++)
-              Expanded(
-                child: Semantics(
-                  container: true,
-                  button: true,
-                  selected: _selected == i,
-                  label:
-                      '${days[i].date == null ? days[i].label : formatDate(days[i].date!)}. '
-                      '${spokenHours(days[i].hours)} focused. View day summary',
-                  excludeSemantics: true,
-                  onTap: () => _select(i),
-                  child: Pressable(
-                    scale: 1,
-                    onTap: () => _select(i),
-                    child: _Bar(
-                      day: days[i],
-                      maxHours: maxHours,
-                      highlighted: _selected == i || days[i].isToday,
-                      animation: CurvedAnimation(
-                        parent: _c,
-                        // Staggered left-to-right so the chart grows rather
-                        // than popping in all at once.
-                        curve: Interval(
-                          (i / days.length) * 0.55,
-                          (i / days.length) * 0.55 + 0.45,
-                          curve: Motion.decelerate,
-                        ),
-                      ),
-                      accent: cs.primary,
-                      muted: cs.onSurface,
-                      label: Theme.of(context).textTheme.labelSmall!,
-                      dense: days.length > 10,
-                    ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Daily focus',
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
+                Text(
+                  '${formatHoursShort(maxHours)} scale',
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chart = Stack(
+                    children: [
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: (constraints.maxHeight - 27) / 2,
+                        child: Divider(
+                          height: 1,
+                          color: cs.outlineVariant.withValues(alpha: .4),
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 27,
+                        child: Divider(
+                          height: 1,
+                          color: cs.outlineVariant.withValues(alpha: .5),
+                        ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (var i = 0; i < days.length; i++)
+                            Expanded(
+                              child: Semantics(
+                                container: true,
+                                button: true,
+                                selected: _selected == i,
+                                label:
+                                    '${days[i].date == null ? days[i].label : formatDate(days[i].date!)}. '
+                                    '${spokenHours(days[i].hours)} focused. View day summary',
+                                excludeSemantics: true,
+                                onTap: () => _select(i),
+                                child: Pressable(
+                                  scale: 1,
+                                  onTap: () => _select(i),
+                                  child: _Bar(
+                                    day: days[i],
+                                    maxHours: maxHours,
+                                    highlighted:
+                                        _selected == i || days[i].isToday,
+                                    animation: CurvedAnimation(
+                                      parent: _c,
+                                      // Staggered left-to-right so the chart grows rather
+                                      // than popping in all at once.
+                                      curve: Interval(
+                                        (i / days.length) * 0.55,
+                                        (i / days.length) * 0.55 + 0.45,
+                                        curve: Motion.decelerate,
+                                      ),
+                                    ),
+                                    accent: cs.primary,
+                                    muted: cs.onSurface,
+                                    label: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall!,
+                                    dense: dense,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  );
+                  if (!dense) return chart;
+                  return SingleChildScrollView(
+                    key: const ValueKey('month-progress-scroll'),
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: SizedBox(
+                      width: math.max(constraints.maxWidth, days.length * 44.0),
+                      height: constraints.maxHeight,
+                      child: chart,
+                    ),
+                  );
+                },
               ),
+            ),
           ],
         ),
       ),
@@ -193,18 +259,18 @@ class _Bar extends StatelessWidget {
   /// every one of them and the corner radius has to come in.
   final bool dense;
 
-  /// The bar's share of the tallest day, curved so short days stay readable.
+  /// The bar's share of the visible hours scale.
   double get _visual {
     if (maxHours <= 0 || day.hours <= 0) return 0;
     final linear = (day.hours / maxHours).clamp(0.0, 1.0);
-    return math.pow(linear, 0.75).toDouble().clamp(0.06, 1.0);
+    return linear;
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final radius = BorderRadius.circular(dense ? 4 : Radii.pill);
+    final radius = BorderRadius.circular(6);
 
     // The gradient runs between two of the scheme's own hues rather than
     // between a hue and its own shadow, so the fill carries the app's colour
@@ -226,7 +292,7 @@ class _Bar extends StatelessWidget {
           // the whole slot, so "Wed" is not squeezed into the bar's width. A
           // month is thirty slots on the same width and cannot afford the gap.
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: dense ? 0.5 : 9),
+            padding: EdgeInsets.symmetric(horizontal: dense ? 11 : 9),
             child: AnimatedBuilder(
               animation: animation,
               builder: (context, _) {
@@ -250,7 +316,7 @@ class _Bar extends StatelessWidget {
                     ),
                     if (v > 0)
                       FractionallySizedBox(
-                        heightFactor: v.clamp(0.05, 1.0),
+                        heightFactor: v,
                         child: AnimatedContainer(
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
@@ -282,7 +348,7 @@ class _Bar extends StatelessWidget {
         // Today is a filled pill rather than a bolder word: at this size a
         // weight change is invisible, and the pill survives a glance. A day
         // with no label keeps the same height so every bar starts level.
-        if (day.label.isEmpty)
+        if (day.label.isEmpty && (!dense || day.date == null))
           const SizedBox(height: 19)
         else
           // Free of the slot's width: a three-letter weekday is wider than a
@@ -315,7 +381,11 @@ class _Bar extends StatelessWidget {
                     fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
                     fontSize: 11,
                   ),
-                  child: Text(day.label, maxLines: 1, softWrap: false),
+                  child: Text(
+                    dense && day.date != null ? '${day.date!.day}' : day.label,
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
                 ),
               ),
             ),

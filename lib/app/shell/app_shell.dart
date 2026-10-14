@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/coach_providers.dart';
+import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/native_shield_service.dart';
@@ -82,6 +83,7 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(timerProvider.notifier).sync();
+      ref.read(focusCalendarDateProvider.notifier).refresh();
       unawaited(_checkBlockedLaunch());
     }
   }

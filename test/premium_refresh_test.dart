@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,7 +157,16 @@ void main() {
       expect(find.text('1 active day in the last 7 days'), findsOneWidget);
       await tester.tap(find.text('Adjust goal'));
       await tester.pumpAndSettle();
-      expect(find.byType(Slider), findsNWidgets(7));
+      expect(find.text('Make time for what matters'), findsOneWidget);
+      expect(find.byType(CupertinoPicker), findsOneWidget);
+      expect(find.text('For one day'), findsOneWidget);
+      expect(find.text('For a week'), findsOneWidget);
+      for (final subject in c.read(subjectsProvider)) {
+        expect(
+          find.byKey(ValueKey('goal-subject-${subject.id}')),
+          findsOneWidget,
+        );
+      }
       expect(tester.takeException(), isNull);
     },
   );

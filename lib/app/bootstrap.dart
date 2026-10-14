@@ -7,6 +7,7 @@ import '../core/models/shield.dart';
 import '../core/models/user.dart';
 import '../core/providers/app_providers.dart';
 import '../core/providers/audio_providers.dart';
+import '../core/providers/goal_planner_providers.dart';
 import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
@@ -196,7 +197,7 @@ Future<ProviderContainer> bootstrap() async {
 Future<AuthService> _openAuthService(LocalStore store) async {
   if (kIsWeb) {
     debugPrint('[auth] web build: using the local account store.');
-    return LocalAuthService(store);
+    return GuestOnlyAuthService(store);
   }
 
   try {
@@ -208,7 +209,7 @@ Future<AuthService> _openAuthService(LocalStore store) async {
     return FirebaseAuthService(store);
   } catch (_) {
     debugPrint('[auth] Firebase unavailable: using the local account store.');
-    return LocalAuthService(store);
+    return GuestOnlyAuthService(store);
   }
 }
 
@@ -288,6 +289,9 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setSubject(null);
 
   await store.clearAll();
+  // This notifier reads its stored plan in build(). Rebuild after the wipe
+  // so Home cannot carry a deleted user's target into the welcome flow.
+  container.invalidate(focusGoalPlannerProvider);
   if (deletedCredential != null) {
     await store.setString('auth.deletedCredential', deletedCredential);
   }

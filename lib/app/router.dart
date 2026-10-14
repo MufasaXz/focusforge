@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../core/providers/app_providers.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/focus/focus_screen.dart';
 import '../features/onboarding/auth_screen.dart';
+import '../features/onboarding/email_verification_screen.dart';
 import '../features/onboarding/onboarding_flow.dart';
 import '../features/onboarding/permissions_step.dart';
 import '../features/profile/profile_screen.dart';
@@ -33,6 +36,7 @@ class AppRoutes {
 
   static const onboarding = 'onboarding';
   static const auth = 'auth';
+  static const verifyEmail = 'verify-email';
   static const breathGate = 'breath-gate';
 
   static const groups = 'groups';
@@ -52,6 +56,7 @@ class AppRoutes {
     profile: '/profile',
     onboarding: '/onboarding',
     auth: '/auth',
+    verifyEmail: '/verify-email',
     breathGate: '/breath-gate',
     groups: '/profile/groups',
     achievements: '/profile/achievements',
@@ -77,12 +82,21 @@ class AppRoutes {
 ///    place where the app should feel like a different, distraction-free
 ///    surface — no nav bar competing for attention.
 final routerProvider = Provider<GoRouter>((ref) {
+  final refresh = _AuthRouterRefresh(ref.read(authServiceProvider).changes);
+  ref.onDispose(refresh.dispose);
   return GoRouter(
+    refreshListenable: refresh,
     initialLocation: AppRoutes.paths[AppRoutes.dashboard]!,
     debugLogDiagnostics: false,
     redirect: (context, state) {
       final onboarded = ref.read(userProvider).onboardingComplete;
       final location = state.matchedLocation;
+      if (ref.read(authServiceProvider).needsEmailVerification) {
+        return location == '/verify-email' ? null : '/verify-email';
+      }
+      if (location == '/verify-email') {
+        return onboarded ? '/dashboard' : '/onboarding';
+      }
       final inOnboarding =
           location.startsWith('/onboarding') ||
           location == AppRoutes.paths[AppRoutes.auth];
@@ -96,6 +110,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/verify-email',
+        name: AppRoutes.verifyEmail,
+        builder: (context, state) => const EmailVerificationScreen(),
+      ),
       // -- Onboarding (outside the shell) ------------------------------------
       GoRoute(
         path: '/onboarding',
@@ -238,6 +257,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     errorBuilder: (context, state) => _RouteError(state.error),
   );
 });
+
+class _AuthRouterRefresh extends ChangeNotifier {
+  _AuthRouterRefresh(Stream<Object?> changes) {
+    _subscription = changes.listen((_) => notifyListeners());
+  }
+  late final StreamSubscription<Object?> _subscription;
+  @override
+  void dispose() {
+    unawaited(_subscription.cancel());
+    super.dispose();
+  }
+}
 
 /// A missing route should never show a red screen in a shipped build.
 class _RouteError extends StatelessWidget {

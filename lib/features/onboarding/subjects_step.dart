@@ -1,7 +1,4 @@
 import '../../app/theme/app_theme.dart';
-import '../../shared/widgets/app_page.dart';
-
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,18 +7,13 @@ import '../../core/data/seed.dart';
 import '../../core/models/subject_naming.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/utils/format.dart';
-import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 4 — subjects, persona-aware.
 ///
-/// Selecting a chip writes the subject immediately rather than deferring to
-/// the end of the flow: the list the user sees here is the list the dashboard
-/// will render, so there is no "what did I actually pick?" moment. Weekly
-/// targets are held locally only for the duration of a drag — a slider fires
-/// continuously, so the store is written on drag end rather than every frame.
+/// Selecting a chip saves the subject immediately. Time allocations belong
+/// to the Home goal planner and do not interrupt first-run setup.
 class SubjectsStep extends ConsumerStatefulWidget {
   const SubjectsStep({super.key, required this.onNext});
 
@@ -34,13 +26,8 @@ class SubjectsStep extends ConsumerStatefulWidget {
 class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   final _selected = <String>{};
   final _custom = <SubjectTemplate>[];
-  final _targets = <String, double>{};
 
   late final Persona _persona = ref.read(userProvider).persona;
-
-  /// A weekly target that scales with the persona's recommended daily goal,
-  /// so a professional's subjects start hungrier than a parent's.
-  double get _defaultWeekly => SeedData.defaultWeeklyTarget(_persona);
 
   List<SubjectTemplate> get _templates => [
     ...SeedData.templatesFor(_persona),
@@ -66,9 +53,6 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
           .firstOrNull;
       if (match == null) continue;
       _selected.add(template.name);
-      _targets[template.name] = match.weekTarget > 0
-          ? match.weekTarget
-          : _defaultWeekly;
     }
 
     // A subject the user added by hand has no template to be rebuilt from, so
@@ -84,9 +68,6 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
       );
       _custom.add(template);
       _selected.add(template.name);
-      _targets[template.name] = subject.weekTarget > 0
-          ? subject.weekTarget
-          : _defaultWeekly;
     }
   }
 
@@ -100,7 +81,6 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
     if (_selected.contains(template.name)) {
       setState(() {
         _selected.remove(template.name);
-        _targets.remove(template.name);
         // A deselected custom subject leaves the store, so it must leave the
         // picker too — a chip the provider no longer has would be a lie.
         // Persona templates stay: their list is static, so the chip can be
@@ -111,10 +91,8 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
       return;
     }
 
-    final target = _defaultWeekly;
     setState(() {
       _selected.add(template.name);
-      _targets[template.name] = target;
     });
     await notifier.add(
       Subject(
@@ -122,7 +100,6 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
         name: template.name,
         icon: template.icon,
         color: template.color,
-        weekTarget: target,
       ),
     );
   }
@@ -154,7 +131,6 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
     setState(() {
       _custom.add(template);
       _selected.add(template.name);
-      _targets[template.name] = _defaultWeekly;
     });
     await ref
         .read(subjectsProvider.notifier)
@@ -164,49 +140,18 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
             name: template.name,
             icon: template.icon,
             color: template.color,
-            weekTarget: _defaultWeekly,
           ),
         );
   }
 
-  /// Writes one weekly target through to the store. Called when a drag ends
-  /// as well as on continue: the step can be disposed while the user is on
-  /// another screen, and a target held only in local state would be lost.
-  Future<void> _persistTarget(SubjectTemplate template, double value) async {
-    final id = _slug(template.name);
-    final notifier = ref.read(subjectsProvider.notifier);
-    final exists = ref.read(subjectsProvider).any((s) => s.id == id);
-    if (exists) {
-      await notifier.setWeeklyTarget(id, value);
-      return;
-    }
-    await notifier.add(
-      Subject(
-        id: id,
-        name: template.name,
-        icon: template.icon,
-        color: template.color,
-        weekTarget: value,
-      ),
-    );
-  }
-
-  Future<void> _commit() async {
-    for (final template in _templates) {
-      if (!_selected.contains(template.name)) continue;
-      await _persistTarget(template, _targets[template.name] ?? _defaultWeekly);
-    }
-    if (mounted) widget.onNext();
+  /// Selections are already persisted when the chips are tapped.
+  void _commit() {
+    widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final recommended = SeedData.goalSuggestions(_persona)[1];
-    final chosen = _templates
-        .where((template) => _selected.contains(template.name))
-        .toList(growable: false);
-
     return StepScaffold(
       title: _persona.subjectPrompt,
       subtitle:
@@ -246,125 +191,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
             ],
           ),
         ),
-        const SizedBox(height: Gap.lg),
-        Stagger(
-          index: 3,
-          child: Row(
-            children: [
-              Icon(
-                Icons.lightbulb_outline_rounded,
-                size: 15,
-                color: cs.tertiary,
-              ),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(
-                  'Suggested starting point: ${formatMinutes(recommended)} '
-                  'of focus a day. Adjust it to suit your routine.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (chosen.isNotEmpty) ...[
-          const SizedBox(height: Gap.xl),
-          const Stagger(
-            index: 4,
-            child: SectionHeader(title: 'Weekly goal per subject'),
-          ),
-          for (var i = 0; i < chosen.length; i++)
-            Stagger(
-              index: 5 + i,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: Gap.sm),
-                child: _TargetSlider(
-                  template: chosen[i],
-                  value: _targets[chosen[i].name] ?? _defaultWeekly,
-                  onChanged: (v) =>
-                      setState(() => _targets[chosen[i].name] = v),
-                  onChangeEnd: (v) => unawaited(_persistTarget(chosen[i], v)),
-                ),
-              ),
-            ),
-        ],
       ],
-    );
-  }
-}
-
-class _TargetSlider extends StatelessWidget {
-  const _TargetSlider({
-    required this.template,
-    required this.value,
-    required this.onChanged,
-    required this.onChangeEnd,
-  });
-
-  final SubjectTemplate template;
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  /// Commits the number once the drag settles. Persisting on [onChanged]
-  /// would write the store on every frame of a drag.
-  final ValueChanged<double> onChangeEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = value == value.roundToDouble()
-        ? '${value.round()}h'
-        : '${value.toStringAsFixed(1)}h';
-    final accent = harmonize(
-      template.color,
-      Theme.of(context).colorScheme.primary,
-    );
-
-    return Card.outlined(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.item),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.sm, Gap.sm),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                IconBadge(
-                  icon: template.icon,
-                  color: accent,
-                  size: 30,
-                  radius: Radii.tile,
-                ),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: Text(
-                    template.name,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(color: accent),
-                ),
-                const SizedBox(width: Gap.sm),
-              ],
-            ),
-            Slider(
-              value: value.clamp(1, 20),
-              min: 1,
-              max: 20,
-              divisions: 38,
-              label: label,
-              onChanged: onChanged,
-              onChangeEnd: onChangeEnd,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

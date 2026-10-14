@@ -52,10 +52,23 @@ void main() {
     expect(find.text('Find your starting pace'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    expect(find.text('Daily goal'), findsOneWidget);
-    expect(store.getMap('setup.progress'), {'uid': 'alice', 'step': 6});
+    expect(find.text('Subjects'), findsOneWidget);
+    expect(find.text('Daily goal'), findsNothing);
+    expect(store.getMap('setup.progress'), {'uid': 'alice', 'step': 5});
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a saved retired goal step resumes at subjects without asking for a goal',
+    (tester) async {
+      await store.setMap('setup.progress', {'uid': 'alice', 'step': 6});
+      await mount(tester, 'alice');
+      expect(find.text('Subjects'), findsOneWidget);
+      expect(find.text('Daily goal'), findsNothing);
+      expect(store.getMap('setup.progress'), {'uid': 'alice', 'step': 5});
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('another account does not inherit the saved setup step', (
     tester,

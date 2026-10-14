@@ -296,3 +296,32 @@ test('paged orphan cleanup removes thirty groups without exceeding batch rule ca
   }
   if(removed!==30) throw Error('Missed orphan records');
 });
+
+test('unverified password credentials cannot create cloud profiles, badges or social data but retain owner cleanup', async () => {
+  const uid = 'email-new';
+  const unverified = env.authenticatedContext(uid, {
+    email_verified:false,
+    auth_time:Math.floor(Date.now()/1000),
+    firebase:{sign_in_provider:'password'},
+  }).firestore();
+  await assertFails(setDoc(doc(unverified,'users',uid),{name:'Unverified'}));
+  await assertFails(setDoc(doc(unverified,'users',uid,'achievements','earned'),earnedBadges()));
+  await assertFails(setDoc(doc(unverified,'leaderboard/2026-10-12/entries',uid),{ownerUid:uid,name:'Unverified',minutes:10,updatedAt:now()}));
+  await assertFails(getDoc(doc(unverified,'groupInvites/ABCD234567')));
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(),'users',uid),{name:'Legacy'});
+    await setDoc(doc(context.firestore(),'users',uid,'achievements','earned'),earnedBadges());
+  });
+  await assertSucceeds(deleteDoc(doc(unverified,'users',uid,'achievements','earned')));
+  await assertSucceeds(deleteDoc(doc(unverified,'users',uid)));
+});
+
+test('verified password credentials can save private profile and badges', async () => {
+  const uid = 'email-verified';
+  const verified = env.authenticatedContext(uid, {
+    email_verified:true,
+    firebase:{sign_in_provider:'password'},
+  }).firestore();
+  await assertSucceeds(setDoc(doc(verified,'users',uid),{name:'Verified'}));
+  await assertSucceeds(setDoc(doc(verified,'users',uid,'achievements','earned'),earnedBadges()));
+});

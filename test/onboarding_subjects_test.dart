@@ -83,6 +83,19 @@ void main() {
     await submitName(tester, name);
   }
 
+  testWidgets(
+    'subjects setup asks for subjects and leaves goal planning to Home',
+    (tester) async {
+      final container = freshContainer();
+      await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
+      await settle(tester);
+      expect(find.byType(Slider), findsNothing);
+      expect(find.text('Weekly goal per subject'), findsNothing);
+      expect(find.text('Math'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   group('duplicate names are rejected inline', () {
     for (final (description, name) in <(String, String)>[
       ('an exact template name', 'Math'),
@@ -176,7 +189,8 @@ void main() {
         expect(
           stored.map((s) => s.id).toSet(),
           hasLength(2),
-          reason: 'names with no ASCII alphanumerics must not collapse onto '
+          reason:
+              'names with no ASCII alphanumerics must not collapse onto '
               'one shared empty id',
         );
         expect(stored.every((s) => s.id.isNotEmpty), isTrue);
@@ -192,44 +206,49 @@ void main() {
   });
 
   group('custom subject lifecycle', () {
-    testWidgets('a custom subject survives a step rebuild without duplicating', (
-      tester,
-    ) async {
-      final container = freshContainer();
-      await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
-      await settle(tester);
+    testWidgets(
+      'a custom subject survives a step rebuild without duplicating',
+      (tester) async {
+        final container = freshContainer();
+        await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
+        await settle(tester);
 
-      await addCustom(tester, 'Thesis');
+        await addCustom(tester, 'Thesis');
 
-      expect(
-        find.text('Add a subject'),
-        findsNothing,
-        reason: 'the dialog closes after a valid add',
-      );
-      final added = container
-          .read(subjectsProvider)
-          .where((s) => s.name == 'Thesis');
-      expect(added, hasLength(1));
-      expect(added.single.id, 'thesis');
-      expect(find.text('Thesis'), findsWidgets, reason: 'the chip is rendered');
+        expect(
+          find.text('Add a subject'),
+          findsNothing,
+          reason: 'the dialog closes after a valid add',
+        );
+        final added = container
+            .read(subjectsProvider)
+            .where((s) => s.name == 'Thesis');
+        expect(added, hasLength(1));
+        expect(added.single.id, 'thesis');
+        expect(
+          find.text('Thesis'),
+          findsWidgets,
+          reason: 'the chip is rendered',
+        );
 
-      // The onboarding PageView disposes an off-screen step and rebuilds it
-      // fresh; the store, not the widget, is the source of truth.
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
-      await settle(tester);
+        // The onboarding PageView disposes an off-screen step and rebuilds it
+        // fresh; the store, not the widget, is the source of truth.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
+        await settle(tester);
 
-      expect(
-        find.text('Thesis'),
-        findsWidgets,
-        reason: 'the custom chip is rebuilt from the store, not lost',
-      );
-      expect(
-        container.read(subjectsProvider).where((s) => s.id == 'thesis'),
-        hasLength(1),
-        reason: 'the rebuild must not write a duplicate',
-      );
-    });
+        expect(
+          find.text('Thesis'),
+          findsWidgets,
+          reason: 'the custom chip is rebuilt from the store, not lost',
+        );
+        expect(
+          container.read(subjectsProvider).where((s) => s.id == 'thesis'),
+          hasLength(1),
+          reason: 'the rebuild must not write a duplicate',
+        );
+      },
+    );
   });
 
   group('toggle and commit', () {
@@ -277,9 +296,9 @@ void main() {
           reason: 'commit must not write duplicate ids',
         );
         expect(
-          subjects.every((s) => s.weekTarget > 0),
-          isTrue,
-          reason: 'commit persists a weekly target for every selected subject',
+          subjects.singleWhere((s) => s.id == 'physics').weekTarget,
+          0,
+          reason: 'choosing a subject does not invent a time target',
         );
       },
     );

@@ -57,6 +57,77 @@ class FirebaseAuthService extends AuthService {
   UserProfile? _current;
   bool _returning = false;
   DateTime? _reauthenticatedAt;
+  DateTime? _verificationSentAt;
+  String? _verificationSentUid;
+
+  bool _requiresEmailVerification(User user) =>
+      !user.isAnonymous &&
+      user.providerData.any((provider) => provider.providerId == 'password') &&
+      !user.emailVerified;
+
+  @override
+  bool get needsEmailVerification =>
+      _auth.currentUser != null &&
+      _requiresEmailVerification(_auth.currentUser!);
+
+  @override
+  String? get verificationEmail =>
+      needsEmailVerification ? _auth.currentUser?.email : null;
+
+  @override
+  DateTime? get verificationResendAvailableAt =>
+      _verificationSentUid == _auth.currentUser?.uid
+      ? _verificationSentAt?.add(const Duration(seconds: 60))
+      : null;
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null || !_requiresEmailVerification(user)) return;
+    final next = verificationResendAvailableAt;
+    if (next != null && DateTime.now().isBefore(next)) {
+      throw const AuthException(AuthFailure.tooManyRequests);
+    }
+    await _guard(() => user.sendEmailVerification());
+    _verificationSentAt = DateTime.now();
+    _verificationSentUid = user.uid;
+  }
+
+  @override
+  Future<UserProfile?> refreshEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    await _guard(user.reload);
+    final refreshed = _auth.currentUser;
+    if (refreshed == null ||
+        refreshed.uid != user.uid ||
+        _requiresEmailVerification(refreshed)) {
+      return null;
+    }
+    // Firestore must see the updated email_verified claim before sync starts.
+    await _guard(() => refreshed.getIdToken(true));
+    return _persist(_profileFor(refreshed, email: refreshed.email));
+  }
+
+  Future<UserProfile> _acceptEmailCredential(
+    UserCredential credential, {
+    required bool newAccount,
+  }) async {
+    final user = credential.user!;
+    if (_requiresEmailVerification(user)) {
+      _current = null;
+      _controller.add(null);
+      if (newAccount) {
+        try {
+          await sendEmailVerification();
+        } on AuthException {
+          // Keep the pending credential so the verification screen can retry.
+        }
+      }
+      throw const AuthException(AuthFailure.emailVerificationRequired);
+    }
+    return _persist(_profileFor(user, email: user.email));
+  }
 
   @override
   bool get isReturningUser => _returning;
@@ -78,7 +149,9 @@ class FirebaseAuthService extends AuthService {
 
   @override
   bool get signedIn =>
-      _auth.currentUser != null && !_isDeletedCredential(_auth.currentUser!);
+      _auth.currentUser != null &&
+      !_isDeletedCredential(_auth.currentUser!) &&
+      !needsEmailVerification;
 
   bool _isDeletedCredential(User user) =>
       _store.getString('auth.deletedCredential') == user.uid;
@@ -89,6 +162,10 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<UserProfile?> restore() async {
     final user = _auth.currentUser;
+    if (user != null && _requiresEmailVerification(user)) {
+      _current = null;
+      return null;
+    }
     if (user == null || _isDeletedCredential(user)) {
       if (user != null) {
         try {
@@ -112,6 +189,9 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<UserProfile> signInAnonymously() async {
     if (_auth.currentUser case final user?) {
+      if (_requiresEmailVerification(user)) {
+        throw const AuthException(AuthFailure.emailVerificationRequired);
+      }
       return _persist(_profileFor(user));
     }
     _returning = false;
@@ -136,7 +216,7 @@ class FirebaseAuthService extends AuthService {
       ),
     );
     _recognise(credential);
-    return _persist(_profileFor(credential.user!, email: email));
+    return _acceptEmailCredential(credential, newAccount: false);
   }
 
   /// Same base and same fill-only-what-is-missing rule as [signInWithEmail]:
@@ -154,7 +234,7 @@ class FirebaseAuthService extends AuthService {
       ),
     );
     _returning = false;
-    return _persist(_profileFor(credential.user!, email: email));
+    return _acceptEmailCredential(credential, newAccount: true);
   }
 
   /// Google is live on Android: `google-services.json` carries the Android
@@ -453,7 +533,9 @@ class FirebaseAuthService extends AuthService {
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
-    if (user == null || _isDeletedCredential(user)) {
+    if (user == null ||
+        _isDeletedCredential(user) ||
+        _requiresEmailVerification(user)) {
       _current = null;
       _controller.add(null);
       return;
@@ -517,6 +599,9 @@ class FirebaseAuthService extends AuthService {
   }
 
   Future<UserProfile> _persist(UserProfile profile) async {
+    if (needsEmailVerification) {
+      throw const AuthException(AuthFailure.emailVerificationRequired);
+    }
     await _store.prepareAchievementIdentity(profile.uid);
     final key = 'achievements.linked.${profile.uid}';
     if (!profile.isAnonymous || _store.getBool(key) == null) {

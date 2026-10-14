@@ -119,6 +119,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   void _finish() {
+    if (_auth.needsEmailVerification) {
+      context.goNamed(AppRoutes.verifyEmail);
+      return;
+    }
     final profile = ref.read(userProvider);
     if (profile.onboardingComplete) {
       context.goNamed(AppRoutes.dashboard);
@@ -312,7 +316,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     label: 'Continue with Email',
                     leading: const MailMark(),
                     busy: _busy == 'email',
-                    onTap: _busy == null ? _email : null,
+                    onTap: _busy == null && providers.contains('email')
+                        ? _email
+                        : null,
                   ),
                 ),
                 const SizedBox(height: Gap.lg),
@@ -331,9 +337,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     googleLive
                         ? 'An account is optional. Start on this device and sign in later. '
                               'Your detailed study log stays on your phone.'
-                        : 'Google sign-in is not available in this build. Use email '
-                              'or skip — you can link a real account later without '
-                              'losing anything.',
+                        : providers.contains('email')
+                        ? 'Google sign-in is not available in this build. Use email or skip — you can link an account later.'
+                        : 'Account sign-in is unavailable right now. Skip to study on this device and try signing in later.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),

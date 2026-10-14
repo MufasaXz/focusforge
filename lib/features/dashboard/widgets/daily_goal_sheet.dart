@@ -1,73 +1,158 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/shell/app_shell.dart';
 import '../../../app/theme/app_theme.dart';
-import '../../../core/data/seed.dart';
+import '../../../core/models/focus_goal.dart';
+import '../../../core/models/study.dart';
+import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
-import '../../../shared/widgets/form_controls.dart';
+import '../../../shared/widgets/app_segmented_control.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Opens the editor for the daily focus goal.
-///
-/// One row per weekday, because the days are the thing that differs: a Sunday
-/// with nothing on it and a Monday with school in it are not the same target,
-/// and a single number would make the user choose which of the two to be wrong
-/// about. Every change is written as the slider is released, so dismissing the
-/// sheet can never discard a target.
-Future<void> showDailyGoalSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) => const _DailyGoalSheet(),
-  );
+/// Saves a date-bound daily goal or a repeating weekly plan after its subject
+/// allocations add up to the exact chosen total.
+Future<void> showDailyGoalSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => const _FocusGoalSheet(),
+    );
+
+class _FocusGoalSheet extends ConsumerStatefulWidget {
+  const _FocusGoalSheet();
+  @override
+  ConsumerState<_FocusGoalSheet> createState() => _FocusGoalSheetState();
 }
 
-class _DailyGoalSheet extends ConsumerStatefulWidget {
-  const _DailyGoalSheet();
+class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
+  late FocusGoalScope _scope;
+  late int _total;
+  late final FixedExtentScrollController _wheel;
+  final _allocations = <String, int>{};
+  bool _saving = false;
+  String? _error;
+  static const _step = 15;
 
   @override
-  ConsumerState<_DailyGoalSheet> createState() => _DailyGoalSheetState();
-}
+  void initState() {
+    super.initState();
+    // A saved zero-hour rest plan intentionally hides the ring, but remains
+    // the value to edit rather than reopening with an invented one-hour goal.
+    final plan = ref
+        .read(focusGoalPlannerProvider)
+        .forDate(ref.read(focusCalendarDateProvider));
+    _scope = plan?.scope ?? FocusGoalScope.day;
+    _total = plan?.totalMinutes ?? 60;
+    _allocations.addAll(plan?.subjectMinutes ?? const {});
+    _wheel = FixedExtentScrollController(initialItem: (_total / _step).round());
+  }
 
-class _DailyGoalSheetState extends ConsumerState<_DailyGoalSheet> {
-  static const _shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  @override
+  void dispose() {
+    _wheel.dispose();
+    super.dispose();
+  }
 
-  static const _spokenDays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
+  void _chooseScope(FocusGoalScope scope) {
+    final planner = ref.read(focusGoalPlannerProvider);
+    final date = ref.read(focusCalendarDateProvider);
+    final plan = scope == FocusGoalScope.day ? planner.day : planner.week;
+    setState(() {
+      _scope = scope;
+      _error = null;
+      if (plan != null && plan.appliesOn(date)) {
+        _total = plan.totalMinutes;
+        _allocations.clear();
+        _allocations.addAll(plan.subjectMinutes);
+      }
+    });
+    _wheel.jumpToItem((_total / _step).round());
+  }
 
-  /// Every day's target, held locally and written on release so a drag across
-  /// a slider is one store write rather than sixty.
-  late final Map<int, int> _minutes = {
-    for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-      day: ref.read(dailyGoalProvider).forWeekday(day),
-  };
+  void _splitEvenly(List<Subject> subjects) {
+    if (subjects.isEmpty) return;
+    final perSubject = _total ~/ subjects.length;
+    var remainder = _total % subjects.length;
+    setState(() {
+      _allocations.clear();
+      for (final subject in subjects) {
+        _allocations[subject.id] = perSubject + (remainder-- > 0 ? 1 : 0);
+      }
+      _error = null;
+    });
+  }
+
+  Future<void> _save(List<Subject> subjects) async {
+    if (_saving) return;
+    final values = {
+      for (final subject in subjects) subject.id: _allocations[subject.id] ?? 0,
+    };
+    if (values.values.fold<int>(0, (a, b) => a + b) != _total) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(focusGoalPlannerProvider.notifier)
+          .save(
+            FocusGoalPlan(
+              scope: _scope,
+              date: ref.read(focusCalendarDateProvider),
+              totalMinutes: _total,
+              subjectMinutes: values,
+            ),
+          );
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Could not save your goal. Please try again.';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final subjects = ref.watch(subjectsProvider);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final today = DateTime.now().weekday;
+    final assigned = subjects.fold<int>(
+      0,
+      (sum, s) => sum + (_allocations[s.id] ?? 0),
+    );
+    final difference = _total - assigned;
+    final valid = difference == 0 && (_total == 0 || subjects.isNotEmpty);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final date = ref.watch(focusCalendarDateProvider);
+    final weekStart = DateTime(
+      date.year,
+      date.month,
+      date.day - date.weekday + 1,
+    );
+    final weekEnd = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day + 6,
+    );
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Gap.lg,
-        Gap.lg,
-        Gap.lg,
-        kNavBarClearance + MediaQuery.paddingOf(context).bottom,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .92,
       ),
       child: SheetSurface(
-        borderRadius: BorderRadius.circular(Radii.hero),
-        padding: const EdgeInsets.all(Gap.lg),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(Radii.hero),
+        ),
+        padding: EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.lg, Gap.lg + bottom),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -75,29 +160,157 @@ class _DailyGoalSheetState extends ConsumerState<_DailyGoalSheet> {
             children: [
               const SheetHandle(),
               const SizedBox(height: Gap.lg),
-              Text('Daily goal', style: tt.titleLarge),
-              const SizedBox(height: Gap.xs),
+              Text('Make time for what matters', style: tt.titleLarge),
+              const SizedBox(height: Gap.sm),
               Text(
-                'Every day can have its own target — a school day is not a '
-                'Sunday.',
+                'Choose your target, then give each subject its share.',
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: Gap.lg),
+              AppSegmentedControl<FocusGoalScope>(
+                options: const {
+                  FocusGoalScope.day: 'For one day',
+                  FocusGoalScope.week: 'For a week',
+                },
+                selected: _scope,
+                onChanged: _saving ? (_) {} : _chooseScope,
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                _scope == FocusGoalScope.day
+                    ? 'Today only · ${formatDate(date)}. Resets at midnight.'
+                    : '${formatDate(weekStart)} – ${formatDate(weekEnd)}. Repeats each week; progress resets Monday.',
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
+              const SizedBox(height: Gap.lg),
+              Text('Your focus time', style: tt.labelLarge),
+              const SizedBox(height: Gap.xs),
+              SizedBox(
+                height: 140,
+                child: CupertinoPicker(
+                  scrollController: _wheel,
+                  itemExtent: 42,
+                  magnification: 1.08,
+                  useMagnifier: true,
+                  onSelectedItemChanged: (item) {
+                    if (_saving) return;
+                    setState(() {
+                      _total = item * _step;
+                      for (final subject in subjects) {
+                        _allocations[subject.id] =
+                            (_allocations[subject.id] ?? 0).clamp(0, _total);
+                      }
+                      _error = null;
+                    });
+                  },
+                  children: [
+                    for (
+                      var value = 0;
+                      value <= FocusGoalPlan.maxMinutes;
+                      value += _step
+                    )
+                      Center(
+                        child: Text(
+                          value == 0 ? '0h · No target' : formatMinutes(value),
+                          style: tt.headlineSmall?.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: Gap.md),
-              for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-                _DayRow(
-                  label: _shortDays[day - 1],
-                  spokenLabel: _spokenDays[day - 1],
-                  isToday: day == today,
-                  minutes: _minutes[day] ?? DailyGoals.minMinutes,
-                  onChanged: (v) => setState(() => _minutes[day] = v),
-                  onChangeEnd: (v) =>
-                      ref.read(dailyGoalProvider.notifier).setDay(day, v),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('Time for each subject', style: tt.titleMedium),
+                  TextButton(
+                    onPressed: _saving || subjects.isEmpty
+                        ? null
+                        : () => _splitEvenly(subjects),
+                    child: const Text('Split evenly'),
+                  ),
+                ],
+              ),
+              if (subjects.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Gap.md),
+                  child: Text(
+                    'Add a subject from the Focus page to plan your time.',
+                    style: tt.bodyMedium,
+                  ),
+                ),
+              for (final subject in subjects) ...[
+                _AllocationRow(
+                  subject: subject,
+                  total: _total,
+                  minutes: (_allocations[subject.id] ?? 0).clamp(0, _total),
+                  onChanged: _saving || _total == 0
+                      ? null
+                      : (value) => setState(() {
+                          _allocations[subject.id] = value;
+                          _error = null;
+                        }),
+                ),
+                const SizedBox(height: Gap.sm),
+              ],
+              const SizedBox(height: Gap.sm),
+              Container(
+                padding: const EdgeInsets.all(Gap.md),
+                decoration: BoxDecoration(
+                  color: valid ? cs.primaryContainer : cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(Radii.item),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${formatMinutes(assigned)} assigned / ${formatMinutes(_total)} target',
+                      style: tt.labelLarge,
+                    ),
+                    const SizedBox(height: Gap.xs),
+                    Text(
+                      _total == 0
+                          ? 'Your progress stays saved. The goal ring is hidden for this period.'
+                          : difference == 0
+                          ? 'Every minute has a place. Your plan is ready.'
+                          : difference > 0
+                          ? 'Give your subjects the remaining ${formatMinutes(difference)}.'
+                          : 'Reduce subject time by ${formatMinutes(-difference)} to match your target.',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: Gap.sm),
+                  child: Text(
+                    _error!,
+                    style: tt.bodySmall?.copyWith(color: cs.error),
+                  ),
                 ),
               const SizedBox(height: Gap.lg),
-              PrimaryAction(
-                label: 'Done',
-                icon: Icons.check_rounded,
-                onTap: () => Navigator.of(context).pop(),
+              FilledButton(
+                key: const ValueKey('save-focus-goal'),
+                onPressed: valid && !_saving ? () => _save(subjects) : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+                  child: _saving
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          _total == 0 ? 'Save without a target' : 'Save goal',
+                        ),
+                ),
+              ),
+              TextButton(
+                onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
               ),
             ],
           ),
@@ -107,69 +320,58 @@ class _DailyGoalSheetState extends ConsumerState<_DailyGoalSheet> {
   }
 }
 
-/// One weekday's target: the day, the slider, and the value it currently
-/// stands at.
-class _DayRow extends StatelessWidget {
-  const _DayRow({
-    required this.label,
-    required this.spokenLabel,
-    required this.isToday,
+class _AllocationRow extends StatelessWidget {
+  const _AllocationRow({
+    required this.subject,
+    required this.total,
     required this.minutes,
     required this.onChanged,
-    required this.onChangeEnd,
   });
-
-  final String label;
-  final String spokenLabel;
-  final bool isToday;
+  final Subject subject;
+  final int total;
   final int minutes;
-  final ValueChanged<int> onChanged;
-  final ValueChanged<int> onChangeEnd;
+  final ValueChanged<int>? onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-
-    return Row(
-      children: [
-        SizedBox(
-          width: 44,
-          child: Text(
-            label,
-            style: tt.labelLarge?.copyWith(
-              // Today is the row the sheet was opened for, so it is the one
-              // that says which number is in force right now.
-              color: isToday ? cs.primary : cs.onSurface,
-              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-            ),
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                subject.icon,
+                color: harmonize(subject.color, cs.primary),
+                size: 21,
+              ),
+              const SizedBox(width: Gap.sm),
+              Expanded(child: Text(subject.name, style: tt.bodyLarge)),
+              const SizedBox(width: Gap.sm),
+              Text(
+                formatMinutes(minutes),
+                style: tt.labelLarge?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
           ),
-        ),
-        Expanded(
-          child: Slider(
+          Slider(
+            key: ValueKey('goal-subject-${subject.id}'),
             value: minutes.toDouble(),
-            min: DailyGoals.minMinutes.toDouble(),
-            max: DailyGoals.maxMinutes.toDouble(),
-            divisions: (DailyGoals.maxMinutes - DailyGoals.minMinutes) ~/ 15,
+            min: 0,
+            max: total > 0 ? total.toDouble() : 1,
             label: formatMinutes(minutes),
-            semanticFormatterCallback: (v) =>
-                '$spokenLabel goal, ${formatMinutes(v.round())}',
-            onChanged: (v) => onChanged(v.round()),
-            onChangeEnd: (v) => onChangeEnd(v.round()),
+            semanticFormatterCallback: (value) =>
+                '${subject.name}: ${formatMinutes(value.round())}',
+            onChanged: onChanged == null
+                ? null
+                : (value) => onChanged!(value.round()),
           ),
-        ),
-        SizedBox(
-          width: 58,
-          child: Text(
-            formatMinutes(minutes),
-            textAlign: TextAlign.end,
-            style: tt.labelMedium?.copyWith(
-              color: isToday ? cs.primary : cs.onSurface,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

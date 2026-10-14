@@ -24,6 +24,7 @@ import 'package:focusforge/app/app.dart';
 import 'package:focusforge/app/shell/app_shell.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
@@ -52,13 +53,16 @@ void main() {
   /// shield engine both sit behind platform channels that never answer under
   /// the test binding, so a screen behind them would render a spinner for the
   /// rest of the test rather than the layout under test.
-  ProviderContainer freshContainer() {
+  ProviderContainer freshContainer({
+    FocusCalendarDateNotifier Function()? calendar,
+  }) {
     final engine = RecordingShieldService();
     addTearDown(engine.dispose);
 
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
+        if (calendar != null) focusCalendarDateProvider.overrideWith(calendar),
         shieldServiceProvider.overrideWithValue(engine),
         installedAppsProvider.overrideWith((ref) async => const []),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
@@ -118,6 +122,29 @@ void main() {
   }
 
   group('Shell', () {
+    testWidgets(
+      'returning from background refreshes the goal calendar immediately',
+      (tester) async {
+        usePhone(tester);
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        final container = freshContainer(
+          calendar: () => _StaleCalendar(yesterday),
+        );
+        await pumpApp(tester, container);
+        expect(container.read(focusCalendarDateProvider).day, yesterday.day);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await settle(tester);
+        final now = DateTime.now();
+        expect(
+          container.read(focusCalendarDateProvider),
+          DateTime(now.year, now.month, now.day),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
     testWidgets('a tablet gets the rail, not the bar', (tester) async {
       useTablet(tester);
       await pumpApp(tester, freshContainer());
@@ -408,4 +435,11 @@ int _columnsOf(WidgetTester tester) {
   final delegate =
       grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
   return delegate.crossAxisCount;
+}
+
+class _StaleCalendar extends FocusCalendarDateNotifier {
+  _StaleCalendar(this.date);
+  final DateTime date;
+  @override
+  DateTime build() => DateTime(date.year, date.month, date.day);
 }

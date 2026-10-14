@@ -24,12 +24,12 @@ class ShieldOverview extends ConsumerWidget {
     final rules = ref.watch(enforcedRulesProvider);
     final youtube = ref.watch(youtubeRulesProvider);
     final supported = NativeShieldService.isSupported;
-    final enabled = supported && access.valueOrNull == true;
+    final enabled = supported && usage && overlay && access.valueOrNull == true;
     final count =
         rules.length + (youtube.shorts ? 1 : 0) + (youtube.feed ? 1 : 0);
     final title = !supported
         ? 'Your rules, ready for Android'
-        : access.isLoading
+        : access.isLoading && !access.hasValue && rules.isNotEmpty
         ? 'Checking your Shield'
         : paused && rules.isNotEmpty
         ? 'App boundaries are paused'
@@ -58,14 +58,15 @@ class ShieldOverview extends ConsumerWidget {
                 : paused && rules.isNotEmpty
                 ? 'Your saved app rules are inactive. Enable an app rule when you want boundaries active again.'
                 : rules.isNotEmpty && !enabled
-                ? 'App boundaries need Usage access and Draw over other apps. Your saved rules are currently inactive.'
+                ? !usage
+                      ? 'Inactive · Your app rules are saved. Allow app usage on Home when you want FocusForge to detect and pause these apps.'
+                      : !overlay
+                      ? 'Inactive · Allow Draw over other apps to show the pause screen. Your app rules stay saved.'
+                      : 'Inactive · Your saved app rules are not currently running. Enable an app rule to start boundaries again.'
                 : 'Set boundaries for apps and feeds. You stay in control.',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
-          if (supported &&
-              rules.isNotEmpty &&
-              !enabled &&
-              (!usage || !overlay)) ...[
+          if (supported && rules.isNotEmpty && !enabled && !overlay) ...[
             const SizedBox(height: Gap.md),
             Align(
               alignment: Alignment.centerLeft,
@@ -77,9 +78,7 @@ class ShieldOverview extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.settings_outlined),
-                label: Text(
-                  !usage ? 'Review app usage on Home' : 'Check overlay access',
-                ),
+                label: const Text('Check overlay access'),
               ),
             ),
           ],

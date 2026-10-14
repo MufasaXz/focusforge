@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/shield.dart';
@@ -54,7 +53,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
           const SizedBox(height: Gap.xl),
           AppSection(
             title: 'Duration',
-            footnote: 'The lock holds for the whole window once it starts.',
+            footnote: 'Selected app rules stay active for this window while access and the service are enabled.',
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -146,8 +145,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                     const _Step(
                       number: 3,
                       text:
-                          'Confirm a second time. Only then does the lock '
-                          'release.',
+                          'Confirm a second time to end your commitment early.',
                     ),
                   ],
                 ),
@@ -155,30 +153,18 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
             ],
           ),
           AppSection(
-            title: 'Always allowed',
-            footnote: 'These stay reachable even while Strict Mode is on.',
+            title: 'Your controls stay available',
+            footnote: 'Android Settings, the launcher, keyboard, calls and emergency access are protected. Use Stop in the app-boundaries notification to pause enforcement. You can revoke access or uninstall at any time.',
             children: [
-              _AllowRow(
-                title: 'Phone calls',
-                subtitle: 'Incoming and outgoing',
-                icon: Icons.call_outlined,
-                value: config.allowCalls,
-                onChanged: (v) => _write(config.copyWith(allowCalls: v)),
+              const ListTile(
+                title: Text('Phone calls'),
+                subtitle: Text('Incoming and outgoing calls stay reachable.'),
+                leading: Icon(Icons.call_outlined),
               ),
-              _AllowRow(
-                title: 'Emergency services',
-                subtitle: 'Always reachable, whatever the mode',
-                icon: Icons.health_and_safety_outlined,
-                value: config.allowEmergency,
-                onChanged: (v) => _write(config.copyWith(allowEmergency: v)),
-              ),
-              _AllowRow(
-                title: 'Maps and navigation',
-                subtitle: 'Directions while you are out',
-                icon: Icons.map_outlined,
-                value: config.allowMaps,
-                onChanged: (v) => _write(config.copyWith(allowMaps: v)),
-                showDivider: false,
+              const ListTile(
+                title: Text('Emergency services'),
+                subtitle: Text('Protected even during Strict Mode.'),
+                leading: Icon(Icons.health_and_safety_outlined),
               ),
             ],
           ),
@@ -198,9 +184,6 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
     setState(() => _draggingHours = null);
     ref.read(strictModeProvider.notifier).setDuration((hours * 60).round());
   }
-
-  void _write(StrictModeConfig next) =>
-      ref.read(strictModeProvider.notifier).update(next);
 
   /// Runs the three-step commitment flow in one modal and only writes when the
   /// final confirm comes back true. The phrase gate alone was theatre: the
@@ -354,11 +337,8 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
         const SizedBox(height: Gap.md),
         Text(
           widget.activating
-              ? 'Focus is locked for ${widget.window}. Blocks cannot be '
-                    'changed and the app cannot be uninstalled until the '
-                    'window ends.'
-              : 'Ending early is the emergency unlock. The lock releases only '
-                    'after all three steps are done.',
+              ? 'Your selected app rules use a full block for ${widget.window} while access and the service are enabled. You can change rules, stop the service, revoke access or uninstall at any time.'
+              : 'Complete these steps to end your commitment early. Android settings and the notification Stop action remain available.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: Gap.lg),
@@ -735,13 +715,12 @@ class _WarningPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Strict Mode locks your phone during focus.',
+                    'Commit to your selected app boundaries.',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'You can’t change blocks or uninstall FocusForge until the '
-                    'timer expires.',
+                    'Selected app rules use full blocking for your chosen window. Android Settings, emergency access, notification Stop and uninstall stay available.',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -790,53 +769,6 @@ class _Step extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AllowRow extends StatelessWidget {
-  const _AllowRow({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.value,
-    required this.onChanged,
-    this.showDivider = true,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final bool showDivider;
-
-  void _toggle(bool next) {
-    // A flip is a commitment — the tap that made it should be felt, not just
-    // seen.
-    HapticFeedback.lightImpact();
-    onChanged(next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: Semantics(
-            toggled: value,
-            enabled: true,
-            label: title,
-            excludeSemantics: true,
-            onTap: () => _toggle(!value),
-            child: Switch.adaptive(value: value, onChanged: _toggle),
-          ),
-        ),
-        if (showDivider) const Divider(height: 1, indent: 56),
-      ],
     );
   }
 }
