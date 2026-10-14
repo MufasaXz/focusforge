@@ -63,11 +63,6 @@ class UserNotifier extends Notifier<UserProfile> {
   Future<void> setPersona(Persona persona) =>
       save(state.copyWith(persona: persona));
 
-  /// Records whose device this is. Set once during setup, and changeable
-  /// afterwards from the Parent control page.
-  Future<void> setGuardianMode(bool guardian) =>
-      save(state.copyWith(isGuardian: guardian));
-
   Future<void> setDailyGoal(int minutes) =>
       save(state.copyWith(dailyGoalMinutes: minutes));
 
@@ -211,3 +206,10 @@ class StatsNotifier extends Notifier<GamificationStats> {
 final statsProvider = NotifierProvider<StatsNotifier, GamificationStats>(
   StatsNotifier.new,
 );
+
+final accountUidProvider = Provider<String?>((ref) {
+  final profile = ref.watch(userProvider);
+  final auth = ref.watch(authServiceProvider);
+  if (auth.usesRemoteCredentials && !auth.signedIn) return null;
+  return profile.uid.isEmpty ? null : profile.uid;
+});

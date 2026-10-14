@@ -15,6 +15,8 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.telecom.TelecomManager
+import android.net.Uri
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -153,7 +155,26 @@ class FocusAccessibilityService : AccessibilityService() {
             "com.android.settings",
             homePackageOf(context),
             inputMethodPackageOf(context),
-        )
+            defaultDialerOf(context),
+            "com.android.phone",
+            "com.android.server.telecom",
+        ) + emergencyPackagesOf(context)
+
+        private fun defaultDialerOf(context: Context): String? = try {
+            (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage
+        } catch (_: Exception) { null }
+
+        private fun emergencyPackagesOf(context: Context): Set<String> = try {
+            val pm = context.packageManager
+            listOf(Intent(Intent.ACTION_DIAL, Uri.parse("tel:")),
+                Intent("android.intent.action.EMERGENCY_ASSISTANCE"),
+                Intent("com.android.phone.EmergencyDialer.DIAL")).flatMap { intent ->
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                    .mapNotNull { it.activityInfo?.packageName }
+            }.toSet()
+        } catch (_: Exception) { emptySet() }
+
 
         /** Where Home goes — the launcher, or whatever the user replaced it with. */
         fun homePackageOf(context: Context): String? = try {

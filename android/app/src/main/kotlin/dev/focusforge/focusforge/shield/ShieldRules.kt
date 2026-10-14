@@ -137,6 +137,9 @@ data class ShieldRules(
             if (raw.isNullOrBlank()) return EMPTY
             return try {
                 val root = JSONObject(raw)
+                // Version 1 merged local and remote parent blocks. Never
+                // restore it before Flutter has supplied self-selected rules.
+                if (root.optInt("version", 0) != 2) return EMPTY
 
                 val apps = LinkedHashMap<String, AppRule>()
                 root.optJSONObject("apps")?.let { map ->
@@ -238,6 +241,7 @@ object ShieldStore {
             )
         }
         return JSONObject()
+            .put("version", 2)
             .put("apps", apps)
             .put(
                 "youtube",

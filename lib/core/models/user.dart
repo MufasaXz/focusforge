@@ -59,8 +59,10 @@ enum AppPalette {
   /// The stored palette, or [AppPalette.parchment] when there is none — the same
   /// fallback a cold install gets, so an unreadable value cannot land the app
   /// on a colour the user never chose.
-  static AppPalette fromName(String? name) =>
-      values.firstWhere((v) => v.name == name, orElse: () => AppPalette.parchment);
+  static AppPalette fromName(String? name) => values.firstWhere(
+    (v) => v.name == name,
+    orElse: () => AppPalette.parchment,
+  );
 }
 
 /// How the focus timer draws the time that is left.
@@ -70,13 +72,21 @@ enum AppPalette {
 /// survive reordering of this enum. `retro` is the fallback for a stored
 /// value this build cannot read, including a face that has since been retired.
 enum ClockFace {
-  retro('Retro', 'A studio dial with a live countdown', Icons.timelapse_rounded),
+  retro(
+    'Retro',
+    'A studio dial with a live countdown',
+    Icons.timelapse_rounded,
+  ),
   flip('Flip', 'Split-flap cards', Icons.view_agenda_rounded),
   segments('Segments', 'Seven-segment display', Icons.bar_chart_rounded),
   minimal('Minimal', 'Thin figures and a rule', Icons.remove_rounded),
   analog('Analog', 'Hour, minute and second hands', Icons.access_time_rounded),
   neon('Neon', 'Lit figures with a glow', Icons.lightbulb_outline_rounded),
-  serif('Serif', 'Typeset figures in the dial serif', Icons.text_fields_rounded);
+  serif(
+    'Serif',
+    'Typeset figures in the dial serif',
+    Icons.text_fields_rounded,
+  );
 
   const ClockFace(this.label, this.blurb, this.icon);
 
@@ -137,13 +147,6 @@ enum Persona {
     'Deep work, meetings, productivity',
     'What do you work on?',
     Color(0xFFB79CFF),
-  ),
-  parent(
-    'Parent',
-    Icons.family_restroom_rounded,
-    "Manage my child's screen time",
-    'What does your child study?',
-    Color(0xFF8FE39B),
   );
 
   const Persona(
@@ -174,7 +177,6 @@ class UserProfile {
     this.timezone = 'UTC',
     this.onboardingComplete = false,
     this.isAnonymous = true,
-    this.isGuardian = false,
     this.avatarIcon,
     this.avatarColor,
     this.dailyGoalMinutes = 180,
@@ -190,14 +192,6 @@ class UserProfile {
   /// True while the user has not linked a real account. Anonymous users get
   /// everything except study groups and the leaderboard.
   final bool isAnonymous;
-
-  /// True when this device was set up to watch children rather than to study.
-  ///
-  /// A separate answer from [persona] on purpose: a parent may well use the
-  /// app themselves as well, and a student's phone is often set up by the
-  /// parent who chose the persona. This is only "whose device is this", and
-  /// it decides which half of Parent control opens first.
-  final bool isGuardian;
 
   /// The glyph on the avatar, as an `AppIcons` name, or null for initials.
   ///
@@ -244,7 +238,6 @@ class UserProfile {
     String? timezone,
     bool? onboardingComplete,
     bool? isAnonymous,
-    bool? isGuardian,
     String? avatarIcon,
     int? avatarColor,
     int? dailyGoalMinutes,
@@ -257,7 +250,6 @@ class UserProfile {
     timezone: timezone ?? this.timezone,
     onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     isAnonymous: isAnonymous ?? this.isAnonymous,
-    isGuardian: isGuardian ?? this.isGuardian,
     // A null icon means "use my initials", which is a real choice rather
     // than a missing value — so clearing it has to be asked for
     // explicitly, or `copyWith` could never take the glyph away.
@@ -274,7 +266,6 @@ class UserProfile {
     'timezone': timezone,
     'onboardingComplete': onboardingComplete,
     'isAnonymous': isAnonymous,
-    'isGuardian': isGuardian,
     'avatarIcon': avatarIcon,
     'avatarColor': avatarColor,
     'dailyGoalMinutes': dailyGoalMinutes,
@@ -288,7 +279,6 @@ class UserProfile {
     timezone: j['timezone'] as String? ?? 'UTC',
     onboardingComplete: j['onboardingComplete'] as bool? ?? false,
     isAnonymous: j['isAnonymous'] as bool? ?? true,
-    isGuardian: j['isGuardian'] as bool? ?? false,
     // Guarded rather than cast: this runs inside bootstrap, where one
     // malformed entry must not abort the launch.
     avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,

@@ -10,7 +10,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
-import '../../core/providers/parent_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
@@ -20,7 +19,6 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import '../onboarding/coach_marks.dart';
-import '../parent/widgets/child_study_card.dart';
 import 'widgets/daily_goal_sheet.dart';
 import 'widgets/focus_heatmap.dart';
 import 'widgets/day_summary_sheet.dart';
@@ -140,17 +138,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'Build your streak',
           body: 'Study every day and the flame keeps growing.',
         ),
-      // A parent's bar has no Focus destination, so the tip that points at it
-      // would spotlight an empty corner of the screen.
-      if (!user.isGuardian)
-        CoachSpot(
-          target: targets.focusTab,
-          icon: Icons.timer_rounded,
-          title: 'Your timer lives here',
-          body:
-              'The Focus tab starts a Pomodoro and runs the shield while it '
-              'counts down.',
-        ),
+      CoachSpot(
+        target: targets.focusTab,
+        icon: Icons.timer_rounded,
+        title: 'Your timer lives here',
+        body:
+            'The Focus tab starts a Pomodoro and runs the shield while it '
+            'counts down.',
+      ),
       CoachSpot(
         target: targets.shieldTab,
         icon: Icons.shield_outlined,
@@ -171,16 +166,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // The two columns, in reading order: what today looks like, then what the
     // log says. Only used when there is width for them.
     //
-    // A parent's own log is not what their home tab is for, so the child's
-    // card leads — the same selection the Shield tab and the child's page use,
-    // so all three are about one child at a time.
-    final watchingChild =
-        user.isGuardian && ref.watch(activeChildProvider) != null;
     final left = <Widget>[
-      if (watchingChild) ...[
-        const ChildStudyCard(),
-        const SizedBox(height: Gap.xl),
-      ],
       if (sessions.isEmpty)
         _NoSessions(onStart: _startFocusing, ctaKey: targets.emptyCta)
       else ...[
@@ -189,7 +175,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           totalHours: stats.totalFocusHours,
           level: stats.level,
           ringKey: targets.ring,
-          onFocus: user.isGuardian ? null : _startFocusing,
+          onFocus: _startFocusing,
         ),
         const SizedBox(height: Gap.xl),
         SectionHeader(

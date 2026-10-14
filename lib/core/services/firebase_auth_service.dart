@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
@@ -9,15 +10,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
-import 'leaderboard_service.dart';
-import 'parent_service.dart';
-import 'study_group_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
 ///
 /// Firebase holds only the credential. The profile record — persona, name,
 /// daily goal, onboarding state — stays in [LocalStore], which is the app's
-/// privacy position. Optional groups and parent sharing have separate services;
+/// privacy position. Optional study groups and achievement backups have separate services;
 /// detailed logs stay local and the timer keeps working without a network.
 ///
 /// Constructed only after `Firebase.initializeApp()` has succeeded; see
@@ -327,7 +325,10 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
-    if (user != null) {
+    if (user == null) {
+      throw const AuthException(AuthFailure.requiresRecentLogin);
+    }
+    {
       // Group rows must be removed while the credential can still authorise
       // writes. Check login age first, before changing any cloud membership.
       final recentlyConfirmed =
@@ -347,73 +348,29 @@ class FirebaseAuthService extends AuthService {
         await FirebaseFirestore.instance.waitForPendingWrites().timeout(
           const Duration(seconds: 20),
         );
-        if (!user.isAnonymous) {
-          final groups = await FirebaseStudyGroupService()
-              .groupsForDeletion(user.uid)
-              .timeout(const Duration(seconds: 20));
-          for (final group in groups) {
-            await FirebaseStudyGroupService().leave(group);
-          }
+        // The callable uses the verified caller UID, blocks new cloud writes,
+        // removes records from every device and deletes Auth last.
+        await user.getIdToken(true);
+        final result = await FirebaseFunctions.instance
+            .httpsCallable(
+              'deleteFocusForgeAccount',
+              options: HttpsCallableOptions(
+                timeout: const Duration(minutes: 5),
+              ),
+            )
+            .call<Map<String, dynamic>>();
+        if (result.data['deleted'] != true) {
+          throw const AuthException(AuthFailure.cleanupFailed);
         }
-        // A network loss can leave Firestore writes queued. Limit the UI wait;
-        // deletion of the credential/local history only follows a completed
-        // cleanup. A timed-out cleanup may still remove shared rows later.
-        await _removeSharedRecords(user.uid)
-            .timeout(const Duration(seconds: 45));
       } catch (_) {
         throw const AuthException(AuthFailure.cleanupFailed);
       }
-      await _guard(() => user.delete());
+      await _auth.signOut();
     }
     await _store.clearAll();
     _current = null;
     _returning = false;
     _controller.add(null);
-  }
-
-  Future<void> _removeSharedRecords(String uid) async {
-    final db = FirebaseFirestore.instance;
-    final parent = FirebaseParentService();
-    final link = await db
-        .doc('users/$uid/guardian/link')
-        .get(const GetOptions(source: Source.server));
-    final pairCode = link.data()?['pairCode'];
-    await parent.unlink(uid);
-    if (pairCode is String) await db.doc('pairCodes/$pairCode').delete();
-    final children = await db
-        .collection('users/$uid/children')
-        .get(const GetOptions(source: Source.server));
-    for (final child in children.docs) {
-      await parent.unlink(child.id);
-    }
-    for (final collection in ['progress', 'catalog']) {
-      final records = await db
-          .collection('users/$uid/$collection')
-          .get(const GetOptions(source: Source.server));
-      for (final record in records.docs) {
-        await record.reference.delete();
-      }
-    }
-    // Firestore does not cascade subcollections when the user doc is removed.
-    await db.doc('users/$uid/achievements/earned').delete();
-    // Older weeks are recoverable from this device's history. Records from
-    // other devices need a backend deletion job; the confirmation says so.
-    final weeks = <String>{weekKey(DateTime.now())};
-    for (final raw in _store.getList(StoreKeys.sessions)) {
-      if (raw['startedAt'] is num) {
-        weeks.add(
-          weekKey(
-            DateTime.fromMillisecondsSinceEpoch(
-              (raw['startedAt'] as num).toInt(),
-            ),
-          ),
-        );
-      }
-    }
-    for (final week in weeks) {
-      await db.doc('leaderboard/$week/entries/$uid').delete();
-    }
-    await db.doc('users/$uid').delete();
   }
 
   @override

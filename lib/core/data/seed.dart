@@ -417,17 +417,10 @@ class SeedData {
     SubjectTemplate('Email', Icons.mail_rounded, SubjectPalette.chemistry),
   ];
 
-  static const parentSubjects = <SubjectTemplate>[
-    SubjectTemplate('Homework', Icons.assignment_rounded, SubjectPalette.math),
-    SubjectTemplate('Reading', Icons.menu_book_rounded, SubjectPalette.english),
-    SubjectTemplate('Revision', Icons.refresh_rounded, SubjectPalette.physics),
-    SubjectTemplate('Creative', Icons.palette_rounded, Color(0xFFFFB3D9)),
-  ];
 
   static List<SubjectTemplate> templatesFor(Persona p) => switch (p) {
     Persona.student => studentSubjects,
     Persona.professional => professionalSubjects,
-    Persona.parent => parentSubjects,
   };
 
   /// The daily goal before the user has chosen one.
@@ -451,6 +444,5 @@ class SeedData {
   static List<int> goalSuggestions(Persona p) => switch (p) {
     Persona.student => const [120, 180, 300],
     Persona.professional => const [120, 240, 360],
-    Persona.parent => const [60, 120, 180],
   };
 }

@@ -67,3 +67,5 @@ app.*.map.json
 # Local Firebase rules test dependencies and emulator state.
 /tool/firebase/node_modules/
 /.firebase/
+
+/functions/node_modules/

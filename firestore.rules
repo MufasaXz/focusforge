@@ -1,10 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
+    function signedIn() {
+      return request.auth != null &&
+        !exists(/databases/$(database)/documents/accountDeletions/$(request.auth.uid));
+    }
     function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
     function self(uid) { return signedIn() && request.auth.uid == uid; }
-    function strongPairCode(code) { return code.matches('^[A-HJ-NP-Z2-9]{16}$'); }
     function boundedInt(value, maximum) { return value is int && value >= 0 && value <= maximum; }
     function dayKey(value) { return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function localTimestamp(value) {
@@ -48,68 +50,10 @@ service cloud.firestore {
         badgeKept(before, after, 'perfectionist') && badgeKept(before, after, 'subject_master') &&
         badgeKept(before, after, 'night_shift') && badgeKept(before, after, 'breath_master');
     }
-    function progressShape(d) {
-      return d.keys().hasOnly(['minutes','sessions','goalMinutes','streak','topSubject','day','updatedAt','weekMinutes','weekSessions','weekDays']) &&
-        boundedInt(d.minutes, 1440) && boundedInt(d.sessions, 1440) &&
-        boundedInt(d.goalMinutes, 1440) && boundedInt(d.streak, 365000) &&
-        (!('topSubject' in d) || (d.topSubject is string && d.topSubject.size() <= 120)) &&
-        dayKey(d.day) && localTimestamp(d.updatedAt) &&
-        boundedInt(d.weekMinutes, 10080) && boundedInt(d.weekSessions, 10080) &&
-        d.weekDays is list && d.weekDays.size() == 7 &&
-        boundedInt(d.weekDays[0], 1440) && boundedInt(d.weekDays[1], 1440) &&
-        boundedInt(d.weekDays[2], 1440) && boundedInt(d.weekDays[3], 1440) &&
-        boundedInt(d.weekDays[4], 1440) && boundedInt(d.weekDays[5], 1440) &&
-        boundedInt(d.weekDays[6], 1440);
-    }
-    function catalogShape(d) {
-      return d.keys().hasOnly(['apps','updatedAt']) &&
-        d.apps is list && d.apps.size() <= 1024 && localTimestamp(d.updatedAt);
-    }
-    function remoteRulesShape(d) {
-      return d.keys().hasOnly(['apps','youtube','enforced','updatedAt']) &&
-        d.apps is list && d.apps.size() <= 1024 && d.enforced is bool &&
-        d.youtube is map && d.youtube.keys().hasOnly(['shorts','feed','focusOnly']) &&
-        d.youtube.shorts is bool && d.youtube.feed is bool && d.youtube.focusOnly is bool &&
-        localTimestamp(d.updatedAt);
-    }
-    function guardian(uid) {
-      return signedIn() && exists(/databases/$(database)/documents/users/$(uid)/guardian/link) &&
-        get(/databases/$(database)/documents/users/$(uid)/guardian/link).data.parentUid == request.auth.uid;
-    }
-    function pairValid(code, child) {
-      let path = /databases/$(database)/documents/pairCodes/$(code);
-      return strongPairCode(code) && exists(path) && get(path).data.childUid == child &&
-        !('claimedBy' in get(path).data) &&
-        get(path).data.expiresAt > request.time.toMillis() &&
-        getAfter(path).data.claimedBy == request.auth.uid;
-    }
-    match /pairCodes/{code} {
-      // Missing high-entropy paths can be read to check collisions while
-      // minting. Expired/claimed records are no longer lookup directories.
-      allow get: if signedIn() &&
-        ((!exists(/databases/$(database)/documents/pairCodes/$(code)) && strongPairCode(code)) ||
-         (exists(/databases/$(database)/documents/pairCodes/$(code)) &&
-          (self(resource.data.childUid) ||
-           ('claimedBy' in resource.data && request.auth.uid == resource.data.claimedBy) ||
-           (strongPairCode(code) && !('claimedBy' in resource.data) &&
-            resource.data.expiresAt > request.time.toMillis()))));
-      allow list: if false;
-      allow create: if signedIn() && strongPairCode(code) &&
-        request.resource.data.keys().hasOnly(['childUid','childName','createdAt','expiresAt']) &&
-        request.resource.data.childUid == request.auth.uid &&
-        request.resource.data.childName is string && request.resource.data.childName.size() <= 60 &&
-        localTimestamp(request.resource.data.createdAt) && request.resource.data.expiresAt is int &&
-        request.resource.data.expiresAt > request.time.toMillis() &&
-        request.resource.data.expiresAt <= request.time.toMillis() + 960000;
-      allow update: if signedIn() && strongPairCode(code) && !('claimedBy' in resource.data) &&
-        resource.data.childUid != request.auth.uid &&
-        resource.data.expiresAt > request.time.toMillis() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy']) &&
-        request.resource.data.claimedBy == request.auth.uid &&
-        getAfter(/databases/$(database)/documents/users/$(resource.data.childUid)/guardian/link).data.parentUid == request.auth.uid &&
-        getAfter(/databases/$(database)/documents/users/$(resource.data.childUid)/guardian/link).data.pairCode == code;
-      allow delete: if self(resource.data.childUid);
-    }
+    // Retired monitoring data is inaccessible even to older installed apps.
+    // Cleanup runs through trusted Admin SDK tooling, never client permissions.
+    match /pairCodes/{code} { allow read, write: if false; }
+    match /accountDeletions/{uid} { allow read, write: if false; }
     match /users/{uid} {
       allow read: if self(uid);
       allow write: if self(uid);
@@ -122,53 +66,9 @@ service cloud.firestore {
           achievementsKept(resource.data.unlockedAt, request.resource.data.unlockedAt);
         allow delete: if self(uid);
       }
-      match /children/{child} {
-        allow read: if self(uid);
-        allow create, update: if self(uid) &&
-          getAfter(/databases/$(database)/documents/users/$(child)/guardian/link).data.parentUid == uid &&
-          request.resource.data.keys().hasOnly(['name','linkedAt']) &&
-          request.resource.data.name is string && request.resource.data.name.size() <= 60 &&
-          request.resource.data.linkedAt is int;
-        allow delete: if self(uid) || (self(child) && guardianRecordMatches(uid, child) &&
-          !existsAfter(/databases/$(database)/documents/users/$(child)/guardian/link));
+      match /{retired}/{record} {
+        allow read, write: if false;
       }
-      match /guardian/{doc} {
-        allow read: if self(uid) || guardian(uid);
-        allow create: if doc == 'link' && signedIn() && !self(uid) &&
-          request.resource.data.keys().hasOnly(['parentUid','parentName','linkedAt','pairCode']) &&
-          request.resource.data.parentUid == request.auth.uid &&
-          request.resource.data.parentName is string && request.resource.data.parentName.size() <= 60 &&
-          request.resource.data.linkedAt is int && request.resource.data.pairCode is string &&
-          pairValid(request.resource.data.pairCode, uid) &&
-          getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/children/$(uid)).data.linkedAt == request.resource.data.linkedAt;
-        allow update: if doc == 'link' && guardian(uid) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['codeSalt','codeHash']) &&
-          ((!('codeSalt' in request.resource.data) && !('codeHash' in request.resource.data)) ||
-            (request.resource.data.codeSalt is string && request.resource.data.codeSalt.size() <= 128 &&
-             request.resource.data.codeHash is string && request.resource.data.codeHash.size() == 64));
-        allow delete: if doc == 'link' && (self(uid) || guardian(uid)) &&
-          !existsAfter(/databases/$(database)/documents/users/$(resource.data.parentUid)/children/$(uid)) &&
-          !existsAfter(/databases/$(database)/documents/users/$(uid)/remoteRules/current);
-      }
-      match /progress/{doc} {
-        allow read: if self(uid) || (doc == 'current' && guardian(uid));
-        allow create, update: if self(uid) && doc == 'current' && progressShape(request.resource.data);
-        allow delete: if self(uid);
-      }
-      match /remoteRules/{doc} {
-        allow read: if self(uid) || (doc == 'current' && guardian(uid));
-        allow create, update: if doc == 'current' && guardian(uid) && remoteRulesShape(request.resource.data);
-        allow delete: if guardian(uid) || (self(uid) &&
-          !existsAfter(/databases/$(database)/documents/users/$(uid)/guardian/link));
-      }
-      match /catalog/{doc} {
-        allow read: if self(uid) || (doc == 'current' && guardian(uid));
-        allow create, update: if self(uid) && doc == 'current' && catalogShape(request.resource.data);
-        allow delete: if self(uid);
-      }
-    }
-    function guardianRecordMatches(parent, child) {
-      return get(/databases/$(database)/documents/users/$(child)/guardian/link).data.parentUid == parent;
     }
     match /leaderboard/{week}/entries/{uid} {
       allow read: if signedIn();

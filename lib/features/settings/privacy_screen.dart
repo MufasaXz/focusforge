@@ -85,7 +85,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 subtitle: Text(
                   user.isAnonymous
                       ? 'Erase your profile and every local record'
-                      : 'Delete your sign-in and remove local data',
+                      : 'Delete your account and associated cloud data',
                 ),
                 leading: _busy
                     ? const SizedBox.square(
@@ -121,11 +121,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
           ),
           AppSection(
             title: 'What’s in the cloud',
-            footnote: user.isAnonymous
-                ? 'Group sharing needs a linked account. Parent sharing starts '
-                      'only when you pair this device.'
-                : 'Sharing starts when you join a group, opt into the board, '
-                      'or pair with a parent.',
+            footnote: 'Sharing starts when you join a group or opt into the board. Badge backups are private.',
             children: const [
               ListTile(
                 title: Text('Your account'),
@@ -155,13 +151,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   'Display name, account ID and weekly focus minutes · Visible to signed-in users when you opt in',
                 ),
                 leading: Icon(Icons.leaderboard_outlined),
-              ),
-              ListTile(
-                title: Text('Parent control'),
-                subtitle: Text(
-                  'Paired device totals, top subject, installed app names and package IDs, and parent rules · Your linked parent only',
-                ),
-                leading: Icon(Icons.shield_outlined),
               ),
             ],
           ),
@@ -348,15 +337,24 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final auth = ref.read(authServiceProvider);
+    if (auth.usesRemoteCredentials && !auth.signedIn) {
+      showAppSnack(
+        context,
+        'Sign in to delete your cloud account. To erase only this device, clear app storage in Android Settings.',
+      );
+      context.goNamed(AppRoutes.auth);
+      return;
+    }
     final confirmed = await showAppConfirmDialog(
       context: context,
       title: 'Delete your account?',
-      message:
-          'Every local record is erased: profile, sessions, shields and '
-          'badges. Group memberships and their progress rows are removed '
-          'before the account is deleted. Parent links, shared summaries and '
-          'board entries known to this device are removed. Older board entries '
-          'or pairing codes from other devices may need support to remove. This cannot be undone.',
+      message: auth.usesRemoteCredentials
+          ? 'This permanently deletes your sign-in, private badge backup, group memberships, '
+                'shared progress and every leaderboard entry. Legacy parent-sharing records are '
+                'also removed. Local profile, sessions, shields and badges on this device are erased '
+                'after the server confirms deletion. This cannot be undone.'
+          : 'This permanently erases your device profile, sessions, shields and badges. No cloud account is connected in this build.',
       requirePhrase: 'DELETE',
       fieldHint: 'Type DELETE',
       confirmLabel: 'Delete everything',
@@ -369,7 +367,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     // Read while the context is certainly live: the credential call below
     // crosses an async gap before the reset needs the container.
     final container = ProviderScope.containerOf(context, listen: false);
-    final auth = ref.read(authServiceProvider);
     String? password;
     if (auth.usesRemoteCredentials &&
         !ref.read(userProvider).isAnonymous &&

@@ -8,7 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/providers/parent_providers.dart';
+import '../../core/providers/community_providers.dart';
+import '../../shared/widgets/community_safety.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/services/study_group_service.dart';
 import '../../core/utils/format.dart';
@@ -43,6 +44,7 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
   }
 
   Future<void> _create() async {
+    if (!await confirmCommunityTerms(context) || !mounted) return;
     final name = await showAppInputDialog(
       context: context,
       title: 'Start a study group',
@@ -79,6 +81,7 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
   }
 
   Future<void> _join() async {
+    if (!await confirmCommunityTerms(context) || !mounted) return;
     final code = await showAppInputDialog(
       context: context,
       title: 'Join a study group',
@@ -455,12 +458,16 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
               label: const Text('Retry member progress'),
             ),
             data: (list) {
-              final rows = [...list]
-                ..sort(
-                  (a, b) => (b.week == week ? b.minutes : 0).compareTo(
-                    a.week == week ? a.minutes : 0,
-                  ),
-                );
+              final hidden = ref.watch(blockedCommunityUsersProvider);
+              final rows =
+                  [
+                    for (final member in list)
+                      if (!hidden.contains(member.uid)) member,
+                  ]..sort(
+                    (a, b) => (b.week == week ? b.minutes : 0).compareTo(
+                      a.week == week ? a.minutes : 0,
+                    ),
+                  );
               return AppSection(
                 title: 'Completed focus',
                 children: [
@@ -479,15 +486,37 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
                             ? 'Focusing now'
                             : 'Ready for another session',
                       ),
-                      trailing: Text(
-                        formatHoursShort(
-                          (member.week == week ? member.minutes : 0) / 60,
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            formatHoursShort(
+                              (member.week == week ? member.minutes : 0) / 60,
+                            ),
+                          ),
+                          if (member.uid != uid)
+                            CommunityMemberMenu(
+                              uid: member.uid,
+                              name: member.name,
+                              groupId: group.id,
+                            ),
+                        ],
                       ),
                     ),
                 ],
               );
             },
+          ),
+          const SizedBox(height: Gap.md),
+          TextButton.icon(
+            onPressed: () => reportCommunityContent(
+              context,
+              uid: group.ownerUid,
+              name: group.name,
+              groupId: group.id,
+            ),
+            icon: const Icon(Icons.flag_outlined),
+            label: const Text('Report group'),
           ),
           const SizedBox(height: Gap.xl),
           OutlinedButton.icon(

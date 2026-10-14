@@ -2,9 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
@@ -120,113 +118,6 @@ class FocusOverview extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class ProfileShortcuts extends StatelessWidget {
-  const ProfileShortcuts({super.key, required this.guardian});
-  final bool guardian;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacked =
-            constraints.maxWidth < 330 ||
-            MediaQuery.textScalerOf(context).scale(14) > 20;
-        final width = stacked
-            ? constraints.maxWidth
-            : (constraints.maxWidth - Gap.md) / 2;
-        return Wrap(
-          spacing: Gap.md,
-          runSpacing: Gap.md,
-          children: [
-            for (final action in [
-              (
-                guardian
-                    ? Icons.family_restroom_outlined
-                    : Icons.play_arrow_rounded,
-                guardian ? 'Parent dashboard' : 'Start focusing',
-                guardian ? AppRoutes.parentControl : AppRoutes.focus,
-                guardian
-                    ? 'Support their study rhythm'
-                    : 'One subject. A clear mind.',
-                cs.primary,
-              ),
-              (
-                Icons.shield_outlined,
-                'Manage Shield',
-                AppRoutes.shield,
-                'Keep distractions outside',
-                cs.tertiary,
-              ),
-            ])
-              SizedBox(
-                width: width,
-                child: ContentCard(
-                  color: Color.alphaBlend(
-                    action.$5.withValues(alpha: .08),
-                    cs.surfaceContainerLow,
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(Radii.item),
-                    onTap: () => context.goNamed(action.$3),
-                    child: Padding(
-                      padding: const EdgeInsets.all(Gap.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: action.$5.withValues(alpha: .12),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: action.$5.withValues(alpha: .18),
-                                  ),
-                                ),
-                                child: Icon(
-                                  action.$1,
-                                  color: action.$5,
-                                  size: 26,
-                                ),
-                              ),
-                              Icon(
-                                Icons.north_east_rounded,
-                                color: cs.onSurfaceVariant,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: Gap.lg),
-                          Text(
-                            action.$2,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          const SizedBox(height: Gap.sm),
-                          Text(
-                            action.$4,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

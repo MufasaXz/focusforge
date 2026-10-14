@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/icon_registry.dart';
-import '../models/parent.dart';
 import '../models/shield.dart';
 import '../services/local_store.dart';
 import '../services/native_shield_service.dart';
@@ -71,26 +70,18 @@ void syncShield(
   List<WhitelistEntry>? whitelist,
   YoutubeRules? youtube,
   StrictModeConfig? strictMode,
-  RemoteBlocks? remote,
 }) {
   final service = ref.read(shieldServiceProvider);
   // The explicit type is load-bearing: `??` whose result is a method-chain
   // receiver has no context type, so Dart would infer the `ref.read` result as
   // nullable.
   final List<WhitelistEntry> apps = whitelist ?? ref.read(whitelistProvider);
-  final RemoteBlocks blocks = remote ?? ref.read(remoteBlocksProvider);
   final YoutubeRules localYoutube = youtube ?? ref.read(youtubeRulesProvider);
-  // A parent's surface rules win while they are in force: they were set on
-  // another device and the child cannot see or edit them here.
-  final YoutubeRules surfaces = blocks.youtube.any
-      ? blocks.youtube
-      : localYoutube;
   final config = ShieldConfig(
     whitelist: apps,
-    youtube: surfaces,
+    youtube: localYoutube,
     strictMode: strictMode ?? ref.read(strictModeProvider),
     focusUntil: focusWindowEnd(ref.read(timerProvider)),
-    remote: blocks.apps,
   );
   // Fire and forget — a slow channel must never stall a toggle.
   unawaited(service.applyConfig(config));
@@ -105,48 +96,11 @@ DateTime? focusWindowEnd(TimerState timer) {
   return timer.targetEnd ?? DateTime.now().add(timer.remaining);
 }
 
-/// The blocks a parent has set for this device.
-///
-/// Held here rather than fetched by the engine: the parent layer watches
-/// Firestore and pushes what it finds in, and every path that rebuilds the
-/// config reads the same value — so a local toggle cannot quietly drop a
-/// parent's rule on its way to the service.
-class RemoteBlocksNotifier extends Notifier<RemoteBlocks> {
-  @override
-  RemoteBlocks build() {
-    final uid = ref.watch(userProvider.select((user) => user.uid));
-    final cached = ref.read(localStoreProvider).getMap(StoreKeys.remoteBlocks);
-    if (uid.isEmpty || cached?['uid'] != uid) return const RemoteBlocks();
-    return RemoteBlocks.fromJson(cached?['blocks']).inForce;
-  }
-
-  /// Replaces the parent's rules and re-pushes the config.
-  void set(RemoteBlocks next) {
-    final wasEmpty = state.apps.isEmpty && !state.youtube.any;
-    final isEmpty = next.apps.isEmpty && !next.youtube.any;
-    // Nothing on either side is not a change worth a channel call.
-    if (wasEmpty && isEmpty) return;
-    state = next;
-    final uid = ref.read(userProvider).uid;
-    // Restore the last confirmed rules before the cold-start engine push.
-    // A backend error must not silently remove protection on a restart.
-    unawaited(
-      ref
-          .read(localStoreProvider)
-          .setMap(StoreKeys.remoteBlocks, {'uid': uid, 'blocks': next.toJson()})
-          .catchError((Object _) {}),
-    );
-    // The new value is passed rather than re-read: this notifier reading its
-    // own provider is the self-dependency syncShield's contract exists to
-    // avoid.
-    syncShield(ref, remote: next);
-  }
-}
-
-final remoteBlocksProvider =
-    NotifierProvider<RemoteBlocksNotifier, RemoteBlocks>(
-      RemoteBlocksNotifier.new,
-    );
+/// Push local rules at launch and whenever the focus timer changes.
+final shieldSyncBridgeProvider = Provider<void>((ref) {
+  ref.listen(timerProvider, (_, next) => syncShield(ref));
+  syncShield(ref);
+});
 
 // -- App rules ---------------------------------------------------------------
 

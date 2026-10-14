@@ -282,7 +282,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 2,
                   child: Text(
-                    'Sign in for study groups, the leaderboard and parent linking.',
+                    'Sign in for study groups, the leaderboard and private badge backups.',
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),

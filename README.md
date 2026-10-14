@@ -50,13 +50,13 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 
 **A clock that feels like yours.** Choose your clock face and palette, switch between Day and Dark, or use AMOLED black. Bring the timer to your home screen with **Retro clock**, **Study session**, and **Daily goal** widgets that follow your theme. Running timers also use an ongoing Android countdown notification.
 
-**A little company goes a long way.** Create or join a private study group with an invite code, work toward a shared weekly goal, and see who is focusing. Optional parent pairing lets a parent view study summaries and manage distraction rules across paired devices.
+**A little company goes a long way.** Create or join a private study group with an invite code, work toward a shared weekly goal, and see who is focusing.
 
 ## Pick up where you left off.
 
 Returning accounts keep their saved setup on the same installation. Earned badge IDs and dates can also back up privately to your linked account, ready to restore when you sign in again—even months later. The Achievements screen shows whether the backup is saved, syncing, or waiting for a connection.
 
-The timer works without an account. Detailed study history and setup stay on your device; the account backup covers earned achievements. Groups and parent pairing share limited summaries when you choose those features. You can delete your account from the app.
+The timer works without an account. Detailed study history and setup stay on your device; the account backup covers earned achievements. Groups and the optional leaderboard share limited summaries when you choose those features. You can delete your account from the app.
 
 <details>
 <summary><strong>Permissions, cloud backup & device support</strong></summary>

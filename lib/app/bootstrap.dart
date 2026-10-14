@@ -7,7 +7,6 @@ import '../core/models/shield.dart';
 import '../core/models/user.dart';
 import '../core/providers/app_providers.dart';
 import '../core/providers/audio_providers.dart';
-import '../core/providers/parent_providers.dart';
 import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
@@ -141,23 +140,9 @@ Future<ProviderContainer> bootstrap() async {
       .read(breathEventsProvider.notifier)
       .hydrate(store.getList(StoreKeys.breathEvents));
 
-  // -- Parent control --------------------------------------------------------
-  //
-  // Nothing to hydrate: the security code lives in the child's link record,
-  // written by the parent's phone, so it arrives with the link itself rather
-  // than being kept here.
-
-  // Reading the bridge installs the timer → engine and parent → engine paths
-  // and pushes the whole config once. The engine outlives the app and can be
-  // holding rules from before it was closed — including a focus window that
-  // has since ended — so the launch push is what reconciles the two sides
-  // rather than a nicety.
+  // Replace stale native remote rules with the user's local choices.
+  await store.setMap(StoreKeys.remoteBlocks, {});
   container.read(shieldSyncBridgeProvider);
-  // And a linked child publishes its summary for the parent to read. Nothing
-  // is sent while no parent is linked.
-  container.read(parentProgressPublisherProvider);
-  // The app list a parent picks blocks from, published on the same terms.
-  container.read(catalogPublisherProvider);
 
   // -- Social ----------------------------------------------------------------
   container
@@ -278,13 +263,10 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(whitelistProvider);
   container.invalidate(youtubeRulesProvider);
   container.invalidate(strictModeProvider);
-  container.invalidate(remoteBlocksProvider);
   container.invalidate(breathEventsProvider);
   container.invalidate(notificationsProvider);
   container.invalidate(volumesProvider);
   container.invalidate(boardOptInProvider);
-  container.invalidate(selectedChildProvider);
-  container.invalidate(parentLockProvider);
 
   // Every shield mutation funnels through `syncShield`, so invalidation alone
   // would leave the platform layer holding the deleted configuration. Writing

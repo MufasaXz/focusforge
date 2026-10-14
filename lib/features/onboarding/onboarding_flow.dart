@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
-import 'device_step.dart';
 import 'goal_step.dart';
 import 'permissions_step.dart';
 import 'persona_step.dart';
@@ -20,8 +18,7 @@ import 'subjects_step.dart';
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
 /// widget owns the whole journey: splash, account, persona, profile, subjects,
-/// goal, permissions, celebration — and, for a parent, the question
-/// about whose device this is. The last step flips `completeOnboarding()` and
+/// goal, permissions and celebration. The last step flips `completeOnboarding()` and
 /// the router takes it from there.
 ///
 /// A [PageView] rather than an [AnimatedSwitcher] because it keeps each step
@@ -38,9 +35,6 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   static const _authIndex = 1;
-
-  /// A parent chooses between studying here and managing a child's phone.
-  static const _deviceIndex = 3;
 
   final _controller = PageController();
   int _index = 0;
@@ -60,22 +54,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     super.dispose();
   }
 
-  /// Whether this run asks the device question at all.
-  bool get _asksDevice => ref.read(userProvider).persona == Persona.parent;
-
-  List<int> get _steps {
-    final user = ref.read(userProvider);
-    final guardian = user.persona == Persona.parent && user.isGuardian;
-    return [
-      0,
-      1,
-      2,
-      if (_asksDevice) _deviceIndex,
-      4,
-      if (!guardian) ...[5, 6, 7],
-      8,
-    ];
-  }
+  List<int> get _steps => const [0, 1, 2, 4, 5, 6, 7, 8];
 
   Future<void> _go(int step) async {
     final page = _steps.indexOf(step);
@@ -117,18 +96,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     if (previous >= 0) unawaited(_go(steps[previous]));
   }
 
-  /// Leaves the persona step.
-  ///
-  /// Choosing anything but "Parent" answers the device question by itself —
-  /// this is the user's own phone — so a parent answer left over from an
-  /// earlier pass is cleared rather than carried into a flow that no longer
-  /// shows the page that set it.
   void _afterPersona() {
-    if (_index != 2) return;
-    if (!_asksDevice && ref.read(userProvider).isGuardian) {
-      unawaited(ref.read(userProvider.notifier).setGuardianMode(false));
-    }
-    _next();
+    if (_index == 2) _next();
   }
 
   void _afterSplash() {
@@ -142,7 +111,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     // Watched rather than read: the persona decides whether the device page
     // is part of this run, so the stepper has to follow the answer the
     // moment it changes.
-    ref.watch(userProvider.select((u) => (u.persona, u.isGuardian)));
+    ref.watch(userProvider.select((u) => u.persona));
     final steps = _steps;
     final total = steps.length - 1;
     final shown = steps.indexOf(_index);
@@ -204,7 +173,6 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     0 => SplashStep(onDone: _afterSplash),
     1 => AuthScreen(embedded: true, onAuthenticated: () => _advanceFrom(1)),
     2 => PersonaStep(onNext: _afterPersona),
-    3 => DeviceStep(onNext: () => _advanceFrom(3)),
     4 => ProfileStep(onNext: () => _advanceFrom(4)),
     // Rebuild persona-specific recommendations when that answer changes.
     5 => SubjectsStep(

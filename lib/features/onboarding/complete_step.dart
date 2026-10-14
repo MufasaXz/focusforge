@@ -63,7 +63,6 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   Future<void> _finish() async {
     if (_finishing) return;
     setState(() => _finishing = true);
-    final guardian = ref.read(userProvider).isGuardian;
     try {
       await ref.read(userProvider.notifier).completeOnboarding();
     } catch (_) {
@@ -71,14 +70,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
       rethrow;
     }
     if (!mounted) return;
-    // A parent's device has one thing left to do, and it needs the child's
-    // phone in hand. Landing them on the page that asks for the code is the
-    // difference between pairing now and pairing never.
-    context.go(
-      guardian
-          ? AppRoutes.paths[AppRoutes.parentControl]!
-          : AppRoutes.paths[AppRoutes.dashboard]!,
-    );
+    context.go(AppRoutes.paths[AppRoutes.dashboard]!);
   }
 
   @override
@@ -93,14 +85,11 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final preset = ref.watch(
       presetsProvider,
     )[ref.watch(timerProvider).presetIndex];
-    final guardian = ref.watch(userProvider).isGuardian;
 
     return StepScaffold(
       title: "You're all set",
-      subtitle: guardian
-          ? 'Next: link your child\'s phone.'
-          : 'Here is what FocusForge will do for you.',
-      primaryLabel: guardian ? 'Link a child’s phone' : 'Open FocusForge',
+      subtitle: 'Here is what FocusForge will do for you.',
+      primaryLabel: 'Open FocusForge',
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
@@ -128,14 +117,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                     value: persona.label,
                     label: 'Profile',
                   ),
-                  if (guardian)
-                    _StatTile(
-                      icon: Icons.family_restroom_rounded,
-                      color: cs.tertiary,
-                      value: 'Parent control',
-                      label: 'This phone',
-                    )
-                  else ...[
+                  ...[
                     _StatTile(
                       icon: Icons.menu_book_rounded,
                       color: cs.secondary,
@@ -179,27 +161,17 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               child: Column(
                 children: [
                   _Tip(
-                    icon: guardian
-                        ? Icons.phonelink_rounded
-                        : Icons.timer_outlined,
-                    text: guardian
-                        ? 'Install FocusForge on your child’s phone too.'
-                        : 'Start or resume a session from Home.',
+                    icon: Icons.timer_outlined,
+                    text: 'Start or resume a session from Home.',
                   ),
                   _Tip(
                     icon: Icons.insights_outlined,
-                    text: guardian
-                        ? 'Open Parent control there to get their pairing code.'
-                        : 'Tap a chart day to see your completed sessions.',
+                    text: 'Tap a chart day to see your completed sessions.',
                     divider: true,
                   ),
                   _Tip(
-                    icon: guardian
-                        ? Icons.family_restroom_rounded
-                        : Icons.shield_outlined,
-                    text: guardian
-                        ? 'Add your child\'s phone from Parent control.'
-                        : 'Tune what gets blocked in the Shield tab.',
+                    icon: Icons.shield_outlined,
+                    text: 'Tune what gets blocked in the Shield tab.',
                     divider: true,
                   ),
                 ],

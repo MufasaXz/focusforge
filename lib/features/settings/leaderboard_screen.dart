@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/community_providers.dart';
+import '../../shared/widgets/community_safety.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
@@ -60,7 +62,11 @@ class LeaderboardScreen extends ConsumerWidget {
       );
     }
 
-    final board = ref.watch(leaderboardProvider);
+    final hidden = ref.watch(blockedCommunityUsersProvider);
+    final board = [
+      for (final entry in ref.watch(leaderboardProvider))
+        if (!hidden.contains(entry.uid)) entry,
+    ];
     final myRow = ref.watch(myRankProvider);
     final optedIn = ref.watch(boardOptInProvider);
     final available = ref.watch(leaderboardServiceProvider).available;
@@ -145,28 +151,39 @@ class _BoardRowTile extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
             );
 
-    return ListTile(
-      tileColor: entry.isMe ? cs.primaryContainer : null,
-      leading: SizedBox(width: 28, child: Text('$rank', style: rankStyle)),
-      title: Text(
-        entry.isMe ? '${entry.name} (you)' : entry.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: entry.isMe ? cs.onPrimaryContainer : null,
-        ),
-      ),
-      subtitle: MediaQuery.textScalerOf(context).scale(14) > 19
-          ? Text(formatHoursShort(entry.hours))
-          : null,
-      trailing: MediaQuery.textScalerOf(context).scale(14) > 19
-          ? null
-          : Text(
-              formatHoursShort(entry.hours),
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-              ),
+    return Column(
+      children: [
+        ListTile(
+          tileColor: entry.isMe ? cs.primaryContainer : null,
+          leading: SizedBox(width: 28, child: Text('$rank', style: rankStyle)),
+          title: Text(
+            entry.isMe ? '${entry.name} (you)' : entry.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: entry.isMe ? cs.onPrimaryContainer : null,
             ),
+          ),
+          subtitle: MediaQuery.textScalerOf(context).scale(14) > 19
+              ? Text(formatHoursShort(entry.hours))
+              : null,
+          trailing: MediaQuery.textScalerOf(context).scale(14) > 19
+              ? null
+              : Text(
+                  formatHoursShort(entry.hours),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: entry.isMe
+                        ? cs.onPrimaryContainer
+                        : cs.onSurfaceVariant,
+                  ),
+                ),
+        ),
+        if (!entry.isMe && entry.uid.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: CommunityMemberMenu(uid: entry.uid, name: entry.name),
+          ),
+      ],
     );
   }
 }
@@ -205,10 +222,12 @@ class _BoardSwitch extends ConsumerWidget {
                         : myRow == null
                         ? 'On — publishing this week\'s hours'
                         : 'On — ${formatHoursShort(minutes / 60)} published'
-                  : 'Off — nothing about your week leaves this device',
+                  : 'Off — no score is published to this board',
             ),
-            onChanged: (value) =>
-                ref.read(boardOptInProvider.notifier).set(value),
+            onChanged: (value) async {
+              if (value && !await confirmCommunityTerms(context)) return;
+              await ref.read(boardOptInProvider.notifier).set(value);
+            },
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.md),

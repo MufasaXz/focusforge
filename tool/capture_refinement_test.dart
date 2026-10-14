@@ -10,17 +10,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/social.dart';
-import 'package:focusforge/core/models/parent.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
-import 'package:focusforge/core/providers/parent_providers.dart';
 import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/study_group_service.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/settings/study_groups_screen.dart';
-import 'package:focusforge/features/parent/parent_control_screen.dart';
 import 'package:focusforge/features/shield/breath_gate.dart';
 
 class _CaptureGroups extends UnavailableStudyGroupService {
@@ -92,16 +89,7 @@ void main() {
             ),
           ]),
         ),
-        guardianProvider.overrideWith(
-          (ref) => Stream.value(
-            GuardianLink(
-              uid: 'parent',
-              name: 'Sam Morgan',
-              linkedAt: now,
-              code: ParentCode.of('1234'),
-            ),
-          ),
-        ),
+
       ],
     );
     addTearDown(c.dispose);
@@ -157,9 +145,6 @@ void main() {
       await tester.tap(find.text('The quiet corner'));
       await tester.pumpAndSettle();
       await capture('group-detail-$mode');
-      await showPage(const ParentControlScreen(), dark);
-      await tester.pumpAndSettle();
-      await capture('parent-link-$mode');
       await showPage(
         const BreathGateScreen(args: BreathGateArgs(appName: 'YouTube')),
         dark,

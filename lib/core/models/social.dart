@@ -94,12 +94,14 @@ class GroupMember {
 @immutable
 class LeaderboardEntry {
   const LeaderboardEntry({
+    this.uid = '',
     required this.name,
     required this.hours,
     this.isMe = false,
     this.group,
   });
 
+  final String uid;
   final String name;
   final double hours;
   final bool isMe;

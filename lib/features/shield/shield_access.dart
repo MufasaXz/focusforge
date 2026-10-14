@@ -15,7 +15,6 @@ final shieldPermissionManagerProvider = Provider<PermissionManager>(
 
 /// Checks the grants for a local rule before the UI can save it as enabled.
 ///
-/// Remote parent rules are enforced on the child device and do not call this.
 /// Browser and desktop previews can still configure rules without Android APIs.
 Future<bool> ensureShieldAccess(
   BuildContext context,

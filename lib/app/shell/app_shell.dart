@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -98,14 +97,10 @@ class _AppShellState extends ConsumerState<AppShell>
   /// The package travels with the gate rather than being dropped here — it is
   /// what the gate hands back when the pause is over.
   Future<void> _checkBlockedLaunch() async {
-    if (await WidgetService.takeFocusLaunch() &&
-        mounted &&
-        !ref.read(userProvider).isGuardian) {
+    if (await WidgetService.takeFocusLaunch() && mounted) {
       widget.navigationShell.goBranch(2);
     }
-    if (await WidgetService.takeDashboardLaunch() &&
-        mounted &&
-        !ref.read(userProvider).isGuardian) {
+    if (await WidgetService.takeDashboardLaunch() && mounted) {
       widget.navigationShell.goBranch(0);
     }
     final service = ref.read(shieldServiceProvider);
@@ -145,13 +140,7 @@ class _AppShellState extends ConsumerState<AppShell>
 
   /// The branches this device's bar offers, in bar order.
   ///
-  /// A parent's app is three destinations: the dashboard, the shield and
-  /// their profile. The Focus branch still exists and is still reachable —
-  /// the dashboard's own call to action starts a session — but a parent's
-  /// device is not the one being studied, and a tab for it is a tab that
-  /// never gets used.
-  List<int> get _visibleBranches =>
-      ref.read(userProvider).isGuardian ? const [0, 1, 3] : const [0, 1, 2, 3];
+  List<int> get _visibleBranches => const [0, 1, 2, 3];
 
   @override
   Widget build(BuildContext context) {
@@ -196,9 +185,7 @@ class _AppShellState extends ConsumerState<AppShell>
       ),
     ];
 
-    final branches = ref.watch(userProvider.select((u) => u.isGuardian))
-        ? const [0, 1, 3]
-        : const [0, 1, 2, 3];
+    final branches = const [0, 1, 2, 3];
     final destinations = [for (final branch in branches) all[branch]];
     // The Focus branch can be current while it is not a destination, because
     // the dashboard sends a session there. Home stands in for it rather than

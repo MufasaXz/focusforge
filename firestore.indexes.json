@@ -1,1 +1,21 @@
-{"indexes": [], "fieldOverrides": []}
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "guardian",
+      "fieldPath": "parentUid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "accountDeletions",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
+}

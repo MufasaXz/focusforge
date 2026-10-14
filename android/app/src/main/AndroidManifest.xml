@@ -138,6 +138,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent><action android:name="android.intent.action.DIAL"/><data android:scheme="tel"/></intent>
+        <intent><action android:name="android.intent.action.EMERGENCY_ASSISTANCE"/></intent>
+        <intent><action android:name="com.android.phone.EmergencyDialer.DIAL"/></intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

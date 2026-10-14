@@ -170,9 +170,8 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
-                  'Your detailed study log stays on this device. If you pair '
-                  'a parent account, study summaries and app rules are shared '
-                  'with that parent.',
+                  'Your detailed study log and installed app list stay on this device. '
+                  'Optional study groups share only the totals and timer status you choose.',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),

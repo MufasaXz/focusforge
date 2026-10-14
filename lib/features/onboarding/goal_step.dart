@@ -220,8 +220,5 @@ class _GoalStepState extends ConsumerState<GoalStep> {
     Persona.professional =>
       'A protected block beats a busy day. Deep work is what compounds, '
           'so defend the same window every day.',
-    Persona.parent =>
-      'A small goal your child can hit every day beats a big one they '
-          'give up on in a week.',
   };
 }

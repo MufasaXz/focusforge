@@ -8,7 +8,6 @@ import '../services/study_group_service.dart';
 import '../services/local_store.dart';
 import '../services/achievement_service.dart';
 import 'app_providers.dart';
-import 'parent_providers.dart';
 import 'shield_providers.dart';
 import 'study_providers.dart';
 
@@ -738,6 +737,7 @@ final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
   return [
     for (final row in rows)
       LeaderboardEntry(
+        uid: row.uid,
         name: row.name,
         hours: row.minutes / 60,
         isMe: myUid != null && row.uid == myUid,

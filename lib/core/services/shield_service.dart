@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import '../models/parent.dart';
 import '../models/shield.dart';
 
 /// The contract between the app and the native shielding engine.
@@ -81,7 +80,6 @@ class ShieldConfig {
     required this.youtube,
     this.strictMode = const StrictModeConfig(),
     this.focusUntil,
-    this.remote = const [],
     this.graceSeconds = defaultGraceSeconds,
   });
 
@@ -104,13 +102,6 @@ class ShieldConfig {
   /// at the start still lifts on time if the app is never heard from again.
   final DateTime? focusUntil;
 
-  /// The blocks a parent has set for this device.
-  ///
-  /// Merged into the payload after the user's own rules, so a parent's block
-  /// cannot be edited away on the device it applies to — the child can see
-  /// them on the Shield screen, and the engine enforces them either way.
-  final List<RemoteBlock> remote;
-
   final int graceSeconds;
 
   /// Everything the native side needs, and nothing else.
@@ -121,6 +112,7 @@ class ShieldConfig {
   /// the always-allowed tier, produce no rule at all rather than one that
   /// silently does nothing.
   Map<String, dynamic> toChannelPayload() => {
+    'version': 2,
     'apps': {
       for (final e in whitelist)
         if (e.packageId != null && e.tier.isEnforced)
@@ -133,12 +125,6 @@ class ShieldConfig {
             },
             'budgetMinutes': e.budgetMinutes ?? 0,
           },
-      for (final r in remote)
-        r.packageId: {
-          'label': r.name,
-          'mode': r.focusOnly ? 'focus' : 'block',
-          'budgetMinutes': 0,
-        },
     },
     'youtube': youtube.toJson(),
     // Strict mode is passed as a deadline rather than a duration: the engine
