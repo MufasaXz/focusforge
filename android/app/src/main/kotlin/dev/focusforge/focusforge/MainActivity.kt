@@ -5,6 +5,7 @@ import dev.focusforge.focusforge.widgets.FocusWidget
 import dev.focusforge.focusforge.widgets.FocusLiveActivity
 import android.content.res.Configuration
 import io.flutter.plugin.common.MethodChannel
+import dev.focusforge.focusforge.shield.AppBlockingService
 import dev.focusforge.focusforge.shield.ShieldBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -64,9 +65,16 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        AppBlockingService.activityVisible = true
+        AppBlockingService.sync(applicationContext)
         // Includes returning from notification permission/settings changes.
         FocusWidget.refresh(applicationContext)
         FocusLiveActivity.refresh(applicationContext)
+    }
+
+    override fun onPause() {
+        AppBlockingService.activityVisible = false
+        super.onPause()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

@@ -1,7 +1,7 @@
 # Play Protect installation block
 
 Policy reviewed October 14, 2026. Applies to the first-release candidate,
-FocusForge 1.0.0 (build 2022), and earlier APKs with this service.
+FocusForge 1.0.0, and earlier APKs with the optional YouTube service.
 
 Reported warning:
 
@@ -23,20 +23,22 @@ and it is not an APK signature error.
 - isAccessibilityTool=false in the accessibility-service XML, the correct
   declaration for a focus tool. No claim to assist disabilities.
 - Limited window-change event types and YouTube-only view identifier checks.
-  Foreground app identifiers support local rules and pause insights; YouTube
+  Whole-app detection uses UsageEvents instead of Accessibility. YouTube
   screen checks are not retained or uploaded. No gesture injection, key capture,
   SMS permissions or QUERY_ALL_PACKAGES.
 - The existing release signing key is retained for update compatibility.
 
 These changes improve transparency; they **do not guarantee scanner approval**.
-Accessibility is still required by this implementation for selected-app blocking
-and YouTube filtering while
-Flutter is not running. APK signatures verify integrity but do not
+Accessibility remains declared for optional YouTube Shorts/feed filtering.
+Normal app boundaries use Usage access, Draw over other apps and a visible
+user-started foreground service with a Stop action while Flutter is paused. APK signatures verify integrity but do not
 exempt sensitive permissions from Play Protect. Changing the package or signing
 key to hide from scanning does not resolve the cause.
 
-Usage access is a separate optional grant for screen-time totals and daily
-budgets. Play does not mandate a general “app access” setup gate. Keep permission
+Usage access is an optional grant for screen-time totals, daily budgets and
+whole-app foreground detection. Draw over other apps displays the local pause
+screen. The specialUse foreground service needs its honest use-case declaration
+and demonstration in Play Console; this is not a guarantee of approval. Play does not mandate a general “app access” setup gate. Keep permission
 requests tied to implemented features and explain each grant separately.
 
 ## Resolve through review/distribution

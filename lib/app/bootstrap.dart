@@ -234,6 +234,7 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 /// or the seed catalogue — over the user's blank slate.
 Future<void> resetPersistedState(ProviderContainer container) async {
   final store = container.read(localStoreProvider);
+  final deletedCredential = store.getString('auth.deletedCredential');
   await container.read(achievementsProvider.notifier).suspendForDeletion();
 
   // Subjects are user data, so the list is emptied outright rather than left
@@ -293,6 +294,9 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setSubject(null);
 
   await store.clearAll();
+  if (deletedCredential != null) {
+    await store.setString('auth.deletedCredential', deletedCredential);
+  }
   container.invalidate(achievementsProvider);
   // The wipe erased the empty subject list the removals above wrote, and
   // an absent key reads as a first run — which would restore the seed

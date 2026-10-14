@@ -6,16 +6,8 @@ import 'package:flutter/services.dart';
 
 import 'shield_service.dart';
 
-/// The real shield, on Android.
-///
-/// Everything that has to survive the Flutter engine being paused or killed —
-/// matching a package, deciding whether it is blocked, drawing the screen that
-/// says so — lives in the native accessibility service. This class is only the
-/// wire: config down, interceptions up.
-///
-/// That split is not an implementation detail. A shield that stops working when
-/// the user swipes the app away is not a shield, and a Dart isolate cannot be
-/// relied on to be running at the moment a blocked app is launched.
+/// Android engines: UsageEvents + application overlay for apps; Accessibility for YouTube filters.
+/// Native rules continue while Flutter is paused. Android/OEM restrictions can stop the engines.
 class NativeShieldService implements ShieldPlatformService {
   NativeShieldService();
 
@@ -70,6 +62,25 @@ class NativeShieldService implements ShieldPlatformService {
   Future<bool> isServiceEnabled() async {
     try {
       return await _methods.invokeMethod<bool>('isServiceEnabled') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  Future<bool> hasOverlayPermission() => _boolCall('hasOverlayPermission');
+  Future<bool> isAppBlockingRunning() => _boolCall('isAppBlockingRunning');
+  Future<bool> isAppBlockingPaused() => _boolCall('isAppBlockingPaused');
+  Future<bool> resumeAppBlocking() => _boolCall('resumeAppBlocking');
+  Future<bool> pauseAppBlocking() => _boolCall('pauseAppBlocking');
+  Future<void> requestOverlayPermission() async {
+    await _boolCall('openOverlaySettings');
+  }
+
+  Future<bool> _boolCall(String method) async {
+    try {
+      return await _methods.invokeMethod<bool>(method) ?? false;
     } on PlatformException {
       return false;
     } on MissingPluginException {

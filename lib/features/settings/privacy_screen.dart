@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/bootstrap.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
@@ -14,7 +13,6 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
@@ -79,22 +77,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     : () => user.isAnonymous
                           ? context.goNamed(AppRoutes.auth)
                           : _signOut(context, ref),
-              ),
-              ListTile(
-                title: Text(_busy ? 'Working…' : 'Delete account'),
-                subtitle: Text(
-                  user.isAnonymous
-                      ? 'Erase your profile and every local record'
-                      : 'Delete your account and associated cloud data',
-                ),
-                leading: _busy
-                    ? const SizedBox.square(
-                        dimension: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.delete_outline, color: cs.error),
-                trailing: const AppChevron(),
-                onTap: _busy ? null : () => _deleteAccount(context, ref),
               ),
             ],
           ),
@@ -299,7 +281,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     showAppSnack(context, 'Local analytics cleared.');
   }
 
-  // -- Delete account -------------------------------------------------------
+  // -- Account session -------------------------------------------------------
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     final confirmed = await showAppConfirmDialog(
@@ -336,86 +318,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     }
   }
 
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    final auth = ref.read(authServiceProvider);
-    if (auth.usesRemoteCredentials && !auth.signedIn) {
-      showAppSnack(
-        context,
-        'Sign in to delete your cloud account. To erase only this device, clear app storage in Android Settings.',
-      );
-      context.goNamed(AppRoutes.auth);
-      return;
-    }
-    final confirmed = await showAppConfirmDialog(
-      context: context,
-      title: 'Delete your account?',
-      message: auth.usesRemoteCredentials
-          ? 'This permanently deletes your sign-in, private badge backup, group memberships, '
-                'shared progress and every leaderboard entry. Legacy parent-sharing records are '
-                'also removed. Local profile, sessions, shields and badges on this device are erased '
-                'after the server confirms deletion. This cannot be undone.'
-          : 'This permanently erases your device profile, sessions, shields and badges. No cloud account is connected in this build.',
-      requirePhrase: 'DELETE',
-      fieldHint: 'Type DELETE',
-      confirmLabel: 'Delete everything',
-      icon: Icons.delete_forever_rounded,
-      destructive: true,
-      footnote: 'You will be returned to onboarding with a blank slate.',
-    );
-    if (!confirmed || !context.mounted) return;
-
-    // Read while the context is certainly live: the credential call below
-    // crosses an async gap before the reset needs the container.
-    final container = ProviderScope.containerOf(context, listen: false);
-    String? password;
-    if (auth.usesRemoteCredentials &&
-        !ref.read(userProvider).isAnonymous &&
-        auth.supportsPasswordReauthentication) {
-      password = await showAppDialog<String>(
-        context: context,
-        builder: (_) => const _PasswordConfirmation(),
-      );
-      if (password == null || !context.mounted) return;
-    }
-    setState(() => _busy = true);
-    ref.read(accountMutationProvider.notifier).state = true;
-
-    // The auth service removes group membership while it can still authorise
-    // cloud writes. Local records are kept if cleanup or credential deletion
-    // fails so the user can retry.
-    try {
-      await ref.read(achievementsProvider.notifier).suspendForDeletion();
-      await auth.reauthenticate(password: password);
-      await auth.deleteAccount();
-      await resetPersistedState(container);
-    } on AuthException catch (e) {
-      container.read(achievementsProvider.notifier).resumeAfterFailedDeletion();
-      if (!context.mounted) return;
-      showAppSnack(context, e.friendly);
-      return;
-    } catch (_) {
-      container.read(achievementsProvider.notifier).resumeAfterFailedDeletion();
-      if (context.mounted) {
-        showAppSnack(
-          context,
-          'Could not delete your account. Your local history is kept. Please try again.',
-        );
-      }
-      return;
-    } finally {
-      container.read(accountMutationProvider.notifier).state = false;
-      if (mounted) setState(() => _busy = false);
-    }
-
-    // Clearing the store is not enough: the live notifiers still hold every
-    // record that was just "deleted", and would write it straight back on
-    // their next save. `resetPersistedState` blanks them all in the one place
-    // that knows how to hydrate them, and re-arms the demo-history marker so
-    // the onboarding that follows starts from a genuinely empty slate.
-    if (!context.mounted) return;
-    context.go(AppRoutes.paths[AppRoutes.onboarding]!);
-  }
-
   // -- Legal ----------------------------------------------------------------
 
   void _showLicences(BuildContext context) {
@@ -437,57 +339,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       builder: (context) => _InfoBody(title: title, body: body),
     );
   }
-}
-
-class _PasswordConfirmation extends StatefulWidget {
-  const _PasswordConfirmation();
-
-  @override
-  State<_PasswordConfirmation> createState() => _PasswordConfirmationState();
-}
-
-class _PasswordConfirmationState extends State<_PasswordConfirmation> {
-  final _password = TextEditingController();
-
-  @override
-  void dispose() {
-    _password.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text('Confirm it’s you', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: Gap.md),
-      const Text(
-        'Enter your account password to finish deleting your account.',
-      ),
-      const SizedBox(height: Gap.lg),
-      TextField(
-        controller: _password,
-        obscureText: true,
-        autofocus: true,
-        autocorrect: false,
-        enableSuggestions: false,
-        decoration: const InputDecoration(labelText: 'Password'),
-        onChanged: (_) => setState(() {}),
-      ),
-      const SizedBox(height: Gap.lg),
-      FilledButton(
-        onPressed: _password.text.isEmpty
-            ? null
-            : () => Navigator.of(context).pop(_password.text),
-        child: const Text('Confirm and delete'),
-      ),
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Cancel'),
-      ),
-    ],
-  );
 }
 
 class _ExportBody extends StatelessWidget {

@@ -1,4 +1,8 @@
-# Firebase: first Play release candidate 1.0.0 (2022)
+# Firebase: FocusForge 1.0.0 (2023)
+
+The owner removed the in-app deletion action in build 2023; account controls
+keep Sign out. The cleanup code below is retained for future administrator
+fulfillment and is not a working in-app action in this release.
 
 Firebase powers authentication, private earned-badge backups, private groups and
 the optional weekly leaderboard. Parent control has been removed. Detailed
@@ -8,21 +12,43 @@ inside APKs; protect data with server rules and compatible API/app restrictions.
 
 ## Deploy before public distribution
 
-The owner will publish Firestore rules. **No production rules, indexes or functions
-were deployed here.** Project administrator access and Functions/Scheduler billing
-are needed. From the repository root, use Node 22+; emulator checks need Java 21:
+The owner publishes Firestore rules. Rules and account deletion are separate
+deployments: changing a rule cannot create a Cloud Function. Project
+administrator access and a billing-enabled Blaze project are needed for the
+Functions and Scheduler deployment. From the repository root, use Node 22+;
+emulator checks need Java 21:
 
     npm ci --prefix tool/firebase
     npm ci --prefix functions
     tool/firebase/node_modules/.bin/firebase login
     tool/firebase/node_modules/.bin/firebase deploy --only firestore --project focusforge-1edf7
     tool/firebase/node_modules/.bin/firebase deploy --only functions:focusforge-account-cleanup --project focusforge-1edf7
+    tool/firebase/node_modules/.bin/firebase functions:list --project focusforge-1edf7
 
 Deploy both firestore.rules and firestore.indexes.json. If using the console
 rules editor, also publish the indexes file. It adds collection-group indexing
 on guardian.parentUid and TTL on accountDeletions.expiresAt. Wait for indexing
 before public use. Callable deleteFocusForgeAccount is in us-central1, matching
-the client's default region. Rules alone are insufficient for the delete button.
+the client's explicit region. The deployed list must include both
+deleteFocusForgeAccount and retryAccountDeletions.
+
+### If the delete button still fails after publishing rules
+
+On October 14, the production callable URL returned HTTP 404, and this workspace
+had no signed-in Firebase CLI administrator. This establishes that the required
+endpoint was unavailable at that time; it does not establish successful cloud
+cleanup. Updating the APK or rules alone cannot repair that deployment. Sign in
+with a project administrator, check Billing in the Firebase console, deploy the
+functions codebase above, then verify a disposable account end to end. If
+deployment returns an IAM or billing error, fix that prerequisite instead of
+loosening Firestore rules.
+
+The app keeps local data when the server cannot confirm deletion. Missing or
+inaccessible endpoints show an account-deletion support message; expired
+authentication asks the user to sign in again. A sync timeout before the
+callable starts shows that deletion has not begun. A lost response or interrupted
+cleanup shows that some cloud data may already have been removed. Retry, or
+request help through the public account-deletion page. It must be monitored.
 
 Revised rules deny retired pairing, guardian, children, catalog, progress and
 remoteRules paths to all clients, including older APKs. Achievements remain
@@ -104,3 +130,12 @@ Local hide choices are account-scoped and removed with local account data.
 There is no chat or media posting. The developer must monitor reports, review
 reported names privately and remove prohibited content/disable abusive accounts
 with administrator access. Email drafting alone does not prove moderation works.
+
+### Live deployment attempt on October 14
+
+An authorized Firebase login was supplied and Functions deployment was attempted.
+Firebase refused to enable the required build/artifact APIs because this project
+is on the free Spark plan. Upgrade to Blaze in the project billing settings
+before deploying this backend. No function was deployed by that attempt.
+The local Auth + Functions + Firestore emulator integration verified authenticated
+cleanup and unauthenticated rejection; it does not verify production deletion.

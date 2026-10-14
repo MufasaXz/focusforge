@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
+import '../../core/providers/usage_providers.dart';
+import 'shield_access.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../shared/widgets/tonal_panel.dart';
 
@@ -14,7 +16,11 @@ class ShieldOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final access = ref.watch(shieldEnabledProvider);
+    final access = ref.watch(appBlockingRunningProvider);
+    final paused = ref.watch(appBlockingPausedProvider).valueOrNull ?? false;
+    final usage = ref.watch(usageAccessProvider).valueOrNull ?? false;
+    final overlay = ref.watch(overlayAccessProvider).valueOrNull ?? false;
+    final youtubeAccess = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
     final rules = ref.watch(enforcedRulesProvider);
     final youtube = ref.watch(youtubeRulesProvider);
     final supported = NativeShieldService.isSupported;
@@ -25,8 +31,10 @@ class ShieldOverview extends ConsumerWidget {
         ? 'Your rules, ready for Android'
         : access.isLoading
         ? 'Checking your Shield'
-        : !enabled
-        ? 'One step to protect your focus'
+        : paused && rules.isNotEmpty
+        ? 'App boundaries are paused'
+        : rules.isNotEmpty && !enabled
+        ? 'Your app rules need attention'
         : count == 0
         ? 'Choose what stays out'
         : 'A quieter phone starts here';
@@ -47,11 +55,59 @@ class ShieldOverview extends ConsumerWidget {
           Text(
             !supported
                 ? 'App blocking runs on your Android device.'
-                : !enabled
-                ? 'Enable accessibility below to apply your chosen rules.'
+                : paused && rules.isNotEmpty
+                ? 'Stopped from the notification. Resume when you want your app rules active again.'
+                : rules.isNotEmpty && !enabled
+                ? 'App boundaries need Usage access and Draw over other apps. Your saved rules are currently inactive.'
                 : 'Set boundaries for apps and feeds. You stay in control.',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
+          if (supported && rules.isNotEmpty && !enabled) ...[
+            const SizedBox(height: Gap.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () async {
+                  if (await ensureShieldAccess(context, ref)) {
+                    ref.invalidate(appBlockingRunningProvider);
+                    ref.invalidate(appBlockingPausedProvider);
+                  }
+                },
+                icon: Icon(
+                  !usage || !overlay
+                      ? Icons.settings_outlined
+                      : Icons.play_arrow_rounded,
+                ),
+                label: Text(
+                  !usage || !overlay
+                      ? 'Check app access'
+                      : 'Resume app boundaries',
+                ),
+              ),
+            ),
+          ],
+          if (supported && enabled) ...[
+            const SizedBox(height: Gap.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () async {
+                  await NativeShieldService().pauseAppBlocking();
+                  ref.invalidate(appBlockingRunningProvider);
+                  ref.invalidate(appBlockingPausedProvider);
+                },
+                icon: const Icon(Icons.pause_rounded),
+                label: const Text('Pause app boundaries'),
+              ),
+            ),
+          ],
+          if (supported && youtube.any && !youtubeAccess) ...[
+            const SizedBox(height: Gap.sm),
+            Text(
+              'YouTube filters are inactive until Accessibility access is restored.',
+              style: tt.bodySmall?.copyWith(color: cs.error),
+            ),
+          ],
           const SizedBox(height: Gap.lg),
           Wrap(
             spacing: Gap.sm,

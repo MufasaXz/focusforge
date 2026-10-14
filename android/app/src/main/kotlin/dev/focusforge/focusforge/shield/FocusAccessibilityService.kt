@@ -1,7 +1,9 @@
 package dev.focusforge.focusforge.shield
 
 import android.accessibilityservice.AccessibilityService
-import android.app.usage.UsageStatsManager
+import android.app.KeyguardManager
+import android.os.PowerManager
+import android.view.accessibility.AccessibilityWindowInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,7 +12,6 @@ import android.graphics.Typeface
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.os.Handler
-import android.os.Build
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
@@ -27,22 +28,8 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import dev.focusforge.focusforge.R
-import java.util.Calendar
 
-/**
- * Keeps the apps the user chose closed.
- *
- * This runs natively rather than through the Flutter engine on purpose. An
- * accessibility service is restarted by the system after a process kill and
- * can be woken with no UI attached; a block screen that has to wait for a Dart
- * isolate to boot would either miss the launch or arrive after the user is
- * already scrolling. It reads its rules from [ShieldStore] and draws its own
- * window, so it is fully self-contained.
- *
- * What it observes is deliberately narrow: the package name that came to the
- * foreground. It reads on-screen content in exactly one case — to tell the
- * YouTube Shorts player from a normal video — and never stores what it reads.
- */
+/** Optional YouTube surface filters. Normal app boundaries use UsageEvents + draw-over-apps. */
 class FocusAccessibilityService : AccessibilityService() {
 
     companion object {
@@ -153,12 +140,24 @@ class FocusAccessibilityService : AccessibilityService() {
             context.packageName,
             SYSTEM_UI,
             "com.android.settings",
+            "com.android.permissioncontroller",
+            "com.google.android.permissioncontroller",
+            "com.android.packageinstaller",
+            "com.google.android.packageinstaller",
             homePackageOf(context),
             inputMethodPackageOf(context),
             defaultDialerOf(context),
             "com.android.phone",
             "com.android.server.telecom",
-        ) + emergencyPackagesOf(context)
+        ) + emergencyPackagesOf(context) + allHomePackagesOf(context)
+
+        private fun allHomePackagesOf(context: Context): Set<String> = try {
+            @Suppress("DEPRECATION")
+            context.packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+                PackageManager.MATCH_DEFAULT_ONLY,
+            ).mapNotNull { it.activityInfo?.packageName }.toSet()
+        } catch (_: Exception) { emptySet() }
 
         private fun defaultDialerOf(context: Context): String? = try {
             (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage
@@ -326,12 +325,17 @@ class FocusAccessibilityService : AccessibilityService() {
     private val watchdog = object : Runnable {
         override fun run() {
             val covered = blockedPackage ?: return
+            val power = getSystemService(POWER_SERVICE) as PowerManager
+            val lock = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+            if (!youtubeArmed(currentRules()) || !power.isInteractive || lock.isKeyguardLocked) {
+                dismissOverlay(); return
+            }
             val front = foregroundPackage()
 
-            if (front != null && front != covered && front !in transient()) {
+            if (front == null || (front != covered && front !in transient())) {
                 // The user really did move on.
                 dismissOverlay()
-                decide(front)
+                if (front != null) decide(front)
                 return
             }
 
@@ -393,7 +397,8 @@ class FocusAccessibilityService : AccessibilityService() {
     /** Re-reads the rules the app just wrote, and re-decides what is in front. */
     fun refresh() {
         rulesRaw = null
-        currentRules()
+        val current = currentRules()
+        if (!youtubeArmed(current)) dismissOverlay()
         recheckForeground()
     }
 
@@ -502,12 +507,9 @@ class FocusAccessibilityService : AccessibilityService() {
 
         val current = currentRules()
 
-        // The cheap path, and the common one: no YouTube rule in play means the
-        // decision needs nothing but the package name.
-        if (packageName != YOUTUBE || !youtubeArmed(current)) {
-            packageReason(packageName, current)?.let { showOverlay(packageName, it) }
-            return
-        }
+        // This service never enforces whole-app rules or reads another app's content.
+        if (packageName != YOUTUBE || !youtubeArmed(current)) return
+        if (AppBlockingService.instance?.isCovering(packageName) == true) return
 
         // YouTube needs its window read, and that happens off the main thread.
         // Capture the root here — one call — and walk it on the worker.
@@ -526,12 +528,13 @@ class FocusAccessibilityService : AccessibilityService() {
             // YouTube decision returned early — which is how the rules
             // appeared to switch themselves off until a restart.
             val reason = try {
-                youtubeReason(current, root) ?: packageReason(packageName, current)
+                youtubeReason(current, root)
             } finally {
                 handler.post { inspecting = false }
             }
             handler.post {
                 when {
+                    !youtubeArmed(currentRules()) -> Unit
                     reason != null -> showOverlay(packageName, reason)
                     retry -> handler.postDelayed({
                         if (blockedPackage == null && foregroundPackage() == packageName) {
@@ -569,48 +572,6 @@ class FocusAccessibilityService : AccessibilityService() {
             // never asked about, and a blocked one opens unblocked.
             decide(front)
         }, DISMISS_CONFIRM_MS)
-    }
-
-    /**
-     * Why [packageName] should be covered right now, or null to let it run.
-     *
-     * Returns a human-readable reason rather than a boolean because the block
-     * screen has to say something specific: "you set this to stay closed" and
-     * "you are out of time" are different sentences, and a user who cannot tell
-     * them apart cannot tell what to change.
-     */
-    private fun packageReason(packageName: String, current: ShieldRules): String? {
-        val rule = current.ruleFor(packageName) ?: return null
-
-        // Strict Mode is the one thing that overrides a budget: a daily
-        // allowance the user can spend their way through is not a commitment,
-        // so while a window is open every rule is a full block.
-        if (current.strictModeActive(System.currentTimeMillis())) {
-            return "Strict Mode is on. This stays closed until the window ends."
-        }
-
-        return when (rule.mode) {
-            RuleMode.BLOCK -> "You asked FocusForge to keep this closed."
-            RuleMode.FOCUS -> if (current.focusActive(System.currentTimeMillis())) {
-                "This stays closed while you are focusing."
-            } else {
-                null
-            }
-            RuleMode.BUDGET -> {
-                val budget = rule.budgetMinutes
-                if (budget <= 0) return null
-                // Usage access not granted reads as zero, which would silently
-                // disable every budget. The app surfaces the missing permission;
-                // here it means "cannot tell, so do not act".
-                if (!hasUsageAccess()) return null
-                val used = usedTodayMillis(packageName)
-                if (used >= budget * 60_000L) {
-                    "You have used your $budget minutes for today."
-                } else {
-                    null
-                }
-            }
-        }
     }
 
     /**
@@ -693,59 +654,14 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
-    // -- Usage ---------------------------------------------------------------
-
-    private fun hasUsageAccess(): Boolean = try {
-        val appOps = getSystemService(Context.APP_OPS_SERVICE)
-            as android.app.AppOpsManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(
-                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName,
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            appOps.checkOpNoThrow(
-                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName,
-            )
-        }
-        mode == android.app.AppOpsManager.MODE_ALLOWED
-    } catch (_: Exception) {
-        false
-    }
-
-    /** Foreground time since midnight, in milliseconds. */
-    private fun usedTodayMillis(packageName: String): Long {
-        val manager = getSystemService(Context.USAGE_STATS_SERVICE)
-            as? UsageStatsManager ?: return 0L
-
-        val midnight = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        val stats = try {
-            manager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                midnight,
-                System.currentTimeMillis(),
-            )
-        } catch (_: Exception) {
-            null
-        } ?: return 0L
-
-        return stats.firstOrNull { it.packageName == packageName }
-            ?.totalTimeInForeground ?: 0L
-    }
-
     // -- The block screen ----------------------------------------------------
 
+    fun dismissForAppBoundary(packageName: String) {
+        if (blockedPackage == packageName) dismissOverlay()
+    }
+
     private fun showOverlay(packageName: String, reason: String) {
+        if (AppBlockingService.instance?.isCovering(packageName) == true) return
         dismissOverlay()
 
         // A decision can be made a frame or two after the event that started
@@ -944,10 +860,27 @@ class FocusAccessibilityService : AccessibilityService() {
      * treat as "no evidence" rather than "gone".
      */
     private fun foregroundPackage(): String? {
-        val front = rootInActiveWindow?.packageName?.toString().orEmpty()
-        if (front.isEmpty()) return null
-        if (front != packageName) return front
-        return if (overlay != null) blockedPackage else null
+        if (overlay != null) {
+            // The accessibility overlay can become rootInActiveWindow itself.
+            // Read package names only from application windows underneath it;
+            // never inspect other apps' view IDs, text or contents.
+            val apps = windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+                .mapNotNull { window ->
+                    val root = window.root ?: return@mapNotNull null
+                    val pkg = try { root.packageName?.toString() } finally {
+                        @Suppress("DEPRECATION")
+                        root.recycle()
+                    }
+                    if (pkg.isNullOrBlank()) null else ApplicationWindow(pkg, window.isActive, window.isFocused)
+                }
+            return foregroundApplication(apps)
+        }
+        val root = rootInActiveWindow ?: return null
+        val front = try { root.packageName?.toString() } finally {
+            @Suppress("DEPRECATION")
+            root.recycle()
+        }
+        return front?.takeIf { it.isNotBlank() && it != packageName }
     }
 
     private fun labelFor(packageName: String): String = try {

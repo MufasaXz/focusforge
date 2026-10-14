@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,7 @@ import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/permission_manager.dart';
 import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/features/shield/shield_access.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
 
@@ -25,6 +27,11 @@ void main() {
   });
 
   tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('dev.focusforge/shield'),
+          null,
+        );
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -85,7 +92,7 @@ void main() {
   }
 
   testWidgets(
-    'enabling an app without accessibility asks for access and saves no rule',
+    'enabling an app without usage access asks for access and saves no rule',
     (tester) async {
       final container = containerFor();
       await mount(tester, container, const ShieldScreen());
@@ -103,6 +110,90 @@ void main() {
       expect(container.read(whitelistProvider), isEmpty);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(find.text('Later'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
+    'normal app blocking works with usage and overlay without accessibility',
+    (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('dev.focusforge/shield'),
+            (call) async {
+              if (call.method == 'hasOverlayPermission' ||
+                  call.method == 'resumeAppBlocking') {
+                return true;
+              }
+              return false;
+            },
+          );
+      final manager = SettingsPermissionManager();
+      final container = containerFor(usage: true, manager: manager);
+      await mount(tester, container, const ShieldScreen());
+      final row = find.ancestor(
+        of: find.text('Instagram'),
+        matching: find.byType(InkWell),
+      );
+      await tester.tap(
+        find.descendant(of: row, matching: find.byType(GestureDetector)).last,
+      );
+      await tester.pumpAndSettle();
+      expect(container.read(whitelistProvider), hasLength(1));
+      expect(manager.requests, isEmpty);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets('normal app rule requests only overlay after usage is granted', (
+    tester,
+  ) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('dev.focusforge/shield'),
+          (_) async => false,
+        );
+    final manager = SettingsPermissionManager();
+    final container = containerFor(usage: true, manager: manager);
+    await mount(tester, container, const ShieldScreen());
+    final row = find.ancestor(
+      of: find.text('Instagram'),
+      matching: find.byType(InkWell),
+    );
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(GestureDetector)).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Allow draw over other apps'), findsOneWidget);
+    expect(container.read(whitelistProvider), isEmpty);
+    await tester.tap(find.text('Open overlay settings'));
+    await tester.pumpAndSettle();
+    expect(manager.requests, [AppPermission.overlay]);
+    expect(container.read(whitelistProvider), isEmpty);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets(
+    'budget status remains inactive after app boundaries are stopped',
+    (tester) async {
+      final container = containerFor(usage: true);
+      await container
+          .read(whitelistProvider.notifier)
+          .addInstalledApp(
+            packageId: 'com.instagram.android',
+            name: 'Instagram',
+            tier: WhitelistTier.budgeted,
+            budgetMinutes: 30,
+          );
+      await mount(tester, container, const ShieldScreen());
+      await tester.tap(find.bySemanticsLabel(RegExp('Shield status')));
+      await tester.pumpAndSettle();
+      expect(find.text('1 inactive'), findsOneWidget);
+      expect(find.text('1 running'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },

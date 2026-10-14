@@ -5,7 +5,7 @@ import 'package:usage_stats/usage_stats.dart';
 import 'native_shield_service.dart';
 
 /// Optional access used by the app's current features.
-enum AppPermission { accessibility, notifications, usageAccess }
+enum AppPermission { accessibility, notifications, usageAccess, overlay }
 
 /// What a permission currently resolves to.
 enum PermissionOutcome {
@@ -100,6 +100,10 @@ class PermissionManager {
           await _shield.requestPermission();
           return await _settle(permission);
 
+        case AppPermission.overlay:
+          await _shield.requestOverlayPermission();
+          return await _settle(permission);
+
         case AppPermission.usageAccess:
           await UsageStats.openUsageAccessSettings();
           return await _settle(permission);
@@ -119,6 +123,9 @@ class PermissionManager {
       switch (permission) {
         AppPermission.notifications => Permission.notification.status,
         AppPermission.accessibility => _shield.isServiceEnabled().then(
+          (on) => on ? PermissionStatus.granted : PermissionStatus.denied,
+        ),
+        AppPermission.overlay => _shield.hasOverlayPermission().then(
           (on) => on ? PermissionStatus.granted : PermissionStatus.denied,
         ),
         AppPermission.usageAccess => UsageStats.checkUsagePermission().then(

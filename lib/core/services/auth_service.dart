@@ -15,6 +15,8 @@ enum AuthFailure {
   tooManyRequests,
   requiresRecentLogin,
   providerUnavailable,
+  deletionUnavailable,
+  cloudSyncPending,
   cleanupFailed,
   unknown,
 }
@@ -42,7 +44,9 @@ class AuthException implements Exception {
       'For security, sign out and back in, then retry.',
     AuthFailure.providerUnavailable =>
       'That sign-in method is not connected yet.',
-    AuthFailure.cleanupFailed => 'Cloud cleanup could not finish. Your sign-in and local history are kept; some shared records may already be removed. Check your connection and retry.',
+    AuthFailure.deletionUnavailable => 'Account deletion is unavailable right now. Your account and local history are kept. Use the account-deletion page below to contact support.',
+    AuthFailure.cloudSyncPending => 'Your latest changes could not sync. Deletion has not started and your data is kept. Connect to the internet and retry.',
+    AuthFailure.cleanupFailed => 'Deletion could not be confirmed. Your local history is kept; some cloud records may already be removed. Retry or contact support through the account-deletion page.',
     AuthFailure.unknown => 'Something went wrong.',
   };
 

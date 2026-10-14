@@ -82,6 +82,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
         'Choose FocusForge in Accessibility, then allow access.',
       AppPermission.usageAccess =>
         'Choose FocusForge, then allow usage access.',
+      AppPermission.overlay => 'Allow FocusForge to display over other apps.',
       AppPermission.notifications =>
         'Allow notifications to keep your timer visible.',
     });
@@ -202,15 +203,11 @@ class _Permission {
 
 const _permissions = <_Permission>[
   _Permission(
-    kind: AppPermission.accessibility,
-    title: 'Block distractions',
-    icon: Icons.shield_outlined,
-    why:
-        'Lets Shield block selected apps and supported YouTube feeds '
-        'and Shorts.',
-    privacy:
-        'Shield checks the foreground app and supported screen elements '
-        'to apply your rules. It does not save messages or passwords.',
+    kind: AppPermission.overlay,
+    title: 'Show app pause screens',
+    icon: Icons.layers_outlined,
+    why: 'Draws the pause screen over apps you choose. Normal app boundaries also need Usage access to detect which app is open.',
+    privacy: 'Pause screens run on your device. Android settings and emergency apps are never covered.',
     platform: 'Android',
   ),
   _Permission(
@@ -229,7 +226,7 @@ const _permissions = <_Permission>[
     icon: Icons.query_stats_rounded,
     why:
         'Reads screen time per app so the dashboard can show where your day '
-        'actually went.',
+        'actually went. It also detects when a chosen app opens for normal app boundaries.',
     privacy: 'Usage history never leaves this device and is never uploaded.',
     platform: 'Android',
   ),
@@ -288,11 +285,14 @@ class _PermissionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Gap.sm),
-            if (permission.kind == AppPermission.accessibility) ...[
-              Text('How to enable Shield', style: theme.textTheme.labelLarge),
+            if (permission.kind == AppPermission.overlay) ...[
+              Text(
+                'How to allow pause screens',
+                style: theme.textTheme.labelLarge,
+              ),
               const SizedBox(height: Gap.xs),
               Text(
-                '1. Open Accessibility settings.\n2. Choose FocusForge under downloaded apps.\n3. Allow access, then return here.',
+                '1. Open Draw over other apps settings.\n2. Choose FocusForge and allow access.\n3. Return here. Usage access is also needed for app boundaries.',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: Gap.md),

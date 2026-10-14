@@ -19,32 +19,55 @@ final shieldPermissionManagerProvider = Provider<PermissionManager>(
 Future<bool> ensureShieldAccess(
   BuildContext context,
   WidgetRef ref, {
-  bool requiresUsageAccess = false,
+  bool requiresAccessibility = false,
   String? feature,
 }) async {
   if (!NativeShieldService.isSupported) return true;
 
-  ref.invalidate(shieldEnabledProvider);
-  final accessibility = await _granted(ref.read(shieldEnabledProvider.future));
-  if (!context.mounted) return false;
-  if (!accessibility) {
-    await requestShieldPermission(
-      context,
-      ref,
-      AppPermission.accessibility,
-      feature: feature,
+  if (requiresAccessibility) {
+    ref.invalidate(shieldEnabledProvider);
+    final accessibility = await _granted(
+      ref.read(shieldEnabledProvider.future),
     );
-    return false;
-  }
-
-  if (requiresUsageAccess) {
-    ref.invalidate(usageAccessProvider);
-    final usage = await _granted(ref.read(usageAccessProvider.future));
     if (!context.mounted) return false;
-    if (!usage) {
-      await _offerAccess(context, ref, AppPermission.usageAccess);
+    if (!accessibility) {
+      await requestShieldPermission(
+        context,
+        ref,
+        AppPermission.accessibility,
+        feature: feature,
+      );
       return false;
     }
+    return true;
+  }
+
+  // Usage access provides foreground detection for every whole-app rule.
+  ref.invalidate(usageAccessProvider);
+  final usage = await _granted(ref.read(usageAccessProvider.future));
+  if (!context.mounted) return false;
+  if (!usage) {
+    await _offerAccess(context, ref, AppPermission.usageAccess);
+    return false;
+  }
+  ref.invalidate(overlayAccessProvider);
+  final overlay = await _granted(ref.read(overlayAccessProvider.future));
+  if (!context.mounted) return false;
+  if (!overlay) {
+    await _offerAccess(context, ref, AppPermission.overlay);
+    return false;
+  }
+  // An explicit rule enable can resume a notification-paused engine. Background sync cannot.
+  final started = await NativeShieldService().resumeAppBlocking();
+  if (!context.mounted) return false;
+  ref.invalidate(appBlockingPausedProvider);
+  ref.invalidate(appBlockingRunningProvider);
+  if (!started) {
+    showAppSnack(
+      context,
+      'App boundaries could not start. Check Usage access and Draw over other apps, then try again.',
+    );
+    return false;
   }
   return true;
 }
@@ -66,13 +89,16 @@ Future<void> _offerAccess(
     context: context,
     builder: (context) => AlertDialog(
       icon: const Icon(Icons.timelapse_rounded),
-      title: const Text('Allow usage access first'),
+      title: Text(
+        permission == AppPermission.overlay
+            ? 'Allow draw over other apps'
+            : 'Allow usage access first',
+      ),
       scrollable: true,
-      content: const Text(
-        'Usage access is off, so FocusForge cannot measure the time '
-        'needed for a daily budget. This rule will stay off.\n\n'
-        'In Android Usage access settings, choose FocusForge and '
-        'allow access. Return here and save the rule again.',
+      content: Text(
+        permission == AppPermission.overlay
+            ? 'Draw over other apps is off, so FocusForge cannot show the pause screen over your chosen apps. This rule will stay off.\n\nAllow FocusForge in Android Draw over other apps settings, then return and enable the rule again.'
+            : 'Usage access is off, so FocusForge cannot detect when your chosen apps are open or measure their daily budgets. This rule will stay off.\n\nAllow FocusForge in Android Usage access settings, then return and enable the rule again. Usage history stays on this device.',
       ),
       actions: [
         TextButton(
@@ -81,7 +107,11 @@ Future<void> _offerAccess(
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Open usage settings'),
+          child: Text(
+            permission == AppPermission.overlay
+                ? 'Open overlay settings'
+                : 'Open usage settings',
+          ),
         ),
       ],
     ),
@@ -109,13 +139,18 @@ Future<void> requestShieldPermission(
   // Settings grants are checked again by ShieldScreen when the app resumes.
   ref.invalidate(shieldEnabledProvider);
   ref.invalidate(usageAccessProvider);
+  ref.invalidate(overlayAccessProvider);
+  ref.invalidate(appBlockingRunningProvider);
+  ref.invalidate(appBlockingPausedProvider);
   ref.invalidate(appUsageTodayProvider);
   if (outcome == PermissionOutcome.unsupported) {
     showAppSnack(
       context,
       permission == AppPermission.accessibility
           ? 'Open Android Settings → Accessibility → FocusForge to allow blocking.'
-          : 'Open Android Settings → Usage access → FocusForge to allow budgets.',
+          : permission == AppPermission.overlay
+          ? 'Open Android Settings → Draw over other apps → FocusForge.'
+          : 'Open Android Settings → Usage access → FocusForge.',
     );
   }
 }

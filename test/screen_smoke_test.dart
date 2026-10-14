@@ -83,6 +83,9 @@ void main() {
         appUsageTodayProvider.overrideWith((ref) async => usage),
         usageAccessProvider.overrideWith((ref) async => usageAccess),
         shieldEnabledProvider.overrideWith((ref) async => shieldEnabled),
+        appBlockingRunningProvider.overrideWith((ref) async => false),
+        appBlockingPausedProvider.overrideWith((ref) async => false),
+        overlayAccessProvider.overrideWith((ref) async => false),
       ],
     );
     addTearDown(container.dispose);
@@ -355,31 +358,37 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a budget with no usage access says it is not counting', (
-      tester,
-    ) async {
-      useTallPhone(tester);
-      await onAndroid(tester, () async {
-        final container = freshContainer(
-          shieldEnabled: true,
-          usageAccess: false,
-        );
-        await container
-            .read(whitelistProvider.notifier)
-            .addInstalledApp(
-              packageId: 'com.example.budget',
-              name: 'Budgeted App',
-              tier: WhitelistTier.budgeted,
-              budgetMinutes: 30,
-            );
+    testWidgets(
+      'saved app rules without a running engine say they are inactive',
+      (tester) async {
+        useTallPhone(tester);
+        await onAndroid(tester, () async {
+          final container = freshContainer(
+            shieldEnabled: true,
+            usageAccess: false,
+          );
+          await container
+              .read(whitelistProvider.notifier)
+              .addInstalledApp(
+                packageId: 'com.example.budget',
+                name: 'Budgeted App',
+                tier: WhitelistTier.budgeted,
+                budgetMinutes: 30,
+              );
 
-        await tester.pumpWidget(wrap(container, const ShieldScreen()));
-        await settle(tester);
+          await tester.pumpWidget(wrap(container, const ShieldScreen()));
+          await settle(tester);
 
-        expect(find.text('Time budgets are not counting'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      });
-    });
+          expect(find.text('Your app rules need attention'), findsOneWidget);
+          expect(
+            find.textContaining('Your saved rules are currently inactive.'),
+            findsOneWidget,
+          );
+          expect(find.text('Check app access'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      },
+    );
 
     testWidgets('Android lists apps before requesting blocking access', (
       tester,

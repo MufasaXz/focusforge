@@ -13,8 +13,7 @@ import 'study_providers.dart';
 
 /// The shield engine for this build.
 ///
-/// On Android that is [NativeShieldService], which drives a real accessibility
-/// service; everywhere else it is [RecordingShieldService], which records what
+/// On Android that is [NativeShieldService], which drives the native app and YouTube engines; everywhere else it is [RecordingShieldService], which records what
 /// it was told and blocks nothing. The rest of the app cannot tell the two
 /// apart, which is what keeps the browser preview and the test suite honest
 /// about what they are exercising.
@@ -56,6 +55,19 @@ final shieldEnabledProvider = FutureProvider<bool>(
   (ref) => ref.watch(shieldServiceProvider).isServiceEnabled(),
 );
 
+/// Separate grants/state: normal app boundaries never depend on Accessibility.
+final overlayAccessProvider = FutureProvider<bool>(
+  (ref) => NativeShieldService().hasOverlayPermission(),
+);
+final appBlockingRunningProvider = FutureProvider<bool>((ref) async {
+  // startForegroundService returns before onStartCommand publishes the live instance.
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  return NativeShieldService().isAppBlockingRunning();
+});
+final appBlockingPausedProvider = FutureProvider<bool>(
+  (ref) => NativeShieldService().isAppBlockingPaused(),
+);
+
 /// Pushes the current shield state to the engine. Every mutating notifier
 /// funnels through here, so there is exactly one place that knows a platform
 /// channel exists.
@@ -84,7 +96,12 @@ void syncShield(
     focusUntil: focusWindowEnd(ref.read(timerProvider)),
   );
   // Fire and forget — a slow channel must never stall a toggle.
-  unawaited(service.applyConfig(config));
+  unawaited(
+    service.applyConfig(config).then((_) {
+      ref.invalidate(appBlockingRunningProvider);
+      ref.invalidate(appBlockingPausedProvider);
+    }),
+  );
 }
 
 /// When the focus-only rules stop applying, or null when nothing is running.

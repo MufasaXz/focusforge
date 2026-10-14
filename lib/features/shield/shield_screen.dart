@@ -80,6 +80,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     ref.invalidate(shieldEnabledProvider);
+    ref.invalidate(overlayAccessProvider);
+    ref.invalidate(appBlockingRunningProvider);
+    ref.invalidate(appBlockingPausedProvider);
     ref.invalidate(usageAccessProvider);
     ref.invalidate(appUsageTodayProvider);
     ref.invalidate(installedAppsProvider);
@@ -312,11 +315,12 @@ class _ShieldStatusSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final enabled = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
+    final enabled = ref.watch(appBlockingRunningProvider).valueOrNull ?? false;
     final native = NativeShieldService.isSupported;
     final blocked = ref.watch(blockedAppsProvider).length;
     final budgeted = ref.watch(budgetedAppsProvider).length;
     final youtube = ref.watch(youtubeRulesProvider);
+    final youtubeAccess = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
     final strict = ref.watch(strictModeProvider);
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
     final inert = budgeted > 0 && !usageAccess;
@@ -381,6 +385,8 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 label: 'Time budgets',
                 value: budgeted == 0
                     ? 'None'
+                    : !enabled
+                    ? '$budgeted inactive'
                     : usageAccess
                     ? '$budgeted running'
                     : '$budgeted, not reading usage',
@@ -389,12 +395,14 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 icon: Icons.smart_display_rounded,
                 color: youtube.any ? cs.tertiary : cs.onSurfaceVariant,
                 label: 'YouTube',
-                value: switch ((youtube.shorts, youtube.feed)) {
-                  (true, true) => 'Shorts and feeds closed',
-                  (true, false) => 'Shorts closed',
-                  (false, true) => 'Feeds closed',
-                  _ => 'Untouched',
-                },
+                value: youtube.any && !youtubeAccess
+                    ? 'Accessibility access is off'
+                    : switch ((youtube.shorts, youtube.feed)) {
+                        (true, true) => 'Shorts and feeds closed',
+                        (true, false) => 'Shorts closed',
+                        (false, true) => 'Feeds closed',
+                        _ => 'Untouched',
+                      },
               ),
               _StatusLine(
                 icon: Icons.lock_rounded,
@@ -431,9 +439,9 @@ class _ShieldStatusSheet extends ConsumerWidget {
                                       'build the rules are saved and shown, '
                                       'and nothing is closed.'
                                 : !enabled
-                                ? 'Android\'s accessibility service is off, so '
-                                      'no app can be closed. Turn it on from '
-                                      'the Apps tab.'
+                                ? 'App boundaries are off. Check Usage access and '
+                                      'Draw over other apps, or resume boundaries '
+                                      'from the Apps tab.'
                                 : 'Time budgets need usage access before they '
                                       'can count anything. Grant it from the '
                                       'Apps tab.',
@@ -448,14 +456,17 @@ class _ShieldStatusSheet extends ConsumerWidget {
               ],
               const SizedBox(height: Gap.md),
               Divider(color: cs.outlineVariant, height: 1),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.air_outlined, color: cs.primary),
-                title: const Text('Preview the pause screen'),
-                subtitle: const Text(
-                  'The 4-7-8 breath exercise shown before a blocked app opens',
+              Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.air_outlined, color: cs.primary),
+                  title: const Text('Preview the pause screen'),
+                  subtitle: const Text(
+                    'The 4-7-8 breath exercise shown before a blocked app opens',
+                  ),
+                  onTap: onPreviewGate,
                 ),
-                onTap: onPreviewGate,
               ),
             ],
           ),
@@ -566,7 +577,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
     final loading = ref.watch(installedAppsProvider).isLoading;
 
     final native = NativeShieldService.isSupported;
-    final enabled = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
+    final enabled = ref.watch(appBlockingRunningProvider).valueOrNull ?? false;
     final usageAccess = ref.watch(usageAccessProvider).valueOrNull ?? false;
     final budgeted = ref.watch(budgetedAppsProvider).length;
 
@@ -1312,15 +1323,9 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
       .firstOrNull;
 
   Future<void> _apply() async {
-    if (_tier.isEnforced &&
-        !await ensureShieldAccess(
-          context,
-          ref,
-          requiresUsageAccess: _tier == WhitelistTier.budgeted,
-        )) {
+    if (_tier.isEnforced && !await ensureShieldAccess(context, ref)) {
       return;
     }
-    if (!mounted) return;
     if (!mounted) return;
     final notifier = ref.read(whitelistProvider.notifier);
     await notifier.addInstalledApp(
@@ -1917,7 +1922,13 @@ Future<void> _changeSurface(
   Future<void> Function() apply, {
   String? feature,
 }) async {
-  if (enabling && !await ensureShieldAccess(context, ref, feature: feature)) {
+  if (enabling &&
+      !await ensureShieldAccess(
+        context,
+        ref,
+        requiresAccessibility: true,
+        feature: feature,
+      )) {
     return;
   }
   if (!context.mounted) return;

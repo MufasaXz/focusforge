@@ -74,7 +74,7 @@ void main() {
   );
 
   testWidgets(
-    'account deletion is reachable at 320dp with large text and preserves data on failure',
+    'account controls offer sign out without account deletion at large text',
     (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
@@ -84,36 +84,13 @@ void main() {
       ]);
       await tester.pumpWidget(wrap(const PrivacyScreen(), scale: 2));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Delete account'), 180);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete account'));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byType(TextField),
-        180,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'DELETE');
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Delete everything'),
-        180,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete everything'));
-      await tester.pumpAndSettle();
-      expect(auth.attempts, 1);
+      expect(find.text('Delete account'), findsNothing);
+      await tester.scrollUntilVisible(find.text('Sign out'), 180);
+      expect(find.text('Sign out'), findsOneWidget);
+      expect(auth.attempts, 0);
       expect(store.getList(StoreKeys.sessions), [
         {'id': 'kept'},
       ]);
-      expect(container.read(userProvider).uid, 'sam');
-      expect(container.read(accountMutationProvider), isFalse);
-      expect(
-        find.text('No connection. Your data stays on device.'),
-        findsOneWidget,
-      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -142,7 +119,9 @@ void main() {
   test('deletion reset clears live timer and sharing consent', () async {
     await container.read(boardOptInProvider.notifier).set(true);
     container.read(timerProvider.notifier).start();
+    await store.setString('auth.deletedCredential', 'stale-deleted-uid');
     await resetPersistedState(container);
+    expect(store.getString('auth.deletedCredential'), 'stale-deleted-uid');
     expect(container.read(timerProvider).running, isFalse);
     expect(container.read(userProvider).uid, isEmpty);
     expect(container.read(boardOptInProvider), isFalse);

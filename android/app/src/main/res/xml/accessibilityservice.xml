@@ -1,29 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  What the FocusForge accessibility service is allowed to observe.
-
-  Window-state changes, so the service can tell which app came to the
-  foreground and decide whether that app is one the user asked it to keep
-  closed. It does not request gesture injection, key events, or the ability to
-  act on the user's behalf.
-
-  `canRetrieveWindowContent` is true, and that is a real widening of what the
-  service can see. It is required for one feature and nothing else: telling the
-  YouTube Shorts player apart from a normal video, so a student can keep
-  lectures and lose the feed. The service reads view ids inside YouTube and
-  only while a YouTube rule is on; it never reads, stores or transmits anything
-  it sees, and no other app's content is inspected at all. The description
-  string the user reads when they grant access says so plainly.
-
-  `flagReportViewIds` is what makes the view ids readable. `notificationTimeout`
-  is short because this runs on the launch path — a block that arrives after the
-  user is already scrolling has already failed.
--->
+<!-- YouTube-only screen identifiers, never messages/text, gestures or key events.
+     Whole-app boundaries use UsageEvents and draw-over-apps without Accessibility. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
+    android:packageNames="com.google.android.youtube"
     android:accessibilityFeedbackType="feedbackVisual"
     android:notificationTimeout="100"
-    android:accessibilityFlags="flagDefault|flagReportViewIds"
+    android:accessibilityFlags="flagDefault|flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:isAccessibilityTool="false"
     android:description="@string/accessibility_service_description"

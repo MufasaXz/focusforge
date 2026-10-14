@@ -6,10 +6,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
 
-    <!-- No SYSTEM_ALERT_WINDOW: the Deep Breath Gate is drawn as a
-         TYPE_ACCESSIBILITY_OVERLAY window by the accessibility service, which
-         the service may do without the draw-over-apps permission. Asking for
-         it would be a permission the app never exercises. -->
+    <!-- Local app boundaries use UsageEvents and a user-started visible foreground service.
+         Draw-over-apps displays the pause; Accessibility is only for YouTube filters. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
     <!-- Usage access, for the per-app screen-time breakdown. A special
          permission: the user grants it from Settings rather than from a
@@ -70,7 +71,7 @@
 
              `isAccessibilityTool="false"` is the honest answer and Android 12+
              reads it: this service is not a tool for people with disabilities,
-             it is a focus tool that watches which app came to the front. Play
+             it is an optional focus tool for YouTube screen filters. Play
              asks for the attribute to be stated rather than inferred, and a
              false here is what makes the system's own warning about the
              service accurate. -->
@@ -85,6 +86,12 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibilityservice"/>
+        </service>
+
+        <service android:name=".shield.AppBlockingService" android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started app focus boundaries: locally query UsageEvents to detect chosen distracting apps and display a pause overlay. Ongoing notification offers Stop; no remote controls, boot starts, message capture or content collection."/>
         </service>
 
         <receiver android:name=".widgets.FocusLiveActivity" android:exported="false">

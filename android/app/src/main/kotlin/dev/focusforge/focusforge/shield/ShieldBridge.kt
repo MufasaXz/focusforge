@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
 import android.provider.Settings
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
@@ -88,6 +89,22 @@ class ShieldBridge(
                 FocusAccessibilityService.isEnabled(context),
             )
 
+            "hasOverlayPermission" -> result.success(AppBlockingService.overlayAllowed(context))
+            "isAppBlockingRunning" -> result.success(AppBlockingService.instance != null)
+            "isAppBlockingPaused" -> result.success(AppBlockingService.isPaused(context))
+            "resumeAppBlocking" -> result.success(AppBlockingService.resumeFromUser(context))
+            "pauseAppBlocking" -> {
+                AppBlockingService.pauseFromUser(context)
+                result.success(true)
+            }
+            "openOverlaySettings" -> {
+                try {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(true)
+                } catch (_: Exception) { result.success(false) }
+            }
+
             "openAccessibilitySettings" -> {
                 // Android has no runtime dialog for accessibility access — the
                 // only way in is this settings page, so the app sends the user
@@ -110,6 +127,7 @@ class ShieldBridge(
                 // the two, the next service start reads the new rules anyway.
                 ShieldStore.save(context, rules)
                 FocusAccessibilityService.instance?.refresh()
+                AppBlockingService.sync(context)
                 result.success(true)
             }
 
@@ -120,8 +138,8 @@ class ShieldBridge(
                 if (packageName.isNullOrBlank()) {
                     result.success(false)
                 } else {
-                    FocusAccessibilityService.instance
-                        ?.grantGrace(packageName, seconds)
+                    FocusAccessibilityService.instance?.grantGrace(packageName, seconds)
+                    AppBlockingService.instance?.grantGrace(packageName, seconds)
                     result.success(true)
                 }
             }

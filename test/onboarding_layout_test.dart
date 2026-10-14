@@ -213,12 +213,18 @@ void main() {
       await tester.pumpWidget(wrap(PermissionsStep(onNext: () {}), scale: 2));
       await tester.pumpAndSettle();
       expect(find.text('Make room for focus'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Block distractions'), 180);
+      await tester.scrollUntilVisible(find.text('Show app pause screens'), 180);
       await tester.pumpAndSettle();
-      expect(find.text('Block distractions').hitTestable(), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('How to enable Shield'), 180);
+      expect(find.text('Show app pause screens').hitTestable(), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('How to allow pause screens'),
+        180,
+      );
       await tester.pumpAndSettle();
-      expect(find.text('How to enable Shield').hitTestable(), findsOneWidget);
+      expect(
+        find.text('How to allow pause screens').hitTestable(),
+        findsOneWidget,
+      );
       await tester.scrollUntilVisible(find.text('Continue for now'), 180);
       await tester.pumpAndSettle();
       expect(find.text('Continue for now').hitTestable(), findsOneWidget);
