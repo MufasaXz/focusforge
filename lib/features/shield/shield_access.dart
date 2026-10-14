@@ -173,7 +173,7 @@ Future<void> showUsageHomeGuidance(BuildContext context) async {
       title: const Text('App usage is off'),
       scrollable: true,
       content: const Text(
-        'This app rule stays off because Usage Access is needed to detect when your chosen app is open and measure its budget. Open Home and use Allow app usage below Start session to review the explanation and choose access.',
+        'Draw over other apps can show a pause screen, but cannot detect which app is open. Usage Access supplies that detection, so this saved rule stays inactive without it. Open Home and use Allow app usage to read the explanation and choose access. Accessibility is only needed for the YouTube filters.',
       ),
       actions: [
         TextButton(

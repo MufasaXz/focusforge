@@ -12,6 +12,7 @@ import '../../core/providers/coach_providers.dart';
 import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/providers/usage_providers.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../features/shield/breath_gate.dart';
 import '../router.dart';
@@ -84,6 +85,15 @@ class _AppShellState extends ConsumerState<AppShell>
     if (state == AppLifecycleState.resumed) {
       ref.read(timerProvider.notifier).sync();
       ref.read(focusCalendarDateProvider.notifier).refresh();
+      // Native onResume starts saved boundaries after a Settings grant. Read
+      // those grants/service again on every tab, including Home, so returning
+      // from Usage Settings cannot leave Shield labelled inactive from cache.
+      ref.invalidate(usageAccessProvider);
+      ref.invalidate(overlayAccessProvider);
+      ref.invalidate(appBlockingRunningProvider);
+      ref.invalidate(appBlockingPausedProvider);
+      ref.invalidate(shieldEnabledProvider);
+      ref.invalidate(appUsageTodayProvider);
       unawaited(_checkBlockedLaunch());
     }
   }

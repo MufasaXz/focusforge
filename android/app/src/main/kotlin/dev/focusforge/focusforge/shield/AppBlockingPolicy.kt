@@ -34,6 +34,15 @@ object AppBlockingPolicy {
     fun shouldStart(hasRules: Boolean, paused: Boolean, visible: Boolean,
                     usageGranted: Boolean, overlayGranted: Boolean): Boolean =
         hasRules && !paused && visible && usageGranted && overlayGranted
+
+    fun foregroundQueryStart(lastQueryAt: Long, now: Long, replay: Boolean): Long =
+        if (replay || lastQueryAt > now) bootstrapFrom(now)
+        else (lastQueryAt - 500L).coerceAtLeast(0L)
+
+    fun cachedUsage(sample: Long?, sampledAt: Long, now: Long, foreground: Boolean): Long? =
+        if (now - sampledAt in 0L until 10_000L)
+            sample?.let { it + if (foreground) now - sampledAt else 0L }
+        else null
 }
 
 /** UsageEvents queries overlap intentionally. Old events cannot undo a newer app transition. */
@@ -42,10 +51,14 @@ class ForegroundAppTracker {
         private set
     private var lastEventAt = Long.MIN_VALUE
     private var activity: String? = null
+    private var suspendedPackage: String? = null
+    private var suspendedActivity: String? = null
 
     fun resume(packageName: String, at: Long, activity: String? = null) {
         if (at < lastEventAt) return
         lastEventAt = at
+        suspendedPackage = null
+        suspendedActivity = null
         this.packageName = packageName
         this.activity = activity
     }
@@ -53,6 +66,11 @@ class ForegroundAppTracker {
     fun pause(packageName: String, at: Long, activity: String? = null) {
         if (at < lastEventAt) return
         lastEventAt = at
+        if (suspendedPackage == packageName &&
+            (suspendedActivity == null || activity == null || suspendedActivity == activity)) {
+            suspendedPackage = null
+            suspendedActivity = null
+        }
         if (this.packageName == packageName &&
             (this.activity == null || activity == null || this.activity == activity)) {
             this.packageName = null
@@ -63,8 +81,34 @@ class ForegroundAppTracker {
     fun clear(at: Long) {
         packageName = null
         activity = null
+        suspendedPackage = null
+        suspendedActivity = null
         lastEventAt = at
     }
+
+    fun screenOff(at: Long) {
+        if (at < lastEventAt) return
+        if (packageName != null) {
+            suspendedPackage = packageName
+            suspendedActivity = activity
+        }
+        packageName = null
+        activity = null
+        lastEventAt = at
+    }
+
+    fun screenOn(at: Long) {
+        if (at < lastEventAt) return
+        if (packageName == null) {
+            packageName = suspendedPackage
+            activity = suspendedActivity
+        }
+        suspendedPackage = null
+        suspendedActivity = null
+        lastEventAt = at
+    }
+
+    fun reset() { clear(Long.MIN_VALUE) }
 }
 
 /** Activity-aware foreground intervals, clipped to the daily budget boundary. */
@@ -91,7 +135,14 @@ class DailyForegroundUsage(private val target: String, private val dayStart: Lon
     fun screenOff(at: Long) {
         if (at < lastEventAt) return
         lastEventAt = at
-        foreground.clear(at)
+        foreground.screenOff(at)
+        update(at)
+    }
+
+    fun screenOn(at: Long) {
+        if (at < lastEventAt) return
+        lastEventAt = at
+        foreground.screenOn(at)
         update(at)
     }
 

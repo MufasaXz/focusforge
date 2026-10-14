@@ -66,6 +66,17 @@ class ShieldOverview extends ConsumerWidget {
                 : 'Set boundaries for apps and feeds. You stay in control.',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
+          if (supported && rules.isNotEmpty && !usage) ...[
+            const SizedBox(height: Gap.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => showUsageHomeGuidance(context),
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Allow app usage on Home'),
+              ),
+            ),
+          ],
           if (supported && rules.isNotEmpty && !enabled && !overlay) ...[
             const SizedBox(height: Gap.md),
             Align(

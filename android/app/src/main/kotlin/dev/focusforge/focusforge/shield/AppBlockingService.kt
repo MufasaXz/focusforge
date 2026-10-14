@@ -18,6 +18,8 @@ import android.widget.TextView
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
 import java.util.Calendar
+import java.io.FileDescriptor
+import java.io.PrintWriter
 
 /**
  * User-started local app boundaries. Usage access detects foreground activity;
@@ -91,6 +93,7 @@ class AppBlockingService : Service() {
     private val foreground = ForegroundAppTracker()
     private val graceUntil = HashMap<String, Long>()
     private var lastQueryAt = 0L
+    private var needsForegroundReplay = false
     private var overlay: View? = null
     private var covered: String? = null
     private var coveredReason: String? = null
@@ -100,6 +103,9 @@ class AppBlockingService : Service() {
     private var budgetPackage: String? = null
     private var budgetSampleAt = 0L
     private var budgetSample: Long? = null
+    @Volatile private var lastDetectorAt = 0L
+    @Volatile private var lastEventCount = 0
+    @Volatile private var lastBlockReason: String? = null
 
     override fun onBind(intent: Intent?) = null
 
@@ -164,6 +170,7 @@ class AppBlockingService : Service() {
         override fun run() {
             if (instance !== this@AppBlockingService) return
             val now = System.currentTimeMillis()
+            lastDetectorAt = now
             if (!hasUsageAccess(this@AppBlockingService) || !overlayAllowed(this@AppBlockingService) ||
                 isPaused(this@AppBlockingService)) {
                 main.post { dismissOverlay(); stopSelf() }
@@ -176,6 +183,7 @@ class AppBlockingService : Service() {
             if (!power.isInteractive || lock.isKeyguardLocked) {
                 foreground.clear(now)
                 lastQueryAt = now
+                needsForegroundReplay = true
                 main.post { dismissOverlay() }
                 detector.postDelayed(this, 1500L)
                 return
@@ -193,6 +201,7 @@ class AppBlockingService : Service() {
             val reason = front?.let {
                 AppBlockingPolicy.reason(it, rules, now, graceUntil[it] ?: 0L, protected, used)
             }
+            lastBlockReason = reason
             main.post {
                 if (instance !== this@AppBlockingService) return@post
                 // Snapshots cannot cover a different app after a newer poll or a button action.
@@ -209,29 +218,42 @@ class AppBlockingService : Service() {
     private fun readForeground(now: Long) {
         val manager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         try {
-            val events = manager.queryEvents((lastQueryAt - 500L).coerceAtLeast(0), now)
+            val replay = needsForegroundReplay || lastQueryAt > now
+            val queryStart = AppBlockingPolicy.foregroundQueryStart(lastQueryAt, now, replay)
+            if (replay) {
+                foreground.reset()
+                budgetPackage = null
+                budgetSample = null
+            }
+            val events = manager.queryEvents(queryStart, now)
             val event = UsageEvents.Event()
+            lastEventCount = 0
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
+                lastEventCount++
                 val pkg = event.packageName.orEmpty()
                 when (event.eventType) {
                     UsageEvents.Event.MOVE_TO_FOREGROUND -> if (pkg.isNotEmpty()) foreground.resume(pkg, event.timeStamp, event.className)
                     UsageEvents.Event.MOVE_TO_BACKGROUND -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
-                    UsageEvents.Event.SCREEN_NON_INTERACTIVE -> foreground.clear(event.timeStamp)
+                    UsageEvents.Event.ACTIVITY_STOPPED -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
+                    UsageEvents.Event.SCREEN_NON_INTERACTIVE -> foreground.screenOff(event.timeStamp)
+                    UsageEvents.Event.SCREEN_INTERACTIVE -> foreground.screenOn(event.timeStamp)
                 }
             }
+            needsForegroundReplay = false
             lastQueryAt = now
         } catch (_: RuntimeException) {
             foreground.clear(now) // Failure is not evidence that an app is still in front.
+            needsForegroundReplay = true
             lastQueryAt = now
         }
     }
 
     /** Event-derived daily foreground time includes the currently running interval. */
     private fun usedToday(pkg: String, now: Long): Long? {
-        if (budgetPackage == pkg && now - budgetSampleAt < 10_000L) return budgetSample?.let {
-            it + if (foreground.packageName == pkg) now - budgetSampleAt else 0L
-        }
+        if (budgetPackage == pkg) AppBlockingPolicy.cachedUsage(
+            budgetSample, budgetSampleAt, now, foreground.packageName == pkg,
+        )?.let { return it }
         val midnight = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
@@ -252,6 +274,7 @@ class AppBlockingService : Service() {
                         usage.pause(eventPackage, event.timeStamp, event.className)
                     }
                     UsageEvents.Event.SCREEN_NON_INTERACTIVE -> usage.screenOff(event.timeStamp)
+                    UsageEvents.Event.SCREEN_INTERACTIVE -> usage.screenOn(event.timeStamp)
                 }
             }
             val total = usage.totalAt(now)
@@ -269,6 +292,14 @@ class AppBlockingService : Service() {
 
     fun isCovering(pkg: String): Boolean = covered == pkg
 
+    private fun leaveBlockedApp(pkg: String, label: String) {
+        suppressUntil = System.currentTimeMillis() + 500L
+        dismissOverlay()
+        ShieldEvents.emit(pkg, label, ShieldEvents.WALKED_AWAY)
+        try { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+    }
+
     private fun showOverlay(pkg: String, reason: String) {
         if (!overlayAllowed(this) || !hasUsageAccess(this) || pkg in protected ||
             foreground.packageName != pkg) return
@@ -284,11 +315,7 @@ class AppBlockingService : Service() {
         view.findViewById<TextView>(R.id.ff_block_note).text =
             "Leave this app closed, or take three slow breaths before deciding to open it."
         view.findViewById<Button>(R.id.ff_block_back).setOnClickListener {
-            suppressUntil = System.currentTimeMillis() + 1200L
-            dismissOverlay()
-            ShieldEvents.emit(pkg, label, ShieldEvents.WALKED_AWAY)
-            try { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+            leaveBlockedApp(pkg, label)
         }
         view.findViewById<Button>(R.id.ff_block_anyway).setOnClickListener {
             suppressUntil = System.currentTimeMillis() + 1200L
@@ -300,18 +327,23 @@ class AppBlockingService : Service() {
                     .putExtra(FocusAccessibilityService.EXTRA_BLOCKED_LABEL, label)
                     .putExtra(FocusAccessibilityService.EXTRA_GRACE_SECONDS, ShieldStore.load(this).graceSeconds))
             } catch (_: Exception) {
-                ShieldEvents.emit(pkg, label, ShieldEvents.OPENED_ANYWAY)
-                grantGrace(pkg, ShieldStore.load(this).graceSeconds)
+                // A failed breath-screen launch never grants unearned access.
+                suppressUntil = 0L
             }
         }
+        // Keep key events in the pause screen instead of sending them to the
+        // covered app. Back leaves the distraction; it does not dismiss the rule.
+        view.isFocusableInTouchMode = true
+        (view as BlockOverlayRoot).onBack = { leaveBlockedApp(pkg, label) }
         val type = if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else { @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE }
         val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT, type,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START }
         try {
             windows.addView(view, params)
+            view.requestFocus()
             overlay = view; covered = pkg; coveredReason = reason
             val content = view.findViewById<View>(R.id.ff_block_content)
             applyTypeface(content)
@@ -349,5 +381,11 @@ class AppBlockingService : Service() {
         dismissOverlay()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
+    }
+
+    override fun dump(fd: FileDescriptor?, writer: PrintWriter?, args: Array<out String>?) {
+        writer?.println("App boundaries: usage=${hasUsageAccess(this)} overlay=${overlayAllowed(this)} paused=${isPaused(this)}")
+        writer?.println("detectorAt=$lastDetectorAt queryAt=$lastQueryAt events=$lastEventCount foreground=${foreground.packageName}")
+        writer?.println("rules=${ShieldStore.load(this).apps.size} protected=${foreground.packageName in protected} reason=$lastBlockReason covered=$covered")
     }
 }

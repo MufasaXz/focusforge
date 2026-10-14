@@ -106,32 +106,31 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'enabling an app without usage access requests overlay only',
-    (tester) async {
-      final container = containerFor(overlay: false);
-      await mount(tester, container, const ShieldScreen());
-      expect(find.text('Turn on app blocking'), findsNothing);
-      expect(find.text('1 apps'), findsNothing);
-      final row = find.ancestor(
-        of: find.text('Instagram'),
-        matching: find.byType(InkWell),
-      );
-      await tester.tap(
-        find.descendant(of: row, matching: find.byType(GestureDetector)).last,
-      );
-      await tester.pumpAndSettle();
+  testWidgets('enabling an app without usage access requests overlay only', (
+    tester,
+  ) async {
+    final container = containerFor(overlay: false);
+    await mount(tester, container, const ShieldScreen());
+    expect(find.text('Turn on app blocking'), findsNothing);
+    expect(find.text('1 apps'), findsNothing);
+    final row = find.ancestor(
+      of: find.text('Instagram'),
+      matching: find.byType(InkWell),
+    );
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(GestureDetector)).last,
+    );
+    await tester.pumpAndSettle();
 
-      expect(container.read(whitelistProvider), isEmpty);
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text('Later'), findsOneWidget);
-      expect(find.text('Allow draw over other apps'), findsOneWidget);
-      expect(find.text('Go to Home'), findsNothing);
-      expect(find.text('Open usage settings'), findsNothing);
-      expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
-    },
-  );
+    expect(container.read(whitelistProvider), isEmpty);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Later'), findsOneWidget);
+    expect(find.text('Allow draw over other apps'), findsOneWidget);
+    expect(find.text('Go to Home'), findsNothing);
+    expect(find.text('Open usage settings'), findsNothing);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'overlay grant saves a pending app rule without requesting usage access',
@@ -157,6 +156,29 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     },
   );
+
+  testWidgets('an inactive saved rule offers Home usage guidance', (
+    tester,
+  ) async {
+    final container = containerFor(usage: false, overlay: true, running: false);
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(
+          packageId: 'com.instagram.android',
+          name: 'Instagram',
+          tier: WhitelistTier.blocked,
+        );
+    await mount(tester, container, const ShieldOverview());
+    final action = find.text('Allow app usage on Home');
+    expect(action, findsOneWidget);
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+    expect(find.text('Go to Home'), findsOneWidget);
+    expect(find.text('Open usage settings'), findsNothing);
+    expect(container.read(whitelistProvider), hasLength(1));
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets('Shield keeps its verified status visible during refresh', (
     tester,

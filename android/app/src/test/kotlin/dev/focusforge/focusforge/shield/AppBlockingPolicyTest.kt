@@ -97,4 +97,54 @@ class AppBlockingPolicyTest {
         assertFalse(AppBlockingPolicy.shouldStart(false, false, true, true, true))
         assertTrue(AppBlockingPolicy.shouldStart(true, false, true, true, true))
     }
+    @Test fun unlockingReplaysForegroundHistoryWhenNoNewResumeEventExists() {
+        val now = 20 * 60_000L
+        val queryStart = AppBlockingPolicy.foregroundQueryStart(now - 400, now, true)
+        assertTrue(queryStart <= now - 10 * 60_000L)
+        val tracker = ForegroundAppTracker()
+        tracker.clear(now - 1000)
+        tracker.resume("app", now - 10 * 60_000L, "Main")
+        assertNull(tracker.packageName)
+        // A fresh replay must not retain the pre-unlock timestamp fence.
+        tracker.reset()
+        tracker.resume("app", now - 10 * 60_000L, "Main")
+        tracker.screenOff(now - 1000L)
+        assertNull(tracker.packageName)
+        tracker.screenOn(now)
+        assertEquals("app", tracker.packageName)
+    }
+    @Test fun anActivityPauseWhileScreenIsOffPreventsStaleRestoration() {
+        val tracker = ForegroundAppTracker()
+        tracker.resume("app", 100, "Main")
+        tracker.screenOff(200)
+        tracker.pause("app", 250, "Main")
+        tracker.screenOn(300)
+        assertNull(tracker.packageName)
+        tracker.resume("app", 400, "Main")
+        tracker.screenOff(500)
+        tracker.resume("other", 600, "Main")
+        tracker.screenOn(700)
+        assertEquals("other", tracker.packageName)
+    }
+    @Test fun aBackwardClockChangeDoesNotLeaveTheQueryWindowInTheFuture() {
+        val now = 20 * 60_000L
+        val queryStart = AppBlockingPolicy.foregroundQueryStart(now + 60_000L, now, false)
+        assertTrue(queryStart <= now - 10 * 60_000L)
+        assertEquals(now - 900L, AppBlockingPolicy.foregroundQueryStart(now - 400L, now, false))
+    }
+    @Test fun budgetCacheRejectsNegativeAgeAndExpiredSamples() {
+        assertNull(AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 9_000L, true))
+        assertNull(AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 20_000L, true))
+        assertEquals(1_809_999L, AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 19_999L, true))
+        assertEquals(1_800_000L, AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 19_999L, false))
+    }
+    @Test fun dailyBudgetRestoresAfterUnlockWithoutCountingLockedTime() {
+        val usage = DailyForegroundUsage("app", 0)
+        usage.resume("app", 1000, "Main")
+        usage.screenOff(2000)
+        usage.screenOn(6000)
+        assertEquals(4000L, usage.totalAt(9000))
+        usage.pause("app", 10000, "Main")
+        assertEquals(5000L, usage.totalAt(20000))
+    }
 }
