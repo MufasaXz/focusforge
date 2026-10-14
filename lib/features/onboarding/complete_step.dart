@@ -15,7 +15,6 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
-import '../../shared/widgets/tonal_panel.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
@@ -76,82 +75,93 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final persona = ref.watch(userProvider).persona;
+    final user = ref.watch(userProvider);
+    final persona = user.persona;
     final subjectCount = ref.watch(subjectsProvider).length;
     final goal = ref.watch(todayGoalMinutesProvider);
     // The preset the timer will actually start with, not a claim about the
     // shield: apps are chosen in the Shield tab now, so a count here would be
     // a zero dressed up as a fact.
-    final preset = ref.watch(
-      presetsProvider,
-    )[ref.watch(timerProvider).presetIndex];
+    final plans = ref.watch(presetsProvider);
+    final preset =
+        plans[ref.watch(timerProvider).presetIndex.clamp(0, plans.length - 1)];
 
     return StepScaffold(
       title: "You're all set",
-      subtitle: 'Here is what FocusForge will do for you.',
+      subtitle:
+          'Your starting point is saved. Make it a little better each day.',
       primaryLabel: 'Open FocusForge',
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
         Stagger(
           index: 2,
-          // The setup summary is the celebration's hero: one tonal panel
-          // holding the user's own choices, so the payoff reads as a single
-          // object rather than as loose tiles floating on the page.
-          child: TonalPanel(
-            accent: false,
-            padding: const EdgeInsets.all(Gap.lg),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final columns =
-                    constraints.maxWidth < 300 ||
-                        MediaQuery.textScalerOf(context).scale(14) > 20
-                    ? 1
-                    : 2;
-                final width =
-                    (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
-                final tiles = [
-                  _StatTile(
-                    icon: persona.icon,
-                    color: harmonize(persona.color, cs.primary),
-                    value: persona.label,
-                    label: 'Profile',
-                  ),
-                  ...[
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                user.focusIntention.label,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: Gap.sm),
+              Text(
+                user.focusIntention.tip,
+                style: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: Gap.xl),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns =
+                      constraints.maxWidth < 300 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 20
+                      ? 1
+                      : 2;
+                  final width =
+                      (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
+                  final tiles = [
                     _StatTile(
-                      icon: Icons.menu_book_rounded,
-                      color: cs.secondary,
-                      value: '$subjectCount',
-                      label: subjectCount == 1 ? 'Subject' : 'Subjects',
+                      icon: persona.icon,
+                      color: harmonize(persona.color, cs.primary),
+                      value: persona.label,
+                      label: 'Profile',
                     ),
-                    _StatTile(
-                      icon: Icons.timer_outlined,
-                      color: cs.secondary,
-                      value: formatMinutes(preset.focus),
-                      label: 'Focus block',
-                    ),
-                    _StatTile(
-                      icon: Icons.timer_rounded,
-                      color: cs.tertiary,
-                      value: formatMinutes(goal),
-                      label: 'Daily goal',
-                    ),
-                  ],
-                ];
-                return Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: Gap.sm,
-                  children: [
-                    for (final tile in tiles)
-                      SizedBox(width: width, child: tile),
-                  ],
-                );
-              },
-            ),
+                    ...[
+                      _StatTile(
+                        icon: Icons.menu_book_rounded,
+                        color: cs.secondary,
+                        value: '$subjectCount',
+                        label: subjectCount == 1 ? 'Subject' : 'Subjects',
+                      ),
+                      _StatTile(
+                        icon: Icons.timer_outlined,
+                        color: cs.secondary,
+                        value: formatMinutes(preset.focus),
+                        label: 'Focus block',
+                      ),
+                      _StatTile(
+                        icon: Icons.timer_rounded,
+                        color: cs.tertiary,
+                        value: formatMinutes(goal),
+                        label: 'Daily goal',
+                      ),
+                    ],
+                  ];
+                  return Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: Gap.sm,
+                    children: [
+                      for (final tile in tiles)
+                        SizedBox(width: width, child: tile),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ),
         const SizedBox(height: Gap.xl),
-        const Stagger(index: 4, child: SectionHeader(title: 'Quick tips')),
+        Stagger(index: 4, child: SectionHeader(title: preset.name)),
         Stagger(
           index: 5,
           child: ContentCard(
@@ -162,7 +172,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                 children: [
                   _Tip(
                     icon: Icons.timer_outlined,
-                    text: 'Start or resume a session from Home.',
+                    text:
+                        '${preset.focus} minutes of focus, then a ${preset.shortBreak}-minute break. Start your first session from Home.',
                   ),
                   _Tip(
                     icon: Icons.insights_outlined,
@@ -170,8 +181,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                     divider: true,
                   ),
                   _Tip(
-                    icon: Icons.shield_outlined,
-                    text: 'Tune what gets blocked in the Shield tab.',
+                    icon: Icons.notifications_outlined,
+                    text: 'Want a visible countdown? Enable timer notifications in Profile → App access.',
                     divider: true,
                   ),
                 ],

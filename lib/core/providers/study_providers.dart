@@ -875,9 +875,9 @@ class TimerNotifier extends Notifier<TimerState> {
         .recordSession(minutes: session.minutes, completed: true);
   }
 
-  void setPreset(int index) {
+  Future<void> setPreset(int index) {
     final presets = _presets;
-    if (index < 0 || index >= presets.length) return;
+    if (index < 0 || index >= presets.length) return Future.value();
     _ticker?.cancel();
     final preset = presets[index];
     // Switching pace is not a reason to lose the chosen subject.
@@ -886,7 +886,7 @@ class TimerNotifier extends Notifier<TimerState> {
       subjectId: state.subjectId,
       remaining: preset.focusDuration,
     );
-    unawaited(_persist());
+    return _persist();
   }
 
   /// Keep a running block when another plan is removed; reset when this plan

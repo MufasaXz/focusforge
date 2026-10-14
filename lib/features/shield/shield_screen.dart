@@ -1780,6 +1780,7 @@ class _YoutubeView extends ConsumerWidget {
                     ref,
                     v,
                     () => ref.read(youtubeRulesProvider.notifier).setShorts(v),
+                    feature: 'Shorts blocking',
                   ),
                 ),
                 Divider(color: cs.outlineVariant, height: 1),
@@ -1795,6 +1796,7 @@ class _YoutubeView extends ConsumerWidget {
                     ref,
                     v,
                     () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
+                    feature: 'YouTube filtering',
                   ),
                 ),
                 // Only meaningful once something is being closed, and a
@@ -1925,9 +1927,12 @@ Future<void> _changeSurface(
   BuildContext context,
   WidgetRef ref,
   bool enabling,
-  Future<void> Function() apply,
-) async {
-  if (enabling && !await ensureShieldAccess(context, ref)) return;
+  Future<void> Function() apply, {
+  String? feature,
+}) async {
+  if (enabling && !await ensureShieldAccess(context, ref, feature: feature)) {
+    return;
+  }
   if (!context.mounted) return;
   await _applyLocalChange(context, ref, apply);
 }

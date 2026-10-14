@@ -20,6 +20,7 @@ Future<bool> ensureShieldAccess(
   BuildContext context,
   WidgetRef ref, {
   bool requiresUsageAccess = false,
+  String? feature,
 }) async {
   if (!NativeShieldService.isSupported) return true;
 
@@ -27,7 +28,12 @@ Future<bool> ensureShieldAccess(
   final accessibility = await _granted(ref.read(shieldEnabledProvider.future));
   if (!context.mounted) return false;
   if (!accessibility) {
-    await _offerAccess(context, ref, AppPermission.accessibility);
+    await requestShieldPermission(
+      context,
+      ref,
+      AppPermission.accessibility,
+      feature: feature,
+    );
     return false;
   }
 
@@ -56,29 +62,17 @@ Future<void> _offerAccess(
   WidgetRef ref,
   AppPermission permission,
 ) async {
-  final accessibility = permission == AppPermission.accessibility;
   final allow = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      icon: Icon(
-        accessibility
-            ? Icons.accessibility_new_rounded
-            : Icons.timelapse_rounded,
-      ),
-      title: Text(
-        accessibility ? 'Allow app blocking first' : 'Allow usage access first',
-      ),
+      icon: const Icon(Icons.timelapse_rounded),
+      title: const Text('Allow usage access first'),
       scrollable: true,
-      content: Text(
-        accessibility
-            ? 'Accessibility access is off, so FocusForge cannot block apps '
-                  'or YouTube yet. This rule will stay off.\n\n'
-                  'In Android Settings, choose FocusForge under Accessibility '
-                  'and turn on its service. Return here and try again.'
-            : 'Usage access is off, so FocusForge cannot measure the time '
-                  'needed for a daily budget. This rule will stay off.\n\n'
-                  'In Android Usage access settings, choose FocusForge and '
-                  'allow access. Return here and save the rule again.',
+      content: const Text(
+        'Usage access is off, so FocusForge cannot measure the time '
+        'needed for a daily budget. This rule will stay off.\n\n'
+        'In Android Usage access settings, choose FocusForge and '
+        'allow access. Return here and save the rule again.',
       ),
       actions: [
         TextButton(
@@ -87,9 +81,7 @@ Future<void> _offerAccess(
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: Text(
-            accessibility ? 'Review and allow' : 'Open usage settings',
-          ),
+          child: const Text('Open usage settings'),
         ),
       ],
     ),
@@ -102,10 +94,11 @@ Future<void> _offerAccess(
 Future<void> requestShieldPermission(
   BuildContext context,
   WidgetRef ref,
-  AppPermission permission,
-) async {
+  AppPermission permission, {
+  String? feature,
+}) async {
   if (permission == AppPermission.accessibility &&
-      !await confirmShieldAccess(context)) {
+      !await confirmShieldAccess(context, feature: feature)) {
     return;
   }
   if (!context.mounted) return;

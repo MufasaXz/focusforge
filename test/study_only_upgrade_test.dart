@@ -77,7 +77,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [localStoreProvider.overrideWithValue(store)],
-          child: MaterialApp(home: PersonaStep(onNext: () {})),
+          child: MaterialApp(home: Scaffold(body: PersonaStep(onNext: () {}))),
         ),
       );
       await tester.pumpAndSettle();

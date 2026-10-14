@@ -8,7 +8,7 @@ import '../../core/providers/app_providers.dart';
 import 'auth_screen.dart';
 import 'complete_step.dart';
 import 'goal_step.dart';
-import 'permissions_step.dart';
+import 'starting_plan_step.dart';
 import 'persona_step.dart';
 import 'profile_step.dart';
 import 'splash_step.dart';
@@ -18,7 +18,7 @@ import 'subjects_step.dart';
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
 /// widget owns the whole journey: splash, account, persona, profile, subjects,
-/// goal, permissions and celebration. The last step flips `completeOnboarding()` and
+/// goal, starting plan and celebration. The last step flips `completeOnboarding()` and
 /// the router takes it from there.
 ///
 /// A [PageView] rather than an [AnimatedSwitcher] because it keeps each step
@@ -108,9 +108,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
-    // Watched rather than read: the persona decides whether the device page
-    // is part of this run, so the stepper has to follow the answer the
-    // moment it changes.
+    // Refresh subject and goal suggestions after the persona answer changes.
     ref.watch(userProvider.select((u) => u.persona));
     final steps = _steps;
     final total = steps.length - 1;
@@ -183,7 +181,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       key: ValueKey(ref.read(userProvider).persona),
       onNext: () => _advanceFrom(6),
     ),
-    7 => PermissionsStep(onNext: () => _advanceFrom(7)),
+    7 => StartingPlanStep(onNext: () => _advanceFrom(7)),
     _ => const CompleteStep(),
   };
 
@@ -191,11 +189,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     'Welcome',
     'Account',
     'Your focus',
-    'This device',
+    '',
     'Profile',
     'Subjects',
     'Daily goal',
-    'Permissions',
+    'Starting plan',
     'Ready',
   ][step];
 }

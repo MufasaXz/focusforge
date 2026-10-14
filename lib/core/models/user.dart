@@ -167,6 +167,49 @@ enum Persona {
       values.firstWhere((v) => v.name == name, orElse: () => Persona.student);
 }
 
+/// A starting preference; it never enables blocking or changes a running timer.
+enum FocusIntention {
+  consistency(
+    'Build a habit',
+    'Start with manageable blocks and a daily goal you can repeat.',
+    Icons.eco_outlined,
+    25,
+    'Try one focused block first. Every completed session counts toward your goal.',
+  ),
+  distractions(
+    'Fewer distractions',
+    'Keep useful apps close and give distracting feeds a pause.',
+    Icons.notifications_off_outlined,
+    25,
+    'Choose apps or Shorts to block in Shield. Accessibility is requested only when you enable blocking.',
+  ),
+  deepWork(
+    'Go deeper',
+    'Make room for longer stretches of study or uninterrupted work.',
+    Icons.psychology_outlined,
+    50,
+    'Give one subject your full attention, then take the break in your plan.',
+  );
+
+  const FocusIntention(
+    this.label,
+    this.description,
+    this.icon,
+    this.blockMinutes,
+    this.tip,
+  );
+  final String label;
+  final String description;
+  final IconData icon;
+  final int blockMinutes;
+  final String tip;
+
+  static FocusIntention fromName(Object? name) => values.firstWhere(
+    (value) => value.name == name,
+    orElse: () => FocusIntention.consistency,
+  );
+}
+
 /// The signed-in (or local-only) account.
 @immutable
 class UserProfile {
@@ -174,6 +217,7 @@ class UserProfile {
     this.uid = '',
     this.displayName = '',
     this.persona = Persona.student,
+    this.focusIntention = FocusIntention.consistency,
     this.timezone = 'UTC',
     this.onboardingComplete = false,
     this.isAnonymous = true,
@@ -186,6 +230,7 @@ class UserProfile {
   final String uid;
   final String displayName;
   final Persona persona;
+  final FocusIntention focusIntention;
   final String timezone;
   final bool onboardingComplete;
 
@@ -235,6 +280,7 @@ class UserProfile {
     String? uid,
     String? displayName,
     Persona? persona,
+    FocusIntention? focusIntention,
     String? timezone,
     bool? onboardingComplete,
     bool? isAnonymous,
@@ -247,6 +293,7 @@ class UserProfile {
     uid: uid ?? this.uid,
     displayName: displayName ?? this.displayName,
     persona: persona ?? this.persona,
+    focusIntention: focusIntention ?? this.focusIntention,
     timezone: timezone ?? this.timezone,
     onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     isAnonymous: isAnonymous ?? this.isAnonymous,
@@ -263,6 +310,7 @@ class UserProfile {
     'uid': uid,
     'displayName': displayName,
     'persona': persona.name,
+    'focusIntention': focusIntention.name,
     'timezone': timezone,
     'onboardingComplete': onboardingComplete,
     'isAnonymous': isAnonymous,
@@ -276,6 +324,7 @@ class UserProfile {
     uid: j['uid'] as String? ?? '',
     displayName: j['displayName'] as String? ?? '',
     persona: Persona.fromName(j['persona'] as String?),
+    focusIntention: FocusIntention.fromName(j['focusIntention']),
     timezone: j['timezone'] as String? ?? 'UTC',
     onboardingComplete: j['onboardingComplete'] as bool? ?? false,
     isAnonymous: j['isAnonymous'] as bool? ?? true,

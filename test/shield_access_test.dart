@@ -10,7 +10,9 @@ import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/permission_manager.dart';
 import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/features/shield/shield_access.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
 
 void main() {
@@ -29,6 +31,8 @@ void main() {
   ProviderContainer containerFor({
     bool accessible = false,
     bool usage = false,
+    bool Function()? accessibilityCheck,
+    PermissionManager? manager,
   }) {
     final engine = RecordingShieldService();
     final container = ProviderContainer(
@@ -44,7 +48,11 @@ void main() {
             ),
           ],
         ),
-        shieldEnabledProvider.overrideWith((ref) async => accessible),
+        shieldEnabledProvider.overrideWith(
+          (ref) async => accessibilityCheck?.call() ?? accessible,
+        ),
+        if (manager != null)
+          shieldPermissionManagerProvider.overrideWithValue(manager),
         usageAccessProvider.overrideWith((ref) async => usage),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
       ],
@@ -111,6 +119,10 @@ void main() {
 
       expect(container.read(youtubeRulesProvider).shorts, isFalse);
       expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Allow Shorts blocking'), findsOneWidget);
+      await tester.tap(find.text('Later'));
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isFalse);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },
@@ -140,4 +152,61 @@ void main() {
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
+
+  testWidgets(
+    'Shorts consent opens settings once and waits for a verified retry',
+    (tester) async {
+      var accessible = false;
+      final manager = SettingsPermissionManager();
+      final container = containerFor(
+        accessibilityCheck: () => accessible,
+        manager: manager,
+      );
+      await mount(tester, container, const ShieldScreen());
+      await tester.tap(find.text('YouTube'));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      // Entering the tab itself must not ask for special access.
+      expect(find.byType(AlertDialog), findsNothing);
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Block Shorts'));
+      await tester.pumpAndSettle();
+      expect(find.text('Agree and open Settings'), findsOneWidget);
+      await tester.tap(find.text('Agree and open Settings'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, [AppPermission.accessibility]);
+      expect(container.read(youtubeRulesProvider).shorts, isFalse);
+      // A return from Settings alone cannot enable a rule without a grant.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isFalse);
+      accessible = true;
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Block Shorts'));
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isTrue);
+      expect(find.byType(AlertDialog), findsNothing);
+      // Turning it off remains possible if access is later revoked.
+      accessible = false;
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Block Shorts'));
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isFalse);
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Block Shorts'));
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isFalse);
+      expect(find.text('Allow Shorts blocking'), findsOneWidget);
+      await tester.tap(find.text('Later'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, [AppPermission.accessibility]);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+}
+
+class SettingsPermissionManager extends PermissionManager {
+  final requests = <AppPermission>[];
+  @override
+  Future<PermissionOutcome> request(AppPermission permission) async {
+    requests.add(permission);
+    return PermissionOutcome.openedSettings;
+  }
 }

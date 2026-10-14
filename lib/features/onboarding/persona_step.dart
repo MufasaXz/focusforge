@@ -4,46 +4,102 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
-import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 import 'setup_choice_card.dart';
 
-/// Screen 2 — persona.
-///
-/// One choice that changes everything downstream: the subject list, the goal
-/// suggestions and the copy. It is written straight to the profile so the very
-/// next step can already be persona-aware.
-class PersonaStep extends ConsumerWidget {
+/// Saves the subject context and starting focus preference together.
+class PersonaStep extends ConsumerStatefulWidget {
   const PersonaStep({super.key, required this.onNext});
 
   final VoidCallback onNext;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(userProvider).persona;
+  ConsumerState<PersonaStep> createState() => _PersonaStepState();
+}
+
+class _PersonaStepState extends ConsumerState<PersonaStep> {
+  late Persona _persona;
+  late FocusIntention _intention;
+  bool _personaEdited = false;
+  bool _intentionEdited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = ref.read(userProvider);
+    _persona = profile.persona;
+    _intention = profile.focusIntention;
+  }
+
+  Future<void> _save() async {
+    await ref
+        .read(userProvider.notifier)
+        .save(
+          ref
+              .read(userProvider)
+              .copyWith(
+                persona: _personaEdited
+                    ? _persona
+                    : ref.read(userProvider).persona,
+                focusIntention: _intentionEdited
+                    ? _intention
+                    : ref.read(userProvider).focusIntention,
+              ),
+        );
+    if (mounted) widget.onNext();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final profile = ref.watch(userProvider);
+    if (!_personaEdited) _persona = profile.persona;
+    if (!_intentionEdited) _intention = profile.focusIntention;
 
     return StepScaffold(
-      title: 'How will you focus?',
+      title: 'What brings you here?',
       subtitle:
-          'This tunes the subjects, goals and wording you see first. You can '
-          'change it later in your profile.',
-      onPrimary: onNext,
+          'A little about you helps us suggest subjects and a starting pace. '
+          'You can adjust your plan any time.',
+      onPrimary: _save,
       children: [
-        for (var i = 0; i < Persona.values.length; i++)
-          Stagger(
-            index: i + 2,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: Gap.md),
-              child: SetupChoiceCard(
-                title: Persona.values[i].label,
-                description: Persona.values[i].blurb,
-                icon: Persona.values[i].icon,
-                color: Persona.values[i].color,
-                selected: Persona.values[i] == selected,
-                onTap: () => ref
-                    .read(userProvider.notifier)
-                    .setPersona(Persona.values[i]),
+        Text('I am here for', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: Gap.md),
+        Wrap(
+          spacing: Gap.sm,
+          runSpacing: Gap.sm,
+          children: [
+            for (final persona in Persona.values)
+              ChoiceChip(
+                avatar: Icon(persona.icon, size: 18),
+                label: Text(persona.label),
+                selected: persona == _persona,
+                onSelected: (_) => setState(() {
+                  _persona = persona;
+                  _personaEdited = true;
+                }),
               ),
+          ],
+        ),
+        const SizedBox(height: Gap.xl),
+        Text(
+          'What would help most?',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: Gap.md),
+        for (final intention in FocusIntention.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gap.md),
+            child: SetupChoiceCard(
+              title: intention.label,
+              description: intention.description,
+              icon: intention.icon,
+              color: cs.primary,
+              selected: intention == _intention,
+              onTap: () => setState(() {
+                _intention = intention;
+                _intentionEdited = true;
+              }),
             ),
           ),
       ],

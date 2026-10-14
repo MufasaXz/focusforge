@@ -15,6 +15,7 @@ import 'package:focusforge/features/focus/widgets/clock_faces.dart';
 import 'package:focusforge/features/onboarding/goal_step.dart';
 import 'package:focusforge/features/onboarding/onboarding_chrome.dart';
 import 'package:focusforge/features/onboarding/permissions_step.dart';
+import 'package:focusforge/features/onboarding/persona_step.dart';
 import 'package:focusforge/features/onboarding/setup_choice_card.dart';
 
 void main() {
@@ -49,6 +50,33 @@ void main() {
   }
 
   for (final dark in [false, true]) {
+    testWidgets(
+      'focus preference stays reachable at 320dp with large text, dark=$dark',
+      (tester) async {
+        viewport(tester, const Size(320, 480));
+        var continued = false;
+        await tester.pumpWidget(
+          wrap(
+            PersonaStep(onNext: () => continued = true),
+            scale: 2,
+            dark: dark,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('Fewer distractions'), 180);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Fewer distractions'));
+        await tester.scrollUntilVisible(find.text('Continue'), 180);
+        await tester.pumpAndSettle();
+        expect(find.text('Continue').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        expect(continued, isTrue);
+        expect(store.getMap(StoreKeys.user)?['focusIntention'], 'distractions');
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets(
       'account actions remain reachable with large text, dark=$dark',
       (tester) async {
