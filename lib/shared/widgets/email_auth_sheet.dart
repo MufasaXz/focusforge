@@ -9,6 +9,7 @@ import '../../core/models/user.dart';
 import '../../core/services/auth_service.dart';
 import 'form_controls.dart';
 import 'tonal_panel.dart';
+import 'privacy_policy_link.dart';
 
 /// Email sign-in / sign-up sheet.
 ///
@@ -325,6 +326,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                 label: 'Forgot password?',
                 onTap: _busy ? null : () => unawaited(_reset()),
               ),
+              const PrivacyPolicyLink(),
             ],
           ),
         ),

@@ -61,6 +61,7 @@ class FakeParent implements ParentService {
   /// What the Shield tab has written, so a test can assert the rule left the
   /// parent's device.
   final published = <RemoteBlocks>[];
+  int codesCreated = 0;
 
   static const children = [
     ChildLink(uid: 'child-1', name: 'Ravi'),
@@ -117,10 +118,13 @@ class FakeParent implements ParentService {
         ]);
 
   @override
-  Future<PairCode> mintPairCode({required String childName}) async => PairCode(
-    code: 'ABCD2345EFGH6789',
-    expiresAt: DateTime.now().add(PairCode.lifetime),
-  );
+  Future<PairCode> mintPairCode({required String childName}) async {
+    codesCreated++;
+    return PairCode(
+      code: 'ABCD2345EFGH6789',
+      expiresAt: DateTime.now().add(PairCode.lifetime),
+    );
+  }
 
   @override
   Future<ChildLink> linkChild(
@@ -462,7 +466,8 @@ void main() {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      final container = parentDevice(FakeParent(paired: false));
+      final service = FakeParent(paired: false);
+      final container = parentDevice(service);
       container
           .read(userProvider.notifier)
           .save(
@@ -482,6 +487,23 @@ void main() {
       await settle(tester);
       await tester.tap(showCode);
       await settle(tester);
+      expect(service.codesCreated, 0);
+      expect(find.text('Agree and show code'), findsOneWidget);
+      await tester.ensureVisible(find.text('Not now'));
+      await settle(tester);
+      await tester.tap(find.text('Not now'));
+      await settle(tester);
+      expect(service.codesCreated, 0);
+      expect(find.text('ABCD 2345 EFGH 6789'), findsNothing);
+      await tester.ensureVisible(showCode);
+      await settle(tester);
+      await tester.tap(showCode);
+      await settle(tester);
+      await tester.ensureVisible(find.text('Agree and show code'));
+      await settle(tester);
+      await tester.tap(find.text('Agree and show code'));
+      await settle(tester);
+      expect(service.codesCreated, 1);
       final token = find.text('ABCD 2345 EFGH 6789');
       expect(token, findsOneWidget);
       expect(

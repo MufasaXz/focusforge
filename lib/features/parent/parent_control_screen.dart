@@ -234,6 +234,24 @@ class _ThisDeviceSection extends ConsumerWidget {
 /// wondering whether it worked.
 Future<void> _showPairCode(BuildContext context, WidgetRef ref) async {
   if (ref.read(_parentActionBusyProvider)) return;
+  final consent = await showAppConfirmDialog(
+    context: context,
+    title: 'Share with a linked parent?',
+    message:
+        'FocusForge uploads your device’s study totals, goal, streak, leading '
+        'subject, installed app names and package IDs to Firebase when a '
+        'parent uses this code. The linked parent can see those records and '
+        'choose Shield rules, including while you are using other apps. '
+        'Messages, passwords and detailed session logs are not shared. '
+        'Only give the code to your intended parent or guardian. You can '
+        'unlink in Parent control; Android permissions can be revoked in Settings.',
+    confirmLabel: 'Agree and show code',
+    cancelLabel: 'Not now',
+    icon: Icons.family_restroom_rounded,
+  );
+  if (!consent || !context.mounted || ref.read(_parentActionBusyProvider)) {
+    return;
+  }
   final container = ProviderScope.containerOf(context, listen: false);
   container.read(_parentActionBusyProvider.notifier).state = true;
   try {

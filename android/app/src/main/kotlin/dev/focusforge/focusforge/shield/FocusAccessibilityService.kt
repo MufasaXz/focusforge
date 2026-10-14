@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.os.Handler
+import android.os.Build
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
@@ -676,11 +677,21 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun hasUsageAccess(): Boolean = try {
         val appOps = getSystemService(Context.APP_OPS_SERVICE)
             as android.app.AppOpsManager
-        appOps.unsafeCheckOpNoThrow(
-            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-            android.os.Process.myUid(),
-            packageName,
-        ) == android.app.AppOpsManager.MODE_ALLOWED
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName,
+            )
+        }
+        mode == android.app.AppOpsManager.MODE_ALLOWED
     } catch (_: Exception) {
         false
     }

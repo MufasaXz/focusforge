@@ -209,8 +209,8 @@ const _permissions = <_Permission>[
     title: 'Block distractions',
     icon: Icons.shield_outlined,
     why:
-        'Lets Shield block selected apps and distracting feeds such as '
-        'Reels and Shorts.',
+        'Lets Shield block selected apps and supported YouTube feeds '
+        'and Shorts.',
     privacy:
         'Shield checks the foreground app and supported screen elements '
         'to apply your rules. It does not save messages or passwords.',

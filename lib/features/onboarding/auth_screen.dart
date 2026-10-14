@@ -14,6 +14,7 @@ import '../../shared/widgets/app_mark.dart';
 import '../../shared/widgets/email_auth_sheet.dart';
 import '../../shared/widgets/provider_marks.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/privacy_policy_link.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 1 — the account fork.
@@ -328,8 +329,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 6,
                   child: Text(
                     googleLive
-                        ? 'No account is required. Skipping keeps everything on '
-                              'this device.'
+                        ? 'No email account is required. Skipping may use Firebase '
+                              'anonymous sign-in. Your detailed study log stays on this device.'
                         : 'Google sign-in is not available in this build. Use email '
                               'or skip — you can link a real account later without '
                               'losing anything.',
@@ -348,6 +349,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
+                const SizedBox(height: Gap.sm),
+                const PrivacyPolicyLink(),
               ],
             ),
           ),

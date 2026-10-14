@@ -18,6 +18,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/privacy_policy_link.dart';
 import 'settings_support.dart';
 
 /// Data & Privacy — the screen that has to tell the truth about storage.
@@ -197,20 +198,19 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             children: [
               ListTile(
                 title: const Text('Privacy policy'),
+                subtitle: const Text('Read the full policy on our website'),
                 leading: const Icon(Icons.privacy_tip_outlined),
                 trailing: const AppChevron(),
-                onTap: () => _showInfo(
-                  context,
-                  title: 'Privacy policy',
-                  body:
-                      'Detailed sessions, screen time and screen checks stay on your device. '
-                      'Groups share your name, weekly focus minutes and current focus timer with members. '
-                      'The public weekly board shares your name and total only when you opt in. '
-                      'A paired parent receives study summaries and installed app names to choose rules. '
-                      'Firebase stores these optional records. No ad network or analytics SDK is used. '
-                      'Leaving a group removes your membership and progress row. You can export local '
-                      'data or delete your account here.',
+                onTap: () => openPrivacyResource(context, privacyPolicyUrl),
+              ),
+              ListTile(
+                title: const Text('Request deletion on the web'),
+                subtitle: const Text(
+                  'For account help or remaining cloud records',
                 ),
+                leading: const Icon(Icons.person_remove_outlined),
+                trailing: const AppChevron(),
+                onTap: () => openPrivacyResource(context, accountDeletionUrl),
               ),
               ListTile(
                 title: const Text('Terms of service'),

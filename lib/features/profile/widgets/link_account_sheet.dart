@@ -10,6 +10,7 @@ import '../../../shared/widgets/email_auth_sheet.dart';
 import '../../../shared/widgets/form_controls.dart';
 import '../../../shared/widgets/provider_marks.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
+import '../../../shared/widgets/privacy_policy_link.dart';
 
 /// Opens the sheet that puts a real credential behind a device-only account.
 ///
@@ -132,6 +133,8 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
               busy: _busy == 'email',
               onTap: _email,
             ),
+            const SizedBox(height: Gap.sm),
+            const PrivacyPolicyLink(),
           ],
         ),
       ),

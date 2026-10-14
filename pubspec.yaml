@@ -1,7 +1,7 @@
 name: focusforge
 description: "FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification."
 publish_to: 'none'
-version: 1.0.3+2019
+version: 1.0.3+2020
 
 environment:
   sdk: ^3.13.5
@@ -42,6 +42,7 @@ dependencies:
   # Only for `Blend.harmonize`, which rotates the categorical subject, tier and
   # persona colours into the live theme's temperature.
   material_color_utilities: ^0.13.0
+  url_launcher: ^6.3.2
 
   # Deliberately absent, though the redesign guide listed them: `fl_chart`,
   # `shimmer`, `confetti` and `flutter_animate` are all replaced by hand-written
@@ -55,6 +56,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  url_launcher_platform_interface: ^2.3.2
 
 flutter:
   uses-material-design: true
