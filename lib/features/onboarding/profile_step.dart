@@ -94,6 +94,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
 
     return StepScaffold(
       title: 'Set up your profile',
+      eyebrow: 'A LITTLE ABOUT YOU',
       subtitle: 'Just the essentials — you can add the rest later.',
       onPrimary: _commit,
       children: [

@@ -6,6 +6,10 @@ import 'leaderboard_service.dart';
 /// Only earned badge IDs and their dates leave the device. No session log.
 const achievementIds = <String>{
   'first_focus',
+  'five_sessions',
+  'three_day_streak',
+  'five_hours',
+  'ten_hours',
   'week_warrior',
   'century_club',
   'night_owl',

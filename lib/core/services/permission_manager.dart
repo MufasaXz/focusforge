@@ -4,13 +4,8 @@ import 'package:usage_stats/usage_stats.dart';
 
 import 'native_shield_service.dart';
 
-/// The permissions onboarding asks for.
-enum AppPermission {
-  accessibility,
-  notifications,
-  usageAccess,
-  doNotDisturb,
-}
+/// Optional access used by the app's current features.
+enum AppPermission { accessibility, notifications, usageAccess }
 
 /// What a permission currently resolves to.
 enum PermissionOutcome {
@@ -66,8 +61,8 @@ class PermissionManager {
 
   /// Whether the current platform can be asked at all.
   ///
-  /// Notifications exist everywhere; the other three are Android's app-usage
-  /// and notification-policy APIs and have no iOS equivalent.
+  /// Notifications are supported on Android and Apple platforms; blocking
+  /// and usage access use Android APIs.
   bool supports(AppPermission permission) => switch (permission) {
     AppPermission.notifications => _isAndroid || _isApple,
     _ => _isAndroid,
@@ -99,11 +94,6 @@ class PermissionManager {
         case AppPermission.notifications:
           return _fromStatus(await Permission.notification.request());
 
-        case AppPermission.doNotDisturb:
-          return _fromStatus(
-            await Permission.accessNotificationPolicy.request(),
-          );
-
         case AppPermission.accessibility:
           // No dialog exists. This opens Accessibility settings and returns
           // immediately, so the real answer arrives on resume.
@@ -128,12 +118,12 @@ class PermissionManager {
   Future<PermissionStatus> _statusOf(AppPermission permission) =>
       switch (permission) {
         AppPermission.notifications => Permission.notification.status,
-        AppPermission.doNotDisturb => Permission.accessNotificationPolicy.status,
         AppPermission.accessibility => _shield.isServiceEnabled().then(
           (on) => on ? PermissionStatus.granted : PermissionStatus.denied,
         ),
         AppPermission.usageAccess => UsageStats.checkUsagePermission().then(
-          (on) => on ?? false ? PermissionStatus.granted : PermissionStatus.denied,
+          (on) =>
+              on ?? false ? PermissionStatus.granted : PermissionStatus.denied,
         ),
       };
 

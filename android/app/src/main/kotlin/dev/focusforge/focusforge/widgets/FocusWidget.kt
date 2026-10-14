@@ -11,6 +11,7 @@ import android.content.res.Configuration
 import android.graphics.*
 import android.os.SystemClock
 import android.os.Bundle
+import android.os.Build
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -47,7 +48,7 @@ open class FocusWidget : AppWidgetProvider() {
         const val ACTION_REFRESH = "dev.focusforge.focusforge.WIDGET_REFRESH"
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            listOf(FocusWidget::class.java to "clock", DailyGoalWidget::class.java to "goal", StudyWidget::class.java to "study").forEach { (provider, kind) ->
+            listOf(FocusWidget::class.java to "clock", DailyGoalWidget::class.java to "goal", StudyWidget::class.java to "study", WeeklyProgressWidget::class.java to "weekly").forEach { (provider, kind) ->
                 manager.getAppWidgetIds(ComponentName(context, provider)).forEach { update(context, manager, it, kind) }
             }
         }
@@ -58,8 +59,9 @@ open class FocusWidget : AppWidgetProvider() {
                 "light" -> false
                 else -> context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
             }
-            val ink = Color.parseColor(if (dark) "#F4EEE3" else "#302D26")
-            val secondary = Color.parseColor(if (dark) "#BDB6AA" else "#6C6557")
+            val ink = Color.parseColor(if (dark) "#F2F4F7" else "#252B35")
+            val secondary = Color.parseColor(if (dark) "#B8C0CC" else "#606977")
+            val amoled = dark && prefs.getBoolean("flutter.ff.theme.amoled", false)
             val accent = Color.parseColor(when (prefs.getString("flutter.ff.theme.palette", "parchment")) {
                 "ember" -> if (dark) "#FF8A50" else "#B64E20"
                 "tide" -> if (dark) "#6FA8FF" else "#1B6FD6"
@@ -70,21 +72,14 @@ open class FocusWidget : AppWidgetProvider() {
                 else -> if (dark) "#D9C8A3" else "#766747"
             })
             val now = System.currentTimeMillis()
-            var minutes = 0
-            var count = 0
-            try {
-                val sessions = JSONArray(prefs.getString("flutter.ff.sessions", "[]"))
-                val today = Calendar.getInstance()
-                for (i in 0 until sessions.length()) {
-                    val session = sessions.optJSONObject(i) ?: continue
-                    val at = Calendar.getInstance().apply { timeInMillis = session.optLong("startedAt") }
-                    if (session.optBoolean("completed", true) && at.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                        at.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
-                        minutes += session.optInt("minutes").coerceAtLeast(0)
-                        count++
-                    }
-                }
-            } catch (_: Exception) { }
+            val sessions = try { JSONArray(prefs.all["flutter.ff.sessions"] as? String ?: "[]") } catch (_: Exception) { JSONArray() }
+            val user = try { JSONObject(prefs.all["flutter.ff.user"] as? String ?: "{}") } catch (_: Exception) { JSONObject() }
+            val uid = user.opt("uid") as? String ?: ""
+            val historyOwner = prefs.all["flutter.ff.achievements.historyOwner"] as? String ?: uid
+            val aliases = try { JSONObject(prefs.all["flutter.ff.achievements.aliases"] as? String ?: "{}") } catch (_: Exception) { JSONObject() }
+            val summary = WidgetSessionSummary.from(sessions, uid, historyOwner, aliases, now)
+            val minutes = summary.todayMinutes
+            val count = summary.todaySessions
             val timer = try { JSONObject(prefs.getString("flutter.ff.focus.presets", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
             val subjectId = timer.optString("subjectId")
             var subject = timer.optString("subjectName").takeIf { it.isNotBlank() && it != "null" } ?: "Choose a subject"
@@ -107,7 +102,8 @@ open class FocusWidget : AppWidgetProvider() {
                 else -> "Focus"
             }
             val target = timer.optLong("targetEnd", 0)
-            val running = timer.optBoolean("running") && target > now
+            val retroState = RetroWidgetState.from(timer, now)
+            val running = retroState.running
             val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val refreshIntent = Intent(context, FocusWidget::class.java).apply { action = ACTION_REFRESH }
             val pending = PendingIntent.getBroadcast(context, id, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -120,42 +116,62 @@ open class FocusWidget : AppWidgetProvider() {
             // A single boundary refresh stops it when the segment has ended.
             val nextRefresh = if (running) minOf(target, midnight) else midnight
             alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextRefresh, pending)
-            val remaining = if (running) target - now else if (timer.optBoolean("running")) 0L else timer.optLong("remainingMs", 25 * 60_000L)
+            val remaining = retroState.remainingMs
             val options = manager.getAppWidgetOptions(id)
             val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
             val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
+            if (kind == "weekly") {
+                updateWeekly(context, manager, id, width, height, dark, amoled, ink, secondary, accent, summary)
+                return
+            }
             val compact = width < 190 || height < 190 || context.resources.configuration.fontScale > 1.3f
+            val retroLayout = RetroWidgetLayout.forWidget(width, height, context.resources.configuration.fontScale)
+            val hours = remaining / 3_600_000L
+            val digits = if (hours > 0) hours.toString().length + 6 else 5
+            val studyLayout = StudyWidgetLayout.forWidget(width, height, context.resources.configuration.fontScale, digits)
             val views = RemoteViews(context.packageName, when(kind) {
                 "goal" -> if (compact) R.layout.ff_goal_widget_compact else R.layout.ff_goal_widget
                 "study" -> R.layout.ff_study_widget
                 else -> if (compact) R.layout.ff_focus_widget_compact else R.layout.ff_focus_widget
             })
-            views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.ff_widget_dark else R.drawable.ff_widget_day)
-            listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_subject).forEach { views.setTextColor(it, ink) }
+            views.setInt(R.id.widget_root, "setBackgroundResource", when {
+                amoled -> R.drawable.ff_widget_amoled
+                dark -> R.drawable.ff_widget_dark
+                else -> R.drawable.ff_widget_day
+            })
+            views.setTextColor(R.id.widget_title, secondary)
+            views.setTextColor(R.id.widget_progress, if (kind == "goal") ink else secondary)
+            views.setTextColor(R.id.widget_subject, if (kind == "goal") secondary else ink)
             if (kind != "goal") listOf(R.id.widget_time, R.id.widget_live).forEach { views.setTextColor(it, ink) }
             views.setTextColor(R.id.widget_caption, secondary)
             val scaledHeight = height / context.resources.configuration.fontScale
             views.setViewVisibility(R.id.widget_caption, if (scaledHeight < 160) View.GONE else View.VISIBLE)
-            if (scaledHeight < 120) {
+            if (scaledHeight < 120 && kind != "clock") {
                 // At 2× text the live value gets the space. Auxiliary labels
                 // disappear instead of covering the countdown or goal ring.
                 views.setViewVisibility(R.id.widget_title, View.GONE)
                 views.setViewVisibility(R.id.widget_subject, View.GONE)
-                if (kind == "clock") views.setViewVisibility(R.id.widget_phase, View.GONE)
             }
             if (kind == "study") {
-                views.setTextViewTextSize(R.id.widget_subject, TypedValue.COMPLEX_UNIT_SP, if (compact) 14f else 18f)
-                views.setViewVisibility(R.id.widget_progress, if (scaledHeight < 125) View.GONE else View.VISIBLE)
+                views.setTextViewTextSize(R.id.widget_subject, TypedValue.COMPLEX_UNIT_SP, studyLayout.subjectSp)
+                views.setViewVisibility(R.id.widget_title, if (studyLayout.showTitle) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_subject, if (studyLayout.showSubject) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_progress, if (studyLayout.showProgress) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_caption, if (studyLayout.showCaption) View.VISIBLE else View.GONE)
             }
-            val padding = ((if (compact) 12 else 18) * context.resources.displayMetrics.density).toInt()
+            if (kind == "clock") {
+                views.setViewVisibility(R.id.widget_title, if (retroLayout.showTitle) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_subject, if (retroLayout.showSubject) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_progress, if (retroLayout.showProgress) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_caption, if (retroLayout.showCaption) View.VISIBLE else View.GONE)
+            }
+            val padding = ((if (kind == "clock") retroLayout.paddingDp else if (kind == "study") studyLayout.paddingDp else if (compact) 12 else 18) * context.resources.displayMetrics.density).toInt()
             views.setViewPadding(R.id.widget_root, padding, padding, padding, padding)
             if (kind != "goal") {
                 // Launcher dimensions are dp, so these constraints hold at
                 // both low and high screen densities and large text settings.
-                val availableWidth = width - 2 * (if (compact) 12 else 18)
-                val digits = if (remaining >= 3_600_000L) 7 else 5
-                val fittingSize = availableWidth / context.resources.configuration.fontScale / (digits * .58f)
-                val timeSize = fittingSize.coerceIn(14f, if (compact) 30f else 38f)
+                val timeSize = if (kind == "clock") retroLayout.countdownSp(remaining)
+                    else studyLayout.countdownSp
                 listOf(R.id.widget_time, R.id.widget_live).forEach {
                     views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, timeSize)
                 }
@@ -166,20 +182,39 @@ open class FocusWidget : AppWidgetProvider() {
                 else -> phase.uppercase(Locale.ROOT)
             })
             if (kind == "clock") {
-                views.setTextViewText(R.id.widget_phase, if (running) "IN PROGRESS" else if (remaining <= 0) "COMPLETE" else "READY")
-                views.setTextColor(R.id.widget_phase, secondary)
+                // The retro face carries its own centre label and accent pill.
+                // State remains in the title/caption and spoken description.
+                views.setViewVisibility(R.id.widget_phase, View.GONE)
             }
             views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
             views.setTextViewText(R.id.widget_progress, minutes.toString() + " / " + goal + " min today")
             if (compact) views.setTextViewText(R.id.widget_progress, "$minutes / $goal min")
+            if (kind == "goal") {
+                val progressText = if (compact) "$minutes / $goal min" else "$minutes / $goal min today"
+                val availableWidth = width - 2 * (if (compact) 12 else 18)
+                val progressSp = min(if (compact) 12f else 15f, availableWidth / (context.resources.configuration.fontScale * progressText.length * .6f))
+                views.setTextViewTextSize(R.id.widget_progress, TypedValue.COMPLEX_UNIT_SP, progressSp)
+            }
             views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
                 if (minutes >= goal) "Goal complete · Keep growing" else (goal - minutes).toString() + " min to grow · Tap to view"
             } else if (running) phase + " in progress · Tap to open" else if (remaining <= 0) "Block ended · Open to continue" else "Ready when you are · Tap to focus")
             if (kind == "goal") {
-                views.setImageViewBitmap(R.id.widget_dial, goalRing(minutes.toFloat() / goal, dark, accent, ink))
-                views.setContentDescription(R.id.widget_dial, (minutes * 100 / goal).coerceIn(0, 100).toString() + " percent of today's goal complete")
+                views.setImageViewBitmap(R.id.widget_dial, goalRing(minutes.toFloat() / goal, dark, accent, ink, widgetTypeface(context), context.resources.configuration.fontScale))
+                views.setContentDescription(R.id.widget_dial, (minutes.toLong() * 100 / goal).coerceIn(0, 100).toString() + " percent of today's goal complete")
             } else {
-                if (kind == "clock") views.setImageViewBitmap(R.id.widget_dial, dial(dark, ink))
+                if (kind == "clock") {
+                    val labelTypeface = widgetTypeface(context)
+                    views.setImageViewBitmap(R.id.widget_dial, RetroWidgetRenderer.render(
+                        (retroLayout.dialDp * context.resources.displayMetrics.density).roundToInt(),
+                        retroState.progress, dark, amoled,
+                        accent, secondary, labelTypeface,
+                    ))
+                    // All visible text stays native; decorative marks are not
+                    // announced as another control in a screen reader.
+                    views.setContentDescription(R.id.widget_root, "$phase timer, $subject, " +
+                        (if (running) "in progress" else if (remaining <= 0) "complete" else "ready") +
+                        ". Tap to open FocusForge.")
+                }
                 views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
                 views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
                 if (running) {
@@ -201,7 +236,58 @@ open class FocusWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             manager.updateAppWidget(id, views)
         }
-        private fun goalRing(progress: Float, dark: Boolean, accent: Int, ink: Int): Bitmap {
+        private fun widgetTypeface(context: Context): Typeface = if (Build.VERSION.SDK_INT >= 26)
+            context.resources.getFont(R.font.focus_widget_inter) else Typeface.create("sans-serif-medium", Typeface.NORMAL)
+
+        private fun updateWeekly(
+            context: Context, manager: AppWidgetManager, id: Int, width: Int, height: Int,
+            dark: Boolean, amoled: Boolean, ink: Int, secondary: Int, accent: Int, summary: WidgetSessionSummary,
+        ) {
+            val headline = WidgetSessionSummary.formatMinutes(summary.totalMinutes)
+            val scale = context.resources.configuration.fontScale
+            val layout = WeeklyWidgetLayout.forWidget(width, height, scale, headline)
+            val views = RemoteViews(context.packageName, R.layout.ff_weekly_widget)
+            views.setInt(R.id.widget_root, "setBackgroundResource", when {
+                amoled -> R.drawable.ff_widget_amoled
+                dark -> R.drawable.ff_widget_dark
+                else -> R.drawable.ff_widget_day
+            })
+            val density = context.resources.displayMetrics.density
+            val padding = (layout.paddingDp * density).roundToInt()
+            views.setViewPadding(R.id.widget_root, padding, padding, padding, padding)
+            listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_caption).forEach { views.setTextColor(it, secondary) }
+            views.setTextColor(R.id.widget_time, ink)
+            views.setTextViewText(R.id.widget_time, headline)
+            views.setTextViewTextSize(R.id.widget_time, TypedValue.COMPLEX_UNIT_SP, layout.headlineSp)
+            views.setTextViewTextSize(R.id.widget_progress, TypedValue.COMPLEX_UNIT_SP, layout.summarySp)
+            val active = summary.activeDays
+            views.setTextViewText(R.id.widget_progress, if (layout.shortSummary) "$active / 7 days" else "$active active ${if (active == 1) "day" else "days"}")
+            views.setViewVisibility(R.id.widget_title, if (layout.showTitle) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_caption, if (layout.showCaption) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.widget_caption, if (summary.totalMinutes == 0) "Your first block starts the week" else "Mon – Sun · Tap to view")
+            val weekdayIds = listOf(R.id.week_mon, R.id.week_tue, R.id.week_wed, R.id.week_thu, R.id.week_fri, R.id.week_sat, R.id.week_sun)
+            val names = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+            val labels = if ((width - 2 * layout.paddingDp) / scale >= 240) listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                else listOf("M", "T", "W", "T", "F", "S", "S")
+            weekdayIds.forEachIndexed { day, viewId ->
+                views.setTextViewText(viewId, labels[day])
+                views.setTextColor(viewId, if (day == summary.todayIndex) accent else secondary)
+            }
+            views.setImageViewBitmap(R.id.widget_dial, WeeklyWidgetRenderer.render(
+                ((width - 2 * layout.paddingDp) * density).roundToInt(), (layout.chartHeightDp * density).roundToInt(), summary, accent, secondary,
+            ))
+            val spokenDays = names.mapIndexed { day, name -> "$name ${summary.dayMinutes[day]} minutes" }.joinToString(", ")
+            views.setContentDescription(R.id.widget_root, "This week, $headline of completed focus, $active active days. Today is ${names[summary.todayIndex]}. $spokenDays. Tap to open your dashboard.")
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = "dev.focusforge.focusforge.OPEN_WEEKLY"
+                putExtra("open_dashboard", true)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            manager.updateAppWidget(id, views)
+        }
+
+        private fun goalRing(progress: Float, dark: Boolean, accent: Int, ink: Int, typeface: Typeface, fontScale: Float): Bitmap {
             val bitmap = Bitmap.createBitmap(320, 320, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 20f; strokeCap = Paint.Cap.ROUND }
@@ -216,8 +302,8 @@ open class FocusWidget : AppWidgetProvider() {
             pen.style = Paint.Style.FILL
             pen.color = ink
             pen.textAlign = Paint.Align.CENTER
-            pen.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            pen.textSize = 54f
+            pen.typeface = typeface
+            pen.textSize = 54f * fontScale.coerceIn(1f, 1.35f)
             canvas.drawText((progress.coerceIn(0f, 1f) * 100).roundToInt().toString() + "%", 160f, 189f, pen)
             pen.color = accent
             val leaf = Path().apply { moveTo(160f, 124f); cubicTo(146f, 101f, 166f, 82f, 190f, 80f); cubicTo(191f, 106f, 180f, 121f, 160f, 124f); close() }
@@ -228,29 +314,11 @@ open class FocusWidget : AppWidgetProvider() {
             canvas.drawLine(160f, 135f, 165f, 112f, pen)
             return bitmap
         }
-        private fun dial(dark: Boolean, marks: Int): Bitmap {
-            val bitmap = Bitmap.createBitmap(360, 360, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = Color.parseColor(if (dark) "#363630" else "#DCD0B4")
-            canvas.drawCircle(180f, 180f, 169.2f, paint)
-            paint.style = Paint.Style.STROKE
-            paint.strokeCap = Paint.Cap.BUTT
-            for (i in 0 until 60) {
-                val angle = i * PI / 30 - PI / 2
-                val major = i % 5 == 0
-                val outer = 164.2
-                val inner = outer - if (major) 11.5 else 6.5
-                paint.color = Color.argb(if (major) 148 else 72, Color.red(marks), Color.green(marks), Color.blue(marks))
-                paint.strokeWidth = if (major) 1.37f else .86f
-                canvas.drawLine((180 + cos(angle) * inner).toFloat(), (180 + sin(angle) * inner).toFloat(), (180 + cos(angle) * outer).toFloat(), (180 + sin(angle) * outer).toFloat(), paint)
-            }
-            return bitmap
-        }
-
     }
 }
 
 class DailyGoalWidget : FocusWidget() { override val kind = "goal" }
 
 class StudyWidget : FocusWidget() { override val kind = "study" }
+
+class WeeklyProgressWidget : FocusWidget() { override val kind = "weekly" }

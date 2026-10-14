@@ -31,21 +31,22 @@ class AchievementsScreen extends ConsumerWidget {
     final backup = ref.watch(achievementBackupStatusProvider);
     final badges = ref.watch(achievementsProvider);
     final unlocked = ref.watch(unlockedCountProvider);
-    final earned = badges.where((b) => b.unlocked).toList(growable: false);
+    final earned = badges.where((b) => b.unlocked).toList()
+      ..sort((a, b) {
+        // Unknown legacy dates follow dated earns; stable IDs break ties.
+        final byDate = b.unlockedAt!.compareTo(a.unlockedAt!);
+        return byDate != 0 ? byDate : a.id.compareTo(b.id);
+      });
     final locked = badges.where((b) => !b.unlocked).toList(growable: false);
 
     return AppPage(
       title: 'Achievements',
       subtitle: '$unlocked of ${badges.length} unlocked',
-      trailing: Chip(
-        label: Text('$unlocked/${badges.length}'),
-        backgroundColor: unlocked > 0
-            ? Theme.of(context).colorScheme.secondaryContainer
-            : null,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _CollectionSummary(unlocked: unlocked, total: badges.length),
+          const SizedBox(height: Gap.lg),
           Padding(
             padding: const EdgeInsets.only(bottom: Gap.lg),
             child: Row(
@@ -76,12 +77,17 @@ class AchievementsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          _NextMilestone(locked: locked),
+          const SizedBox(height: Gap.xl),
           const SectionHeader(
             title: 'Unlocked',
             icon: Icons.workspace_premium_rounded,
           ),
           if (earned.isEmpty)
-            _ClosestBadge(locked: locked)
+            Text(
+              'Your first earned badge will appear here.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
           else
             _BadgeGrid(badges: earned),
           const SizedBox(height: Gap.xl),
@@ -93,17 +99,60 @@ class AchievementsScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
-          _BadgeGrid(badges: locked),
+          if (locked.isNotEmpty) _BadgeGrid(badges: locked),
         ],
       ),
     );
   }
 }
 
-/// Shown when the collection is still empty. Points at the nearest win instead
-/// of just reporting the absence.
-class _ClosestBadge extends StatelessWidget {
-  const _ClosestBadge({required this.locked});
+class _CollectionSummary extends StatelessWidget {
+  const _CollectionSummary({required this.unlocked, required this.total});
+
+  final int unlocked;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ContentCard(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Your collection', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Gap.sm),
+            Text(
+              '$unlocked of $total earned',
+              style: theme.textTheme.headlineSmall,
+            ),
+            const SizedBox(height: Gap.md),
+            Semantics(
+              label: 'Achievement collection',
+              value: '$unlocked of $total earned',
+              child: LinearProgressIndicator(
+                value: total == 0 ? 0 : unlocked / total,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(
+              unlocked == total && total > 0
+                  ? 'Every milestone earned. Your collection is complete.'
+                  : 'Every completed session moves you forward.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The nearest measured target stays available after the first badge is earned.
+class _NextMilestone extends StatelessWidget {
+  const _NextMilestone({required this.locked});
 
   final List<Achievement> locked;
 
@@ -117,47 +166,57 @@ class _ClosestBadge extends StatelessWidget {
     return ContentCard(
       child: Padding(
         padding: const EdgeInsets.all(Gap.lg),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            IconBadge(
-              icon: closest.icon,
-              color: Color.lerp(closest.color, cs.onSurfaceVariant, 0.7)!,
-              size: 44,
-              radius: 13,
+            Text(
+              'Next milestone',
+              style: Theme.of(context).textTheme.labelLarge,
             ),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Nothing unlocked yet',
-                    style: Theme.of(context).textTheme.titleSmall,
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                IconBadge(
+                  icon: closest.icon,
+                  color: closest.color,
+                  size: 44,
+                  radius: 13,
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(
+                    closest.name,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    closest.ratio >= 1
-                        ? '${closest.name} has reached its target.'
-                        : 'Closest: ${closest.name} — '
-                              '${(closest.ratio * 100).round()}% of the way '
-                              'there.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  Semantics(
-                    label: '${closest.name} progress',
-                    value: '${(closest.ratio * 100).round()} percent',
-                    child: LinearProgressIndicator(
-                      value: closest.ratio,
-                      color: closest.color,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      minHeight: 5,
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              closest.description,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Gap.md),
+            Semantics(
+              label: '${closest.name} progress',
+              value: closest.progressLabel,
+              child: LinearProgressIndicator(
+                value: closest.ratio,
+                color: closest.color,
+                backgroundColor: cs.surfaceContainerHighest,
+                minHeight: 5,
               ),
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(
+              closest.remainingLabel,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: Gap.sm),
+            TextButton.icon(
+              onPressed: () => _openDetail(context, closest),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('View milestone'),
             ),
           ],
         ),
@@ -175,13 +234,13 @@ class _BadgeGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Three across on a phone. Wider than that and the tiles stretch into
-        // letterboxes, because the height is fixed by their two lines of text
-        // rather than by their width — so the count follows the width instead.
-        final columns = (constraints.maxWidth / _targetTileWidth).round().clamp(
-          3,
-          6,
-        );
+        final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14)
+            .clamp(1.0, 3.0);
+        final columns =
+            ((constraints.maxWidth + Gap.md) /
+                    (_targetTileWidth * textScale + Gap.md))
+                .floor()
+                .clamp(1, 6);
 
         return GridView.builder(
           shrinkWrap: true,
@@ -191,25 +250,23 @@ class _BadgeGrid extends StatelessWidget {
             crossAxisCount: columns,
             mainAxisSpacing: Gap.md,
             crossAxisSpacing: Gap.md,
-            // A fixed extent rather than an aspect ratio: the tiles hold two
-            // lines of text, and an aspect ratio would overflow them on narrow
-            // phones.
-            mainAxisExtent: 158,
+            mainAxisExtent: 192 + 72 * (textScale - 1),
           ),
           itemCount: badges.length,
-          itemBuilder: (context, i) => _BadgeTile(badge: badges[i]),
+          itemBuilder: (context, i) => _BadgeTile(
+            key: ValueKey('achievement-${badges[i].id}'),
+            badge: badges[i],
+          ),
         );
       },
     );
   }
 
-  /// The width a badge tile wants to be. Roughly what three columns give on a
-  /// phone, which is the proportion the tile was drawn for.
-  static const double _targetTileWidth = 150;
+  static const double _targetTileWidth = 136;
 }
 
 class _BadgeTile extends StatelessWidget {
-  const _BadgeTile({required this.badge});
+  const _BadgeTile({super.key, required this.badge});
 
   final Achievement badge;
 
@@ -250,7 +307,7 @@ class _BadgeTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontSize: 11.5,
+                  fontSize: 13,
                   color: unlocked ? cs.onSurface : cs.onSurfaceVariant,
                 ),
               ),
@@ -258,13 +315,14 @@ class _BadgeTile extends StatelessWidget {
               if (unlocked)
                 Text(
                   _earnedOn(badge.unlockedAt),
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 )
               else ...[
                 Semantics(
                   label: '${badge.name} progress',
-                  value: '${(badge.ratio * 100).round()} percent',
+                  value: badge.progressLabel,
                   child: LinearProgressIndicator(
                     value: badge.ratio,
                     color: color,
@@ -274,14 +332,12 @@ class _BadgeTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  // The provider unlocks every met target, so a locked badge
-                  // should never sit at 100%; the guard keeps a mid-refresh
-                  // rebuild from rendering a full bar as a bare percentage.
-                  badge.ratio >= 1
-                      ? 'Complete'
-                      : '${(badge.ratio * 100).round()}%',
+                  badge.remainingLabel,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(fontSize: 10, color: cs.onSurfaceVariant),
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ],
@@ -299,13 +355,12 @@ void _openDetail(BuildContext context, Achievement badge) {
   final color = unlocked
       ? badge.color
       : Color.lerp(badge.color, cs.onSurfaceVariant, 0.6)!;
-  final capped = badge.progress > badge.target ? badge.target : badge.progress;
-  final remaining = badge.target - capped;
 
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
+    useSafeArea: true,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(
         Gap.lg,
@@ -320,98 +375,106 @@ void _openDetail(BuildContext context, Achievement badge) {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+            ),
             color: cs.surfaceContainerLow.withValues(alpha: 0.9),
-            padding: const EdgeInsets.all(Gap.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.onSurfaceVariant,
-                      borderRadius: BorderRadius.circular(Radii.pill),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(Gap.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.onSurfaceVariant,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: Gap.xl),
-                Center(
-                  child: IconBadge(
-                    icon: badge.icon,
-                    color: color,
-                    size: 64,
-                    radius: 20,
-                    semanticLabel: badge.name,
-                  ),
-                ),
-                const SizedBox(height: Gap.lg),
-                Text(
-                  badge.name,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: Gap.sm),
-                Text(
-                  badge.description,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Gap.xl),
-                if (unlocked)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 18,
-                        color: cs.tertiary,
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Text(
-                        isUnknownUnlockTime(badge.unlockedAt)
-                            ? 'Earned earlier'
-                            : 'Earned on ${_formatDate(badge.unlockedAt!)}',
-                        style: Theme.of(context).textTheme.labelLarge
-                            ?.copyWith(color: cs.tertiary),
-                      ),
-                    ],
-                  )
-                else ...[
-                  Semantics(
-                    label: '${badge.name} progress',
-                    value: '${(badge.ratio * 100).round()} percent',
-                    child: LinearProgressIndicator(
-                      value: badge.ratio,
+                  const SizedBox(height: Gap.xl),
+                  Center(
+                    child: IconBadge(
+                      icon: badge.icon,
                       color: color,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      minHeight: 7,
+                      size: 64,
+                      radius: 20,
+                      semanticLabel: badge.name,
                     ),
                   ),
-                  const SizedBox(height: Gap.md),
-                  Row(
-                    children: [
-                      Text(
-                        '${_formatAmount(capped)} of ${_formatAmount(badge.target)}',
-                        style: Theme.of(context).textTheme.labelMedium,
+                  const SizedBox(height: Gap.lg),
+                  Text(
+                    badge.name,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    badge.description,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: Gap.xl),
+                  if (unlocked)
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: Gap.sm,
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: cs.tertiary,
+                        ),
+                        Text(
+                          isUnknownUnlockTime(badge.unlockedAt)
+                              ? 'Earned earlier'
+                              : 'Earned on ${_formatDate(badge.unlockedAt!)}',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(color: cs.tertiary),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    Semantics(
+                      label: '${badge.name} progress',
+                      value: badge.progressLabel,
+                      child: LinearProgressIndicator(
+                        value: badge.ratio,
+                        color: color,
+                        backgroundColor: cs.surfaceContainerHighest,
+                        minHeight: 7,
                       ),
-                      const Spacer(),
-                      Text(
-                        '${_formatAmount(remaining)} to go',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                    ],
+                    ),
+                    const SizedBox(height: Gap.md),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          badge.progressLabel,
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: Gap.sm),
+                        Text(
+                          badge.remainingLabel,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: Gap.xl),
+                  AppActionButton(
+                    label: 'Close',
+                    icon: Icons.close_rounded,
+                    onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
-                const SizedBox(height: Gap.xl),
-                AppActionButton(
-                  label: 'Close',
-                  icon: Icons.close_rounded,
-                  onTap: () => Navigator.of(context).pop(),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -443,8 +506,3 @@ String _formatDate(DateTime date) =>
 /// earned.
 String _earnedOn(DateTime? at) =>
     at == null || isUnknownUnlockTime(at) ? 'Earned earlier' : _formatDate(at);
-
-/// Drops the trailing `.0` that doubles carry for whole-number targets.
-String _formatAmount(double value) => value == value.roundToDouble()
-    ? '${value.toInt()}'
-    : value.toStringAsFixed(1);

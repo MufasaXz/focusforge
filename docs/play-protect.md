@@ -1,5 +1,8 @@
 # Play Protect installation block
 
+Policy reviewed October 14, 2026. Applies to the first-release candidate,
+FocusForge 1.0.0 (build 2022), and earlier APKs with this service.
+
 Reported warning:
 
 > This app can request access to sensitive data. This can increase the risk of
@@ -15,18 +18,26 @@ and it is not an APK signature error.
 ## What this release changes
 
 - Explicit optional disclosure and agreement before opening Android accessibility
-  settings, during setup and from Shield.
+  settings. First-run focus setup does not require this access; Shield requests
+  it when the user enables a feature that needs it.
 - isAccessibilityTool=false in the accessibility-service XML, the correct
   declaration for a focus tool. No claim to assist disabilities.
-- The same limited event types and YouTube-only view identifier checks. No
-  gesture injection, key capture, SMS permissions or all-package visibility.
+- Limited window-change event types and YouTube-only view identifier checks.
+  Foreground app identifiers support local rules and pause insights; YouTube
+  screen checks are not retained or uploaded. No gesture injection, key capture,
+  SMS permissions or QUERY_ALL_PACKAGES.
 - The existing release signing key is retained for update compatibility.
 
 These changes improve transparency; they **do not guarantee scanner approval**.
-Accessibility is still required for native blocking and YouTube filtering while
+Accessibility is still required by this implementation for selected-app blocking
+and YouTube filtering while
 Flutter is not running. APK signatures verify integrity but do not
 exempt sensitive permissions from Play Protect. Changing the package or signing
 key to hide from scanning does not resolve the cause.
+
+Usage access is a separate optional grant for screen-time totals and daily
+budgets. Play does not mandate a general “app access” setup gate. Keep permission
+requests tied to implemented features and explain each grant separately.
 
 ## Resolve through review/distribution
 
@@ -38,7 +49,18 @@ video showing voluntary permission consent and shielding. Explain why YouTube
 surface filtering requires canRetrieveWindowContent and show screen checks stay
 local. Google decides the outcome. No appeal has been submitted from this workspace.
 
+If sharing a direct-install APK through GoFile, include its actual version and
+SHA-256. A public download link does not prove Google Play or Play Protect has
+approved it, and a rebuilt or newly signed APK must be assessed as that artifact.
+
 Google Play testing/distribution provides a reviewed installation route. A
 Play Console release also needs an accurate accessibility declaration, prominent
 disclosure/consent, privacy policy and Data safety responses. UI changes and
 signing cannot replace those requirements. Disabling Play Protect is not the fix.
+
+See [the submission checklist](play-store-readiness.md) for the still-required
+backend and live privacy-page deployment checks, Accessibility review video,
+Data safety, account deletion and device testing. Accessibility use is permitted
+under Google's [policy](https://support.google.com/googleplay/android-developer/answer/10964491)
+for non-accessibility tools with disclosure/declaration; this does not guarantee
+approval of a particular implementation.

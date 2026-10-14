@@ -200,12 +200,48 @@ class SeedData {
       unlockedAt: null,
     ),
     Achievement(
+      id: 'five_sessions',
+      name: 'Finding Your Rhythm',
+      description: 'Finish five focus sessions.',
+      icon: Icons.check_circle_outline_rounded,
+      color: Color(0xFF8FE39B),
+      target: 5,
+    ),
+    Achievement(
+      id: 'three_day_streak',
+      name: 'Three-Day Momentum',
+      description: 'Complete a focus session on three consecutive days.',
+      icon: Icons.event_available_rounded,
+      color: Color(0xFF7FA9FF),
+      target: 3,
+      unit: AchievementUnit.days,
+    ),
+    Achievement(
+      id: 'five_hours',
+      name: 'Five Hours Strong',
+      description: 'Complete five total hours of focus.',
+      icon: Icons.hourglass_bottom_rounded,
+      color: Color(0xFF7FD8E8),
+      target: 5,
+      unit: AchievementUnit.hours,
+    ),
+    Achievement(
+      id: 'ten_hours',
+      name: 'Ten-Hour Trail',
+      description: 'Complete ten total hours of focus.',
+      icon: Icons.timelapse_rounded,
+      color: Color(0xFFB79CFF),
+      target: 10,
+      unit: AchievementUnit.hours,
+    ),
+    Achievement(
       id: 'week_warrior',
       name: 'Week Warrior',
       description: 'Focus every day for seven days.',
       icon: Icons.calendar_month_rounded,
       color: Color(0xFF7FA9FF),
       target: 7,
+      unit: AchievementUnit.days,
     ),
     Achievement(
       id: 'century_club',
@@ -214,6 +250,7 @@ class SeedData {
       icon: Icons.military_tech_rounded,
       color: Color(0xFFFFD166),
       target: 100,
+      unit: AchievementUnit.hours,
     ),
     Achievement(
       id: 'night_owl',
@@ -262,6 +299,7 @@ class SeedData {
       icon: Icons.workspace_premium_rounded,
       color: Color(0xFFFFD166),
       target: 30,
+      unit: AchievementUnit.days,
     ),
     Achievement(
       id: 'hundred_hours',
@@ -270,6 +308,7 @@ class SeedData {
       icon: Icons.timelapse_rounded,
       color: Color(0xFFB79CFF),
       target: 100,
+      unit: AchievementUnit.hours,
     ),
     Achievement(
       id: 'marathon',
@@ -278,6 +317,7 @@ class SeedData {
       icon: Icons.hiking_rounded,
       color: Color(0xFFFFC48A),
       target: 6,
+      unit: AchievementUnit.hours,
     ),
     Achievement(
       id: 'breath_master',
@@ -286,6 +326,7 @@ class SeedData {
       icon: Icons.air_rounded,
       color: Color(0xFF7FD8E8),
       target: 25,
+      unit: AchievementUnit.walkAways,
     ),
     Achievement(
       id: 'group_up',
@@ -310,6 +351,7 @@ class SeedData {
       icon: Icons.star_rounded,
       color: Color(0xFFB79CFF),
       target: 1,
+      unit: AchievementUnit.weeklyTargets,
     ),
     Achievement(
       id: 'unplugged',
@@ -326,6 +368,7 @@ class SeedData {
       icon: Icons.school_rounded,
       color: Color(0xFF7FA9FF),
       target: 20,
+      unit: AchievementUnit.hours,
     ),
     Achievement(
       id: 'consistency',
@@ -416,7 +459,6 @@ class SeedData {
     SubjectTemplate('Meetings', Icons.call_rounded, SubjectPalette.history),
     SubjectTemplate('Email', Icons.mail_rounded, SubjectPalette.chemistry),
   ];
-
 
   static List<SubjectTemplate> templatesFor(Persona p) => switch (p) {
     Persona.student => studentSubjects,

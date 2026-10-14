@@ -381,7 +381,7 @@ void main() {
       });
     });
 
-    testWidgets('Android without accessibility access shows the gate', (
+    testWidgets('Android lists apps before requesting blocking access', (
       tester,
     ) async {
       useTallPhone(tester);
@@ -389,12 +389,13 @@ void main() {
         await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
         await settle(tester);
 
-        expect(find.text('Turn on app blocking'), findsOneWidget);
+        expect(find.text('Turn on app blocking'), findsNothing);
         expect(
           find.text('Open accessibility settings'),
-          findsOneWidget,
-          reason: 'a rule that cannot fire has to say what is missing',
+          findsNothing,
+          reason: 'access is requested from an explicit enable action',
         );
+        expect(find.text('All apps'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     });

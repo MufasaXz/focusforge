@@ -7,14 +7,14 @@
     android:padding="12dp"
     android:background="@drawable/ff_widget_background">
     <TextView
-        android:id="@+id/widget_title"
+        android:id="@+id/widget_title" style="@style/WidgetEyebrow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="DAILY GOAL"
         android:textSize="10sp"
         android:letterSpacing="0.16"
-        android:textStyle="bold" android:textColor="@color/ff_widget_ink" />
+        android:textColor="@color/ff_widget_ink" />
     <ImageView
         android:id="@+id/widget_dial" android:src="@drawable/ff_widget_goal_preview"
         android:layout_width="match_parent"
@@ -24,22 +24,22 @@
         android:scaleType="fitCenter"
         android:contentDescription="Daily goal completion percentage" />
     <TextView
-        android:id="@+id/widget_progress"
+        android:id="@+id/widget_progress" style="@style/WidgetBody"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="0 / 300 min today"
         android:textSize="15sp"
-        android:textStyle="bold" android:textColor="@color/ff_widget_ink" />
+        android:textColor="@color/ff_widget_ink" />
     <TextView
-        android:id="@+id/widget_subject"
+        android:id="@+id/widget_subject" style="@style/WidgetBody"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:textSize="11sp"
         android:layout_marginTop="4dp" android:textColor="@color/ff_widget_ink" />
     <TextView
-        android:id="@+id/widget_caption"
+        android:id="@+id/widget_caption" style="@style/WidgetCaption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"

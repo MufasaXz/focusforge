@@ -10,6 +10,7 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/onboarding/starting_plan_step.dart';
+import 'package:focusforge/features/focus/widgets/clock_faces.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +73,10 @@ void main() {
         advanced = true;
       },
     );
+    expect(
+      tester.widget<RetroClock>(find.byType(RetroClock)).remaining,
+      const Duration(minutes: 50),
+    );
     await tester.tap(find.text('Use this plan'));
     await tester.pumpAndSettle();
     expect(advanced, isTrue);
@@ -81,6 +86,81 @@ void main() {
     );
     expect(container.read(timerProvider).running, isFalse);
   });
+
+  testWidgets('incidental subject save does not override the suggested pace', (
+    tester,
+  ) async {
+    final container = fresh();
+    container
+        .read(userProvider.notifier)
+        .hydrate(UserProfile.fromJson({'focusIntention': 'deepWork'}));
+    container.read(timerProvider.notifier).setSubject('math');
+    await tester.pump();
+    await mount(tester, container);
+    await tester.tap(find.text('Use this plan'));
+    await tester.pumpAndSettle();
+    expect(container.read(timerProvider.notifier).preset.name, 'Deep Work');
+    expect(container.read(timerProvider).subjectId, 'math');
+  });
+
+  testWidgets(
+    'another account gets its recommendation instead of the previous draft plan',
+    (tester) async {
+      await store.setMap(StoreKeys.startingPlan, {
+        'uid': 'alice',
+        'key': 'stock:Classic',
+      });
+      final container = fresh();
+      container
+          .read(userProvider.notifier)
+          .hydrate(
+            UserProfile.fromJson({'uid': 'bob', 'focusIntention': 'deepWork'}),
+          );
+      await mount(tester, container);
+      await tester.tap(find.text('Use this plan'));
+      await tester.pumpAndSettle();
+      expect(container.read(timerProvider.notifier).preset.name, 'Deep Work');
+      expect(store.getMap(StoreKeys.startingPlan), {
+        'uid': 'bob',
+        'key': 'stock:Deep Work',
+      });
+    },
+  );
+
+  testWidgets(
+    'onboarding creates a named plan and previews its actual duration',
+    (tester) async {
+      final container = fresh();
+      await mount(tester, container);
+      await tester.scrollUntilVisible(find.text('Create your own plan'), 180);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create your own plan'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Morning reading');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use this plan').last);
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(presetsProvider)
+            .where((plan) => plan.name == 'Morning reading'),
+        hasLength(1),
+      );
+      await tester.scrollUntilVisible(find.byType(RetroClock), -180);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<RetroClock>(find.byType(RetroClock)).remaining,
+        const Duration(minutes: 50),
+      );
+      await tester.tap(find.text('Use this plan'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(timerProvider.notifier).preset.name,
+        'Morning reading',
+      );
+    },
+  );
 
   testWidgets('custom choice survives leaving and reopening the step', (
     tester,

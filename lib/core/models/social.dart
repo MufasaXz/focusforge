@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum AchievementUnit { sessions, days, hours, walkAways, weeklyTargets }
+
 /// A badge. Locked badges show how close the user is rather than hiding.
 @immutable
 class Achievement {
@@ -10,6 +12,7 @@ class Achievement {
     required this.icon,
     required this.color,
     required this.target,
+    this.unit = AchievementUnit.sessions,
     this.progress = 0,
     this.unlockedAt,
   });
@@ -20,12 +23,49 @@ class Achievement {
   final IconData icon;
   final Color color;
   final double target;
+  final AchievementUnit unit;
   final double progress;
   final DateTime? unlockedAt;
 
   bool get unlocked => unlockedAt != null;
 
   double get ratio => target <= 0 ? 0 : (progress / target).clamp(0.0, 1.0);
+
+  double get cappedProgress => progress.clamp(0.0, target);
+  double get remaining => (target - cappedProgress).clamp(0.0, target);
+
+  String get progressLabel => unit == AchievementUnit.weeklyTargets
+      ? '${(ratio * 100).round()}% of weekly targets'
+      : '${_amount(cappedProgress)} / ${_amount(target)}';
+
+  String get remainingLabel => unlocked || remaining <= 0
+      ? 'Target reached'
+      : '${_amount(remaining, roundUp: true)} remaining';
+
+  String _amount(double value, {bool roundUp = false}) {
+    if (unit == AchievementUnit.hours) {
+      // Session logs keep whole minutes. Avoid rounding a near-complete hour
+      // badge to zero remaining or to a whole hour that has not been earned.
+      final raw = value * 60;
+      final minutes = roundUp ? (raw - 0.0000001).ceil() : raw.round();
+      final hours = minutes ~/ 60;
+      final rest = minutes % 60;
+      if (hours == 0) return '$rest ${rest == 1 ? 'minute' : 'minutes'}';
+      final hourLabel = '$hours ${hours == 1 ? 'hour' : 'hours'}';
+      return rest == 0 ? hourLabel : '$hourLabel $rest min';
+    }
+    if (unit == AchievementUnit.weeklyTargets) {
+      return '${(value * 100).ceil()}% of weekly targets';
+    }
+    final count = value.ceil();
+    final noun = switch (unit) {
+      AchievementUnit.sessions => count == 1 ? 'session' : 'sessions',
+      AchievementUnit.days => count == 1 ? 'day' : 'days',
+      AchievementUnit.walkAways => count == 1 ? 'walk-away' : 'walk-aways',
+      _ => '',
+    };
+    return '$count $noun';
+  }
 
   Achievement copyWith({double? progress, DateTime? unlockedAt}) => Achievement(
     id: id,
@@ -34,6 +74,7 @@ class Achievement {
     icon: icon,
     color: color,
     target: target,
+    unit: unit,
     progress: progress ?? this.progress,
     unlockedAt: unlockedAt ?? this.unlockedAt,
   );

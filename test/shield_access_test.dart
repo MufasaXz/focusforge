@@ -89,6 +89,8 @@ void main() {
     (tester) async {
       final container = containerFor();
       await mount(tester, container, const ShieldScreen());
+      expect(find.text('Turn on app blocking'), findsNothing);
+      expect(find.text('1 apps'), findsNothing);
       final row = find.ancestor(
         of: find.text('Instagram'),
         matching: find.byType(InkWell),

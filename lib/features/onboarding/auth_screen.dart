@@ -329,8 +329,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 6,
                   child: Text(
                     googleLive
-                        ? 'No email account is required. Skipping may use Firebase '
-                              'anonymous sign-in. Your detailed study log stays on this device.'
+                        ? 'An account is optional. Start on this device and sign in later. '
+                              'Your detailed study log stays on your phone.'
                         : 'Google sign-in is not available in this build. Use email '
                               'or skip — you can link a real account later without '
                               'losing anything.',

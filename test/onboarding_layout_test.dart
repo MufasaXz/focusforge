@@ -183,7 +183,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Enable'), findsNothing);
-      await tester.tap(find.text('Review setup'));
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       expect(continued, isTrue);
     } finally {

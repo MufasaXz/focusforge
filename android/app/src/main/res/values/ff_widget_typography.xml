@@ -1,10 +1,41 @@
 <resources>
     <style name="FocusWidgetNumerals">
-        <item name="android:fontFamily">serif</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textStyle">normal</item>
         <item name="android:includeFontPadding">false</item>
         <item name="android:letterSpacing">-0.02</item>
         <item name="android:textSize">36sp</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+    <style name="WidgetBody">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/ff_widget_secondary</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+    <style name="WidgetValue" parent="RetroWidgetNumerals">
+        <item name="android:textColor">@color/ff_widget_ink</item>
+    </style>
+    <style name="WidgetEyebrow" parent="WidgetBody">
+        <item name="android:textSize">10sp</item>
+        <item name="android:letterSpacing">0.1</item>
+    </style>
+    <style name="WidgetCaption" parent="WidgetBody">
+        <item name="android:textSize">10sp</item>
+    </style>
+    <style name="WidgetWeekday" parent="WidgetBody">
+        <item name="android:textSize">10sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:ellipsize">none</item>
+    </style>
+    <style name="RetroWidgetNumerals">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:letterSpacing">-0.035</item>
+        <item name="android:textSize">24sp</item>
         <item name="android:fontFeatureSettings">tnum</item>
     </style>
 </resources>

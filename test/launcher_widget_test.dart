@@ -47,15 +47,22 @@ void main() {
         StoreKeys.palette,
         StoreKeys.subjects,
         StoreKeys.dailyGoalDays,
+        StoreKeys.user,
+        StoreKeys.achievementHistoryOwner,
+        StoreKeys.achievementAliases,
       ]) {
         await store.setString(key, 'snapshot');
         expect(store.getString(key), 'snapshot');
       }
       await store.setInt(StoreKeys.dailyGoal, 180);
       expect(store.getInt(StoreKeys.dailyGoal), 180);
-      expect(calls, List.filled(7, 'refresh'));
+      expect(calls, List.filled(10, 'refresh'));
+      await store.setBool(StoreKeys.amoled, true);
+      expect(store.getBool(StoreKeys.amoled), isTrue);
+      expect(calls.length, 11);
       await store.setInt('unrelated', 42);
-      expect(calls.length, 7);
+      await store.setBool('unrelatedFlag', true);
+      expect(calls.length, 11);
       await store.clearAll();
       expect(calls.last, 'refresh');
       expect(store.getString(StoreKeys.sessions), isNull);

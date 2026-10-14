@@ -127,7 +127,7 @@ test('achievement backup rejects unknown badge IDs, private fields and invalid d
   await assertFails(setDoc(doc(db('student'), 'users/student/achievements/other'), earnedBadges()));
   await assertSucceeds(setDoc(ref, earnedBadges({first_focus:0, week_warrior:now() - 1000})));
 });
-test('a complete achievement cabinet can preserve all fourteen earned badges', async () => {
+test('a complete achievement cabinet can preserve all eighteen earned badges', async () => {
   const ref = doc(db('student'), earnedBadgePath), earnedAt = now() - 1000;
   const unlockedAt = {
     first_focus:earnedAt, week_warrior:earnedAt, century_club:earnedAt,
@@ -135,13 +135,32 @@ test('a complete achievement cabinet can preserve all fourteen earned badges', a
     steady_hand:earnedAt, month_king:earnedAt, hundred_hours:earnedAt,
     marathon:earnedAt, perfectionist:earnedAt, subject_master:earnedAt,
     night_shift:earnedAt, breath_master:earnedAt,
+    five_sessions:earnedAt, three_day_streak:earnedAt,
+    five_hours:earnedAt, ten_hours:earnedAt,
   };
   await assertSucceeds(setDoc(ref, earnedBadges(unlockedAt)));
   await assertSucceeds(setDoc(ref, earnedBadges(unlockedAt)));
   for (const id of Object.keys(unlockedAt)) {
     await assertFails(setDoc(ref, earnedBadges({...unlockedAt, [id]:-1})));
     await assertFails(setDoc(ref, earnedBadges({...unlockedAt, [id]:earnedAt + 1})));
+    await assertFails(setDoc(ref, earnedBadges({...unlockedAt, [id]:0})));
+    const removed = {...unlockedAt};
+    delete removed[id];
+    await assertFails(setDoc(ref, earnedBadges(removed)));
   }
+});
+test('intermediate badges retain the same private ownership and date validation', async () => {
+  const ref = doc(db('student'), earnedBadgePath), earnedAt = now() - 5000;
+  await assertSucceeds(setDoc(ref, earnedBadges({five_sessions:0})));
+  await assertSucceeds(setDoc(ref, earnedBadges({five_sessions:earnedAt, three_day_streak:earnedAt, five_hours:earnedAt, ten_hours:earnedAt})));
+  for (const id of ['five_sessions','three_day_streak','five_hours','ten_hours']) {
+    await assertFails(setDoc(doc(db('stranger'), earnedBadgePath), earnedBadges({[id]:earnedAt})));
+    await assertFails(setDoc(doc(db('anon',true), 'users/anon/achievements/earned'), earnedBadges({[id]:earnedAt})));
+    await assertFails(setDoc(doc(db('student'), 'users/student/achievements/invalid'), earnedBadges({[id]:earnedAt})));
+    await assertFails(setDoc(ref, earnedBadges({five_sessions:earnedAt, three_day_streak:earnedAt, five_hours:earnedAt, ten_hours:earnedAt, [id]:now() + 86400000})));
+  }
+  await assertFails(getDoc(doc(db('stranger'), earnedBadgePath)));
+  await assertSucceeds(deleteDoc(ref));
 });
 test('achievement merge can add badges and refine their dates without losing past unlocks', async () => {
   const ref = doc(db('student'), earnedBadgePath), early = now() - 5000, late = now() - 1000;

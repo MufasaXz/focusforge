@@ -56,6 +56,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
 
     return StepScaffold(
       title: 'Set your daily goal',
+      eyebrow: 'YOUR DAILY RHYTHM',
       subtitle:
           'A target you can hit most days is worth more than a heroic '
           'one you abandon.',

@@ -48,13 +48,13 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 
 **A pause before the scroll.** Guided 4–7–8 breathing gives you room to decide before opening a shielded app. Strict Mode adds a deliberate cooldown before ending your commitment.
 
-**A clock that feels like yours.** Choose your clock face and palette, switch between Day and Dark, or use AMOLED black. Bring the timer to your home screen with **Retro clock**, **Study session**, and **Daily goal** widgets that follow your theme. Running timers also use an ongoing Android countdown notification.
+**A clock that feels like yours.** Choose your clock face and palette, switch between Day and Dark, or use AMOLED black. Bring your progress to your home screen with **Retro clock**, **Study session**, **Daily goal**, and **Weekly progress** widgets that follow your theme. Running timers also use an ongoing Android countdown notification.
 
 **A little company goes a long way.** Create or join a private study group with an invite code, work toward a shared weekly goal, and see who is focusing.
 
 ## Pick up where you left off.
 
-Returning accounts keep their saved setup on the same installation. Earned badge IDs and dates can also back up privately to your linked account, ready to restore when you sign in again—even months later. The Achievements screen shows whether the backup is saved, syncing, or waiting for a connection.
+Returning accounts keep their saved setup on the same installation, and unfinished setup resumes at the saved step for that account. Earned badge IDs and dates can also back up privately to your linked account, ready to restore when you sign in again—even months later. The Achievements screen shows your next milestone and whether the backup is saved, syncing, or waiting for a connection.
 
 The timer works without an account. Detailed study history and setup stay on your device; the account backup covers earned achievements. Groups and the optional leaderboard share limited summaries when you choose those features. You can delete your account from the app.
 
@@ -65,7 +65,7 @@ The timer works without an account. Detailed study history and setup stay on you
 - **Notifications:** Allow notifications to show the running countdown outside the app. Android 16 Live Updates and compatible device bars or islands depend on the device software, permissions, and user settings; presentation is not guaranteed on every phone.
 - **Widgets:** Add them from your launcher's Widgets menu. Refresh behavior can vary with launcher and battery settings.
 - **Achievement restore:** The revised Firebase rules must be published to enable the private backup. Offline unlocks stay local until they sync. A fresh installation can restore achievements that reached the account backup. See [Firebase setup](docs/firebase-setup.md).
-- **Account deletion:** See [Firebase setup](docs/firebase-setup.md#what-is-shared) for the client cleanup and backend cleanup requirements.
+- **Account deletion:** See [Firebase setup](docs/firebase-setup.md#account-cleanup-and-retries) for the cleanup and backend deployment requirements.
 
 </details>
 

@@ -298,12 +298,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the badge grid is three across on a phone', (tester) async {
+    testWidgets('the badge grid keeps readable two-column tiles on a phone', (
+      tester,
+    ) async {
       usePhone(tester);
       await tester.pumpWidget(pageHarness(() => const AchievementsScreen()));
       await tester.pumpAndSettle();
 
-      expect(_columnsOf(tester), 3);
+      expect(_columnsOf(tester), 2);
       expect(tester.takeException(), isNull);
     });
 

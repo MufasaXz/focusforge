@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.0 first Play release candidate — 2026-10-14
+
+Android build 2022 retains the existing signing identity and increasing version
+code. The display version starts at 1.0.0 for the first Play submission.
+
+- Refined setup with a real retro timer preview, suggested and named custom
+  plans, clearer steps, solid action surfaces and account-scoped draft resume.
+- Removed the Shield activation banner and app-count label. Permission requests
+  remain tied to feature activation; both app blocking and YouTube filtering
+  require Accessibility in the current engine. Removed unused DND access.
+- Added a weekly progress launcher widget with Monday–Sunday focus totals.
+  Refined all widgets with consistent fonts, responsive spacing, day/dark/AMOLED
+  styling and a retro dial matching the app. Counts use completed owned sessions.
+- Added four intermediate achievements, an always-available next milestone,
+  real remaining units, newest-earned ordering and responsive collection/details.
+  Existing badge IDs and earned dates remain intact.
+- Updated private badge rules for all 18 IDs while preserving ownership, valid
+  dates and existing earns within Firestore evaluation limits. Publish the revised
+  rules for new badges to sync. Production backend changes were not deployed here.
+
+Play submission still needs deployed backend/policy pages, Accessibility
+declaration and review video, accurate Data safety and real-device verification.
+
 ## 1.0.3 achievement backup — 2026-10-13
 
 Android build 2019. Replaces the downloadable APK on the existing 1.0.3 release.

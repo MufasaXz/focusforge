@@ -1,0 +1,6 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp" android:minHeight="180dp" android:targetCellWidth="4" android:targetCellHeight="3"
+    android:minResizeWidth="140dp" android:minResizeHeight="140dp" android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000" android:initialLayout="@layout/ff_weekly_widget"
+    android:previewLayout="@layout/ff_weekly_widget"
+    android:widgetCategory="home_screen" android:description="@string/ff_weekly_widget_description" />

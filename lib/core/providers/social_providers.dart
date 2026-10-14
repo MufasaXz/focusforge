@@ -438,9 +438,14 @@ double? _measure(
     // session. That is the only definition the app can actually keep: nothing
     // in the session path updates the aggregate's streak fields, so pointing
     // these two badges at `stats.longestStreak` made them unreachable goals.
-    'week_warrior' || 'month_king' => _longestStreak(done).toDouble(),
-    'century_club' || 'hundred_hours' => _completedHours(done),
-    'steady_hand' => done.length.toDouble(),
+    'three_day_streak' ||
+    'week_warrior' ||
+    'month_king' => _longestStreak(done).toDouble(),
+    'five_hours' ||
+    'ten_hours' ||
+    'century_club' ||
+    'hundred_hours' => _completedHours(done),
+    'five_sessions' || 'steady_hand' => done.length.toDouble(),
     'night_owl' => done.any((s) => s.startedAt.hour >= 23) ? 1.0 : 0.0,
     'early_bird' => done.any((s) => s.startedAt.hour < 6) ? 1.0 : 0.0,
     'deep_diver' => done.any((s) => s.minutes >= 90) ? 1.0 : 0.0,

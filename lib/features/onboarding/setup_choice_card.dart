@@ -14,6 +14,7 @@ class SetupChoiceCard extends StatelessWidget {
     required this.color,
     required this.selected,
     required this.onTap,
+    this.badge,
   });
 
   final String title;
@@ -22,6 +23,7 @@ class SetupChoiceCard extends StatelessWidget {
   final Color color;
   final bool selected;
   final VoidCallback onTap;
+  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +41,7 @@ class SetupChoiceCard extends StatelessWidget {
 
     const radius = Radii.card;
     return Semantics(
-      label: '$title. $description',
+      label: '$title. $description${badge == null ? '' : '. $badge'}',
       checked: selected,
       inMutuallyExclusiveGroup: true,
       onTap: select,
@@ -73,6 +75,16 @@ class SetupChoiceCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (badge != null) ...[
+                          Text(
+                            badge!,
+                            style: tt.labelSmall?.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: Gap.xs),
+                        ],
                         Text(title, style: tt.titleMedium),
                         const SizedBox(height: Gap.xs),
                         Text(description, style: tt.bodyMedium),

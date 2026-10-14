@@ -599,17 +599,6 @@ class _AppsViewState extends ConsumerState<_AppsView> {
             children: [
               const ShieldOverview(),
               const SizedBox(height: Gap.lg),
-              if (native && !enabled)
-                const _PermissionGate(
-                  icon: Icons.accessibility_new_rounded,
-                  title: 'Turn on app blocking',
-                  body:
-                      'Android closes an app through its accessibility '
-                      'service. FocusForge needs it on before a single rule can '
-                      'do anything.',
-                  action: 'Open accessibility settings',
-                  permission: AppPermission.accessibility,
-                ),
               if (native && enabled && budgeted > 0 && !usageAccess)
                 const _PermissionGate(
                   icon: Icons.timelapse_rounded,
@@ -645,9 +634,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
               const SizedBox(height: Gap.xl),
               _ListHeading(
                 title: query.isEmpty && _filter == 0 ? 'All apps' : 'Results',
-                note: loading
-                    ? 'Reading the device…'
-                    : '${visible.length} apps',
+                note: loading ? 'Reading the device…' : null,
                 icon: Icons.apps_rounded,
               ),
               const SizedBox(height: Gap.sm),

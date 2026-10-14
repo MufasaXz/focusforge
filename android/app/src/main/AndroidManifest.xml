@@ -19,8 +19,6 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions"/>
 
-    <!-- Do Not Disturb access, for Strict Mode. -->
-    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
 
     <!-- Merged in from the Google libraries, and removed again. READ_GSERVICES
          is a signature permission: only apps signed by Google are ever granted
@@ -124,6 +122,17 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/ff_study_widget_info" />
+        </receiver>
+
+        <receiver android:name=".widgets.WeeklyProgressWidget" android:exported="false" android:label="FocusForge — Weekly progress">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.CONFIGURATION_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/ff_weekly_widget_info" />
         </receiver>
 
         <!-- Don't delete the meta-data below.

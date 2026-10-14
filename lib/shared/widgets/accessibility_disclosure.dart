@@ -21,6 +21,8 @@ Future<bool> confirmShieldAccess(
           'tell Shorts from ordinary videos. These screen checks stay on your '
           'device and are not stored or sent to a server. It does not read '
           'messages, passwords or text you type.\n\n'
+          'Your chosen app names, pause decisions and their times are saved '
+          'only on this device for Shield insights.\n\n'
           'This access is optional. You can turn it off in Android Settings '
           'at any time. The focus timer works without it.\n\n'
           'In Android Settings, choose FocusForge under Accessibility and enable '

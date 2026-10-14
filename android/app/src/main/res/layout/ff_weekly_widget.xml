@@ -1,0 +1,18 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_vertical" android:padding="12dp" android:background="@drawable/ff_widget_background">
+    <TextView android:id="@+id/widget_title" style="@style/WidgetEyebrow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="THIS WEEK" android:layout_marginBottom="6dp" />
+    <TextView android:id="@+id/widget_time" style="@style/WidgetValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0m" android:textSize="30sp" android:maxLines="1" />
+    <TextView android:id="@+id/widget_progress" style="@style/WidgetBody" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="0 active days" android:layout_marginTop="3dp" android:maxLines="1" />
+    <ImageView android:id="@+id/widget_dial" android:src="@drawable/ff_weekly_widget_preview" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="6dp" android:layout_marginBottom="3dp" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:importantForAccessibility="no">
+        <TextView android:id="@+id/week_mon" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="M" />
+        <TextView android:id="@+id/week_tue" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="T" />
+        <TextView android:id="@+id/week_wed" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="W" />
+        <TextView android:id="@+id/week_thu" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="T" />
+        <TextView android:id="@+id/week_fri" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="F" />
+        <TextView android:id="@+id/week_sat" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="S" />
+        <TextView android:id="@+id/week_sun" style="@style/WidgetWeekday" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="S" />
+    </LinearLayout>
+    <TextView android:id="@+id/widget_caption" style="@style/WidgetCaption" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mon – Sun · Tap to view" android:layout_marginTop="6dp" />
+</LinearLayout>

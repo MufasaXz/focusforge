@@ -1,4 +1,4 @@
-# Firebase: study-only release 1.0.3 (2021)
+# Firebase: first Play release candidate 1.0.0 (2022)
 
 Firebase powers authentication, private earned-badge backups, private groups and
 the optional weekly leaderboard. Parent control has been removed. Detailed
@@ -28,6 +28,12 @@ Revised rules deny retired pairing, guardian, children, catalog, progress and
 remoteRules paths to all clients, including older APKs. Achievements remain
 owner-private; groups remain member-only. Publishing rules does not physically
 erase legacy records. Their cleanup requires trusted Admin SDK access.
+
+This candidate adds four earned-badge IDs: five_sessions, three_day_streak,
+five_hours and ten_hours. Publish the matching rules before distributing it.
+Older rules reject these new IDs; the app retains earned badges locally and
+shows pending backup until compatible rules are available. Existing badge IDs
+and dates are preserved.
 
 ## Account cleanup and retries
 

@@ -1,6 +1,8 @@
 <resources>
-    <color name="ff_widget_surface">#E8DFC9</color>
-    <color name="ff_widget_outline">#CFC4AB</color>
-    <color name="ff_widget_ink">#302D26</color>
-    <color name="ff_widget_secondary">#6C6557</color>
+    <color name="ff_widget_surface">#EEF0F4</color>
+    <color name="ff_widget_outline">#D2D8E0</color>
+    <color name="ff_widget_ink">#252B35</color>
+    <color name="ff_widget_secondary">#606977</color>
+    <color name="ff_widget_dial_surface">#DCD0B4</color>
+    <color name="ff_widget_accent">#766747</color>
 </resources>

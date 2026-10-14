@@ -14,41 +14,34 @@ service cloud.firestore {
     }
     // Badges are a private, small union of earned IDs and original dates.
     // Zero preserves older unlocks whose original date was never recorded.
-    function badgeDate(dates, id) {
+    function badgeDate(dates, before, id, latest) {
       let date = dates.get(id, 0);
-      return localTimestamp(date);
+      let oldDate = before.get(id, 0);
+      return date is int && date >= 0 && date <= latest &&
+        (oldDate == 0 || (date > 0 && date <= oldDate));
     }
-    function achievementShape(d) {
+    function achievementShape(d, before) {
       let dates = d.unlockedAt;
+      let latest = request.time.toMillis() + 60000;
       return d.keys().hasOnly(['version','unlockedAt']) && d.version == 1 &&
         dates is map && dates.keys().hasOnly([
           'first_focus','week_warrior','century_club','night_owl',
           'early_bird','deep_diver','steady_hand','month_king',
           'hundred_hours','marathon','perfectionist','subject_master',
-          'night_shift','breath_master'
-        ]) &&
-        badgeDate(dates, 'first_focus') && badgeDate(dates, 'week_warrior') &&
-        badgeDate(dates, 'century_club') && badgeDate(dates, 'night_owl') &&
-        badgeDate(dates, 'early_bird') && badgeDate(dates, 'deep_diver') &&
-        badgeDate(dates, 'steady_hand') && badgeDate(dates, 'month_king') &&
-        badgeDate(dates, 'hundred_hours') && badgeDate(dates, 'marathon') &&
-        badgeDate(dates, 'perfectionist') && badgeDate(dates, 'subject_master') &&
-        badgeDate(dates, 'night_shift') && badgeDate(dates, 'breath_master');
-    }
-    function badgeKept(before, after, id) {
-      let oldDate = before.get(id, 0);
-      let newDate = after.get(id, 0);
-      return oldDate == 0 || (newDate > 0 && newDate <= oldDate);
-    }
-    function achievementsKept(before, after) {
-      return after.keys().hasAll(before.keys()) &&
-        badgeKept(before, after, 'first_focus') && badgeKept(before, after, 'week_warrior') &&
-        badgeKept(before, after, 'century_club') && badgeKept(before, after, 'night_owl') &&
-        badgeKept(before, after, 'early_bird') && badgeKept(before, after, 'deep_diver') &&
-        badgeKept(before, after, 'steady_hand') && badgeKept(before, after, 'month_king') &&
-        badgeKept(before, after, 'hundred_hours') && badgeKept(before, after, 'marathon') &&
-        badgeKept(before, after, 'perfectionist') && badgeKept(before, after, 'subject_master') &&
-        badgeKept(before, after, 'night_shift') && badgeKept(before, after, 'breath_master');
+          'night_shift','breath_master',
+          'five_sessions','three_day_streak','five_hours','ten_hours'
+        ]) && dates.keys().hasAll(before.keys()) &&
+        // Validate type, bounds and earliest-date retention in one pass.
+        // Separate passes exceed Firestore's expression limit with 18 IDs.
+        badgeDate(dates, before, 'first_focus', latest) && badgeDate(dates, before, 'week_warrior', latest) &&
+        badgeDate(dates, before, 'century_club', latest) && badgeDate(dates, before, 'night_owl', latest) &&
+        badgeDate(dates, before, 'early_bird', latest) && badgeDate(dates, before, 'deep_diver', latest) &&
+        badgeDate(dates, before, 'steady_hand', latest) && badgeDate(dates, before, 'month_king', latest) &&
+        badgeDate(dates, before, 'hundred_hours', latest) && badgeDate(dates, before, 'marathon', latest) &&
+        badgeDate(dates, before, 'perfectionist', latest) && badgeDate(dates, before, 'subject_master', latest) &&
+        badgeDate(dates, before, 'night_shift', latest) && badgeDate(dates, before, 'breath_master', latest) &&
+        badgeDate(dates, before, 'five_sessions', latest) && badgeDate(dates, before, 'three_day_streak', latest) &&
+        badgeDate(dates, before, 'five_hours', latest) && badgeDate(dates, before, 'ten_hours', latest);
     }
     // Retired monitoring data is inaccessible even to older installed apps.
     // Cleanup runs through trusted Admin SDK tooling, never client permissions.
@@ -60,10 +53,9 @@ service cloud.firestore {
       match /achievements/{doc} {
         allow read: if account() && self(uid);
         allow create: if account() && self(uid) && doc == 'earned' &&
-          achievementShape(request.resource.data);
+          achievementShape(request.resource.data, {});
         allow update: if account() && self(uid) && doc == 'earned' &&
-          achievementShape(request.resource.data) &&
-          achievementsKept(resource.data.unlockedAt, request.resource.data.unlockedAt);
+          achievementShape(request.resource.data, resource.data.unlockedAt);
         allow delete: if self(uid);
       }
       match /{retired}/{record} {

@@ -1,18 +1,18 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:gravity="center" android:padding="12dp" android:background="@drawable/ff_widget_background">
-    <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center" android:text="FOCUS" android:textColor="@color/ff_widget_secondary" android:textSize="10sp" android:letterSpacing="0.12" android:textStyle="bold" android:maxLines="1" />
-    <TextView android:id="@+id/widget_subject" android:layout_width="match_parent" android:layout_height="wrap_content"
+    <TextView android:id="@+id/widget_title" style="@style/WidgetEyebrow" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:text="FOCUS" android:textColor="@color/ff_widget_secondary" android:textSize="10sp" android:letterSpacing="0.12" android:maxLines="1" />
+    <TextView android:id="@+id/widget_subject" style="@style/WidgetBody" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:gravity="center" android:text="Choose a subject" android:textColor="@color/ff_widget_ink" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="4dp" />
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginVertical="4dp">
-        <ImageView android:id="@+id/widget_dial" android:src="@drawable/ff_widget_dial_preview" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter" android:contentDescription="Focus countdown dial" />
+        <ImageView android:id="@+id/widget_dial" android:src="@drawable/ff_widget_dial_preview" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter" android:importantForAccessibility="no" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
-            <TextView android:id="@+id/widget_time" style="@style/FocusWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="25:00" android:textColor="@color/ff_widget_ink" android:textSize="30sp" android:singleLine="true" />
-            <Chronometer android:id="@+id/widget_live" style="@style/FocusWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:singleLine="true" android:textSize="30sp" android:visibility="gone" />
-            <TextView android:id="@+id/widget_phase" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="READY" android:textColor="@color/ff_widget_secondary" android:textSize="8sp" android:letterSpacing="0.1" android:layout_marginTop="2dp" />
+            <TextView android:id="@+id/widget_time" style="@style/RetroWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="25:00" android:textColor="@color/ff_widget_ink" android:singleLine="true" />
+            <Chronometer android:id="@+id/widget_live" style="@style/RetroWidgetNumerals" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:singleLine="true" android:visibility="gone" android:textColor="@color/ff_widget_ink" />
+            <TextView android:id="@+id/widget_phase" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" />
         </LinearLayout>
     </FrameLayout>
-    <TextView android:id="@+id/widget_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="0 / 300 min" android:textColor="@color/ff_widget_ink" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
-    <TextView android:id="@+id/widget_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Tap to focus" android:textColor="@color/ff_widget_secondary" android:textSize="9sp" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="3dp" />
+    <TextView android:id="@+id/widget_progress" style="@style/WidgetBody" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="0 / 300 min" android:textColor="@color/ff_widget_ink" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/widget_caption" style="@style/WidgetCaption" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Tap to focus" android:textColor="@color/ff_widget_secondary" android:textSize="9sp" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="3dp" />
 </LinearLayout>

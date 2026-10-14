@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/services/local_store.dart';
 import 'auth_screen.dart';
+import 'onboarding_chrome.dart';
 import 'complete_step.dart';
 import 'goal_step.dart';
 import 'starting_plan_step.dart';
@@ -39,13 +41,26 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final _controller = PageController();
   int _index = 0;
   bool _moving = false;
+  late final Future<void> _restoring;
 
   @override
   void initState() {
     super.initState();
     // A user who quit mid-flow already has an account. Restoring it lets the
     // splash skip the auth step instead of asking a second time.
-    unawaited(ref.read(authServiceProvider).restore());
+    _restoring = _restoreAccount();
+  }
+
+  Future<void> _restoreAccount() async {
+    try {
+      final profile = await ref.read(authServiceProvider).restore();
+      if (mounted && profile != null) {
+        ref.read(userProvider.notifier).hydrate(profile);
+      }
+    } catch (_) {
+      // Bootstrap already restored the local draft. An offline account
+      // refresh must not stop the user from completing it.
+    }
   }
 
   @override
@@ -64,6 +79,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     FocusManager.instance.primaryFocus?.unfocus();
     _moving = true;
     try {
+      if (step >= 2) {
+        await ref.read(localStoreProvider).setMap(StoreKeys.setupProgress, {
+          'uid': ref.read(userProvider).uid,
+          'step': step,
+        });
+      }
+      if (!mounted || !_controller.hasClients) return;
       if (MediaQuery.disableAnimationsOf(context)) {
         _controller.jumpToPage(page);
       } else {
@@ -72,6 +94,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
           duration: const Duration(milliseconds: 300),
           curve: Motion.emphasized,
         );
+      }
+    } catch (_) {
+      if (mounted) {
+        showAppSnack(context, 'Could not save your setup progress. Try again.');
       }
     } finally {
       _moving = false;
@@ -100,10 +126,31 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     if (_index == 2) _next();
   }
 
-  void _afterSplash() {
+  Future<void> _afterSplash() async {
+    await _restoring;
+    if (!mounted) return;
     if (_index != 0) return;
     final signedIn = ref.read(authServiceProvider).signedIn;
-    unawaited(_go(signedIn ? _authIndex + 1 : _authIndex));
+    await _go(signedIn ? _resumeStep() : _authIndex);
+  }
+
+  int _resumeStep() {
+    final profile = ref.read(userProvider);
+    final progress = ref
+        .read(localStoreProvider)
+        .getMap(StoreKeys.setupProgress);
+    final step = progress?['step'];
+    return !profile.onboardingComplete &&
+            progress?['uid'] == profile.uid &&
+            step is int &&
+            step >= 2 &&
+            _steps.contains(step)
+        ? step
+        : 2;
+  }
+
+  void _afterAuthentication() {
+    if (_index == _authIndex) unawaited(_go(_resumeStep()));
   }
 
   @override
@@ -169,7 +216,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   Widget _buildStep(int step) => switch (step) {
     0 => SplashStep(onDone: _afterSplash),
-    1 => AuthScreen(embedded: true, onAuthenticated: () => _advanceFrom(1)),
+    1 => AuthScreen(embedded: true, onAuthenticated: _afterAuthentication),
     2 => PersonaStep(onNext: _afterPersona),
     4 => ProfileStep(onNext: () => _advanceFrom(4)),
     // Rebuild persona-specific recommendations when that answer changes.
@@ -221,10 +268,7 @@ class _KeepStepState extends State<_KeepStep>
 /// Back affordance plus a per-stage stepper. The user should always know how
 /// much setup is left — an open-ended onboarding is one people abandon.
 ///
-/// A bar says how far; dots say how many. One dot per stage shows the shape of
-/// what is left, and the current stage stretches into a pill so the eye lands
-/// on now. The count beside the stage name keeps its exact text for the screen
-/// reader and for the tests that pin it.
+/// A single progress track keeps the header quiet while stating the step.
 class _FlowHeader extends StatelessWidget {
   const _FlowHeader({
     required this.index,
@@ -242,7 +286,6 @@ class _FlowHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final reduce = MediaQuery.disableAnimationsOf(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.sm, Gap.sm, Gap.lg, Gap.sm),
       child: Row(
@@ -275,58 +318,20 @@ class _FlowHeader extends StatelessWidget {
                 Semantics(
                   label: 'Setup progress, $title',
                   value: 'Step $index of $total',
-                  child: Row(
-                    children: [
-                      for (var stage = 1; stage <= total; stage++) ...[
-                        if (stage > 1) const SizedBox(width: Gap.xs),
-                        _StageDot(
-                          done: stage < index,
-                          current: stage == index,
-                          reduceMotion: reduce,
-                        ),
-                      ],
-                    ],
+                  child: ExcludeSemantics(
+                    child: LinearProgressIndicator(
+                      value: index / total,
+                      minHeight: 3,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// One stage in the header stepper: a dot behind, a pill for now.
-///
-/// Finished stages stay filled so progress only ever grows; the current stage
-/// stretches into a pill — the one moving shape in the row — and upcoming
-/// stages sit on the track colour. Decorative: the header's [Semantics]
-/// already announces the step, so a dot that also spoke would be noise.
-class _StageDot extends StatelessWidget {
-  const _StageDot({
-    required this.done,
-    required this.current,
-    required this.reduceMotion,
-  });
-
-  final bool done;
-  final bool current;
-  final bool reduceMotion;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ExcludeSemantics(
-      child: AnimatedContainer(
-        duration: reduceMotion ? Duration.zero : Motion.base,
-        curve: Motion.decelerate,
-        width: current ? 22 : 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: done || current ? cs.primary : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(Radii.pill),
-        ),
       ),
     );
   }

@@ -7,6 +7,8 @@ import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/local_store.dart';
+import '../focus/custom_plan_sheet.dart';
+import '../focus/widgets/clock_faces.dart';
 import 'onboarding_chrome.dart';
 import 'setup_choice_card.dart';
 
@@ -23,6 +25,7 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
   String? _selectedKey;
   bool _explicitSelection = false;
   FocusIntention? _lastIntention;
+  String? _selectionOwner;
 
   PomodoroPreset _recommend(
     List<PomodoroPreset> plans,
@@ -41,21 +44,45 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
     final plans = ref.read(presetsProvider);
     final index = plans.indexWhere((plan) => plan.key == _selectedKey);
     if (index < 0) return;
+    final store = ref.read(localStoreProvider);
+    final owner = ref.read(userProvider).uid;
+    final key = plans[index].key;
     await ref.read(timerProvider.notifier).setPreset(index);
-    if (mounted) widget.onNext();
+    await store.setMap(StoreKeys.startingPlan, {'uid': owner, 'key': key});
+    if (mounted && ref.read(userProvider).uid == owner) widget.onNext();
+  }
+
+  Future<void> _createPlan() async {
+    final plan = await showCustomPlanSheet(context);
+    if (plan == null || !mounted) return;
+    await ref.read(customPlanProvider.notifier).set(plan);
+    if (!mounted) return;
+    setState(() {
+      _selectedKey = plan.toPreset().key;
+      _explicitSelection = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final intention = ref.watch(userProvider).focusIntention;
+    final profile = ref.watch(userProvider);
+    final intention = profile.focusIntention;
+    if (_selectionOwner != profile.uid) {
+      _selectionOwner = profile.uid;
+      _selectedKey = null;
+      _explicitSelection = false;
+    }
     final plans = ref.watch(presetsProvider);
     final suggested = _recommend(plans, intention);
     // Resume an existing draft, including the user's own custom pace.
     if (_selectedKey == null) {
-      final stored = ref
-          .read(localStoreProvider)
-          .getMap(StoreKeys.presets)?['presetKey'];
+      final store = ref.read(localStoreProvider);
+      final draft = store.getMap(StoreKeys.startingPlan);
+      final timerKey = store.getMap(StoreKeys.presets)?['presetKey'];
+      final stored = draft?['uid'] == profile.uid
+          ? (draft?['key'])
+          : (profile.onboardingComplete ? timerKey : null);
       final saved = plans.where((plan) => plan.key == stored).firstOrNull;
       _explicitSelection = saved != null;
       _selectedKey = saved?.key ?? suggested.key;
@@ -69,12 +96,30 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
 
     return StepScaffold(
       title: 'Find your starting pace',
+      eyebrow: 'YOUR FIRST SESSION',
       subtitle:
           'Based on your focus preference, we suggest a ${suggested.focus}-minute block. Choose what feels manageable today.',
       primaryLabel: 'Use this plan',
       onPrimary: _save,
-      footnote: 'Change, rename or create plans in Focus. Blocking stays off until you choose it in Shield.',
+      footnote: 'Start small. Your pace can change with your day.',
       children: [
+        Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = (constraints.maxWidth * .72).clamp(128.0, 210.0);
+              return Semantics(
+                label: '${selected.name}, ${selected.focus} minute focus block',
+                child: RetroClock(
+                  remaining: selected.focusDuration,
+                  accent: cs.primary,
+                  size: size,
+                  progress: 0,
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: Gap.lg),
         Semantics(
           liveRegion: true,
           child: Padding(
@@ -102,7 +147,8 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
             child: SetupChoiceCard(
               title: plan.name,
               description:
-                  '${plan.focus} minutes of focus · ${plan.shortBreak} minute breaks${plan.key == suggested.key ? ' · Suggested for you' : ''}',
+                  '${plan.focus} minutes of focus · ${plan.shortBreak} minute breaks',
+              badge: plan.key == suggested.key ? 'Suggested' : null,
               icon: plan.icon,
               color: cs.primary,
               selected: plan.key == _selectedKey,
@@ -112,6 +158,12 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
               }),
             ),
           ),
+        const SizedBox(height: Gap.sm),
+        OutlinedButton.icon(
+          onPressed: _createPlan,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Create your own plan'),
+        ),
       ],
     );
   }

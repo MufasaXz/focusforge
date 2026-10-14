@@ -422,7 +422,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     showLicensePage(
       context: context,
       applicationName: 'FocusForge',
-      applicationVersion: '1.0.3',
+      applicationVersion: '1.0.0',
       applicationLegalese: 'MIT licensed · built with Flutter',
     );
   }

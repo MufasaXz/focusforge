@@ -61,6 +61,9 @@ class LocalStore {
       StoreKeys.palette,
       StoreKeys.subjects,
       StoreKeys.dailyGoalDays,
+      StoreKeys.user,
+      StoreKeys.achievementHistoryOwner,
+      StoreKeys.achievementAliases,
     }.contains(key)) {
       await WidgetService.refresh();
     }
@@ -68,8 +71,10 @@ class LocalStore {
 
   bool? getBool(String key) => _read<bool>(key);
 
-  Future<void> setBool(String key, bool value) =>
-      _prefs.setBool(_k(key), value);
+  Future<void> setBool(String key, bool value) async {
+    await _prefs.setBool(_k(key), value);
+    if (key == StoreKeys.amoled) await WidgetService.refresh();
+  }
 
   int? getInt(String key) => _read<int>(key);
 
@@ -164,7 +169,8 @@ class LocalStore {
     if (getString(StoreKeys.achievementHistoryOwner) == null) {
       await setString(StoreKeys.achievementHistoryOwner, previousUid);
     }
-    if (previousUid == nextUid || getMap(StoreKeys.achievementAccounts) != null) {
+    if (previousUid == nextUid ||
+        getMap(StoreKeys.achievementAccounts) != null) {
       return;
     }
     final times = readAchievementTimes(getMap('achievements.unlockedAt'));
@@ -225,6 +231,8 @@ class StoreKeys {
   static const dailyGoal = 'goal.daily';
   static const dailyGoalDays = 'goal.days';
   static const presets = 'focus.presets';
+  static const startingPlan = 'setup.startingPlan';
+  static const setupProgress = 'setup.progress';
   static const customPlan = 'focus.customPlan';
   static const planLibrary = 'focus.planLibrary';
   static const coachSeen = 'coachmarks.seen';

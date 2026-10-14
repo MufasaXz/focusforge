@@ -10,7 +10,7 @@ import '../../shared/widgets/accessibility_disclosure.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
-/// Screen 7 — permissions.
+/// Optional access management, opened from Profile after setup.
 ///
 /// The make-or-break screen of the plan: a permission the user does not
 /// understand is a permission they deny. Every card says what the access is
@@ -82,8 +82,6 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
         'Choose FocusForge in Accessibility, then allow access.',
       AppPermission.usageAccess =>
         'Choose FocusForge, then allow usage access.',
-      AppPermission.doNotDisturb =>
-        'Allow FocusForge in Do Not Disturb access.',
       AppPermission.notifications =>
         'Allow notifications to keep your timer visible.',
     });
@@ -125,7 +123,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
       onPrimary: widget.onNext,
       primaryEnabled: _requesting == null,
       primaryLabel: permissions.isEmpty || granted == permissions.length
-          ? 'Review setup'
+          ? 'Done'
           : 'Continue for now',
       footnote:
           'Optional. Access is confirmed by your device, and you can revoke '
@@ -233,16 +231,6 @@ const _permissions = <_Permission>[
         'Reads screen time per app so the dashboard can show where your day '
         'actually went.',
     privacy: 'Usage history never leaves this device and is never uploaded.',
-    platform: 'Android',
-  ),
-  _Permission(
-    kind: AppPermission.doNotDisturb,
-    title: 'Quiet interruptions',
-    icon: Icons.do_not_disturb_on_rounded,
-    why: 'Allows FocusForge to manage your device’s Do Not Disturb mode.',
-    privacy:
-        'This grants notification-policy access; it does not grant access '
-        'to the contents of your notifications.',
     platform: 'Android',
   ),
 ];

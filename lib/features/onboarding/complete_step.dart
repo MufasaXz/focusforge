@@ -88,6 +88,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
 
     return StepScaffold(
       title: "You're all set",
+      eyebrow: 'READY WHEN YOU ARE',
       subtitle:
           'Your starting point is saved. Make it a little better each day.',
       primaryLabel: 'Open FocusForge',

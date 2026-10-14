@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -35,6 +34,7 @@ class StepScaffold extends StatefulWidget {
     this.primaryBusy = false,
     this.secondary,
     this.footnote,
+    this.eyebrow = 'MAKE IT YOURS',
   });
 
   final String title;
@@ -46,6 +46,7 @@ class StepScaffold extends StatefulWidget {
   final bool primaryBusy;
   final Widget? secondary;
   final String? footnote;
+  final String eyebrow;
 
   @override
   State<StepScaffold> createState() => _StepScaffoldState();
@@ -79,7 +80,7 @@ class _StepScaffoldState extends State<StepScaffold> {
 
     final body = <Widget>[
       if (MediaQuery.sizeOf(context).height >= 400) ...[
-        const Eyebrow('MAKE IT YOURS', icon: Icons.tune_rounded),
+        Eyebrow(widget.eyebrow),
         const SizedBox(height: Gap.lg),
       ],
       Stagger(
@@ -186,7 +187,7 @@ class _StepScaffoldState extends State<StepScaffold> {
                 children: body,
               ),
             ),
-            _FrostedFooter(child: footer),
+            _StepFooter(child: footer),
           ],
         );
       },
@@ -194,58 +195,22 @@ class _StepScaffoldState extends State<StepScaffold> {
   }
 }
 
-/// The pinned primary-action surface every step shares.
-///
-/// An opaque footer would cut the page in two; a frosted one keeps the Continue
-/// button legible while the content behind shows through, which is why sheets
-/// and the nav bar get this material and the footer now matches them. The
-/// shared-blur group keeps it cheap, the top hairline marks where the scroll
-/// surface ends, and on true black the blur switches off — there is nothing
-/// behind a black surface to see — while the hairline stays so the footer
-/// still reads as its own surface.
-class _FrostedFooter extends StatelessWidget {
-  const _FrostedFooter({required this.child});
-
+/// A quiet solid action area keeps the next step clear in every theme.
+class _StepFooter extends StatelessWidget {
+  const _StepFooter({required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final black = cs.surface == const Color(0xFF000000);
-    final hairline = Border(
-      top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
-    );
-    // Blurring behind an opaque black surface would spend GPU time to produce
-    // the same pixels, so true black keeps the flat fill and the hairline.
-    if (black) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          border: hairline,
-        ),
-        child: child,
-      );
-    }
-    return BackdropGroup(
-      child: ClipRect(
-        child: BackdropFilter.grouped(
-          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  cs.surfaceContainerLow.withValues(alpha: 0.55),
-                  cs.surfaceContainerLow.withValues(alpha: 0.85),
-                ],
-              ),
-              border: hairline,
-            ),
-            child: child,
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: .45)),
         ),
       ),
+      child: child,
     );
   }
 }
