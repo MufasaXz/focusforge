@@ -8,10 +8,9 @@ import '../../../core/models/study.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
-import '../../../shared/widgets/app_segmented_control.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Saves a date-bound daily goal or a repeating weekly plan after its subject
+/// Saves a date-bound daily goal after its subject
 /// allocations add up to the exact chosen total.
 Future<void> showDailyGoalSheet(BuildContext context) =>
     showModalBottomSheet<void>(
@@ -29,7 +28,6 @@ class _FocusGoalSheet extends ConsumerStatefulWidget {
 }
 
 class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
-  late FocusGoalScope _scope;
   late int _total;
   late final FixedExtentScrollController _wheel;
   final _allocations = <String, int>{};
@@ -45,7 +43,6 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
     final plan = ref
         .read(focusGoalPlannerProvider)
         .forDate(ref.read(focusCalendarDateProvider));
-    _scope = plan?.scope ?? FocusGoalScope.day;
     _total = plan?.totalMinutes ?? 60;
     _allocations.addAll(plan?.subjectMinutes ?? const {});
     _wheel = FixedExtentScrollController(initialItem: (_total / _step).round());
@@ -55,22 +52,6 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
   void dispose() {
     _wheel.dispose();
     super.dispose();
-  }
-
-  void _chooseScope(FocusGoalScope scope) {
-    final planner = ref.read(focusGoalPlannerProvider);
-    final date = ref.read(focusCalendarDateProvider);
-    final plan = scope == FocusGoalScope.day ? planner.day : planner.week;
-    setState(() {
-      _scope = scope;
-      _error = null;
-      if (plan != null && plan.appliesOn(date)) {
-        _total = plan.totalMinutes;
-        _allocations.clear();
-        _allocations.addAll(plan.subjectMinutes);
-      }
-    });
-    _wheel.jumpToItem((_total / _step).round());
   }
 
   void _splitEvenly(List<Subject> subjects) {
@@ -101,7 +82,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
           .read(focusGoalPlannerProvider.notifier)
           .save(
             FocusGoalPlan(
-              scope: _scope,
+              scope: FocusGoalScope.day,
               date: ref.read(focusCalendarDateProvider),
               totalMinutes: _total,
               subjectMinutes: values,
@@ -133,16 +114,6 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
     final valid = difference == 0 && (_total == 0 || subjects.isNotEmpty);
     final bottom = MediaQuery.paddingOf(context).bottom;
     final date = ref.watch(focusCalendarDateProvider);
-    final weekStart = DateTime(
-      date.year,
-      date.month,
-      date.day - date.weekday + 1,
-    );
-    final weekEnd = DateTime(
-      weekStart.year,
-      weekStart.month,
-      weekStart.day + 6,
-    );
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -167,19 +138,8 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.lg),
-              AppSegmentedControl<FocusGoalScope>(
-                options: const {
-                  FocusGoalScope.day: 'For one day',
-                  FocusGoalScope.week: 'For a week',
-                },
-                selected: _scope,
-                onChanged: _saving ? (_) {} : _chooseScope,
-              ),
-              const SizedBox(height: Gap.sm),
               Text(
-                _scope == FocusGoalScope.day
-                    ? 'Today only · ${formatDate(date)}. Resets at midnight.'
-                    : '${formatDate(weekStart)} – ${formatDate(weekEnd)}. Repeats each week; progress resets Monday.',
+                'Today only · ${formatDate(date)}. Resets at midnight.',
                 style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: Gap.lg),

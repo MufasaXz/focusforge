@@ -10,14 +10,13 @@ class WidgetGoalPlanTest {
     @Test fun noSavedPlanDoesNotInventAGoal() {
         assertNull(WidgetGoalPlan.resolve(JSONObject(),LocalDate.of(2026,10,14)))
     }
-    @Test fun oneDayOverridesWeekAndExpiresNextDay() {
+    @Test fun dailyPlanExpiresWithoutFallingBackToRetiredWeek() {
         val saved = JSONObject().put("day",plan("day","2026-10-14",120)).put("week",plan("week","2026-10-12"))
         assertEquals(120,WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,14))?.totalMinutes)
-        assertEquals(480,WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,15))?.totalMinutes)
-        assertTrue(WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,15))!!.weekly)
+        assertNull(WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,15)))
     }
-    @Test fun weeklyTemplateRepeatsAndRestGoalRemainsExplicit() {
-        assertEquals(480,WidgetGoalPlan.resolve(JSONObject().put("week",plan("week","2026-10-12")),LocalDate.of(2026,10,19))?.totalMinutes)
+    @Test fun retiredWeekIsIgnoredAndRestDayRemainsExplicit() {
+        assertNull(WidgetGoalPlan.resolve(JSONObject().put("week",plan("week","2026-10-12")),LocalDate.of(2026,10,19)))
         assertEquals(0,WidgetGoalPlan.resolve(JSONObject().put("day",plan("day","2026-10-14",0)),LocalDate.of(2026,10,14))?.totalMinutes)
     }
     @Test fun inconsistentOrFutureAllocationsAreRejected() {

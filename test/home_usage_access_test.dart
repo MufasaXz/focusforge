@@ -24,7 +24,7 @@ class _Permissions extends PermissionManager {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets(
-    'Home places optional usage card after session start at enlarged text',
+    'Home offers goal setup and usage access without denied screen-time analytics',
     (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       tester.view.physicalSize = const Size(320, 640);
@@ -57,7 +57,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final start = find.text('Start session');
+      final start = find.text('Set goal');
+      expect(find.text('Start session'), findsNothing);
+      expect(find.text('Screen time today'), findsNothing);
+      expect(find.textContaining('is not sharing app usage'), findsNothing);
       final allow = find.text('Allow app usage');
       await tester.scrollUntilVisible(allow, 100);
       expect(allow, findsOneWidget);

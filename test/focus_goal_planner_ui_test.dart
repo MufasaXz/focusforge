@@ -153,21 +153,20 @@ void main() {
     },
   );
 
-  testWidgets(
-    'week selection saves a recurring weekly target on a narrow large-text phone',
-    (tester) async {
-      final container = await mount(tester, width: 320, scale: 1.6);
-      await tester.tap(find.text('For a week'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Split evenly'));
-      await tester.tap(find.text('Split evenly'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
-      await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
-      await tester.pumpAndSettle();
-      expect(container.read(activeFocusGoalProvider)?.scope.name, 'week');
-      expect(container.read(activeFocusGoalProvider)?.totalMinutes, 60);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('daily-only editor saves a target on a narrow large-text phone', (
+    tester,
+  ) async {
+    final container = await mount(tester, width: 320, scale: 1.6);
+    expect(find.text('For a week'), findsNothing);
+    expect(find.textContaining('Today only'), findsOneWidget);
+    await tester.ensureVisible(find.text('Split evenly'));
+    await tester.tap(find.text('Split evenly'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
+    await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
+    await tester.pumpAndSettle();
+    expect(container.read(activeFocusGoalProvider)?.scope.name, 'day');
+    expect(container.read(activeFocusGoalProvider)?.totalMinutes, 60);
+    expect(tester.takeException(), isNull);
+  });
 }

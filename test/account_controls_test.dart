@@ -567,7 +567,7 @@ void main() {
         .read(focusGoalPlannerProvider.notifier)
         .save(
           FocusGoalPlan(
-            scope: FocusGoalScope.week,
+            scope: FocusGoalScope.day,
             date: DateTime.now(),
             totalMinutes: 480,
             subjectMinutes: const {'math': 480},

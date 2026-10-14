@@ -262,7 +262,8 @@ void main() {
         await tester.pumpWidget(wrap(container, const DashboardScreen()));
         await settle(tester);
         expect(find.text('No sessions yet'), findsNothing);
-        expect(find.text("Set today's goal"), findsOneWidget);
+        expect(find.text('Set goal'), findsOneWidget);
+        expect(find.text('Start session'), findsNothing);
         expect(find.byType(GoalRing), findsNothing);
         await container
             .read(focusGoalPlannerProvider.notifier)
@@ -302,8 +303,8 @@ void main() {
       await settle(tester);
       await tester.tap(find.text("Today's goal"));
       await settle(tester);
-      expect(find.text('For one day'), findsOneWidget);
-      expect(find.text('For a week'), findsOneWidget);
+      expect(find.text('For a week'), findsNothing);
+      expect(find.textContaining('Today only'), findsOneWidget);
       expect(find.text('Time for each subject'), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await settle(tester);

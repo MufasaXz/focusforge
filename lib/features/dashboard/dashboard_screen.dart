@@ -108,6 +108,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
     final goal = ref.watch(activeFocusGoalProvider);
+    final usageAllowed = ref.watch(usageAccessProvider).valueOrNull == true;
     // Derived from the session log, not read from the stats aggregate: a
     // streak is a fact about dates and the aggregate carries none.
     final streak = ref.watch(currentStreakProvider);
@@ -143,7 +144,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           icon: Icons.play_arrow_rounded,
           title: 'Plan your focus time',
           body:
-              'Set a goal for today or the week, then divide your time '
+              'Set a goal for today, then divide your time '
               'between subjects. Your progress ring appears when you save.',
         )
       else
@@ -195,7 +196,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _PlanGoalCard(
           onPlan: () => showDailyGoalSheet(context),
           ctaKey: targets.emptyCta,
-          onStart: _startFocusing,
         )
       else
         _DailyOverview(
@@ -205,6 +205,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ringKey: targets.ring,
           onFocus: _startFocusing,
         ),
+      if (goal != null) ...[
+        const SizedBox(height: Gap.lg),
+        _SubjectAllocationCard(plan: goal),
+      ],
       const UsageAccessCard(),
       if (sessions.isNotEmpty) ...[
         const SizedBox(height: Gap.xl),
@@ -255,18 +259,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ];
 
     final right = <Widget>[
-      const SectionHeader(
-        title: 'Screen time today',
-        icon: Icons.hourglass_bottom_rounded,
-      ),
-      const GlassCard(
-        child: Padding(
-          padding: EdgeInsets.all(Gap.lg),
-          child: ScreenTimeCard(),
+      if (usageAllowed) ...[
+        const SectionHeader(
+          title: 'Screen time today',
+          icon: Icons.hourglass_bottom_rounded,
         ),
-      ),
+        const GlassCard(
+          child: Padding(
+            padding: EdgeInsets.all(Gap.lg),
+            child: ScreenTimeCard(),
+          ),
+        ),
+      ],
       if (sessions.isNotEmpty) ...[
-        const SizedBox(height: Gap.xl),
+        if (usageAllowed) const SizedBox(height: Gap.xl),
         const SectionHeader(
           title: 'Subject breakdown',
           icon: Icons.donut_large_rounded,
@@ -478,9 +484,9 @@ class _DailyOverview extends ConsumerWidget {
     final goalMinutes = plan.totalMinutes;
     final progress = ref.watch(activeFocusGoalProgressProvider);
     final minutesToday = ref.watch(activeFocusGoalSecondsProvider) ~/ 60;
-    final weekly = plan.scope == FocusGoalScope.week;
 
     return GlassCard(
+      key: const ValueKey('daily-goal-tile'),
       color: cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.hero),
@@ -522,7 +528,7 @@ class _DailyOverview extends ConsumerWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      weekly ? 'Focus this week' : 'Focus today',
+                      'Focus today',
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -532,11 +538,9 @@ class _DailyOverview extends ConsumerWidget {
             const SizedBox(height: Gap.lg),
             _GoalRow(
               goalMinutes: goalMinutes,
-              label: weekly ? "This week's goal" : "Today's goal",
+              label: "Today's goal",
               onTap: () => showDailyGoalSheet(context),
             ),
-            const SizedBox(height: Gap.md),
-            _SubjectGoalProgress(plan: plan),
             const SizedBox(height: Gap.md),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -766,13 +770,8 @@ class _TrackerPanel extends StatelessWidget {
 
 /// A first target is an explicit choice, rather than a shipped default.
 class _PlanGoalCard extends StatelessWidget {
-  const _PlanGoalCard({
-    required this.onPlan,
-    required this.onStart,
-    this.ctaKey,
-  });
+  const _PlanGoalCard({required this.onPlan, this.ctaKey});
   final VoidCallback onPlan;
-  final VoidCallback onStart;
   final Key? ctaKey;
 
   @override
@@ -799,7 +798,7 @@ class _PlanGoalCard extends StatelessWidget {
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              'Plan one day or a whole week. Choose your hours and give each subject its share.',
+              'Choose your focus time for today and give each subject its share.',
               textAlign: TextAlign.center,
               style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
@@ -808,12 +807,8 @@ class _PlanGoalCard extends StatelessWidget {
               key: ctaKey,
               onPressed: onPlan,
               icon: const Icon(Icons.add_rounded),
-              label: const Text("Set today's goal"),
+              label: const Text('Set goal'),
             ),
-            const SizedBox(height: Gap.lg),
-            const Divider(),
-            const SizedBox(height: Gap.md),
-            SessionShortcut(onOpen: onStart),
           ],
         ),
       ),
@@ -821,8 +816,9 @@ class _PlanGoalCard extends StatelessWidget {
   }
 }
 
-class _SubjectGoalProgress extends ConsumerWidget {
-  const _SubjectGoalProgress({required this.plan});
+/// A compact, solid study plan separate from the day's progress gauge.
+class _SubjectAllocationCard extends ConsumerWidget {
+  const _SubjectAllocationCard({required this.plan});
   final FocusGoalPlan plan;
 
   @override
@@ -834,46 +830,126 @@ class _SubjectGoalProgress extends ConsumerWidget {
     final allocations = plan.subjectMinutes.entries
         .where((e) => e.value > 0)
         .toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final entry in allocations)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Gap.sm),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subjects[entry.key]?.name ?? 'Removed subject',
-                        style: tt.labelMedium,
+    return Material(
+      key: const ValueKey('subject-allocation-tile'),
+      color: cs.surfaceContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              "Today's subjects",
+              style: tt.titleMedium?.copyWith(letterSpacing: -.3),
+            ),
+            const SizedBox(height: Gap.xs),
+            Text(
+              'A place for every minute',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Gap.md),
+            for (var i = 0; i < allocations.length; i++) ...[
+              if (i > 0)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: Gap.md),
+                  child: Divider(height: 1),
+                ),
+              Builder(
+                builder: (context) {
+                  final entry = allocations[i];
+                  final subject = subjects[entry.key];
+                  final completed = totals[entry.key] ?? 0;
+                  final color = subject == null
+                      ? cs.primary
+                      : harmonize(subject.color, cs.primary);
+                  final name = subject?.name ?? 'Removed subject';
+                  final progress = (completed / entry.value).clamp(0.0, 1.0);
+                  final narrow =
+                      MediaQuery.textScalerOf(context).scale(14) > 21;
+                  final target = Text(
+                    formatMinutes(entry.value),
+                    style: tt.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  );
+                  return Semantics(
+                    label:
+                        '$name, ${formatMinutes(completed)} completed of ${formatMinutes(entry.value)} planned',
+                    child: ExcludeSemantics(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 3,
+                            height: narrow ? 58 : 44,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          const SizedBox(width: Gap.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (narrow) ...[
+                                  Text(
+                                    name,
+                                    style: tt.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: Gap.xs),
+                                  target,
+                                ] else
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: tt.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: Gap.md),
+                                      target,
+                                    ],
+                                  ),
+                                const SizedBox(height: Gap.xs),
+                                Text(
+                                  '${formatMinutes(completed)} completed',
+                                  style: tt.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: Gap.sm),
+                                LinearProgressIndicator(
+                                  value: progress,
+                                  color: color,
+                                  backgroundColor: cs.surfaceContainerHighest,
+                                  minHeight: 3,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: Gap.sm),
-                    Text(
-                      '${formatMinutes(totals[entry.key] ?? 0)} / ${formatMinutes(entry.value)}',
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Gap.xs),
-                LinearProgressIndicator(
-                  value: ((totals[entry.key] ?? 0) / entry.value).clamp(
-                    0.0,
-                    1.0,
-                  ),
-                  color: subjects[entry.key] == null
-                      ? cs.primary
-                      : harmonize(subjects[entry.key]!.color, cs.primary),
-                  backgroundColor: cs.surfaceContainerHighest,
-                  minHeight: 4,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ],
-            ),
-          ),
-      ],
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

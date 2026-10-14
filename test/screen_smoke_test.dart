@@ -401,7 +401,7 @@ void main() {
           find.textContaining('Inactive · Your app rules are saved.'),
           findsOneWidget,
         );
-        expect(find.textContaining('Allow app usage on Home'), findsOneWidget);
+        expect(find.text('Allow app usage on Home'), findsOneWidget);
         expect(find.text('Inactive · Rule saved'), findsOneWidget);
         expect(find.text('0m of 30m used today'), findsNothing);
         expect(find.text('Check overlay access'), findsNothing);
@@ -466,13 +466,11 @@ void main() {
       await tester.pumpWidget(wrap(freshContainer(), const DashboardScreen()));
       await settle(tester);
 
-      expect(find.text("Set today's goal"), findsOneWidget);
+      expect(find.text('Set goal'), findsOneWidget);
       expect(
         find.text('Screen time today'),
-        findsOneWidget,
-        reason:
-            'screen time is about the phone, not the session log, so it '
-            'is worth showing before the first session',
+        findsNothing,
+        reason: 'screen-time analytics wait until usage access is granted',
       );
       // The shield summary used to live here too. It answers a question about
       // the phone that the Shield tab already answers with the rules behind
@@ -532,7 +530,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('screen time says so when Android will not share usage', (
+    testWidgets('screen time is hidden while usage access is denied', (
       tester,
     ) async {
       useTallPhone(tester);
@@ -542,8 +540,9 @@ void main() {
 
       expect(
         find.textContaining('is not sharing app usage'),
-        findsOneWidget,
-        reason: 'an empty chart would read as "nothing used today"',
+        findsNothing,
+        reason:
+            'Home offers the optional access card instead of denied analytics',
       );
       expect(tester.takeException(), isNull);
     });

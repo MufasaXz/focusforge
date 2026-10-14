@@ -66,7 +66,7 @@ void main() {
       );
       expect(
         FocusGoalPlan(
-          scope: FocusGoalScope.week,
+          scope: FocusGoalScope.day,
           date: wednesday,
           totalMinutes: 720,
           subjectMinutes: const {'math': 720},
@@ -107,18 +107,21 @@ void main() {
     expect(plan.appliesOn(DateTime(2026, 10, 15)), isFalse);
   });
 
-  test('weekly target resets Monday and survives a new week', () {
-    final plan = FocusGoalPlan(
-      scope: FocusGoalScope.week,
-      date: wednesday,
-      totalMinutes: 480,
-      subjectMinutes: const {'math': 480},
+  test('saved weekly plans never recur or become daily allocations', () async {
+    await store.setMap(FocusGoalPlannerNotifier.storageKey, {
+      'version': 1,
+      'week': {
+        'scope': 'week',
+        'date': '2026-10-14',
+        'totalMinutes': 480,
+        'subjectMinutes': {'math': 480},
+      },
+    });
+    expect(containerFor(wednesday).read(activeFocusGoalProvider), isNull);
+    expect(
+      containerFor(DateTime(2026, 10, 19)).read(activeFocusGoalProvider),
+      isNull,
     );
-    expect(plan.periodStart(wednesday), DateTime(2026, 10, 12));
-    expect(plan.periodEnd(wednesday), DateTime(2026, 10, 19));
-    expect(plan.periodStart(DateTime(2026, 10, 19)), DateTime(2026, 10, 19));
-    expect(plan.appliesOn(DateTime(2026, 11, 3)), isTrue);
-    expect(plan.appliesOn(DateTime(2026, 10, 11)), isFalse);
   });
 
   test('malformed stored allocations do not become a misleading target', () {
@@ -148,18 +151,19 @@ void main() {
   });
 
   test(
-    'daily override takes precedence and the weekly goal returns tomorrow',
+    'saving a daily goal drops legacy weekly data and expires tomorrow',
     () async {
+      await store.setMap(FocusGoalPlannerNotifier.storageKey, {
+        'version': 1,
+        'week': {
+          'scope': 'week',
+          'date': '2026-10-14',
+          'totalMinutes': 480,
+          'subjectMinutes': {'math': 480},
+        },
+      });
       final container = containerFor(wednesday);
       final notifier = container.read(focusGoalPlannerProvider.notifier);
-      await notifier.save(
-        FocusGoalPlan(
-          scope: FocusGoalScope.week,
-          date: wednesday,
-          totalMinutes: 480,
-          subjectMinutes: const {'math': 480},
-        ),
-      );
       await notifier.save(
         FocusGoalPlan(
           scope: FocusGoalScope.day,
@@ -171,41 +175,38 @@ void main() {
       expect(container.read(activeFocusGoalProvider)?.totalMinutes, 120);
       final tomorrow = containerFor(DateTime(2026, 10, 15));
       expect(
-        tomorrow.read(activeFocusGoalProvider)?.scope,
-        FocusGoalScope.week,
+        store.getMap(FocusGoalPlannerNotifier.storageKey)?.containsKey('week'),
+        isFalse,
       );
-      expect(tomorrow.read(activeFocusGoalProvider)?.totalMinutes, 480);
+      expect(tomorrow.read(activeFocusGoalProvider), isNull);
     },
   );
 
-  test(
-    'choosing a weekly plan replaces the existing daily override immediately',
-    () async {
-      final container = containerFor(wednesday);
-      final planner = container.read(focusGoalPlannerProvider.notifier);
-      await planner.save(
-        FocusGoalPlan(
-          scope: FocusGoalScope.day,
-          date: wednesday,
-          totalMinutes: 60,
-          subjectMinutes: const {'math': 60},
-        ),
-      );
-      await planner.save(
+  test('a legacy weekly object cannot replace a current daily goal', () async {
+    final container = containerFor(wednesday);
+    final planner = container.read(focusGoalPlannerProvider.notifier);
+    await planner.save(
+      FocusGoalPlan(
+        scope: FocusGoalScope.day,
+        date: wednesday,
+        totalMinutes: 60,
+        subjectMinutes: const {'math': 60},
+      ),
+    );
+    await expectLater(
+      planner.save(
         FocusGoalPlan(
           scope: FocusGoalScope.week,
           date: wednesday,
           totalMinutes: 480,
           subjectMinutes: const {'math': 480},
         ),
-      );
-      expect(
-        container.read(activeFocusGoalProvider)?.scope,
-        FocusGoalScope.week,
-      );
-      expect(container.read(focusGoalPlannerProvider).day, isNull);
-    },
-  );
+      ),
+      throwsArgumentError,
+    );
+    expect(container.read(activeFocusGoalProvider)?.scope, FocusGoalScope.day);
+    expect(container.read(activeFocusGoalProvider)?.totalMinutes, 60);
+  });
 
   test('goal progress matches widget account ownership including migrated guest records', () async {
     await store.setString(StoreKeys.achievementHistoryOwner, 'account-b');
@@ -244,14 +245,14 @@ void main() {
   });
 
   test(
-    'weekly progress counts this week and resets at the next Monday',
+    'daily progress counts only completed sessions on the selected date',
     () async {
       final container = containerFor(wednesday);
       await container
           .read(focusGoalPlannerProvider.notifier)
           .save(
             FocusGoalPlan(
-              scope: FocusGoalScope.week,
+              scope: FocusGoalScope.day,
               date: wednesday,
               totalMinutes: 480,
               subjectMinutes: const {'math': 480},
@@ -293,7 +294,7 @@ void main() {
           .hydrate(
             container.read(sessionsProvider).map((s) => s.toJson()).toList(),
           );
-      expect(nextWeek.read(activeFocusGoalSecondsProvider), 60 * 60);
+      expect(nextWeek.read(activeFocusGoalSecondsProvider), 0);
     },
   );
 }

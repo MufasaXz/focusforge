@@ -15,8 +15,7 @@ import '../../../shared/widgets/icon_badge.dart';
 /// from the same four hours and forty minutes.
 ///
 /// It reads usage rather than the rule list, so it is useful before the user
-/// has shielded anything — and it says plainly when Android will not answer,
-/// instead of drawing an empty chart that reads as "nothing used today".
+/// has shielded anything. Home only mounts it after Usage Access is granted.
 class ScreenTimeCard extends ConsumerWidget {
   const ScreenTimeCard({super.key, this.maxRows = 4});
 
@@ -26,12 +25,13 @@ class ScreenTimeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final access = ref.watch(usageAccessProvider);
+    if (access.valueOrNull != true) return const SizedBox.shrink();
     final screenTime = ref.watch(screenTimeTodayProvider);
 
     // Still reading the platform on the first frame. A spinner rather than a
     // skeleton: this card is small, and a card-sized skeleton would push the
     // sections below it down when it resolved.
-    if (access.isLoading || screenTime.isLoading) {
+    if (screenTime.isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: Gap.xl),
         child: Center(
@@ -44,17 +44,7 @@ class ScreenTimeCard extends ConsumerWidget {
       );
     }
 
-    if (access.valueOrNull == false) {
-      return const _Notice(
-        icon: Icons.timelapse_rounded,
-        body:
-            'Android is not sharing app usage with FocusForge, so today\'s '
-            'screen time cannot be read. Use Allow app usage on the Home '
-            'page below Start session to see it here.',
-      );
-    }
-
-    if (access.hasError || screenTime.hasError) {
+    if (screenTime.hasError) {
       return const _Notice(
         icon: Icons.error_outline_rounded,
         body: 'The usage service did not answer. Pull down to try again.',

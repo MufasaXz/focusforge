@@ -24,8 +24,8 @@ class CoachSpot {
     required this.icon,
     required this.title,
     required this.body,
-    this.minRadius = 44,
-    this.padding = 10,
+    this.minRadius = 32,
+    this.padding = 6,
   });
 
   final GlobalKey target;
@@ -177,10 +177,18 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
   }
 
   /// The hole a spot asks for around its measured box.
-  _Hole _holeFor(CoachSpot spot, Rect rect) => _Hole(
-    center: rect.center,
-    radius: math.max(spot.minRadius, rect.longestSide / 2 + spot.padding),
-  );
+  _Hole _holeFor(CoachSpot spot, Rect rect) {
+    // Card-sized targets should still point to one small area of the screen.
+    // A 320dp phone gets a 64dp radius; larger windows cap at 76dp.
+    final limit = math.min(76.0, MediaQuery.sizeOf(context).shortestSide * .2);
+    return _Hole(
+      center: rect.center,
+      radius: math.min(
+        limit,
+        math.max(spot.minRadius, rect.longestSide / 2 + spot.padding),
+      ),
+    );
+  }
 
   /// Follows the current target until it holds still.
   void _startTracking() {

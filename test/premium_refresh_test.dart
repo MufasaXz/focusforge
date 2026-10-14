@@ -159,8 +159,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Make time for what matters'), findsOneWidget);
       expect(find.byType(CupertinoPicker), findsOneWidget);
-      expect(find.text('For one day'), findsOneWidget);
-      expect(find.text('For a week'), findsOneWidget);
+      expect(find.textContaining('Today only'), findsOneWidget);
+      expect(find.text('For a week'), findsNothing);
       for (final subject in c.read(subjectsProvider)) {
         expect(
           find.byKey(ValueKey('goal-subject-${subject.id}')),

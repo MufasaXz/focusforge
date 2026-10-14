@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+// The week tag is retained only to recognize unsupported legacy callers/data.
 enum FocusGoalScope { day, week }
 
 /// A target and an exact allocation of its minutes across study subjects.
-/// Daily targets expire at midnight; weekly plans repeat on Monday.
+/// Daily targets expire at midnight. Legacy weekly plans are inactive.
 @immutable
 class FocusGoalPlan {
   FocusGoalPlan({
@@ -30,22 +31,14 @@ class FocusGoalPlan {
 
   bool appliesOn(DateTime day) {
     final current = DateTime(day.year, day.month, day.day);
-    return scope == FocusGoalScope.day
-        ? current == date
-        : !current.isBefore(periodStart(date));
+    return scope == FocusGoalScope.day && current == date;
   }
 
-  DateTime periodStart(DateTime day) => scope == FocusGoalScope.day
-      ? date
-      : DateTime(day.year, day.month, day.day - day.weekday + 1);
+  DateTime periodStart(DateTime day) => date;
 
   DateTime periodEnd(DateTime day) {
     final start = periodStart(day);
-    return DateTime(
-      start.year,
-      start.month,
-      start.day + (scope == FocusGoalScope.day ? 1 : 7),
-    );
+    return DateTime(start.year, start.month, start.day + 1);
   }
 
   Map<String, dynamic> toJson() => {
@@ -59,7 +52,6 @@ class FocusGoalPlan {
     if (raw is! Map) return null;
     final scope = switch (raw['scope']) {
       'day' => FocusGoalScope.day,
-      'week' => FocusGoalScope.week,
       _ => null,
     };
     final dateRaw = raw['date'];
@@ -91,29 +83,27 @@ class FocusGoalPlan {
 class FocusGoalPlanner {
   const FocusGoalPlanner({this.day, this.week});
   final FocusGoalPlan? day;
+
+  /// Compatibility slot for old callers. Never loaded, saved, or activated.
   final FocusGoalPlan? week;
 
   FocusGoalPlan? forDate(DateTime date) {
     if (day?.appliesOn(date) ?? false) return day;
-    return week?.appliesOn(date) ?? false ? week : null;
+    return null;
   }
 
-  FocusGoalPlanner withPlan(FocusGoalPlan plan) => FocusGoalPlanner(
-    // Explicitly choosing a weekly plan makes it effective immediately. A
-    // daily plan saved afterwards can still override that one day.
-    day: plan.scope == FocusGoalScope.day ? plan : null,
-    week: plan.scope == FocusGoalScope.week ? plan : week,
-  );
+  FocusGoalPlanner withPlan(FocusGoalPlan plan) {
+    if (plan.scope != FocusGoalScope.day) {
+      throw ArgumentError('Focus goals apply to one day.');
+    }
+    return FocusGoalPlanner(day: plan);
+  }
 
   Map<String, dynamic> toJson() => {
-    'version': 1,
+    'version': 2,
     if (day != null) 'day': day!.toJson(),
-    if (week != null) 'week': week!.toJson(),
   };
 
   factory FocusGoalPlanner.fromJson(Map<String, dynamic>? json) =>
-      FocusGoalPlanner(
-        day: FocusGoalPlan.fromJson(json?['day']),
-        week: FocusGoalPlan.fromJson(json?['week']),
-      );
+      FocusGoalPlanner(day: FocusGoalPlan.fromJson(json?['day']));
 }

@@ -1,6 +1,6 @@
 # Google Play readiness: first-release candidate
 
-Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2025.
+Policy reviewed October 14, 2026 · FocusForge 1.0.0 · version code 2026.
 
 **Owner Play declarations and real-device verification remain before submission.**
 The in-app deletion path is restored with Spark-compatible client cleanup.
@@ -10,7 +10,7 @@ real-device checks remain. Google determines approval; this document is not
 an approval or security certification.
 
 The displayed version may be 1.0.0 for the first Play release. Keep version code
-2025 greater than earlier distributed builds and retain the signing identity.
+2026 greater than earlier distributed builds and retain the signing identity.
 Changing the display version does not reset Android's update history. Never
 reuse a version code already uploaded to this package in Play Console.
 
@@ -58,7 +58,7 @@ Launcher-app visibility uses the MAIN/LAUNCHER query for the actual app picker.
 Installed-app information remains sensitive even without QUERY_ALL_PACKAGES;
 use it only for the disclosed local feature.
 
-Recheck the final 1.0.0 (2025) merged manifest, signing, AAB and native-library
+Recheck the final 1.0.0 (2026) merged manifest, signing, AAB and native-library
 alignment after building. Checks from 1.0.3 (2021) do not prove the new artifact.
 Flutter includes native libraries, so verify 16 KB compatibility in App Bundle
 Explorer and on a suitable emulator/device. Use the AAB for Play upload; an APK
@@ -83,15 +83,35 @@ The final APK installed over build 2024 on the Android 11 emulator. At 320dp,
 the planner saved exact subject allocations and immediately showed its weekly
 ring; preset removal appeared only in manage mode. Emulator checks do not
 establish real inbox delivery, supported YouTube behavior or OEM live surfaces.
-Use the [plain text Play Console guide](PLAY-CONSOLE-PUBLISHING-GUIDE.txt) for
-the remaining owner submission steps. The legacy migration is one-time.
+The legacy migration is one-time.
+
+## Build 2026 update
+
+Daily-only Home planning now keeps Start session hidden until a positive goal
+is saved. The 0–12 hour animated picker still requires exact subject totals.
+Subject time appears in a separate solid card. Legacy weekly plans stay inactive;
+weekly/monthly completed-session analytics remain. Screen-time analytics appear
+only after Usage Access is granted. The onboarding spotlight is smaller.
+
+Normal app boundaries still require Usage Access for foreground detection and
+Draw over other apps for the pause screen; overlay access alone cannot identify
+the app being used. Resuming the app refreshes permission/service status across
+tabs. Screen-off/on replay and clock changes recover native detection, Back
+leaves the covered app, and a failed breath-screen launch does not grant access.
+
+Source passed 369 Flutter tests and 42 native tests with clean analysis. On the
+Android 11 emulator, a saved rule blocked the QA app with both actions visible,
+Back returned Home, and reopening its recent task restored the pause screen.
+Revoking Usage Access removed enforcement and the denied analytics tile; Home
+retained the optional Allow app usage card. These checks do not establish every
+OEM behavior or bypass immunity. The guide attachment was removed on request.
 
 ## Why each access is requested
 
 | Access | Implemented purpose | Timing and refusal behavior |
 | --- | --- | --- |
 | Accessibility service | Local YouTube view-ID checks and a pause screen for supported Shorts/feed filters | Separate disclosure and affirmative agreement before Android Settings when a YouTube filter is enabled. Refusal leaves the filter off. |
-| Usage access | Local screen-time totals, budgets and foreground-app detection for selected whole-app rules | Optional Home card below Start session, with disclosure before Android Settings. Shield can save pending rules without this grant; enforcement stays inactive until Usage and Overlay access are both granted. |
+| Usage access | Local screen-time totals, budgets and foreground-app detection for selected whole-app rules | Optional Home card below the goal/session tile, with disclosure before Android Settings. Shield can save pending rules without this grant; enforcement stays inactive until Usage and Overlay access are both granted. |
 | Draw over other apps | A pause screen over a whole app selected by the user | Request in context for normal app rules. Missing/revoked access leaves enforcement inactive. No Accessibility grant is needed for this path. |
 | Foreground service (specialUse) | Continue local selected-app detection while FocusForge is in the background | Started from the visible app, with a persistent notification and Stop action. Declare and demonstrate this use in Play Console; approval is reviewed separately. |
 | Notifications | The user's running timer countdown and subject | Optional. Timer remains usable if notifications are refused. |
