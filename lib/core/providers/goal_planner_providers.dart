@@ -34,9 +34,7 @@ class FocusGoalPlannerNotifier extends Notifier<FocusGoalPlanner> {
 
   Future<void> save(FocusGoalPlan plan) async {
     if (plan.totalMinutes <= 0) {
-      throw ArgumentError(
-        'Choose a positive target and allocate its subject time.',
-      );
+      throw ArgumentError('Choose a focus target above zero.');
     }
     final next = state.withPlan(plan);
     // Publish only after storage succeeds so a failed save never changes Home.

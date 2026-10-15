@@ -165,7 +165,7 @@ void main() {
   );
 
   testWidgets(
-    'granting and revoking usage access toggles analytics and the request card',
+    'usage access only toggles its request card and never adds analytics',
     (tester) async {
       var allowed = false;
       final container = await mountHome(tester, access: () => allowed);
@@ -176,8 +176,8 @@ void main() {
       container.invalidate(usageAccessProvider);
       await settle(tester);
       expect(find.text('Allow app usage'), findsNothing);
-      expect(find.text('Screen time today'), findsOneWidget);
-      expect(find.byType(ScreenTimeCard), findsOneWidget);
+      expect(find.text('Screen time today'), findsNothing);
+      expect(find.byType(ScreenTimeCard), findsNothing);
       allowed = false;
       container.invalidate(usageAccessProvider);
       await settle(tester);
@@ -188,6 +188,23 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     },
   );
+
+  testWidgets('unallocated daily goal hides the subject tile', (tester) async {
+    await mountHome(
+      tester,
+      access: () => true,
+      plan: FocusGoalPlan(
+        scope: FocusGoalScope.day,
+        date: DateTime.now(),
+        totalMinutes: 120,
+        subjectMinutes: const {},
+      ),
+    );
+    expect(find.byKey(const ValueKey('daily-goal-tile')), findsOneWidget);
+    expect(find.byKey(const ValueKey('subject-allocation-tile')), findsNothing);
+    expect(find.text('Start session'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'a large coach target gets a compact spotlight on a 320dp screen',

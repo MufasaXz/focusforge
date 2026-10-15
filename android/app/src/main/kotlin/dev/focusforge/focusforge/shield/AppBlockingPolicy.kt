@@ -58,13 +58,22 @@ class ForegroundAppTracker {
     @Volatile var packageName: String? = null
         private set
     private var lastEventAt = Long.MIN_VALUE
+    private var lastResumeAt = Long.MIN_VALUE
+    private var screenBoundaryAt = Long.MIN_VALUE
+    private val stoppedAt = HashMap<Pair<String, String?>, Long>()
     private var activity: String? = null
     private var suspendedPackage: String? = null
     private var suspendedActivity: String? = null
 
     fun resume(packageName: String, at: Long, activity: String? = null) {
-        if (at < lastEventAt) return
-        lastEventAt = at
+        // A different activity can stop after the new one resumes. OEMs may
+        // publish that stop first; it must not fence out the delayed resume.
+        if (at < lastResumeAt || at < screenBoundaryAt ||
+            at <= (stoppedAt[packageName to activity] ?: Long.MIN_VALUE) ||
+            at <= (stoppedAt[packageName to null] ?: Long.MIN_VALUE)) return
+        lastResumeAt = at
+        lastEventAt = maxOf(lastEventAt, at)
+        stoppedAt.entries.removeAll { it.value < at }
         suspendedPackage = null
         suspendedActivity = null
         this.packageName = packageName
@@ -72,8 +81,10 @@ class ForegroundAppTracker {
     }
 
     fun pause(packageName: String, at: Long, activity: String? = null) {
-        if (at < lastEventAt) return
-        lastEventAt = at
+        if (at < lastResumeAt || at < screenBoundaryAt) return
+        val key = packageName to activity
+        stoppedAt[key] = maxOf(stoppedAt[key] ?: Long.MIN_VALUE, at)
+        lastEventAt = maxOf(lastEventAt, at)
         if (suspendedPackage == packageName &&
             (suspendedActivity == null || activity == null || suspendedActivity == activity)) {
             suspendedPackage = null
@@ -92,10 +103,14 @@ class ForegroundAppTracker {
         suspendedPackage = null
         suspendedActivity = null
         lastEventAt = at
+        lastResumeAt = at
+        screenBoundaryAt = at
+        stoppedAt.clear()
     }
 
     fun screenOff(at: Long) {
         if (at < lastEventAt) return
+        screenBoundaryAt = at
         if (packageName != null) {
             suspendedPackage = packageName
             suspendedActivity = activity
@@ -107,6 +122,7 @@ class ForegroundAppTracker {
 
     fun screenOn(at: Long) {
         if (at < lastEventAt) return
+        screenBoundaryAt = at
         if (packageName == null) {
             packageName = suspendedPackage
             activity = suspendedActivity

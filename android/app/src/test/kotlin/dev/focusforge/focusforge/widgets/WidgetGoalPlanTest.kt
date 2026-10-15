@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
 class WidgetGoalPlanTest {
+    @Test fun unallocatedDailyGoalRepeatsThroughSundayOnly() {
+        val saved = JSONObject().put("day", plan("day","2026-10-14",120)
+            .put("subjectMinutes", JSONObject()).put("repeatThisWeek",true))
+        assertEquals(120,WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,18))?.totalMinutes)
+        assertNull(WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,19)))
+        assertNull(WidgetGoalPlan.resolve(saved,LocalDate.of(2026,10,13)))
+    }
     private fun plan(scope:String,date:String,total:Int=480) = JSONObject()
         .put("scope",scope).put("date",date+"T00:00:00.000")
         .put("totalMinutes",total).put("subjectMinutes",JSONObject().put("math",total))

@@ -66,7 +66,7 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
               ),
               const SizedBox(height: Gap.sm),
               Text(
-                'See your screen time and let your selected app boundaries and daily budgets detect which app is open. App usage stays on this device. Your focus timer works without this access.',
+                'Let your selected app boundaries and daily budgets detect which app is open. App usage stays on this device. Your focus timer works without this access.',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),

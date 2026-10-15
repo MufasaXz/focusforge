@@ -32,7 +32,75 @@ void main() {
     return container;
   }
 
-  test('an eight hour target requires exactly eight subject hours', () {
+  test('unallocated targets roundtrip and repeat only through Sunday', () {
+    final plan = FocusGoalPlan.fromJson({
+      'scope': 'day',
+      'date': '2026-10-14',
+      'totalMinutes': 120,
+      'subjectMinutes': {},
+      'repeatThisWeek': true,
+    })!;
+    expect(plan.subjectMinutes, isEmpty);
+    expect(plan.appliesOn(DateTime(2026, 10, 13)), isFalse);
+    expect(plan.appliesOn(DateTime(2026, 10, 18)), isTrue);
+    expect(plan.appliesOn(DateTime(2026, 10, 19)), isFalse);
+    expect(
+      plan.periodStart(DateTime(2026, 10, 15, 10)),
+      DateTime(2026, 10, 15),
+    );
+    expect(plan.periodEnd(DateTime(2026, 10, 15)), DateTime(2026, 10, 16));
+    expect(
+      FocusGoalPlan.fromJson(plan.toJson())?.appliesOn(DateTime(2026, 10, 18)),
+      isTrue,
+    );
+  });
+
+  test(
+    'repeated goals reset progress daily and a new goal replaces repetition',
+    () async {
+      final container = containerFor(wednesday);
+      final plan = FocusGoalPlan.fromJson({
+        'scope': 'day',
+        'date': '2026-10-14',
+        'totalMinutes': 120,
+        'subjectMinutes': {},
+        'repeatThisWeek': true,
+      })!;
+      await container.read(focusGoalPlannerProvider.notifier).save(plan);
+      final tomorrow = containerFor(DateTime(2026, 10, 15));
+      tomorrow.read(sessionsProvider.notifier).hydrate([
+        FocusSession(
+          id: 'yesterday',
+          subjectId: 'math',
+          startedAt: wednesday,
+          minutes: 90,
+        ).toJson(),
+        FocusSession(
+          id: 'today',
+          subjectId: 'math',
+          startedAt: DateTime(2026, 10, 15),
+          minutes: 30,
+        ).toJson(),
+      ]);
+      expect(tomorrow.read(activeFocusGoalProgressProvider), .25);
+      await tomorrow
+          .read(focusGoalPlannerProvider.notifier)
+          .save(
+            FocusGoalPlan(
+              scope: FocusGoalScope.day,
+              date: DateTime(2026, 10, 15),
+              totalMinutes: 60,
+              subjectMinutes: const {},
+            ),
+          );
+      expect(
+        containerFor(DateTime(2026, 10, 16)).read(activeFocusGoalProvider),
+        isNull,
+      );
+    },
+  );
+
+  test('entered allocations require exactly the selected subject hours', () {
     expect(
       () => FocusGoalPlan(
         scope: FocusGoalScope.day,

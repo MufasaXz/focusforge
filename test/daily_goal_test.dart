@@ -304,8 +304,8 @@ void main() {
       await tester.tap(find.text("Today's goal"));
       await settle(tester);
       expect(find.text('For a week'), findsNothing);
-      expect(find.textContaining('Today only'), findsOneWidget);
-      expect(find.text('Time for each subject'), findsOneWidget);
+      expect(find.text('Set your daily goal'), findsOneWidget);
+      expect(find.text('Subjects · optional'), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await settle(tester);
       expect(tester.takeException(), isNull);

@@ -26,7 +26,6 @@ import 'widgets/daily_goal_sheet.dart';
 import 'widgets/focus_heatmap.dart';
 import 'widgets/day_summary_sheet.dart';
 import 'widgets/goal_ring.dart';
-import 'widgets/screen_time_card.dart';
 import 'widgets/session_shortcut.dart';
 import 'widgets/usage_access_card.dart';
 import 'widgets/study_tracker.dart';
@@ -75,15 +74,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.read(timerProvider.notifier).sync();
     ref.read(focusCalendarDateProvider.notifier).refresh();
     ref.invalidate(usageAccessProvider);
-    ref.invalidate(appUsageTodayProvider);
-    ref.invalidate(installedAppsProvider);
     // Each card owns its error state. Keep the saved study log visible even
     // if the platform cannot answer a usage read.
-    await Future.wait([
-      ref.read(usageAccessProvider.future),
-      ref.read(appUsageTodayProvider.future),
-      ref.read(installedAppsProvider.future),
-    ]).then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    await Future.wait([ref.read(usageAccessProvider.future)])
+        .then<void>((_) {}, onError: (Object _, StackTrace _) {});
   }
 
   /// The Focus tab is branch 2 of the shell. Falling back to a route push
@@ -108,7 +102,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sessions = ref.watch(sessionsProvider);
     final subjects = ref.watch(subjectsProvider);
     final goal = ref.watch(activeFocusGoalProvider);
-    final usageAllowed = ref.watch(usageAccessProvider).valueOrNull == true;
     // Derived from the session log, not read from the stats aggregate: a
     // streak is a fact about dates and the aggregate carries none.
     final streak = ref.watch(currentStreakProvider);
@@ -143,9 +136,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           target: targets.emptyCta,
           icon: Icons.play_arrow_rounded,
           title: 'Plan your focus time',
-          body:
-              'Set a goal for today, then divide your time '
-              'between subjects. Your progress ring appears when you save.',
+          body: 'Set your daily focus time. Your progress ring appears when you save.',
         )
       else
         CoachSpot(
@@ -205,7 +196,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ringKey: targets.ring,
           onFocus: _startFocusing,
         ),
-      if (goal != null) ...[
+      if (goal != null &&
+          goal.subjectMinutes.values.any((value) => value > 0)) ...[
         const SizedBox(height: Gap.lg),
         _SubjectAllocationCard(plan: goal),
       ],
@@ -259,20 +251,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ];
 
     final right = <Widget>[
-      if (usageAllowed) ...[
-        const SectionHeader(
-          title: 'Screen time today',
-          icon: Icons.hourglass_bottom_rounded,
-        ),
-        const GlassCard(
-          child: Padding(
-            padding: EdgeInsets.all(Gap.lg),
-            child: ScreenTimeCard(),
-          ),
-        ),
-      ],
       if (sessions.isNotEmpty) ...[
-        if (usageAllowed) const SizedBox(height: Gap.xl),
         const SectionHeader(
           title: 'Subject breakdown',
           icon: Icons.donut_large_rounded,
@@ -798,7 +777,7 @@ class _PlanGoalCard extends StatelessWidget {
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              'Choose your focus time for today and give each subject its share.',
+              'Choose your focus time for today. Subject targets are optional.',
               textAlign: TextAlign.center,
               style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),

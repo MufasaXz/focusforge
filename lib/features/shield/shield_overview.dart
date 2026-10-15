@@ -59,7 +59,7 @@ class ShieldOverview extends ConsumerWidget {
                 ? 'Your saved app rules are inactive. Enable an app rule when you want boundaries active again.'
                 : rules.isNotEmpty && !enabled
                 ? !usage
-                      ? 'Inactive · Your app rules are saved. Allow app usage on Home when you want FocusForge to detect and pause these apps.'
+                      ? 'Allow app usage · Your app rules are saved. Enable access on Home to detect and pause these apps.'
                       : !overlay
                       ? 'Inactive · Allow Draw over other apps to show the pause screen. Your app rules stay saved.'
                       : 'Inactive · Your saved app rules are not currently running. Enable an app rule to start boundaries again.'

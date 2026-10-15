@@ -4,6 +4,28 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AppBlockingPolicyTest {
+    @Test fun delayedTaskResumeSurvivesALaterLauncherStop() {
+        val tracker = ForegroundAppTracker()
+        tracker.resume("launcher",100,"Overview")
+        tracker.pause("launcher",300,"Overview")
+        // The launcher stop can be published before the earlier app resume.
+        tracker.resume("blocked",250,"Main")
+        assertEquals("blocked",tracker.packageName)
+        tracker.pause("launcher",300,"Overview")
+        assertEquals("blocked",tracker.packageName)
+    }
+    @Test fun delayedNewActivityResumeSurvivesOldActivityStop() {
+        val tracker = ForegroundAppTracker()
+        tracker.resume("blocked",100,"Old")
+        tracker.pause("blocked",300,"Old")
+        tracker.resume("blocked",250,"New")
+        assertEquals("blocked",tracker.packageName)
+        tracker.pause("blocked",300,"Old")
+        assertEquals("blocked",tracker.packageName)
+        tracker.pause("blocked",400,"New")
+        tracker.resume("blocked",250,"New")
+        assertNull(tracker.packageName)
+    }
     private val packageName = "com.example.distraction"
     private fun rules(mode: RuleMode = RuleMode.BLOCK, budget: Int = 30,
                       focus: Long? = null, strict: Long? = null) = ShieldRules(

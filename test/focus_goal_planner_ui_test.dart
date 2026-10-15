@@ -146,7 +146,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('positive targets need matching subject allocations', (
+  testWidgets('positive targets save without optional subject allocations', (
     tester,
   ) async {
     final container = await mount(tester);
@@ -155,19 +155,27 @@ void main() {
       tester
           .widget<FilledButton>(find.byKey(const ValueKey('save-focus-goal')))
           .onPressed,
-      isNull,
+      isNotNull,
     );
     expect(container.read(focusGoalPlannerProvider).day, isNull);
-    await tester.ensureVisible(find.text('Split evenly'));
-    await tester.tap(find.text('Split evenly'));
+    await tester.ensureVisible(find.byKey(const ValueKey('repeat-daily-goal')));
+    await tester.tap(find.byKey(const ValueKey('repeat-daily-goal')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
     await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
     await tester.pumpAndSettle();
-    expect(container.read(activeFocusGoalProvider)?.subjectMinutes, {
-      'math': 30,
-      'science': 30,
-    });
+    expect(container.read(activeFocusGoalProvider)?.subjectMinutes, isEmpty);
+    expect(container.read(activeFocusGoalProvider)?.repeatThisWeek, isTrue);
+    await tester.tap(find.text('Plan'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const ValueKey('repeat-daily-goal')),
+          )
+          .value,
+      isTrue,
+    );
   });
 
   testWidgets('daily-only editor saves a target on a narrow large-text phone', (
@@ -175,7 +183,8 @@ void main() {
   ) async {
     final container = await mount(tester, width: 320, scale: 1.6);
     expect(find.text('For a week'), findsNothing);
-    expect(find.textContaining('Today only'), findsOneWidget);
+    expect(find.text('Set your daily goal'), findsOneWidget);
+    expect(find.byKey(const ValueKey('repeat-daily-goal')), findsOneWidget);
     await tester.ensureVisible(find.text('Split evenly'));
     await tester.tap(find.text('Split evenly'));
     await tester.pumpAndSettle();

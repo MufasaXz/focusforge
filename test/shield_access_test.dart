@@ -150,7 +150,7 @@ void main() {
       expect(container.read(whitelistProvider), hasLength(1));
       expect(manager.requests, isEmpty);
       expect(find.byType(AlertDialog), findsNothing);
-      expect(find.textContaining('Inactive'), findsWidgets);
+      expect(find.descendant(of: row, matching: find.text('Allow app usage')), findsOneWidget);
       expect(find.text('A quieter phone starts here'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;

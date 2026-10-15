@@ -10,8 +10,7 @@ import '../../../core/providers/study_providers.dart';
 import '../../../core/utils/format.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Saves a date-bound daily goal after its subject
-/// allocations add up to the exact chosen total.
+/// Saves a daily goal, optionally split across subjects and repeated this week.
 Future<void> showDailyGoalSheet(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
@@ -32,6 +31,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
   late final FixedExtentScrollController _wheel;
   final _allocations = <String, int>{};
   bool _saving = false;
+  bool _repeatThisWeek = false;
   String? _error;
   static const _step = 15;
 
@@ -44,6 +44,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
         .read(focusGoalPlannerProvider)
         .forDate(ref.read(focusCalendarDateProvider));
     _total = plan?.totalMinutes ?? 60;
+    _repeatThisWeek = plan?.repeatThisWeek ?? false;
     _allocations.addAll(plan?.subjectMinutes ?? const {});
     _wheel = FixedExtentScrollController(initialItem: (_total / _step).round());
   }
@@ -70,11 +71,13 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
   Future<void> _save(List<Subject> subjects) async {
     if (_saving) return;
     final values = {
-      for (final subject in subjects) subject.id: _allocations[subject.id] ?? 0,
+      for (final subject in subjects)
+        if ((_allocations[subject.id] ?? 0) > 0)
+          subject.id: _allocations[subject.id]!,
     };
     if (_total <= 0 ||
-        subjects.isEmpty ||
-        values.values.fold<int>(0, (a, b) => a + b) != _total) {
+        (values.isNotEmpty &&
+            values.values.fold<int>(0, (a, b) => a + b) != _total)) {
       return;
     }
     setState(() {
@@ -90,6 +93,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
               date: ref.read(focusCalendarDateProvider),
               totalMinutes: _total,
               subjectMinutes: values,
+              repeatThisWeek: _repeatThisWeek,
             ),
           );
       if (mounted) {
@@ -115,9 +119,8 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
       (sum, s) => sum + (_allocations[s.id] ?? 0),
     );
     final difference = _total - assigned;
-    final valid = _total > 0 && difference == 0 && subjects.isNotEmpty;
+    final valid = _total > 0 && (assigned == 0 || difference == 0);
     final bottom = MediaQuery.paddingOf(context).bottom;
-    final date = ref.watch(focusCalendarDateProvider);
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -135,19 +138,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
             children: [
               const SheetHandle(),
               const SizedBox(height: Gap.lg),
-              Text('Make time for what matters', style: tt.titleLarge),
-              const SizedBox(height: Gap.sm),
-              Text(
-                'Choose your target, then give each subject its share.',
-                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: Gap.lg),
-              Text(
-                'Today only · ${formatDate(date)}. Resets at midnight.',
-                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: Gap.lg),
-              Text('Your focus time', style: tt.labelLarge),
+              Text('Set your daily goal', style: tt.titleLarge),
               const SizedBox(height: Gap.xs),
               SizedBox(
                 height: 140,
@@ -185,11 +176,23 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 ),
               ),
               const SizedBox(height: Gap.md),
+              Material(
+                color: Colors.transparent,
+                child: SwitchListTile.adaptive(
+                  key: const ValueKey('repeat-daily-goal'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Repeat through Sunday'),
+                  value: _repeatThisWeek,
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _repeatThisWeek = value),
+                ),
+              ),
               Wrap(
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text('Time for each subject', style: tt.titleMedium),
+                  Text('Subjects · optional', style: tt.titleMedium),
                   TextButton(
                     onPressed: _saving || subjects.isEmpty
                         ? null
@@ -221,33 +224,38 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 const SizedBox(height: Gap.sm),
               ],
               const SizedBox(height: Gap.sm),
-              Container(
-                padding: const EdgeInsets.all(Gap.md),
-                decoration: BoxDecoration(
-                  color: valid ? cs.primaryContainer : cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(Radii.item),
+              if (assigned > 0 || _total == 0)
+                Container(
+                  padding: const EdgeInsets.all(Gap.md),
+                  decoration: BoxDecoration(
+                    color: valid
+                        ? cs.primaryContainer
+                        : cs.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(Radii.item),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${formatMinutes(assigned)} assigned / ${formatMinutes(_total)} target',
+                        style: tt.labelLarge,
+                      ),
+                      const SizedBox(height: Gap.xs),
+                      Text(
+                        _total == 0
+                            ? 'Choose a focus target above zero.'
+                            : difference == 0
+                            ? 'Every minute has a place. Your plan is ready.'
+                            : difference > 0
+                            ? 'Give your subjects the remaining ${formatMinutes(difference)}.'
+                            : 'Reduce subject time by ${formatMinutes(-difference)} to match your target.',
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${formatMinutes(assigned)} assigned / ${formatMinutes(_total)} target',
-                      style: tt.labelLarge,
-                    ),
-                    const SizedBox(height: Gap.xs),
-                    Text(
-                      _total == 0
-                          ? 'Choose a focus target above zero, then assign that time to your subjects.'
-                          : difference == 0
-                          ? 'Every minute has a place. Your plan is ready.'
-                          : difference > 0
-                          ? 'Give your subjects the remaining ${formatMinutes(difference)}.'
-                          : 'Reduce subject time by ${formatMinutes(-difference)} to match your target.',
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: Gap.sm),

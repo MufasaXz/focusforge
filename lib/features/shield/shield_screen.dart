@@ -1021,11 +1021,16 @@ class _AppRuleRow extends ConsumerWidget {
         NativeShieldService.isSupported &&
         row.isRestricted &&
         (!usage || !overlay || !running);
-    final meta = inactive ? 'Inactive · Rule saved' : _meta;
+    final needsUsage = inactive && overlay && !usage;
+    final meta = needsUsage
+        ? 'Allow app usage'
+        : inactive
+        ? 'Inactive · Rule saved'
+        : _meta;
 
     return Semantics(
       button: true,
-      label: inactive ? '${row.name}, saved rule, inactive' : _semanticLabel,
+      label: inactive ? '${row.name}, saved rule, $meta' : _semanticLabel,
       child: InkWell(
         onTap: onOpen,
         child: Padding(

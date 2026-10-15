@@ -157,9 +157,9 @@ void main() {
       expect(find.text('1 active day in the last 7 days'), findsOneWidget);
       await tester.tap(find.text('Adjust goal'));
       await tester.pumpAndSettle();
-      expect(find.text('Make time for what matters'), findsOneWidget);
+      expect(find.text('Set your daily goal'), findsOneWidget);
       expect(find.byType(CupertinoPicker), findsOneWidget);
-      expect(find.textContaining('Today only'), findsOneWidget);
+      expect(find.text('Repeat through Sunday'), findsOneWidget);
       expect(find.text('For a week'), findsNothing);
       for (final subject in c.read(subjectsProvider)) {
         expect(

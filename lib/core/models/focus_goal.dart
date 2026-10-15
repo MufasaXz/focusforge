@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 // The week tag is retained only to recognize unsupported legacy callers/data.
 enum FocusGoalScope { day, week }
 
-/// A target and an exact allocation of its minutes across study subjects.
-/// Daily targets expire at midnight. Legacy weekly plans are inactive.
+/// A daily target with optional, exact subject allocations.
+/// Repeated targets run through Sunday; progress always belongs to one day.
 @immutable
 class FocusGoalPlan {
   FocusGoalPlan({
@@ -12,13 +12,15 @@ class FocusGoalPlan {
     required DateTime date,
     required this.totalMinutes,
     required Map<String, int> subjectMinutes,
+    this.repeatThisWeek = false,
   }) : date = DateTime(date.year, date.month, date.day),
        subjectMinutes = Map.unmodifiable(subjectMinutes) {
     if (totalMinutes < 0 ||
         totalMinutes > maxMinutes ||
         subjectMinutes.entries.any((e) => e.key.isEmpty || e.value < 0) ||
-        subjectMinutes.values.fold<int>(0, (sum, value) => sum + value) !=
-            totalMinutes) {
+        (subjectMinutes.values.any((value) => value > 0) &&
+            subjectMinutes.values.fold<int>(0, (sum, value) => sum + value) !=
+                totalMinutes)) {
       throw ArgumentError('Subject time must add up to the selected target.');
     }
   }
@@ -28,13 +30,21 @@ class FocusGoalPlan {
   final DateTime date;
   final int totalMinutes;
   final Map<String, int> subjectMinutes;
+  final bool repeatThisWeek;
 
   bool appliesOn(DateTime day) {
     final current = DateTime(day.year, day.month, day.day);
-    return scope == FocusGoalScope.day && current == date;
+    final end = DateTime(
+      date.year,
+      date.month,
+      date.day + (repeatThisWeek ? DateTime.sunday - date.weekday : 0),
+    );
+    return scope == FocusGoalScope.day &&
+        !current.isBefore(date) &&
+        !current.isAfter(end);
   }
 
-  DateTime periodStart(DateTime day) => date;
+  DateTime periodStart(DateTime day) => DateTime(day.year, day.month, day.day);
 
   DateTime periodEnd(DateTime day) {
     final start = periodStart(day);
@@ -46,6 +56,7 @@ class FocusGoalPlan {
     'date': date.toIso8601String(),
     'totalMinutes': totalMinutes,
     'subjectMinutes': subjectMinutes,
+    'repeatThisWeek': repeatThisWeek,
   };
 
   static FocusGoalPlan? fromJson(Object? raw) {
@@ -72,6 +83,7 @@ class FocusGoalPlan {
         date: date,
         totalMinutes: total,
         subjectMinutes: values,
+        repeatThisWeek: raw['repeatThisWeek'] == true,
       );
     } on ArgumentError {
       return null;
