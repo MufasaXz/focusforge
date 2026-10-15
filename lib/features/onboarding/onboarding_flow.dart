@@ -14,6 +14,7 @@ import 'persona_step.dart';
 import 'profile_step.dart';
 import 'splash_step.dart';
 import 'subjects_step.dart';
+import 'usage_access_step.dart';
 
 /// First-run setup, with only the steps needed by this device.
 ///
@@ -68,7 +69,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     super.dispose();
   }
 
-  List<int> get _steps => const [0, 1, 2, 4, 5, 7, 8];
+  // Usage Access is the final optional setup choice, immediately before the
+  // completion handoff. Keeping the starting pace before it means Back from
+  // that screen still returns to Subjects as it did in the original flow.
+  List<int> get _steps => const [0, 1, 2, 4, 5, 7, 6, 8];
 
   Future<void> _go(int step) async {
     final page = _steps.indexOf(step);
@@ -82,6 +86,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
         await ref.read(localStoreProvider).setMap(StoreKeys.setupProgress, {
           'uid': ref.read(userProvider).uid,
           'step': step,
+          if (step == 6) 'flow': 'usage_access',
         });
       }
       if (!mounted || !_controller.hasClients) return;
@@ -140,7 +145,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
         .getMap(StoreKeys.setupProgress);
     // Drafts saved on the retired goal screen return to subjects.
     final storedStep = progress?['step'];
-    final step = storedStep == 6 ? 5 : storedStep;
+    final step = storedStep == 6 && progress?['flow'] != 'usage_access'
+        ? 5
+        : storedStep;
     return !profile.onboardingComplete &&
             progress?['uid'] == profile.uid &&
             step is int &&
@@ -225,6 +232,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       key: ValueKey(ref.read(userProvider).persona),
       onNext: () => _advanceFrom(5),
     ),
+    6 => UsageAccessStep(onNext: () => _advanceFrom(6)),
     7 => StartingPlanStep(onNext: () => _advanceFrom(7)),
     _ => const CompleteStep(),
   };
@@ -236,7 +244,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     '',
     'Profile',
     'Subjects',
-    'Daily goal',
+    'Access',
     'Starting plan',
     'Ready',
   ][step];
