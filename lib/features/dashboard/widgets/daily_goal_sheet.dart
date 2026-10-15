@@ -72,7 +72,11 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
     final values = {
       for (final subject in subjects) subject.id: _allocations[subject.id] ?? 0,
     };
-    if (values.values.fold<int>(0, (a, b) => a + b) != _total) return;
+    if (_total <= 0 ||
+        subjects.isEmpty ||
+        values.values.fold<int>(0, (a, b) => a + b) != _total) {
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -111,7 +115,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
       (sum, s) => sum + (_allocations[s.id] ?? 0),
     );
     final difference = _total - assigned;
-    final valid = difference == 0 && (_total == 0 || subjects.isNotEmpty);
+    final valid = _total > 0 && difference == 0 && subjects.isNotEmpty;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final date = ref.watch(focusCalendarDateProvider);
 
@@ -233,7 +237,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                     const SizedBox(height: Gap.xs),
                     Text(
                       _total == 0
-                          ? 'Your progress stays saved. The goal ring is hidden for this period.'
+                          ? 'Choose a focus target above zero, then assign that time to your subjects.'
                           : difference == 0
                           ? 'Every minute has a place. Your plan is ready.'
                           : difference > 0
@@ -263,9 +267,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                           dimension: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(
-                          _total == 0 ? 'Save without a target' : 'Save goal',
-                        ),
+                      : const Text('Save goal'),
                 ),
               ),
               TextButton(

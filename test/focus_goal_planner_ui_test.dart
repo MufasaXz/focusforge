@@ -126,32 +126,49 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a saved zero-hour day reopens as the same day without an invented target',
-    (tester) async {
-      final container = await mount(tester);
+  testWidgets('a zero-hour goal cannot be saved without subject allocations', (
+    tester,
+  ) async {
+    final container = await mount(tester);
+    tester
+        .widget<CupertinoPicker>(find.byType(CupertinoPicker))
+        .scrollController!
+        .jumpToItem(0);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
+    expect(
       tester
-          .widget<CupertinoPicker>(find.byType(CupertinoPicker))
-          .scrollController!
-          .jumpToItem(0);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
-      await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
-      await tester.pumpAndSettle();
-      expect(container.read(focusGoalPlannerProvider).day?.totalMinutes, 0);
-      expect(container.read(activeFocusGoalProgressProvider), 0);
-      await tester.tap(find.text('Plan'));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<CupertinoPicker>(find.byType(CupertinoPicker))
-            .scrollController!
-            .selectedItem,
-        0,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+          .widget<FilledButton>(find.byKey(const ValueKey('save-focus-goal')))
+          .onPressed,
+      isNull,
+    );
+    expect(container.read(focusGoalPlannerProvider).day, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('positive targets need matching subject allocations', (
+    tester,
+  ) async {
+    final container = await mount(tester);
+    await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('save-focus-goal')))
+          .onPressed,
+      isNull,
+    );
+    expect(container.read(focusGoalPlannerProvider).day, isNull);
+    await tester.ensureVisible(find.text('Split evenly'));
+    await tester.tap(find.text('Split evenly'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
+    await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
+    await tester.pumpAndSettle();
+    expect(container.read(activeFocusGoalProvider)?.subjectMinutes, {
+      'math': 30,
+      'science': 30,
+    });
+  });
 
   testWidgets('daily-only editor saves a target on a narrow large-text phone', (
     tester,

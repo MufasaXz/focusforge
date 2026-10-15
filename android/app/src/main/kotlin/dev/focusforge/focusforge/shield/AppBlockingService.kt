@@ -34,7 +34,7 @@ class AppBlockingService : Service() {
         private const val ACTION_STOP = "dev.focusforge.STOP_APP_BOUNDARIES"
         private const val PREFS = "focusforge_shield"
         private const val PAUSED = "app_blocking_paused"
-        private const val POLL_MS = 400L
+        private const val POLL_MS = 120L
         @Volatile var instance: AppBlockingService? = null
             private set
         @Volatile var activityVisible = false
@@ -95,7 +95,7 @@ class AppBlockingService : Service() {
     private var lastQueryAt = 0L
     private var needsForegroundReplay = false
     private var overlay: View? = null
-    private var covered: String? = null
+    @Volatile private var covered: String? = null
     private var coveredReason: String? = null
     private var suppressUntil = 0L
     @Volatile private var protected = emptySet<String>()
@@ -195,7 +195,8 @@ class AppBlockingService : Service() {
             val previousFront = foreground.packageName
             readForeground(now)
             if (previousFront != foreground.packageName) { budgetPackage = null; budgetSample = null }
-            val front = foreground.packageName
+            val observedFront = foreground.packageName
+            val front = AppBlockingPolicy.overlayTarget(observedFront, covered)
             val used = if (front != null && rules.ruleFor(front)?.mode == RuleMode.BUDGET)
                 usedToday(front, now) else null
             val reason = front?.let {
@@ -205,7 +206,7 @@ class AppBlockingService : Service() {
             main.post {
                 if (instance !== this@AppBlockingService) return@post
                 // Snapshots cannot cover a different app after a newer poll or a button action.
-                if (front != foreground.packageName || now < suppressUntil) return@post
+                if (observedFront != foreground.packageName || now < suppressUntil) return@post
                 if (front == null || reason == null) dismissOverlay()
                 else if (covered != front || coveredReason != reason || overlay?.isAttachedToWindow != true) {
                     showOverlay(front, reason)
@@ -293,8 +294,8 @@ class AppBlockingService : Service() {
     fun isCovering(pkg: String): Boolean = covered == pkg
 
     private fun leaveBlockedApp(pkg: String, label: String) {
-        suppressUntil = System.currentTimeMillis() + 500L
-        dismissOverlay()
+        // Keep the cover until Home has actually resumed. Dismissing first
+        // exposes the selected app during the transition and a quick reopen.
         ShieldEvents.emit(pkg, label, ShieldEvents.WALKED_AWAY)
         try { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
@@ -302,7 +303,7 @@ class AppBlockingService : Service() {
 
     private fun showOverlay(pkg: String, reason: String) {
         if (!overlayAllowed(this) || !hasUsageAccess(this) || pkg in protected ||
-            foreground.packageName != pkg) return
+            AppBlockingPolicy.overlayTarget(foreground.packageName, covered) != pkg) return
         dismissOverlay()
         // A whole-app rule takes precedence over a YouTube-surface rule.
         FocusAccessibilityService.instance?.dismissForAppBoundary(pkg)
@@ -318,8 +319,8 @@ class AppBlockingService : Service() {
             leaveBlockedApp(pkg, label)
         }
         view.findViewById<Button>(R.id.ff_block_anyway).setOnClickListener {
-            suppressUntil = System.currentTimeMillis() + 1200L
-            dismissOverlay()
+            // Launching the breath screen grants no access. Keep the cover
+            // until FocusForge resumes; grace is granted only after breathing.
             try {
                 startActivity(Intent(this, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -328,7 +329,7 @@ class AppBlockingService : Service() {
                     .putExtra(FocusAccessibilityService.EXTRA_GRACE_SECONDS, ShieldStore.load(this).graceSeconds))
             } catch (_: Exception) {
                 // A failed breath-screen launch never grants unearned access.
-                suppressUntil = 0L
+                view.requestFocus()
             }
         }
         // Keep key events in the pause screen instead of sending them to the

@@ -151,6 +151,28 @@ void main() {
   });
 
   test(
+    'the planner refuses new zero-hour goals without saving a plan',
+    () async {
+      final container = containerFor(wednesday);
+      await expectLater(
+        container
+            .read(focusGoalPlannerProvider.notifier)
+            .save(
+              FocusGoalPlan(
+                scope: FocusGoalScope.day,
+                date: wednesday,
+                totalMinutes: 0,
+                subjectMinutes: const {},
+              ),
+            ),
+        throwsArgumentError,
+      );
+      expect(container.read(focusGoalPlannerProvider).day, isNull);
+      expect(store.getMap(FocusGoalPlannerNotifier.storageKey), isNull);
+    },
+  );
+
+  test(
     'saving a daily goal drops legacy weekly data and expires tomorrow',
     () async {
       await store.setMap(FocusGoalPlannerNotifier.storageKey, {

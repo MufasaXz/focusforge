@@ -4,6 +4,12 @@ import java.util.Calendar
 
 /** Decisions shared by the polling service and native regression tests. */
 object AppBlockingPolicy {
+    /** A pause alone is not evidence that a different app is in front.
+     * Preserve an existing cover until a resume identifies the next app.
+     * Explicit permission revocation, screen lock, Stop and grace release it separately.
+     */
+    fun overlayTarget(foreground: String?, covered: String?): String? = foreground ?: covered
+
     fun reason(packageName: String, rules: ShieldRules, now: Long,
                graceUntil: Long, protected: Set<String>, usedMillis: Long?): String? {
         if (packageName in protected || now < graceUntil) return null
@@ -37,7 +43,9 @@ object AppBlockingPolicy {
 
     fun foregroundQueryStart(lastQueryAt: Long, now: Long, replay: Boolean): Long =
         if (replay || lastQueryAt > now) bootstrapFrom(now)
-        else (lastQueryAt - 500L).coerceAtLeast(0L)
+        // UsageEvents can publish task resumes late, especially from Overview.
+        // Replay a small bounded window; the tracker ignores older timestamps.
+        else (lastQueryAt - 5_000L).coerceAtLeast(0L)
 
     fun cachedUsage(sample: Long?, sampledAt: Long, now: Long, foreground: Boolean): Long? =
         if (now - sampledAt in 0L until 10_000L)

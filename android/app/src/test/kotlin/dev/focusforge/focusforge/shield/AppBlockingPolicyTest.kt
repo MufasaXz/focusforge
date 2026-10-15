@@ -130,13 +130,35 @@ class AppBlockingPolicyTest {
         val now = 20 * 60_000L
         val queryStart = AppBlockingPolicy.foregroundQueryStart(now + 60_000L, now, false)
         assertTrue(queryStart <= now - 10 * 60_000L)
-        assertEquals(now - 900L, AppBlockingPolicy.foregroundQueryStart(now - 400L, now, false))
+        assertEquals(now - 5_400L, AppBlockingPolicy.foregroundQueryStart(now - 400L, now, false))
+    }
+    @Test fun delayedRecentsResumeRemainsInsideTheNextQueryWindow() {
+        val now = 20 * 60_000L
+        // Some Android builds publish a resume after its timestamp. A short
+        // overlap skips it forever once the high-water mark has advanced.
+        val resumedAt = now - 2_000L
+        val start = AppBlockingPolicy.foregroundQueryStart(now - 120L, now, false)
+        assertTrue(start <= resumedAt)
+        val tracker = ForegroundAppTracker()
+        tracker.resume("launcher", now - 3_000L, "Overview")
+        if (resumedAt >= start) tracker.resume(packageName, resumedAt, "Main")
+        assertEquals(packageName, tracker.packageName)
     }
     @Test fun budgetCacheRejectsNegativeAgeAndExpiredSamples() {
         assertNull(AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 9_000L, true))
         assertNull(AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 20_000L, true))
         assertEquals(1_809_999L, AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 19_999L, true))
         assertEquals(1_800_000L, AppBlockingPolicy.cachedUsage(1_800_000L, 10_000L, 19_999L, false))
+    }
+    @Test fun aTransientPauseDoesNotDropTheExistingBlock() {
+        assertEquals(packageName, AppBlockingPolicy.overlayTarget(null, packageName))
+        assertEquals(packageName, AppBlockingPolicy.overlayTarget(packageName, packageName))
+        assertNull(AppBlockingPolicy.overlayTarget(null, null))
+    }
+    @Test fun aConfirmedAppSwitchReleasesTheOldCoverIncludingHomeAndSettings() {
+        assertEquals("launcher", AppBlockingPolicy.overlayTarget("launcher", packageName))
+        assertEquals("settings", AppBlockingPolicy.overlayTarget("settings", packageName))
+        assertNull(AppBlockingPolicy.reason("settings", rules(), 1000, 0, setOf("settings"), null))
     }
     @Test fun dailyBudgetRestoresAfterUnlockWithoutCountingLockedTime() {
         val usage = DailyForegroundUsage("app", 0)

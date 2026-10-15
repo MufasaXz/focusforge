@@ -43,6 +43,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await store.setBool(StoreKeys.coachSeen, true);
+    if (plan != null && plan.totalMinutes == 0) {
+      // Compatibility fixture: zero-hour plans could be persisted by older
+      // releases, but the new editor/notifier must never create one.
+      await store.setMap(FocusGoalPlannerNotifier.storageKey, {
+        'version': 2,
+        'day': plan.toJson(),
+      });
+    }
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
@@ -66,7 +74,7 @@ void main() {
         color: Colors.green,
       ).toJson(),
     ]);
-    if (plan != null) {
+    if (plan != null && plan.totalMinutes > 0) {
       await container.read(focusGoalPlannerProvider.notifier).save(plan);
     }
     await tester.pumpWidget(

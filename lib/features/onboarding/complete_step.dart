@@ -146,12 +146,51 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                       ),
                     ],
                   ];
+                  // Measure the longest value at the actual tile width. Fixed
+                  // heights clip long roles on compact phones; independent
+                  // heights make the grid uneven.
+                  double textHeight(String text, TextStyle? style) {
+                    final painter = TextPainter(
+                      text: TextSpan(text: text, style: style),
+                      textDirection: Directionality.of(context),
+                      textScaler: MediaQuery.textScalerOf(context),
+                    )..layout(maxWidth: width - Gap.lg * 2);
+                    final height = painter.height;
+                    painter.dispose();
+                    return height;
+                  }
+
+                  final valueStyle = Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(letterSpacing: -0.4);
+                  final valueHeight = tiles
+                      .map((tile) => textHeight(tile.value, valueStyle))
+                      .reduce((a, b) => a > b ? a : b);
+                  final labelHeight = tiles
+                      .map(
+                        (tile) => textHeight(
+                          tile.label,
+                          Theme.of(context).textTheme.labelSmall,
+                        ),
+                      )
+                      .reduce((a, b) => a > b ? a : b);
+                  final tileHeight =
+                      Gap.lg * 2 +
+                      34 +
+                      Gap.md +
+                      valueHeight +
+                      1 +
+                      labelHeight +
+                      2;
                   return Wrap(
                     spacing: Gap.sm,
                     runSpacing: Gap.sm,
                     children: [
                       for (final tile in tiles)
-                        SizedBox(width: width, child: tile),
+                        SizedBox(
+                          width: width,
+                          height: columns == 2 ? tileHeight : null,
+                          child: tile,
+                        ),
                     ],
                   );
                 },
