@@ -2,6 +2,8 @@ import '../../core/localization/app_strings.dart';
 import '../../core/services/profile_photo.dart';
 import '../../shared/widgets/glass_surface.dart';
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,11 +25,52 @@ import 'account_gate.dart';
 /// it is the weekly board, which is a real read of real rows: an empty board
 /// is shown as an empty board, because a fabricated rival is the one kind of
 /// demo data a user cannot tell from the real thing.
-class LeaderboardScreen extends ConsumerWidget {
+class LeaderboardScreen extends ConsumerStatefulWidget {
   const LeaderboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LeaderboardScreen> createState() => _LeaderboardScreenState();
+}
+
+class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_refresh());
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refresh());
+  }
+
+  Future<void> _refresh() async {
+    if (ref.read(accountUidProvider) == null) return;
+    ref.invalidate(weekBoardProvider);
+    try {
+      await ref.read(leaderboardPublisherProvider)();
+      if (mounted) {
+        await ref
+            .read(weekBoardProvider.future)
+            .timeout(const Duration(seconds: 12));
+      }
+    } catch (_) {
+      // The read exposes its error and retries; sharing keeps its own queue.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final thisWeek = ref.watch(leaderboardWeekHoursProvider);
     final lastWeek = ref.watch(previousWeekHoursProvider);
     final sessions = ref.watch(weekSessionCountProvider);
@@ -76,6 +119,7 @@ class LeaderboardScreen extends ConsumerWidget {
 
     return AppPage(
       title: context.tr("Leaderboard"),
+      onRefresh: _refresh,
       subtitle:
           '${dates.formatShortDate(monday)} – ${dates.formatShortDate(sunday)}',
       trailing: optedIn

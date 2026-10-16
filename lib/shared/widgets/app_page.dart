@@ -23,6 +23,7 @@ class AppPage extends StatelessWidget {
     this.onBack,
     this.bottomPadding = Gap.xxl,
     this.actions = const [],
+    this.onRefresh,
   });
 
   final String title;
@@ -34,6 +35,7 @@ class AppPage extends StatelessWidget {
 
   /// Pinned between the app bar and the scroll view, e.g. a segmented control.
   final List<Widget> actions;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -115,14 +117,19 @@ class AppPage extends StatelessWidget {
                       child: Column(children: actions),
                     ),
                   Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        Gap.lg,
-                        Gap.lg,
-                        Gap.lg,
-                        bottomPadding + MediaQuery.paddingOf(context).bottom,
+                    child: _refreshable(
+                      ListView(
+                        physics: onRefresh == null
+                            ? null
+                            : const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          Gap.lg,
+                          Gap.lg,
+                          Gap.lg,
+                          bottomPadding + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        children: [child],
                       ),
-                      children: [child],
                     ),
                   ),
                 ],
@@ -136,6 +143,10 @@ class AppPage extends StatelessWidget {
 
   /// Material's own width for the app bar's leading slot.
   static const double _leadingWidth = 56;
+
+  Widget _refreshable(Widget child) => onRefresh == null
+      ? child
+      : RefreshIndicator(onRefresh: onRefresh!, child: child);
 }
 
 /// A labelled group of rows inside an [AppPage] — the settings idiom.

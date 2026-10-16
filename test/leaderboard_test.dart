@@ -79,7 +79,187 @@ class _RetryBoard extends _Board {
   }
 }
 
+class _RecoveringReadBoard extends _Board {
+  int subscriptions = 0;
+  @override
+  Stream<List<BoardRow>> watch(String week, {int limit = 100}) async* {
+    subscriptions++;
+    if (subscriptions == 1) throw StateError('Credential not ready');
+    yield const [BoardRow(uid: 'fresh', name: 'New student', minutes: 150)];
+  }
+}
+
+class _LiveBoard extends _Board {
+  String latestName = 'Saved student';
+  bool emitOnConnect = true;
+  int cancelled = 0;
+  final streams = <StreamController<List<BoardRow>>>[];
+
+  @override
+  Stream<List<BoardRow>> watch(String week, {int limit = 100}) {
+    final stream = StreamController<List<BoardRow>>(
+      onCancel: () {
+        cancelled++;
+      },
+    );
+    streams.add(stream);
+    if (emitOnConnect) {
+      stream.add([BoardRow(uid: 'fresh', name: latestName, minutes: 150)]);
+    }
+    return stream.stream;
+  }
+
+  @override
+  void dispose() {
+    for (final stream in streams) {
+      unawaited(stream.close());
+    }
+  }
+}
+
 void main() {
+  testWidgets(
+    'replacement account clears successful old rows before its read completes',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = await LocalStore.open();
+      final board = _LiveBoard();
+      final container = ProviderContainer(
+        overrides: [
+          localStoreProvider.overrideWithValue(store),
+          leaderboardServiceProvider.overrideWithValue(board),
+        ],
+      );
+      container
+          .read(userProvider.notifier)
+          .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
+      final sub = container.listen(weekBoardProvider, (_, _) {});
+      await tester.pump();
+      expect(container.read(leaderboardProvider).single.name, 'Saved student');
+      board.emitOnConnect = false;
+      container
+          .read(userProvider.notifier)
+          .hydrate(const UserProfile(uid: 'bob', isAnonymous: false));
+      expect(container.read(weekBoardProvider).isLoading, isTrue);
+      expect(container.read(leaderboardProvider), isEmpty);
+      board.streams.last.addError(StateError('Still connecting'));
+      await tester.pump();
+      expect(container.read(leaderboardProvider), isEmpty);
+      sub.close();
+      container.dispose();
+      board.dispose();
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
+  testWidgets('opening and resuming the board refreshes cached standings', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final board = _LiveBoard();
+    addTearDown(board.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        leaderboardServiceProvider.overrideWithValue(board),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'me', isAnonymous: false));
+    final sub = container.listen(weekBoardProvider, (_, _) {});
+    addTearDown(sub.close);
+    await tester.pump();
+    expect(container.read(leaderboardProvider).single.name, 'Saved student');
+    board.latestName = 'New student';
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const LeaderboardScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('New student'), findsOneWidget);
+    board.latestName = 'Latest student';
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('Latest student'), findsOneWidget);
+    expect(board.cancelled, greaterThanOrEqualTo(2));
+    final refresh = tester.widget<RefreshIndicator>(
+      find.byType(RefreshIndicator),
+    );
+    board.latestName = 'Pulled student';
+    final pending = refresh.onRefresh();
+    await tester.pumpAndSettle();
+    await pending;
+    expect(find.text('Pulled student'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('changing accounts cancels a pending board retry', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final board = _RecoveringReadBoard();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        leaderboardServiceProvider.overrideWithValue(board),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
+    final sub = container.listen(weekBoardProvider, (_, _) {});
+    addTearDown(sub.close);
+    await tester.pump();
+    expect(container.read(weekBoardProvider).hasError, isTrue);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'bob', isAnonymous: false));
+    container.read(weekBoardProvider);
+    await tester.pump();
+    await tester.pump();
+    expect(container.read(leaderboardProvider).single.name, 'New student');
+    await tester.pump(const Duration(seconds: 4));
+    expect(board.subscriptions, 2);
+    container.read(userProvider.notifier).hydrate(const UserProfile());
+    container.read(weekBoardProvider);
+    await tester.pump();
+    expect(container.read(leaderboardProvider), isEmpty);
+    sub.close();
+    container.dispose();
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+  testWidgets('a failed board reconnects without reopening the app', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final service = _RecoveringReadBoard();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        accountUidProvider.overrideWithValue('me'),
+        leaderboardServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+    final sub = container.listen(weekBoardProvider, (_, _) {});
+    addTearDown(sub.close);
+    await tester.pump();
+    expect(container.read(weekBoardProvider).hasError, isTrue);
+    await tester.pump(const Duration(seconds: 3));
+    expect(container.read(leaderboardProvider).single.name, 'New student');
+    expect(service.subscriptions, 2);
+  });
   testWidgets(
     'sharing card disappears after opt-in and member menus are absent',
     (tester) async {

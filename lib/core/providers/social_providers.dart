@@ -872,13 +872,62 @@ final boardPublishQueueProvider = Provider((ref) => BoardPublishQueue());
 
 /// This week's rows, best first.
 final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
-  ref.state = const AsyncData([]);
   final uid = ref.watch(accountUidProvider);
   final service = ref.watch(leaderboardServiceProvider);
   if (!service.available || uid == null) {
+    ref.state = const AsyncData([]);
     return Stream.value(const <BoardRow>[]);
   }
-  return service.watch(ref.watch(currentWeekKeyProvider));
+  // Clear a previous account's rows while its replacement is connecting.
+  // Riverpod retains previous data for loading, so replace the value first.
+  ref.state = const AsyncData([]);
+  ref.state = const AsyncLoading();
+  final week = ref.watch(currentWeekKeyProvider);
+  final controller = StreamController<List<BoardRow>>();
+  StreamSubscription<List<BoardRow>>? subscription;
+  Timer? retry;
+  var disposed = false;
+  var failures = 0;
+  late void Function() connect;
+  void reconnect(Object error, StackTrace stack) {
+    if (disposed) return;
+    controller.addError(error, stack);
+    retry?.cancel();
+    final seconds = failures++ == 0
+        ? 2
+        : failures < 4
+        ? 5
+        : 15;
+    retry = Timer(Duration(seconds: seconds), connect);
+  }
+
+  connect = () {
+    if (disposed) return;
+    try {
+      subscription = service
+          .watch(week)
+          .listen(
+            (rows) {
+              if (disposed) return;
+              failures = 0;
+              controller.add(rows);
+            },
+            onError: reconnect,
+            cancelOnError: true,
+          );
+    } catch (error, stack) {
+      reconnect(error, stack);
+    }
+  };
+
+  ref.onDispose(() {
+    disposed = true;
+    retry?.cancel();
+    unawaited(subscription?.cancel());
+    unawaited(controller.close());
+  });
+  connect();
+  return controller.stream;
 });
 
 /// Keeps this device's row in step with the week it has actually studied.
@@ -886,7 +935,7 @@ final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
 /// Publishing is not a one-off: the row is rewritten as sessions land, and
 /// withdrawn the moment the switch goes off, so leaving the board is
 /// immediate rather than at the end of the week.
-final leaderboardPublisherProvider = Provider<void>((ref) {
+final leaderboardPublisherProvider = Provider<Future<void> Function()>((ref) {
   Timer? retry;
   var disposed = false;
   var generation = 0;
@@ -960,6 +1009,7 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
   ref.listen(currentWeekKeyProvider, (_, _) => schedule());
   ref.listen(accountUidProvider, (_, _) => schedule());
   schedule();
+  return publish;
 });
 
 // -- Notifications -----------------------------------------------------------
