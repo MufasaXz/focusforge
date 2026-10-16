@@ -1,6 +1,8 @@
 package dev.focusforge.focusforge
 
 import android.content.Intent
+import android.os.Bundle
+import androidx.core.view.WindowCompat
 import dev.focusforge.focusforge.widgets.FocusWidget
 import dev.focusforge.focusforge.widgets.FocusLiveActivity
 import android.content.res.Configuration
@@ -20,6 +22,13 @@ import io.flutter.embedding.engine.FlutterEngine
  */
 class MainActivity : FlutterActivity() {
     private var bridge: ShieldBridge? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Establish the native window policy before Flutter draws. Flutter's
+        // SafeArea/MediaQuery insets keep controls clear of the system bars.
+        WindowCompat.enableEdgeToEdge(window)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

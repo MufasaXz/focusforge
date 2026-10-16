@@ -63,8 +63,12 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // Flutter supplies the optimized Android defaults and its plugin
+            // consumer rules. Keep R8 enabled so Play receives its metadata
+            // and the exact mapping for this bundle.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         }
     }
 }
@@ -101,6 +105,7 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 dependencies {
+    implementation("androidx.core:core:1.17.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
