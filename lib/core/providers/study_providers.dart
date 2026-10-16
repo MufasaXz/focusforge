@@ -722,6 +722,7 @@ class TimerNotifier extends Notifier<TimerState> {
   // confirms. A crash can replay this journal without dropping or duplicating
   // the block, even after the next segment has already started.
   final _completionJournal = <String, FocusSession>{};
+  final _pendingStats = <String>{};
   int _recoveryGeneration = 0;
   int? _drainingGeneration;
 
@@ -740,6 +741,7 @@ class TimerNotifier extends Notifier<TimerState> {
       _disposed = true;
       _recoveryGeneration++;
       _completionJournal.clear();
+      _pendingStats.clear();
       _ticker?.cancel();
       _completions.close();
     });
@@ -750,7 +752,8 @@ class TimerNotifier extends Notifier<TimerState> {
         // A live block belongs to its starting identity. Never append it to
         // another account's freshly restored session log.
         _recoveryGeneration++;
-        _completionJournal.clear();
+        // Completed blocks retain their original owner while another account
+        // is active. Only the live, unfinished segment is abandoned.
         _ticker?.cancel();
         final first = _presets.first;
         final duration = _sampleFocus(first);
@@ -758,7 +761,7 @@ class TimerNotifier extends Notifier<TimerState> {
           remaining: duration,
           sampledFocusDuration: first.isRandomFocus ? duration : null,
         );
-        unawaited(_persist());
+        _scheduleRecovery();
       }
     });
     // Bootstrap hydrates the session log in the same synchronous pass as this
@@ -800,6 +803,15 @@ class TimerNotifier extends Notifier<TimerState> {
     TimerPhase.longBreak => preset.longBreakDuration,
   };
 
+  /// Explicit history deletion also discards pending completed blocks. An
+  /// ordinary sign-out keeps them for their original account.
+  Future<void> discardPendingHistory() {
+    _recoveryGeneration++;
+    _completionJournal.clear();
+    _pendingStats.clear();
+    return _persist();
+  }
+
   static Duration _durationForPreset(PomodoroPreset preset, TimerPhase phase) =>
       switch (phase) {
         TimerPhase.focus => preset.focusDuration,
@@ -839,6 +851,7 @@ class TimerNotifier extends Notifier<TimerState> {
         'pendingCompletions': [
           for (final session in _completionJournal.values) session.toJson(),
         ],
+        'pendingStats': _pendingStats.toList(growable: false),
         'completedFocusSegments': state.completedFocusSegments,
         'remainingMs': state.remaining.inMilliseconds,
         'plannedMs': state.plannedDuration(preset).inMilliseconds,
@@ -860,6 +873,14 @@ class TimerNotifier extends Notifier<TimerState> {
     if (stored == null) return;
     _recoveryGeneration++;
     _completionJournal.clear();
+    _pendingStats
+      ..clear()
+      ..addAll(
+        (stored['pendingStats'] is List
+                ? stored['pendingStats'] as List
+                : const [])
+            .whereType<String>(),
+      );
     final journal = stored['pendingCompletions'];
     if (journal is List) {
       for (final raw in journal.whereType<Map<String, dynamic>>()) {
@@ -1037,9 +1058,24 @@ class TimerNotifier extends Notifier<TimerState> {
     try {
       while (_completionJournal.isNotEmpty &&
           _recoveryIsCurrent(generation, uid)) {
-        final session = _completionJournal.values.first;
+        final session = _completionJournal.values.where((session) {
+          final aliases =
+              store.getMap(StoreKeys.achievementAliases) ?? const {};
+          return session.ownerUid == uid ||
+              aliases[session.ownerUid] == uid ||
+              (session.ownerUid.isEmpty &&
+                  (store.getString(StoreKeys.achievementHistoryOwner) ?? uid) ==
+                      uid);
+        }).firstOrNull;
+        // Preserve other accounts' pending completions without exposing them
+        // in the current account's history or awarding its totals.
+        if (session == null) break;
         var added = false;
         if (!_alreadyRecorded(session)) {
+          _pendingStats.add(session.id);
+          // Persist the aggregate intent before publishing the session.
+          await _persist();
+          if (!_recoveryIsCurrent(generation, uid)) return;
           added = await ref.read(sessionsProvider.notifier).record(session);
           if (!_recoveryIsCurrent(generation, uid)) return;
         } else {
@@ -1048,13 +1084,18 @@ class TimerNotifier extends Notifier<TimerState> {
           await ref.read(sessionsProvider.notifier).ensurePersisted();
           if (!_recoveryIsCurrent(generation, uid)) return;
         }
-        if (added) {
+        if (added || _pendingStats.contains(session.id)) {
           await ref
               .read(statsProvider.notifier)
-              .recordSession(minutes: session.minutes, completed: true);
+              .recordSession(
+                sessionId: session.id,
+                minutes: session.minutes,
+                completed: true,
+              );
           if (!_recoveryIsCurrent(generation, uid)) return;
         }
         _completionJournal.remove(session.id);
+        _pendingStats.remove(session.id);
         await _persist();
       }
     } finally {

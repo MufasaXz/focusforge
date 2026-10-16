@@ -328,6 +328,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // invalidating: the focus screen subscribes to `completions` once in
   // initState, and a rebuilt notifier would close that stream under it.
   final timer = container.read(timerProvider.notifier);
+  await timer.discardPendingHistory();
   await container.read(planLibraryProvider.notifier).clear();
   timer.setPreset(0);
   timer.setSubject(null);

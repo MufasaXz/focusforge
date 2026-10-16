@@ -200,14 +200,20 @@ class StatsNotifier extends Notifier<GamificationStats> {
   }
 
   Future<void> recordSession({
+    required String sessionId,
     required int minutes,
     required bool completed,
   }) async {
-    state = state.copyWith(
-      totalSessions: state.totalSessions + 1,
-      totalFocusHours: state.totalFocusHours + minutes / 60,
-    );
-    if (completed) await award(minutes);
+    // Keep the receipt in the same durable JSON write as totals and XP.
+    // Retrying after a failed write or a crash cannot award the block twice.
+    if (!state.creditedSessionIds.contains(sessionId)) {
+      state = state.copyWith(
+        totalSessions: state.totalSessions + 1,
+        totalFocusHours: state.totalFocusHours + minutes / 60,
+        creditedSessionIds: [...state.creditedSessionIds, sessionId],
+      );
+      if (completed) state = state.withXp(minutes);
+    }
     await _persist();
   }
 }

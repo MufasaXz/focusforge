@@ -352,6 +352,7 @@ class GamificationStats {
     this.totalFocusHours = 0,
     this.totalSessions = 0,
     this.badges = const <String>[],
+    this.creditedSessionIds = const <String>[],
   });
 
   final int xp;
@@ -359,6 +360,7 @@ class GamificationStats {
   final double totalFocusHours;
   final int totalSessions;
   final List<String> badges;
+  final List<String> creditedSessionIds;
 
   /// XP needed to clear the current level. Levels get progressively hungrier.
   int get xpForNext => 1000 + (level - 1) * 250;
@@ -371,12 +373,14 @@ class GamificationStats {
     double? totalFocusHours,
     int? totalSessions,
     List<String>? badges,
+    List<String>? creditedSessionIds,
   }) => GamificationStats(
     xp: xp ?? this.xp,
     level: level ?? this.level,
     totalFocusHours: totalFocusHours ?? this.totalFocusHours,
     totalSessions: totalSessions ?? this.totalSessions,
     badges: badges ?? this.badges,
+    creditedSessionIds: creditedSessionIds ?? this.creditedSessionIds,
   );
 
   /// Adds XP and rolls the level over as many times as the total allows.
@@ -394,6 +398,7 @@ class GamificationStats {
     'totalFocusHours': totalFocusHours,
     'totalSessions': totalSessions,
     'badges': badges,
+    'creditedSessionIds': creditedSessionIds,
   };
 
   factory GamificationStats.fromJson(Map<String, dynamic> j) =>
@@ -403,5 +408,10 @@ class GamificationStats {
         totalFocusHours: (j['totalFocusHours'] as num?)?.toDouble() ?? 0,
         totalSessions: j['totalSessions'] as int? ?? 0,
         badges: (j['badges'] as List?)?.cast<String>() ?? const [],
+        creditedSessionIds:
+            (j['creditedSessionIds'] as List?)?.whereType<String>().toList(
+              growable: false,
+            ) ??
+            const [],
       );
 }

@@ -313,6 +313,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     if (!confirmed || !context.mounted) return;
 
     final store = ref.read(localStoreProvider);
+    await ref.read(timerProvider.notifier).discardPendingHistory();
     await store.setMap(StoreKeys.stats, const GamificationStats().toJson());
     await store.setList(StoreKeys.sessions, const []);
     await store.setList(StoreKeys.breathEvents, const []);

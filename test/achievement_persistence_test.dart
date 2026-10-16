@@ -305,7 +305,8 @@ void main() {
     });
     await Future<void>.delayed(const Duration(milliseconds: 30));
     await container.read(achievementsProvider.notifier).refresh();
-    expect(container.read(sessionsProvider).single.ownerUid, 'alice');
+    expect(container.read(sessionsProvider), isEmpty);
+    expect(store.getMap(StoreKeys.presets)!['pendingCompletions'], isNotEmpty);
     expect(firstFocusUnlocked(), isFalse);
     timer.start();
     expect(container.read(timerProvider).segmentOwnerUid, 'bob');

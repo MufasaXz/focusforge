@@ -232,7 +232,10 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(c.read(sessionsProvider), isEmpty);
       expect(c.read(statsProvider).totalSessions, 0);
-      expect(store.getMap(StoreKeys.presets)!['pendingCompletions'], isEmpty);
+      expect(
+        store.getMap(StoreKeys.presets)!['pendingCompletions'],
+        isNotEmpty,
+      );
     },
   );
   test(
