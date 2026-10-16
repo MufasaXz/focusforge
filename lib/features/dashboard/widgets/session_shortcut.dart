@@ -1,3 +1,6 @@
+import '../../../core/localization/display_labels.dart';
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,17 +27,29 @@ class SessionShortcut extends ConsumerWidget {
     final started =
         timer.running || timer.remaining < timer.plannedDuration(preset);
     final label = timer.running
-        ? 'View timer'
+        ? context.tr("View timer")
         : started
-        ? 'Resume'
+        ? context.tr("Resume")
         : timer.phase.isBreak
-        ? 'Start break'
-        : 'Start session';
-    final detail = started
-        ? '${timer.phase.label} · ${formatClock(timer.remaining)} ${timer.running ? 'left' : 'paused'}'
+        ? context.tr("Start break")
+        : context.tr("Start focus");
+    final detail = timer.hidesDuration(preset)
+        ? context.tr("Time stays hidden")
+        : started
+        ? context.tr('{0} · {1} {2}', [
+            context.tr(timer.phase.label),
+            formatClock(timer.remaining),
+            context.tr(timer.running ? 'left' : 'paused'),
+          ])
         : timer.phase.isBreak
-        ? '${timer.phase.label} · ${formatMinutes(timer.remaining.inMinutes)}'
-        : '${formatMinutes(timer.plannedDuration(preset).inMinutes)} focus · ${preset.shortBreak}m break';
+        ? context.tr('{0} · {1}', [
+            context.tr(timer.phase.label),
+            formatMinutes(timer.remaining.inMinutes),
+          ])
+        : context.tr("{0} focus · {1}m break", [
+            formatMinutes(timer.plannedDuration(preset).inMinutes),
+            preset.shortBreak,
+          ]);
 
     void open() {
       if (!timer.running) ref.read(timerProvider.notifier).start();
@@ -43,20 +58,41 @@ class SessionShortcut extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final textScaler = MediaQuery.textScalerOf(context);
+        final detailStyle = tt.bodySmall?.copyWith(color: cs.onSurfaceVariant);
+        final actionStyle =
+            Theme.of(context).filledButtonTheme.style?.textStyle?.resolve({}) ??
+            tt.labelLarge;
+        double textWidth(String value, TextStyle? style) {
+          final painter = TextPainter(
+            text: TextSpan(text: value, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: textScaler,
+            maxLines: 1,
+          )..layout();
+          final width = painter.width;
+          painter.dispose();
+          return width;
+        }
+
+        final actionWidth =
+            (textWidth(label, actionStyle) + 18 + Gap.sm + Gap.lg * 2).clamp(
+              144.0,
+              double.infinity,
+            );
+        final rowWidth = actionWidth + Gap.md + textWidth(detail, detailStyle);
         final text = Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              subject?.name ?? preset.name,
+              subject?.name ?? presetDisplayName(context, preset),
               style: tt.titleSmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: Gap.xs),
-            Text(
-              detail,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
+            Text(detail, style: detailStyle),
           ],
         );
         final button = FilledButton.icon(
@@ -68,11 +104,18 @@ class SessionShortcut extends ConsumerWidget {
             size: 18,
           ),
           label: Text(label),
-          style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(144, 48),
+            padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+            shape: const StadiumBorder(),
+          ),
         );
-        // Give enlarged text its own line instead of squeezing the action out.
-        if (constraints.maxWidth < 320 ||
-            MediaQuery.textScalerOf(context).scale(14) > 20) {
+        // A normal phone has about 310dp inside the goal card. Keep the
+        // reference row there, while allowing longer translations or larger
+        // text to use their own lines before either label gets squeezed.
+        if (constraints.maxWidth < 280 ||
+            constraints.maxWidth < rowWidth ||
+            textScaler.scale(14) > 20) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

@@ -58,7 +58,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final start = find.text('Set goal');
-      expect(find.text('Start session'), findsNothing);
+      expect(find.text('Start focus'), findsNothing);
       expect(find.text('Screen time today'), findsNothing);
       expect(find.textContaining('is not sharing app usage'), findsNothing);
       final allow = find.text('Allow app usage');

@@ -148,7 +148,7 @@ void main() {
         ),
       );
       expect(find.text('Set goal'), findsOneWidget);
-      expect(find.text('Start session'), findsNothing);
+      expect(find.text('Start focus'), findsNothing);
       expect(
         find.byKey(const ValueKey('subject-allocation-tile')),
         findsNothing,
@@ -196,7 +196,7 @@ void main() {
     );
     expect(find.byKey(const ValueKey('daily-goal-tile')), findsOneWidget);
     expect(find.byKey(const ValueKey('subject-allocation-tile')), findsNothing);
-    expect(find.text('Start session'), findsOneWidget);
+    expect(find.text('Start focus'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
   });
 

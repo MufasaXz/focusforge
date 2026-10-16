@@ -263,7 +263,7 @@ void main() {
         await settle(tester);
         expect(find.text('No sessions yet'), findsNothing);
         expect(find.text('Set goal'), findsOneWidget);
-        expect(find.text('Start session'), findsNothing);
+        expect(find.text('Start focus'), findsNothing);
         expect(find.byType(GoalRing), findsNothing);
         await container
             .read(focusGoalPlannerProvider.notifier)
@@ -278,7 +278,7 @@ void main() {
         await settle(tester);
         expect(find.byType(GoalRing), findsOneWidget);
         expect(find.text("Today's goal"), findsOneWidget);
-        expect(find.text('Start session'), findsOneWidget);
+        expect(find.text('Start focus'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

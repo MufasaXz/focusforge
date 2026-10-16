@@ -167,7 +167,7 @@ void main() {
       await tester.pumpWidget(
         wrap(scope, SessionShortcut(onOpen: () => opened++)),
       );
-      await tester.tap(find.text('Start session'));
+      await tester.tap(find.text('Start focus'));
       await tester.pump();
       expect(scope.read(timerProvider).running, isTrue);
       expect(scope.read(timerProvider).presetIndex, 1);
@@ -410,7 +410,7 @@ void main() {
     );
     await settle(tester);
     final action = find.bySemanticsLabel(
-      'Thursday, 8 October. 1 hour focused. View day summary',
+      'Thursday, October 8. 1 hour focused. View day summary',
     );
     expect(action, findsOneWidget);
     expect(
