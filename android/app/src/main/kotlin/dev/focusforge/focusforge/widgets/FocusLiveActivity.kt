@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
+import dev.focusforge.focusforge.localization.DeviceStrings
 import org.json.JSONObject
 
 /** System countdown, also eligible for compatible Android/OEM live bars. */
@@ -74,9 +75,9 @@ class FocusLiveActivity : BroadcastReceiver() {
             }
             if (Build.VERSION.SDK_INT >= 26) {
                 manager.createNotificationChannel(NotificationChannel(
-                    CHANNEL, "Focus timer", NotificationManager.IMPORTANCE_LOW,
+                    CHANNEL, DeviceStrings.text(context, "Focus timer"), NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "Your running focus or break countdown"
+                    description = DeviceStrings.text(context, "Your running focus or break countdown")
                     setSound(null, null)
                     enableVibration(false)
                     setShowBadge(false)
@@ -86,13 +87,14 @@ class FocusLiveActivity : BroadcastReceiver() {
                 manager.cancel(NOTIFICATION_ID)
                 return
             }
+            val hiddenDuration = timer.optBoolean("hideRandomDuration") && timer.optString("phase", "focus") == "focus"
             val phase = when (timer.optString("phase", "focus")) {
-                "shortBreak" -> "Short break"
-                "longBreak" -> "Long break"
-                else -> "Focus"
+                "shortBreak" -> DeviceStrings.text(context, "Short break")
+                "longBreak" -> DeviceStrings.text(context, "Long break")
+                else -> DeviceStrings.text(context, "Focus")
             }
             val subject = timer.optString("subjectName")
-                .takeIf { it.isNotBlank() && it != "null" } ?: "Time for yourself"
+                .takeIf { it.isNotBlank() && it != "null" } ?: DeviceStrings.text(context, "Time for yourself")
             val planned = timer.optLong("plannedMs", timer.optLong("remainingMs", remaining))
                 .coerceAtLeast(remaining).coerceAtLeast(1)
             val progress = ((1.0 - remaining.toDouble() / planned) * 1000).toInt().coerceIn(0, 1000)
@@ -120,22 +122,22 @@ class FocusLiveActivity : BroadcastReceiver() {
                 else Notification.Builder(context).setPriority(Notification.PRIORITY_LOW)
             val publicVersion = publicBuilder
                 .setSmallIcon(R.drawable.ic_focus_live)
-                .setContentTitle("FocusForge timer")
-                .setContentText("Unlock to see your timer details")
+                .setContentTitle(DeviceStrings.text(context, "FocusForge timer"))
+                .setContentText(DeviceStrings.text(context, "Unlock to see your timer details"))
                 .setCategory(Notification.CATEGORY_STOPWATCH)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setLocalOnly(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setWhen(target)
-                .setShowWhen(true)
-                .setUsesChronometer(true)
+                .setShowWhen(!hiddenDuration)
+                .setUsesChronometer(!hiddenDuration)
                 .setChronometerCountDown(true)
                 .build()
             builder
                 .setSmallIcon(R.drawable.ic_focus_live)
-                .setContentTitle(if (phase == "Focus") "Focusing · $subject" else "$phase · Recharge")
-                .setContentText("Tap to open your timer")
+                .setContentTitle(if (timer.optString("phase", "focus") == "focus") DeviceStrings.text(context, "Focusing · {0}", subject) else DeviceStrings.text(context, "{0} · Recharge", phase))
+                .setContentText(DeviceStrings.text(context, "Tap to open your timer"))
                 .setContentIntent(open)
                 .setDeleteIntent(dismissed)
                 .setCategory(Notification.CATEGORY_STOPWATCH)
@@ -146,10 +148,10 @@ class FocusLiveActivity : BroadcastReceiver() {
                 .setPublicVersion(publicVersion)
                 .setColor(Color.rgb(118, 103, 71))
                 .setWhen(target)
-                .setShowWhen(true)
-                .setUsesChronometer(true)
+                .setShowWhen(!hiddenDuration)
+                .setUsesChronometer(!hiddenDuration)
                 .setChronometerCountDown(true)
-                .setProgress(1000, progress, false)
+                .setProgress(if (hiddenDuration) 0 else 1000, if (hiddenDuration) 0 else progress, false)
             if (Build.VERSION.SDK_INT >= 26) builder.setTimeoutAfter(remaining)
             if (Build.VERSION.SDK_INT >= 36) {
                 // The SDK hides the promotion setter behind a platform flag.

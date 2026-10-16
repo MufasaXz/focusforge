@@ -633,7 +633,11 @@ final groupPublisherProvider = Provider<void>((ref) {
     if (!service.available || !ref.read(canUseGroupsProvider)) return;
     final groups = ref.read(groupsProvider);
     final timer = ref.read(timerProvider);
-    final end = timer.running && timer.phase == TimerPhase.focus
+    final preset = ref.read(presetsProvider)[timer.presetIndex];
+    final end =
+        timer.running &&
+            timer.phase == TimerPhase.focus &&
+            !timer.hidesDuration(preset)
         ? timer.targetEnd
         : null;
     final week = ref.read(groupWeekProvider);

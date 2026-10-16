@@ -17,6 +17,7 @@ import android.view.View
 import android.widget.RemoteViews
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
+import dev.focusforge.focusforge.localization.DeviceStrings
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -82,10 +83,10 @@ open class FocusWidget : AppWidgetProvider() {
             val count = summary.todaySessions
             val timer = try { JSONObject(prefs.getString("flutter.ff.focus.presets", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
             val subjectId = timer.optString("subjectId")
-            var subject = timer.optString("subjectName").takeIf { it.isNotBlank() && it != "null" } ?: "Choose a subject"
+            var subject = timer.optString("subjectName").takeIf { it.isNotBlank() && it != "null" } ?: DeviceStrings.text(context, "Choose a subject")
             try {
                 val subjects = JSONArray(prefs.getString("flutter.ff.subjects", "[]"))
-                if (prefs.contains("flutter.ff.subjects")) subject = "Choose a subject"
+                if (prefs.contains("flutter.ff.subjects")) subject = DeviceStrings.text(context, "Choose a subject")
                 for (i in 0 until subjects.length()) {
                     val item = subjects.optJSONObject(i) ?: continue
                     if (item.optString("id") == subjectId) subject = item.optString("name", subject)
@@ -95,16 +96,16 @@ open class FocusWidget : AppWidgetProvider() {
             val goalPlan = WidgetGoalPlan.resolve(savedPlan, java.time.LocalDate.now())
             val goal = goalPlan?.totalMinutes ?: 0
             val goalMinutes = if (goalPlan?.weekly == true) summary.totalMinutes else minutes
-            val goalPeriod = if (goalPlan?.weekly == true) "this week" else "today"
+            val goalPeriod = if (goalPlan?.weekly == true) DeviceStrings.text(context, "this week") else DeviceStrings.text(context, "today")
             val goalText = when {
-                goalPlan == null -> "Set a goal in FocusForge"
-                goal == 0 -> if (goalPlan.weekly) "Rest week · No target" else "Rest day · No target"
-                else -> "$goalMinutes / $goal min $goalPeriod"
+                goalPlan == null -> DeviceStrings.text(context, "Set a goal in FocusForge")
+                goal == 0 -> if (goalPlan.weekly) DeviceStrings.text(context, "Rest week · No target") else DeviceStrings.text(context, "Rest day · No target")
+                else -> DeviceStrings.text(context, "{0} / {1} min {2}", goalMinutes, goal, goalPeriod)
             }
             val phase = when (timer.optString("phase", "focus")) {
-                "shortBreak" -> "Short break"
-                "longBreak" -> "Long break"
-                else -> "Focus"
+                "shortBreak" -> DeviceStrings.text(context, "Short break")
+                "longBreak" -> DeviceStrings.text(context, "Long break")
+                else -> DeviceStrings.text(context, "Focus")
             }
             val target = timer.optLong("targetEnd", 0)
             val retroState = RetroWidgetState.from(timer, now)
@@ -182,8 +183,8 @@ open class FocusWidget : AppWidgetProvider() {
                 }
             }
             views.setTextViewText(R.id.widget_title, when(kind) {
-                "goal" -> if (goalPlan?.weekly == true) "WEEKLY GOAL" else "TODAY’S GOAL"
-                "study" -> if (running) "${phase.uppercase(Locale.ROOT)} IN PROGRESS" else "YOUR NEXT SESSION"
+                "goal" -> if (goalPlan?.weekly == true) DeviceStrings.text(context, "WEEKLY GOAL") else DeviceStrings.text(context, "TODAY’S GOAL")
+                "study" -> if (running) DeviceStrings.text(context, "{0} IN PROGRESS", phase) else DeviceStrings.text(context, "YOUR NEXT SESSION")
                 else -> phase.uppercase(Locale.ROOT)
             })
             if (kind == "clock") {
@@ -191,45 +192,49 @@ open class FocusWidget : AppWidgetProvider() {
                 // State remains in the title/caption and spoken description.
                 views.setViewVisibility(R.id.widget_phase, View.GONE)
             }
-            views.setTextViewText(R.id.widget_subject, if (kind == "goal") count.toString() + " completed " + (if (count == 1) "session" else "sessions") else subject)
-            val goalDisplayText = if (compact && goalPlan != null && goal > 0) "$goalMinutes / $goal min" else goalText
-            views.setTextViewText(R.id.widget_progress, if (kind == "goal") goalDisplayText else WidgetSessionSummary.formatMinutes(minutes) + " focused today")
+            views.setTextViewText(R.id.widget_subject, if (kind == "goal") DeviceStrings.text(context, "{0} completed sessions", count) else subject)
+            val goalDisplayText = if (compact && goalPlan != null && goal > 0) DeviceStrings.text(context, "{0} / {1} min", goalMinutes, goal) else goalText
+            views.setTextViewText(R.id.widget_progress, if (kind == "goal") goalDisplayText else DeviceStrings.text(context, "{0} focused today", displayMinutes(context, minutes)))
             if (kind == "goal") {
                 val progressText = goalDisplayText
                 val availableWidth = width - 2 * (if (compact) 12 else 18)
                 val progressSp = min(if (compact) 12f else 15f, availableWidth / (context.resources.configuration.fontScale * progressText.length * .6f))
                 views.setTextViewTextSize(R.id.widget_progress, TypedValue.COMPLEX_UNIT_SP, progressSp)
             }
-            views.setTextViewText(R.id.widget_caption, if (kind == "goal") {
+            val caption = if (kind == "goal") {
                 when {
-                    goalPlan == null -> "Tap to plan your subjects"
-                    goal == 0 -> "Take your time · Tap to view"
-                    goalMinutes >= goal -> "Goal complete · Keep growing"
-                    else -> (goal - goalMinutes).toString() + " min to grow · Tap to view"
+                    goalPlan == null -> DeviceStrings.text(context, "Tap to plan your subjects")
+                    goal == 0 -> DeviceStrings.text(context, "Take your time · Tap to view")
+                    goalMinutes >= goal -> DeviceStrings.text(context, "Goal complete · Keep growing")
+                    else -> DeviceStrings.text(context, "{0} min to grow · Tap to view", goal - goalMinutes)
                 }
-            } else if (running) phase + " in progress · Tap to open" else if (remaining <= 0) "Block ended · Open to continue" else "Ready when you are · Tap to focus")
+            } else if (running) DeviceStrings.text(context, "{0} in progress · Tap to open", phase) else if (remaining <= 0) DeviceStrings.text(context, "Block ended · Open to continue") else DeviceStrings.text(context, "Ready when you are · Tap to focus")
+            views.setTextViewText(R.id.widget_caption, caption)
             if (kind == "goal") {
                 views.setViewVisibility(R.id.widget_dial, if (goalPlan == null || goal == 0) View.GONE else View.VISIBLE)
                 val progress = if (goal > 0) goalMinutes.toFloat() / goal else 0f
                 views.setImageViewBitmap(R.id.widget_dial, goalRing(progress, dark, accent, ink, widgetTypeface(context), context.resources.configuration.fontScale))
-                views.setContentDescription(R.id.widget_dial, if (goal > 0) (goalMinutes.toLong() * 100 / goal).coerceIn(0, 100).toString() + " percent of your goal $goalPeriod complete" else "No study target")
+                views.setContentDescription(R.id.widget_dial, if (goal > 0) DeviceStrings.text(context, "{0} percent of your goal {1} complete", (goalMinutes.toLong() * 100 / goal).coerceIn(0, 100), goalPeriod) else DeviceStrings.text(context, "No study target"))
             } else {
                 if (kind == "clock") {
                     val labelTypeface = widgetTypeface(context)
                     views.setImageViewBitmap(R.id.widget_dial, RetroWidgetRenderer.render(
                         (retroLayout.dialDp * context.resources.displayMetrics.density).roundToInt(),
                         retroState.progress, dark, amoled,
-                        accent, secondary, labelTypeface,
+                        accent, secondary, labelTypeface, DeviceStrings.text(context, "REMAINING"),
                     ))
                     // All visible text stays native; decorative marks are not
                     // announced as another control in a screen reader.
-                    views.setContentDescription(R.id.widget_root, "$phase timer, $subject, " +
-                        (if (running) "in progress" else if (remaining <= 0) "complete" else "ready") +
-                        ". Tap to open FocusForge.")
+                    views.setContentDescription(R.id.widget_root, "$phase, $subject. $caption")
                 }
                 views.setViewVisibility(R.id.widget_live, if (running) View.VISIBLE else View.GONE)
                 views.setViewVisibility(R.id.widget_time, if (running) View.GONE else View.VISIBLE)
-                if (running) {
+                if (retroState.hideDuration) {
+                    views.setViewVisibility(R.id.widget_live, View.GONE)
+                    views.setViewVisibility(R.id.widget_time, View.VISIBLE)
+                    views.setTextViewText(R.id.widget_time, DeviceStrings.text(context, "Focus"))
+                    views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime(), "%s", false)
+                } else if (running) {
                     views.setChronometer(R.id.widget_live, SystemClock.elapsedRealtime() + remaining, "%s", true)
                     views.setChronometerCountDown(R.id.widget_live, true)
                 } else {
@@ -248,6 +253,18 @@ open class FocusWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             manager.updateAppWidget(id, views)
         }
+        private fun displayMinutes(context: Context, minutes: Int): String {
+            val number = java.text.NumberFormat.getIntegerInstance(context.resources.configuration.locales[0])
+            val safeMinutes = minutes.coerceAtLeast(0)
+            val hours = safeMinutes / 60
+            val remainder = safeMinutes % 60
+            return when {
+                hours == 0 -> DeviceStrings.text(context, "{0}m", number.format(remainder))
+                remainder == 0 -> DeviceStrings.text(context, "{0}h", number.format(hours))
+                else -> DeviceStrings.text(context, "{0}h {1}m", number.format(hours), number.format(remainder))
+            }
+        }
+
         private fun widgetTypeface(context: Context): Typeface = if (Build.VERSION.SDK_INT >= 26)
             context.resources.getFont(R.font.focus_widget_inter) else Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
@@ -255,7 +272,7 @@ open class FocusWidget : AppWidgetProvider() {
             context: Context, manager: AppWidgetManager, id: Int, width: Int, height: Int,
             dark: Boolean, amoled: Boolean, ink: Int, secondary: Int, accent: Int, summary: WidgetSessionSummary,
         ) {
-            val headline = WidgetSessionSummary.formatMinutes(summary.totalMinutes)
+            val headline = displayMinutes(context, summary.totalMinutes)
             val scale = context.resources.configuration.fontScale
             val layout = WeeklyWidgetLayout.forWidget(width, height, scale, headline)
             val views = RemoteViews(context.packageName, R.layout.ff_weekly_widget)
@@ -269,18 +286,19 @@ open class FocusWidget : AppWidgetProvider() {
             views.setViewPadding(R.id.widget_root, padding, padding, padding, padding)
             listOf(R.id.widget_title, R.id.widget_progress, R.id.widget_caption).forEach { views.setTextColor(it, secondary) }
             views.setTextColor(R.id.widget_time, ink)
+            views.setTextViewText(R.id.widget_title, DeviceStrings.text(context, "THIS WEEK"))
             views.setTextViewText(R.id.widget_time, headline)
             views.setTextViewTextSize(R.id.widget_time, TypedValue.COMPLEX_UNIT_SP, layout.headlineSp)
             views.setTextViewTextSize(R.id.widget_progress, TypedValue.COMPLEX_UNIT_SP, layout.summarySp)
             val active = summary.activeDays
-            views.setTextViewText(R.id.widget_progress, if (layout.shortSummary) "$active / 7 days" else "$active active ${if (active == 1) "day" else "days"}")
+            views.setTextViewText(R.id.widget_progress, if (layout.shortSummary) DeviceStrings.text(context, "{0} / 7 days", active) else DeviceStrings.text(context, "{0} active days", active))
             views.setViewVisibility(R.id.widget_title, if (layout.showTitle) View.VISIBLE else View.GONE)
             views.setViewVisibility(R.id.widget_caption, if (layout.showCaption) View.VISIBLE else View.GONE)
-            views.setTextViewText(R.id.widget_caption, if (summary.totalMinutes == 0) "Your first block starts the week" else "Mon – Sun · Tap to view")
+            views.setTextViewText(R.id.widget_caption, if (summary.totalMinutes == 0) DeviceStrings.text(context, "Your first block starts the week") else DeviceStrings.text(context, "Mon – Sun · Tap to view"))
             val weekdayIds = listOf(R.id.week_mon, R.id.week_tue, R.id.week_wed, R.id.week_thu, R.id.week_fri, R.id.week_sat, R.id.week_sun)
-            val names = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-            val labels = if ((width - 2 * layout.paddingDp) / scale >= 240) listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-                else listOf("M", "T", "W", "T", "F", "S", "S")
+            val names = listOf(DeviceStrings.text(context, "Monday"), DeviceStrings.text(context, "Tuesday"), DeviceStrings.text(context, "Wednesday"), DeviceStrings.text(context, "Thursday"), DeviceStrings.text(context, "Friday"), DeviceStrings.text(context, "Saturday"), DeviceStrings.text(context, "Sunday"))
+            val labels = if ((width - 2 * layout.paddingDp) / scale >= 240) listOf(DeviceStrings.text(context, "Mon"), DeviceStrings.text(context, "Tue"), DeviceStrings.text(context, "Wed"), DeviceStrings.text(context, "Thu"), DeviceStrings.text(context, "Fri"), DeviceStrings.text(context, "Sat"), DeviceStrings.text(context, "Sun"))
+                else names.map { it.take(1) }
             weekdayIds.forEachIndexed { day, viewId ->
                 views.setTextViewText(viewId, labels[day])
                 views.setTextColor(viewId, if (day == summary.todayIndex) accent else secondary)
@@ -288,8 +306,8 @@ open class FocusWidget : AppWidgetProvider() {
             views.setImageViewBitmap(R.id.widget_dial, WeeklyWidgetRenderer.render(
                 ((width - 2 * layout.paddingDp) * density).roundToInt(), (layout.chartHeightDp * density).roundToInt(), summary, accent, secondary,
             ))
-            val spokenDays = names.mapIndexed { day, name -> "$name ${summary.dayMinutes[day]} minutes" }.joinToString(", ")
-            views.setContentDescription(R.id.widget_root, "This week, $headline of completed focus, $active active days. Today is ${names[summary.todayIndex]}. $spokenDays. Tap to open your dashboard.")
+            val spokenDays = names.mapIndexed { day, name -> DeviceStrings.text(context, "{0} {1} minutes", name, summary.dayMinutes[day]) }.joinToString(", ")
+            views.setContentDescription(R.id.widget_root, DeviceStrings.text(context, "This week, {0} of completed focus, {1} active days. Today is {2}. {3}. Tap to open your dashboard.", headline, active, names[summary.todayIndex], spokenDays))
             val intent = Intent(context, MainActivity::class.java).apply {
                 action = "dev.focusforge.focusforge.OPEN_WEEKLY"
                 putExtra("open_dashboard", true)

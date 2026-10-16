@@ -117,9 +117,15 @@ void main() {
     test('an unreadable plan is no plan at all', () {
       expect(CustomPlan.fromJson(const {}), isNull);
       expect(CustomPlan.fromJson(const {'goalMinutes': 120}), isNull);
-      expect(CustomPlan.fromJson(const {'goalMinutes': 0, 'focusMinutes': 0}), isNull);
       expect(
-        CustomPlan.fromJson(const {'goalMinutes': 'four hours', 'focusMinutes': 50}),
+        CustomPlan.fromJson(const {'goalMinutes': 0, 'focusMinutes': 0}),
+        isNull,
+      );
+      expect(
+        CustomPlan.fromJson(const {
+          'goalMinutes': 'four hours',
+          'focusMinutes': 50,
+        }),
         isNull,
       );
 
@@ -183,7 +189,10 @@ void main() {
           .hydrate(store.getMap(StoreKeys.presets));
 
       expect(second.read(customPlanProvider)?.focusMinutes, 30);
-      expect(second.read(presetsProvider), hasLength(SeedData.presets.length + 1));
+      expect(
+        second.read(presetsProvider),
+        hasLength(SeedData.presets.length + 1),
+      );
       expect(
         second.read(timerProvider).presetIndex,
         SeedData.presets.length,
@@ -194,9 +203,10 @@ void main() {
 
     test('a plan stored as junk leaves the user on the shipped presets', () {
       final container = freshContainer();
-      container
-          .read(customPlanProvider.notifier)
-          .hydrate(const {'goalMinutes': -5, 'focusMinutes': 0});
+      container.read(customPlanProvider.notifier).hydrate(const {
+        'goalMinutes': -5,
+        'focusMinutes': 0,
+      });
 
       expect(container.read(customPlanProvider), isNull);
       expect(container.read(presetsProvider), SeedData.presets);
@@ -206,20 +216,19 @@ void main() {
   group('the plan sheet', () {
     /// A screen whose only job is to open the sheet and remember what it
     /// returned.
-    Widget opener(ProviderContainer container, List<CustomPlan?> out) =>
-        wrap(
-          container,
-          Builder(
-            builder: (context) => Center(
-              child: FilledButton(
-                onPressed: () async {
-                  out.add(await showCustomPlanSheet(context));
-                },
-                child: const Text('open'),
-              ),
-            ),
+    Widget opener(ProviderContainer container, List<CustomPlan?> out) => wrap(
+      container,
+      Builder(
+        builder: (context) => Center(
+          child: FilledButton(
+            onPressed: () async {
+              out.add(await showCustomPlanSheet(context));
+            },
+            child: const Text('open'),
           ),
-        );
+        ),
+      ),
+    );
 
     testWidgets('it opens on a usable plan and returns what is chosen', (
       tester,
@@ -236,6 +245,7 @@ void main() {
       expect(find.textContaining('4h'), findsWidgets);
       expect(find.textContaining('50m'), findsWidgets);
 
+      await tester.ensureVisible(find.text('Use this plan'));
       await tester.tap(find.text('Use this plan'));
       await settle(tester);
 
@@ -263,6 +273,7 @@ void main() {
         reason: 'the plan is redrawn while the slider moves, not on submit',
       );
 
+      await tester.ensureVisible(find.text('Use this plan'));
       await tester.tap(find.text('Use this plan'));
       await settle(tester);
 

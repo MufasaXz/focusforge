@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,7 +112,10 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
     // the middle of the top edge and walks the boundary as the segment runs.
     // A focus fills it — by the end it has closed the loop — while a break
     // starts with the whole boundary lit and drains back into the start.
-    final boundary = timer.phase.isBreak
+    final hiddenTime = timer.hidesDuration(preset);
+    final boundary = hiddenTime
+        ? 0.0
+        : timer.phase.isBreak
         ? 1 - timer.progressFor(preset)
         : timer.progressFor(preset);
 
@@ -172,16 +177,22 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                         : side * (landscape ? 0.42 : 0.34),
                     child: FittedBox(
                       fit: BoxFit.contain,
-                      child: ClockDisplay(
-                        remaining: timer.remaining,
-                        face: face,
-                        accent: accent,
-                        height: side * 0.30,
-                        progress: timer.progressFor(preset),
-                        phaseLabel: timer.phase == TimerPhase.focus
-                            ? 'FOCUS'
-                            : 'BREAK',
-                      ),
+                      child: hiddenTime
+                          ? Text(
+                              context.tr("Time stays hidden"),
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(color: accent),
+                            )
+                          : ClockDisplay(
+                              remaining: timer.remaining,
+                              face: face,
+                              accent: accent,
+                              height: side * 0.30,
+                              progress: timer.progressFor(preset),
+                              phaseLabel: timer.phase == TimerPhase.focus
+                                  ? context.tr("FOCUS")
+                                  : context.tr("BREAK"),
+                            ),
                     ),
                   ),
                   SizedBox(height: side * 0.05),
@@ -198,7 +209,7 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                       ),
                       const SizedBox(width: Gap.sm),
                       Text(
-                        timer.phase.label,
+                        context.tr(timer.phase.label),
                         style: Theme.of(context).textTheme.titleSmall
                             ?.copyWith(color: accent, letterSpacing: 0.6),
                       ),
@@ -222,15 +233,24 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
                   ),
                   const SizedBox(height: Gap.sm),
                   Text(
-                    timer.running
-                        ? '${timer.phase.isBreak ? 'Resting' : 'Focusing'} — ${formatClock(timer.remaining)} left'
-                        : 'Paused at ${formatClock(timer.remaining)}',
+                    hiddenTime
+                        ? (timer.running
+                              ? context.tr("Stay with your subject")
+                              : context.tr("Ready when you are"))
+                        : timer.running
+                        ? context.tr("{0} — {1} left", [
+                            timer.phase.isBreak ? 'Resting' : 'Focusing',
+                            formatClock(timer.remaining),
+                          ])
+                        : context.tr("Paused at {0}", [
+                            formatClock(timer.remaining),
+                          ]),
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const Spacer(),
                   Text(
-                    'Tap anywhere to close',
+                    context.tr("Tap anywhere to close"),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
@@ -244,7 +264,7 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
               alignment: Alignment.topRight,
               child: Semantics(
                 button: true,
-                label: 'Close the full-screen clock',
+                label: context.tr("Close the full-screen clock"),
                 onTap: () => Navigator.of(context).pop(),
                 child: ExcludeSemantics(
                   child: Pressable(

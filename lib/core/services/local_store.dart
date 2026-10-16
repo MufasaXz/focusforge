@@ -56,7 +56,9 @@ class LocalStore {
   String? getString(String key) => _read<String>(key);
 
   Future<void> setString(String key, String value) async {
-    await _prefs.setString(_k(key), value);
+    if (!await _prefs.setString(_k(key), value)) {
+      throw StateError('Local data could not be saved');
+    }
     _changes.add(key);
     if ({
       StoreKeys.sessions,

@@ -22,6 +22,7 @@ internal object RetroWidgetRenderer {
         accent: Int,
         marks: Int,
         labelTypeface: Typeface,
+        remainingLabel: String,
     ): Bitmap {
         val size = diameterPx.coerceIn(144, 640)
         val s = size.toFloat()
@@ -93,7 +94,8 @@ internal object RetroWidgetRenderer {
         paint.textSize = s * 0.032f
         paint.textAlign = Paint.Align.CENTER
         paint.color = marks
-        val remainingLabel = "R E M A I N I N G"
+        val labelWidth = paint.measureText(remainingLabel)
+        if (labelWidth > s * 0.52f) paint.textSize *= s * 0.52f / labelWidth
         canvas.drawText(remainingLabel, centre, centre - s * 0.088f, paint)
         paint.color = accent
         canvas.drawRoundRect(

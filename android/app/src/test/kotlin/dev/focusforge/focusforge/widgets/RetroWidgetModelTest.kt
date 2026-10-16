@@ -13,6 +13,17 @@ class RetroWidgetModelTest {
         assertTrue(state.running)
     }
 
+    @Test fun randomFocusDoesNotRevealProgressOnTheDial() {
+        val state = RetroWidgetState.from(
+            JSONObject("""{"running":true,"targetEnd":1000000,"plannedMs":1200000,"phase":"focus","hideRandomDuration":true}"""),
+            nowMs = 100000,
+        )
+        assertTrue(state.hideDuration)
+        assertEquals(0.0, state.progress, 0.00001)
+        val resting = RetroWidgetState.from(JSONObject("""{"phase":"shortBreak","hideRandomDuration":true}"""), 100000)
+        assertFalse(resting.hideDuration)
+    }
+
     @Test fun pausedDialKeepsItsProgressAndIgnoresTheOldDeadline() {
         val state = RetroWidgetState.from(
             JSONObject("""{"running":false,"targetEnd":1000000,"remainingMs":300000,"plannedMs":1200000}"""),

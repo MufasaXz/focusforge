@@ -114,8 +114,7 @@ final activeSubjectGoalMinutesProvider = Provider<Map<String, int>>((ref) {
       started.isBefore(until)) {
     final presets = ref.watch(presetsProvider);
     final preset = presets[timer.presetIndex.clamp(0, presets.length - 1)];
-    final elapsed =
-        (preset.focusDuration + timer.segmentExtra - timer.remaining).inMinutes;
+    final elapsed = (timer.plannedDuration(preset) - timer.remaining).inMinutes;
     if (elapsed > 0) {
       totals.update(
         timer.subjectId ?? '',
@@ -159,7 +158,7 @@ final activeFocusGoalSecondsProvider = Provider<int>((ref) {
   }
   final presets = ref.watch(presetsProvider);
   final preset = presets[timer.presetIndex.clamp(0, presets.length - 1)];
-  final elapsed = preset.focusDuration + timer.segmentExtra - timer.remaining;
+  final elapsed = timer.plannedDuration(preset) - timer.remaining;
   return banked + (elapsed.isNegative ? 0 : elapsed.inSeconds);
 });
 

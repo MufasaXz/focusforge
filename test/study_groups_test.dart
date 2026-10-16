@@ -27,6 +27,7 @@ class FakeGroups implements StudyGroupService {
     memberIds: const ['me', 'friend'],
   );
   final calls = <String>[];
+  final publishedEnds = <DateTime?>[];
   Completer<void>? pending;
   bool fail = false;
   @override
@@ -68,6 +69,7 @@ class FakeGroups implements StudyGroupService {
     DateTime? focusUntil,
   ) async {
     calls.add('publish:$minutes');
+    publishedEnds.add(focusUntil);
     if (pending != null) await pending!.future;
     if (fail) throw const GroupException('offline');
   }
@@ -202,6 +204,45 @@ void main() {
       ]);
     },
   );
+  test(
+    'random focus never publishes its sampled deadline to group members',
+    () async {
+      final service = FakeGroups();
+      final c = container(service);
+      await c.read(cloudGroupsProvider.future);
+      await c.read(groupClockProvider.future);
+      await c
+          .read(planLibraryProvider.notifier)
+          .save(
+            const CustomPlan(
+              id: 'random',
+              name: 'Random',
+              goalMinutes: 120,
+              focusMinutes: 30,
+              randomMinMinutes: 20,
+              randomMaxMinutes: 40,
+            ),
+          );
+      final timer = c.read(timerProvider.notifier);
+      await timer.setPreset(
+        c.read(presetsProvider).indexWhere((p) => p.key == 'custom:random'),
+      );
+      timer.start();
+      c.read(groupPublisherProvider);
+      await Future<void>.delayed(Duration.zero);
+      expect(service.publishedEnds, [null]);
+      timer.reset();
+      await timer.setPreset(0);
+      timer.start();
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        service.publishedEnds.last,
+        timer.state.targetEnd,
+        reason: 'ordinary focus keeps its shared focus-status deadline',
+      );
+    },
+  );
+
   test('publishing queues a newer total behind an in-flight write and avoids duplicate writes', () async {
     final service = FakeGroups()..pending = Completer<void>();
     final c = container(service);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,6 +128,10 @@ class SessionsNotifier extends Notifier<List<FocusSession>> {
     StoreKeys.sessions,
     state.map((s) => s.toJson()).toList(growable: false),
   );
+
+  /// Republish the current log before acknowledging a recovered duplicate.
+  /// SharedPreferences updates its memory cache even when its disk write fails.
+  Future<void> ensurePersisted() => _persist();
 
   /// Keep legacy sessions readable after removing their catalogue entry.
   /// No minutes, ownership, timestamps or IDs change.
@@ -591,6 +596,8 @@ class TimerState {
     this.segmentStartedAt,
     this.segmentOwnerUid,
     this.segmentExtra = Duration.zero,
+    this.sampledFocusDuration,
+    this.segmentId,
   });
 
   final TimerPhase phase;
@@ -614,6 +621,9 @@ class TimerState {
   final DateTime? segmentStartedAt;
   final String? segmentOwnerUid;
 
+  /// Stable across snapshots whose timestamp representation loses precision.
+  final String? segmentId;
+
   /// What the dock's ±5 controls have added to (or taken off) this segment.
   ///
   /// It belongs to the segment, not to the plan: the next block runs its own
@@ -621,11 +631,20 @@ class TimerState {
   /// denominator and the minutes a finished block logs both include it.
   final Duration segmentExtra;
 
+  /// One sample for this focus block, retained across pause and process death.
+  final Duration? sampledFocusDuration;
+
+  bool hidesDuration(PomodoroPreset preset) =>
+      phase == TimerPhase.focus && preset.isRandomFocus;
+
   bool get idle => !running && remaining == _presetDurationOf(phase);
 
   /// How long this segment is actually running for.
   Duration plannedDuration(PomodoroPreset preset) =>
-      _durationForPreset(preset, phase) + segmentExtra;
+      (phase == TimerPhase.focus && sampledFocusDuration != null
+          ? sampledFocusDuration!
+          : _durationForPreset(preset, phase)) +
+      segmentExtra;
 
   TimerState copyWith({
     TimerPhase? phase,
@@ -640,6 +659,8 @@ class TimerState {
     DateTime? segmentStartedAt,
     String? segmentOwnerUid,
     Duration? segmentExtra,
+    Duration? sampledFocusDuration,
+    String? segmentId,
   }) => TimerState(
     phase: phase ?? this.phase,
     running: running ?? this.running,
@@ -654,6 +675,8 @@ class TimerState {
     segmentStartedAt: segmentStartedAt ?? this.segmentStartedAt,
     segmentOwnerUid: segmentOwnerUid ?? this.segmentOwnerUid,
     segmentExtra: segmentExtra ?? this.segmentExtra,
+    sampledFocusDuration: sampledFocusDuration ?? this.sampledFocusDuration,
+    segmentId: segmentId ?? this.segmentId,
   );
 
   static Duration _durationForPreset(PomodoroPreset preset, TimerPhase phase) =>
@@ -685,6 +708,8 @@ class TimerState {
 ///      display, they never accumulate.
 ///   2. Every tick re-reads the wall clock, so a suspended isolate, a dropped
 ///      frame or a slow rebuild cannot cause drift.
+final timerRandomProvider = Provider<Random>((ref) => Random());
+
 class TimerNotifier extends Notifier<TimerState> {
   Timer? _ticker;
 
@@ -693,14 +718,17 @@ class TimerNotifier extends Notifier<TimerState> {
 
   Stream<int> get completions => _completions.stream;
 
-  /// A block recovered from a run that died mid-segment, held back until the
-  /// session log has been hydrated — see [_logRecovered].
-  FocusSession? _pendingRecovery;
+  // A completion remains in every timer snapshot until the session write
+  // confirms. A crash can replay this journal without dropping or duplicating
+  // the block, even after the next segment has already started.
+  final _completionJournal = <String, FocusSession>{};
+  int _recoveryGeneration = 0;
+  int? _drainingGeneration;
 
   /// Whether this notifier has been torn down.
   ///
   /// Riverpod 3 exposes `ref.mounted`; Riverpod 2 does not, so the flag is
-  /// maintained by hand. [_logRecovered] defers through a microtask, and a
+  /// maintained by hand. [_scheduleRecovery] defers through a microtask, and a
   /// provider that was invalidated in the meantime would otherwise read a
   /// store it no longer belongs to.
   bool _disposed = false;
@@ -710,6 +738,8 @@ class TimerNotifier extends Notifier<TimerState> {
     _disposed = false;
     ref.onDispose(() {
       _disposed = true;
+      _recoveryGeneration++;
+      _completionJournal.clear();
       _ticker?.cancel();
       _completions.close();
     });
@@ -719,9 +749,15 @@ class TimerNotifier extends Notifier<TimerState> {
           (!previous.isAnonymous && next.isAnonymous)) {
         // A live block belongs to its starting identity. Never append it to
         // another account's freshly restored session log.
-        _pendingRecovery = null;
+        _recoveryGeneration++;
+        _completionJournal.clear();
         _ticker?.cancel();
-        state = TimerState(remaining: _presets.first.focusDuration);
+        final first = _presets.first;
+        final duration = _sampleFocus(first);
+        state = TimerState(
+          remaining: duration,
+          sampledFocusDuration: first.isRandomFocus ? duration : null,
+        );
         unawaited(_persist());
       }
     });
@@ -731,13 +767,15 @@ class TimerNotifier extends Notifier<TimerState> {
     // would replace the stored history with a single entry. Waiting for the
     // log to arrive keeps the recovery honest whatever the wiring order.
     ref.listen(sessionsProvider, (_, next) {
-      final pending = _pendingRecovery;
-      if (pending == null || next.isEmpty) return;
-      _pendingRecovery = null;
-      unawaited(_appendRecovered(pending));
+      if (_completionJournal.isEmpty || next.isEmpty) return;
+      _scheduleRecovery();
     });
     final preset = ref.read(presetsProvider).first;
-    return TimerState(remaining: preset.focusDuration);
+    final duration = _sampleFocus(preset);
+    return TimerState(
+      remaining: duration,
+      sampledFocusDuration: preset.isRandomFocus ? duration : null,
+    );
   }
 
   /// The presets as they stand right now, custom plan included.
@@ -753,8 +791,11 @@ class TimerNotifier extends Notifier<TimerState> {
     return presets[state.presetIndex.clamp(0, presets.length - 1)];
   }
 
+  Duration _sampleFocus(PomodoroPreset plan) =>
+      plan.sampleFocusDuration(ref.read(timerRandomProvider));
+
   Duration _durationFor(TimerPhase phase) => switch (phase) {
-    TimerPhase.focus => preset.focusDuration,
+    TimerPhase.focus => _sampleFocus(preset),
     TimerPhase.shortBreak => preset.shortBreakDuration,
     TimerPhase.longBreak => preset.longBreakDuration,
   };
@@ -794,10 +835,16 @@ class TimerNotifier extends Notifier<TimerState> {
         'targetEnd': state.targetEnd?.millisecondsSinceEpoch,
         'segmentStartedAt': state.segmentStartedAt?.millisecondsSinceEpoch,
         'segmentOwnerUid': state.segmentOwnerUid,
+        'segmentId': state.segmentId,
+        'pendingCompletions': [
+          for (final session in _completionJournal.values) session.toJson(),
+        ],
         'completedFocusSegments': state.completedFocusSegments,
         'remainingMs': state.remaining.inMilliseconds,
         'plannedMs': state.plannedDuration(preset).inMilliseconds,
         'segmentExtraMs': state.segmentExtra.inMilliseconds,
+        'sampledFocusMs': state.sampledFocusDuration?.inMilliseconds,
+        'hideRandomDuration': state.hidesDuration(preset),
       });
 
   /// Restores the persisted timer.
@@ -811,6 +858,19 @@ class TimerNotifier extends Notifier<TimerState> {
   /// [build] installs a fallback for when it has not.
   void hydrate(Map<String, dynamic>? stored) {
     if (stored == null) return;
+    _recoveryGeneration++;
+    _completionJournal.clear();
+    final journal = stored['pendingCompletions'];
+    if (journal is List) {
+      for (final raw in journal.whereType<Map<String, dynamic>>()) {
+        final session = FocusSession.fromJson(raw);
+        if (session.completed &&
+            session.minutes > 0 &&
+            session.minutes <= 180) {
+          _completionJournal[session.id] = session;
+        }
+      }
+    }
 
     final presets = _presets;
     final keyedIndex = presets.indexWhere((p) => p.key == stored['presetKey']);
@@ -824,6 +884,7 @@ class TimerNotifier extends Notifier<TimerState> {
         TimerPhase.values.asNameMap()[stored['phase']] ?? TimerPhase.focus;
     final targetEnd = _dateOrNull(stored['targetEnd']);
     final startedAt = _dateOrNull(stored['segmentStartedAt']);
+    final segmentId = _stringOrNull(stored['segmentId']);
     final ownerUid =
         _stringOrNull(stored['segmentOwnerUid']) ??
         ref
@@ -838,6 +899,14 @@ class TimerNotifier extends Notifier<TimerState> {
     final paused = Duration(milliseconds: pausedMs < 0 ? 0 : pausedMs);
     final extraMs = _intOr(stored['segmentExtraMs'], 0);
     final extra = Duration(milliseconds: extraMs < 0 ? 0 : extraMs);
+    final sampleMs = _intOr(stored['sampledFocusMs'], 0);
+    final validSample =
+        preset.isRandomFocus &&
+        phase == TimerPhase.focus &&
+        sampleMs >= preset.randomMinMinutes! * 60000 &&
+        sampleMs <= preset.randomMaxMinutes! * 60000;
+    final sampled = validSample ? Duration(milliseconds: sampleMs) : null;
+    final actualFocus = sampled ?? preset.focusDuration;
 
     _ticker?.cancel();
     final now = DateTime.now();
@@ -850,16 +919,15 @@ class TimerNotifier extends Notifier<TimerState> {
     if (finishedWhileAway && phase == TimerPhase.focus) {
       // A running segment's start is recoverable even if the snapshot lost it:
       // it began one focus duration before the deadline.
-      final started = startedAt ?? targetEnd.subtract(preset.focusDuration);
-      _logRecovered(
-        FocusSession(
-          id: 's-${started.microsecondsSinceEpoch}',
-          subjectId: subjectId ?? '',
-          startedAt: started,
-          minutes: (preset.focusDuration + extra).inMinutes,
-          ownerUid: ownerUid,
-        ),
+      final started = startedAt ?? targetEnd.subtract(actualFocus + extra);
+      final session = FocusSession(
+        id: segmentId ?? 's-${started.microsecondsSinceEpoch}',
+        subjectId: subjectId ?? '',
+        startedAt: started,
+        minutes: (actualFocus + extra).inMinutes,
+        ownerUid: ownerUid,
       );
+      _completionJournal[session.id] = session;
     }
 
     if (running && targetEnd != null && !finishedWhileAway) {
@@ -873,10 +941,16 @@ class TimerNotifier extends Notifier<TimerState> {
         subjectId: subjectId,
         segmentStartedAt: startedAt,
         segmentOwnerUid: ownerUid,
+        segmentId: segmentId,
         segmentExtra: extra,
+        sampledFocusDuration: sampled,
       );
       _startTicker();
-      unawaited(_persist());
+      if (_completionJournal.isEmpty) {
+        unawaited(_persist());
+      } else {
+        _scheduleRecovery();
+      }
       return;
     }
 
@@ -884,51 +958,108 @@ class TimerNotifier extends Notifier<TimerState> {
     // left to give, and a recovered focus block has already been logged, so
     // the next action is a fresh focus block. A paused segment, on the other
     // hand, comes back exactly where it was left.
+    final nextFocus = running ? _sampleFocus(preset) : null;
     state = TimerState(
       presetIndex: presetIndex,
       subjectId: subjectId,
       phase: running ? TimerPhase.focus : phase,
-      remaining: running ? preset.focusDuration : paused,
+      remaining: nextFocus ?? paused,
       completedFocusSegments:
           segments + (finishedWhileAway && phase == TimerPhase.focus ? 1 : 0),
       segmentStartedAt: running ? null : startedAt,
       segmentOwnerUid: running ? null : ownerUid,
+      segmentId: running ? null : segmentId,
       segmentExtra: running ? Duration.zero : extra,
+      sampledFocusDuration: running
+          ? (preset.isRandomFocus ? nextFocus : null)
+          : sampled,
     );
-    unawaited(_persist());
+    if (_completionJournal.isEmpty) {
+      unawaited(_persist());
+    } else {
+      _scheduleRecovery();
+    }
   }
 
-  /// Writes a block that finished while the app was dead into the session log.
-  ///
-  /// Deferred by a microtask because bootstrap hydrates every notifier in one
-  /// synchronous pass: recording during [hydrate] could land before the log
-  /// has loaded, and `record` persists the in-memory list — so it would
-  /// replace the stored history with a single entry. The microtask runs after
-  /// that pass; if the log still has not arrived, the block waits in
-  /// [_pendingRecovery] for the listener installed in [build].
-  void _logRecovered(FocusSession session) {
-    Future.microtask(() {
-      if (_disposed) return;
-      final store = ref.read(localStoreProvider);
-      final logLoaded =
-          ref.read(sessionsProvider).isNotEmpty ||
-          store.getList(StoreKeys.sessions).isEmpty;
-      if (!logLoaded) {
-        _pendingRecovery = session;
-        return;
+  bool _recoveryIsCurrent(int generation, String uid) =>
+      !_disposed &&
+      generation == _recoveryGeneration &&
+      ref.read(userProvider).uid == uid;
+
+  void _scheduleRecovery() {
+    final generation = _recoveryGeneration;
+    final uid = ref.read(userProvider).uid;
+    Future.microtask(() async {
+      if (!_recoveryIsCurrent(generation, uid)) return;
+      try {
+        // Write the journal before acknowledging any completion. Until this
+        // succeeds, the old expired snapshot itself remains recoverable.
+        await _persist();
+        if (!_recoveryIsCurrent(generation, uid)) return;
+        await _drainRecoveries(generation, uid);
+      } catch (_) {
+        // Keep the journal for the next foreground sync or cold launch.
       }
-      unawaited(_appendRecovered(session));
     });
   }
 
-  Future<void> _appendRecovered(FocusSession session) async {
-    final added = await ref.read(sessionsProvider.notifier).record(session);
-    // A replay must not credit the aggregate twice: the block was already
-    // counted when it was first logged.
-    if (!added || _disposed) return;
-    await ref
-        .read(statsProvider.notifier)
-        .recordSession(minutes: session.minutes, completed: true);
+  bool _alreadyRecorded(FocusSession recovered) =>
+      ref.read(sessionsProvider).any((session) {
+        if (session.id == recovered.id) return true;
+        // Older snapshots stored milliseconds but live IDs encoded
+        // microseconds. Recognize that legacy replay without rewriting IDs.
+        final oldMicros = session.id.startsWith('s-')
+            ? int.tryParse(session.id.substring(2))
+            : null;
+        final recoveredMicros = recovered.id.startsWith('s-')
+            ? int.tryParse(recovered.id.substring(2))
+            : null;
+        return oldMicros != null &&
+            recoveredMicros != null &&
+            oldMicros ~/ 1000 == recoveredMicros ~/ 1000 &&
+            session.ownerUid == recovered.ownerUid &&
+            session.subjectId == recovered.subjectId &&
+            session.minutes == recovered.minutes &&
+            session.completed;
+      });
+
+  Future<void> _drainRecoveries(int generation, String uid) async {
+    if (!_recoveryIsCurrent(generation, uid) ||
+        _drainingGeneration == generation) {
+      return;
+    }
+    final store = ref.read(localStoreProvider);
+    if (ref.read(sessionsProvider).isEmpty &&
+        store.getList(StoreKeys.sessions).isNotEmpty) {
+      return;
+    }
+    _drainingGeneration = generation;
+    try {
+      while (_completionJournal.isNotEmpty &&
+          _recoveryIsCurrent(generation, uid)) {
+        final session = _completionJournal.values.first;
+        var added = false;
+        if (!_alreadyRecorded(session)) {
+          added = await ref.read(sessionsProvider.notifier).record(session);
+          if (!_recoveryIsCurrent(generation, uid)) return;
+        } else {
+          // The previous attempt may have reached memory but failed on disk.
+          // Keep the journal until a fresh session write is acknowledged.
+          await ref.read(sessionsProvider.notifier).ensurePersisted();
+          if (!_recoveryIsCurrent(generation, uid)) return;
+        }
+        if (added) {
+          await ref
+              .read(statsProvider.notifier)
+              .recordSession(minutes: session.minutes, completed: true);
+          if (!_recoveryIsCurrent(generation, uid)) return;
+        }
+        _completionJournal.remove(session.id);
+        await _persist();
+      }
+    } finally {
+      if (_drainingGeneration == generation) _drainingGeneration = null;
+    }
   }
 
   Future<void> setPreset(int index) {
@@ -937,10 +1068,12 @@ class TimerNotifier extends Notifier<TimerState> {
     _ticker?.cancel();
     final preset = presets[index];
     // Switching pace is not a reason to lose the chosen subject.
+    final duration = _sampleFocus(preset);
     state = TimerState(
       presetIndex: index,
       subjectId: state.subjectId,
-      remaining: preset.focusDuration,
+      remaining: duration,
+      sampledFocusDuration: preset.isRandomFocus ? duration : null,
     );
     return _persist();
   }
@@ -958,7 +1091,9 @@ class TimerNotifier extends Notifier<TimerState> {
       return;
     }
     final current = next[index];
-    if (current.focus != old.focus ||
+    if (current.randomMinMinutes != old.randomMinMinutes ||
+        current.randomMaxMinutes != old.randomMaxMinutes ||
+        current.focus != old.focus ||
         current.shortBreak != old.shortBreak ||
         current.longBreak != old.longBreak ||
         current.segments != old.segments) {
@@ -983,6 +1118,10 @@ class TimerNotifier extends Notifier<TimerState> {
       segmentStartedAt: state.phase == TimerPhase.focus
           ? (state.segmentStartedAt ?? now)
           : state.segmentStartedAt,
+      segmentId: state.phase == TimerPhase.focus
+          ? (state.segmentId ??
+                's-${(state.segmentStartedAt ?? now).microsecondsSinceEpoch}')
+          : state.segmentId,
       segmentOwnerUid: state.phase == TimerPhase.focus
           ? (state.segmentOwnerUid ?? ref.read(userProvider).uid)
           : state.segmentOwnerUid,
@@ -1017,6 +1156,7 @@ class TimerNotifier extends Notifier<TimerState> {
   /// finishes on the next tick; one that would fall under [minSegment] or
   /// past [maxSegment] is left alone rather than half-applied.
   void nudge(Duration delta) {
+    if (state.hidesDuration(preset)) return;
     final planned = state.plannedDuration(preset) + delta;
     if (planned < minSegment || planned > maxSegment) return;
 
@@ -1047,11 +1187,13 @@ class TimerNotifier extends Notifier<TimerState> {
   /// Abandons the current segment and returns to a fresh focus block.
   void reset() {
     _ticker?.cancel();
+    final duration = _sampleFocus(preset);
     state = TimerState(
       presetIndex: state.presetIndex,
       subjectId: state.subjectId,
       completedFocusSegments: state.completedFocusSegments,
-      remaining: preset.focusDuration,
+      remaining: duration,
+      sampledFocusDuration: preset.isRandomFocus ? duration : null,
     );
     unawaited(_persist());
   }
@@ -1062,6 +1204,7 @@ class TimerNotifier extends Notifier<TimerState> {
   /// Recomputes from the wall clock. Call on resume — a backgrounded app gets
   /// no ticks, so the first frame after waking must resync.
   void sync() {
+    if (_completionJournal.isNotEmpty) _scheduleRecovery();
     if (!state.running) return;
     tick();
   }
@@ -1099,25 +1242,17 @@ class TimerNotifier extends Notifier<TimerState> {
       final started = state.segmentStartedAt ?? DateTime.now();
       // The block's real length, not the plan's: one the dock stretched or
       // trimmed is logged as it was actually run.
-      final minutes = (preset.focusDuration + state.segmentExtra).inMinutes;
+      final minutes = state.plannedDuration(preset).inMinutes;
       if (log) {
         _completions.add(minutes);
-        // The subject counters are derived from this log, so recording the
-        // session is all it takes to credit the subject.
-        ref
-            .read(sessionsProvider.notifier)
-            .record(
-              FocusSession(
-                id: 's-${started.microsecondsSinceEpoch}',
-                subjectId: state.subjectId ?? '',
-                startedAt: started,
-                minutes: minutes,
-                ownerUid: state.segmentOwnerUid ?? ref.read(userProvider).uid,
-              ),
-            );
-        ref
-            .read(statsProvider.notifier)
-            .recordSession(minutes: minutes, completed: true);
+        final session = FocusSession(
+          id: state.segmentId ?? 's-${started.microsecondsSinceEpoch}',
+          subjectId: state.subjectId ?? '',
+          startedAt: started,
+          minutes: minutes,
+          ownerUid: state.segmentOwnerUid ?? ref.read(userProvider).uid,
+        );
+        _completionJournal[session.id] = session;
       }
     }
 
@@ -1134,6 +1269,7 @@ class TimerNotifier extends Notifier<TimerState> {
     };
 
     final duration = _durationFor(nextPhase);
+    final nextStarted = nextPhase == TimerPhase.focus ? DateTime.now() : null;
     state = TimerState(
       phase: nextPhase,
       running: wasRunning,
@@ -1142,12 +1278,23 @@ class TimerNotifier extends Notifier<TimerState> {
       completedFocusSegments: nextSegments,
       presetIndex: state.presetIndex,
       subjectId: state.subjectId,
-      segmentStartedAt: nextPhase == TimerPhase.focus ? DateTime.now() : null,
+      sampledFocusDuration:
+          nextPhase == TimerPhase.focus && preset.isRandomFocus
+          ? duration
+          : null,
+      segmentStartedAt: nextStarted,
+      segmentId: nextStarted == null
+          ? null
+          : 's-${nextStarted.microsecondsSinceEpoch}',
       segmentOwnerUid: nextPhase == TimerPhase.focus
           ? ref.read(userProvider).uid
           : null,
     );
-    unawaited(_persist());
+    if (_completionJournal.isEmpty) {
+      unawaited(_persist());
+    } else {
+      _scheduleRecovery();
+    }
 
     if (wasRunning) _startTicker();
   }
@@ -1246,7 +1393,7 @@ final liveFocusSecondsTodayProvider = Provider<int>((ref) {
     return banked;
   }
   final preset = ref.watch(presetsProvider)[timer.presetIndex];
-  final elapsed = preset.focusDuration - timer.remaining;
+  final elapsed = timer.plannedDuration(preset) - timer.remaining;
   return elapsed.isNegative ? banked : banked + elapsed.inSeconds;
 });
 

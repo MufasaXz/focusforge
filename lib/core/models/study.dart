@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'icon_registry.dart';
@@ -139,6 +141,8 @@ class PomodoroPreset {
     required this.shortBreak,
     required this.longBreak,
     required this.segments,
+    this.randomMinMinutes,
+    this.randomMaxMinutes,
   });
 
   final String name;
@@ -155,6 +159,18 @@ class PomodoroPreset {
 
   /// Focus blocks before a long break.
   final int segments;
+  final int? randomMinMinutes;
+  final int? randomMaxMinutes;
+
+  bool get isRandomFocus =>
+      randomMinMinutes != null && randomMaxMinutes != null;
+
+  Duration sampleFocusDuration(Random random) {
+    if (!isRandomFocus) return focusDuration;
+    final min = randomMinMinutes!;
+    final max = randomMaxMinutes!;
+    return Duration(minutes: min + random.nextInt(max - min + 1));
+  }
 
   Duration get focusDuration => Duration(minutes: focus);
   Duration get shortBreakDuration => Duration(minutes: shortBreak);
@@ -176,6 +192,8 @@ class CustomPlan {
     this.name = 'Custom',
     required this.goalMinutes,
     required this.focusMinutes,
+    this.randomMinMinutes,
+    this.randomMaxMinutes,
   });
 
   final String id;
@@ -186,6 +204,11 @@ class CustomPlan {
 
   /// How long one focus block runs.
   final int focusMinutes;
+  final int? randomMinMinutes;
+  final int? randomMaxMinutes;
+
+  bool get isRandomFocus =>
+      randomMinMinutes != null && randomMaxMinutes != null;
 
   /// Blocks the goal divides into, rounded up: a plan that stops short of the
   /// goal is not the plan that was asked for. The cap keeps a 5-minute block
@@ -217,6 +240,8 @@ class CustomPlan {
     shortBreak: shortBreak,
     longBreak: longBreak,
     segments: cadence,
+    randomMinMinutes: randomMinMinutes,
+    randomMaxMinutes: randomMaxMinutes,
   );
 
   Map<String, dynamic> toJson() => {
@@ -224,6 +249,8 @@ class CustomPlan {
     'name': name,
     'goalMinutes': goalMinutes,
     'focusMinutes': focusMinutes,
+    if (isRandomFocus) 'randomMinMinutes': randomMinMinutes,
+    if (isRandomFocus) 'randomMaxMinutes': randomMaxMinutes,
   };
 
   /// Reads a stored plan, or null when there is nothing usable there.
@@ -235,6 +262,13 @@ class CustomPlan {
     final goal = _intOr(j['goalMinutes'], 0);
     final focus = _intOr(j['focusMinutes'], 0);
     if (goal <= 0 || focus <= 0) return null;
+    final hasRange =
+        j.containsKey('randomMinMinutes') || j.containsKey('randomMaxMinutes');
+    final min = _intOr(j['randomMinMinutes'], 0);
+    final max = _intOr(j['randomMaxMinutes'], 0);
+    if (hasRange && (min < minFocus || max > maxFocus || min >= max)) {
+      return null;
+    }
     final rawId = j['id'];
     final id =
         rawId is String && RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(rawId)
@@ -253,7 +287,11 @@ class CustomPlan {
       id: id,
       name: name.isEmpty ? 'Custom' : name,
       goalMinutes: goal.clamp(minGoal, maxGoal),
-      focusMinutes: focus.clamp(minFocus, maxFocus),
+      focusMinutes: hasRange
+          ? ((min + max) / 2).round()
+          : focus.clamp(minFocus, maxFocus),
+      randomMinMinutes: hasRange ? min : null,
+      randomMaxMinutes: hasRange ? max : null,
     );
   }
 

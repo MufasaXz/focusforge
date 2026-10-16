@@ -8,6 +8,7 @@ internal data class RetroWidgetState(
     val remainingMs: Long,
     val running: Boolean,
     val progress: Double,
+    val hideDuration: Boolean = false,
 ) {
     companion object {
         fun from(timer: JSONObject, nowMs: Long): RetroWidgetState {
@@ -21,8 +22,11 @@ internal data class RetroWidgetState(
             }
             val planned = timer.optLong("plannedMs", timer.optLong("remainingMs", remaining))
                 .coerceAtLeast(remaining).coerceAtLeast(1L)
+            val hidden = timer.optBoolean("hideRandomDuration") && timer.optString("phase", "focus") == "focus"
             return RetroWidgetState(
-                remaining, running, (1.0 - remaining.toDouble() / planned).coerceIn(0.0, 1.0),
+                remaining, running,
+                if (hidden) 0.0 else (1.0 - remaining.toDouble() / planned).coerceIn(0.0, 1.0),
+                hidden,
             )
         }
     }

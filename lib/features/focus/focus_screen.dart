@@ -1,3 +1,5 @@
+import '../../core/localization/display_labels.dart';
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:async';
@@ -81,14 +83,15 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(title),
-          content: const Text(
-            'This focus block is unfinished. Its time will not be saved '
-            'to your study log. Completed blocks stay saved.',
+          content: Text(
+            context.tr(
+              "This focus block is unfinished. Its time will not be saved to your study log. Completed blocks stay saved.",
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep session'),
+              child: Text(context.tr("Keep session")),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -179,14 +182,18 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         .length;
 
     final accent = _phaseColor(t, timer.phase);
-    final clock = formatClock(timer.remaining);
+    final hiddenTime = timer.hidesDuration(preset);
+    final clock = hiddenTime
+        ? context.tr("Time stays hidden")
+        : formatClock(timer.remaining);
     final phaseNoun = timer.phase == TimerPhase.focus ? 'focus' : 'break';
     // A segment can only be nudged within its own bounds, so a control that
     // would take it past one of them greys out rather than silently refusing.
     final planned = timer.plannedDuration(preset);
     const nudge = Duration(minutes: 5);
-    final canShrink = planned - nudge >= TimerNotifier.minSegment;
-    final canGrow = planned + nudge <= TimerNotifier.maxSegment;
+    final canShrink =
+        !hiddenTime && planned - nudge >= TimerNotifier.minSegment;
+    final canGrow = !hiddenTime && planned + nudge <= TimerNotifier.maxSegment;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final compactDock = MediaQuery.sizeOf(context).width < 360;
     final labelledPlay =
@@ -254,7 +261,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   child: Center(
                     child: Semantics(
                       button: true,
-                      label: 'Preset: ${preset.name}. Change preset',
+                      label: context.tr("Preset: {0}. Change preset", [
+                        presetDisplayName(context, preset),
+                      ]),
                       excludeSemantics: true,
                       onTap: () => _showPresetSheet(context),
                       child: FilterChip(
@@ -269,7 +278,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             const SizedBox(width: 7),
                             Flexible(
                               child: Text(
-                                preset.name,
+                                presetDisplayName(context, preset),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -311,10 +320,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           // says what it does.
                           child: Semantics(
                             button: true,
-                            label:
-                                '${timer.phase.label}, $clock remaining, '
-                                '${timer.running ? 'running' : 'paused'}',
-                            hint: 'Opens the clock full screen',
+                            label: context.tr("{0}, {1} remaining, {2}", [
+                              context.tr(timer.phase.label),
+                              clock,
+                              timer.running ? 'running' : 'paused',
+                            ]),
+                            hint: context.tr("Opens the clock full screen"),
                             onTap: () => showFullscreenClock(context),
                             // Two faces bring their own frame. The flip board
                             // is a wide rectangle and a dial around it both
@@ -323,78 +334,123 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             // around a circle. Both take the width instead,
                             // and the ring stays with the faces that fit it.
                             child: ExcludeSemantics(
-                              child: switch (face) {
-                                ClockFace.flip => _FlipClock(
-                                  remaining: timer.remaining,
-                                  accent: accent,
-                                  phase: timer.phase,
-                                  segments: preset.segments,
-                                  cycleDone: cycleDone,
-                                  currentDot: currentDot,
-                                ),
-                                ClockFace.retro ||
-                                ClockFace.analog => _AnalogFace(
-                                  face: face,
-                                  remaining: timer.remaining,
-                                  accent: accent,
-                                  phase: timer.phase,
-                                  segments: preset.segments,
-                                  cycleDone: cycleDone,
-                                  currentDot: currentDot,
-                                  progress: timer.progressFor(preset),
-                                ),
-                                _ => ProgressRing(
-                                  value: timer.progressFor(preset),
-                                  size: 252,
-                                  stroke: 12,
-                                  ticks: 60,
-                                  // The second horizon: how far through the set of
-                                  // focus blocks this session is. The inner arc
-                                  // answers "how much longer", which is a different
-                                  // question from "how many more", and a timer that
-                                  // shows only one of them makes the other a mental
-                                  // sum.
-                                  outer: preset.segments <= 0
-                                      ? null
-                                      : (timer.completedFocusSegments %
-                                                preset.segments) /
-                                            preset.segments,
-                                  colors: [
-                                    accent,
-                                    Color.lerp(accent, t.secondary, 0.7)!,
-                                  ],
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // The label carries the time for
-                                      // screen readers, so the figures
-                                      // themselves are silent.
-                                      SizedBox(
-                                        width: 214,
-                                        height: 78,
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: ClockDisplay(
-                                            remaining: timer.remaining,
-                                            face: face,
-                                            accent: accent,
-                                            height: 72,
-                                            progress: timer.progressFor(preset),
-                                          ),
+                              child: hiddenTime
+                                  ? Container(
+                                      width: 252,
+                                      height: 252,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: accent.withValues(alpha: .35),
+                                          width: 3,
                                         ),
                                       ),
-                                      const SizedBox(height: Gap.xs),
-                                      _ClockCaption(
-                                        phase: timer.phase,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.shuffle_rounded,
+                                            size: 38,
+                                            color: accent,
+                                          ),
+                                          const SizedBox(height: Gap.md),
+                                          Text(
+                                            context.tr("Time stays hidden"),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                          const SizedBox(height: Gap.xs),
+                                          Text(
+                                            timer.running
+                                                ? context.tr(
+                                                    "Stay with your subject",
+                                                  )
+                                                : context.tr(
+                                                    "Ready when you are",
+                                                  ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : switch (face) {
+                                      ClockFace.flip => _FlipClock(
+                                        remaining: timer.remaining,
                                         accent: accent,
+                                        phase: timer.phase,
                                         segments: preset.segments,
                                         cycleDone: cycleDone,
                                         currentDot: currentDot,
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              },
+                                      ClockFace.retro ||
+                                      ClockFace.analog => _AnalogFace(
+                                        face: face,
+                                        remaining: timer.remaining,
+                                        accent: accent,
+                                        phase: timer.phase,
+                                        segments: preset.segments,
+                                        cycleDone: cycleDone,
+                                        currentDot: currentDot,
+                                        progress: timer.progressFor(preset),
+                                      ),
+                                      _ => ProgressRing(
+                                        value: timer.progressFor(preset),
+                                        size: 252,
+                                        stroke: 12,
+                                        ticks: 60,
+                                        // The second horizon: how far through the set of
+                                        // focus blocks this session is. The inner arc
+                                        // answers "how much longer", which is a different
+                                        // question from "how many more", and a timer that
+                                        // shows only one of them makes the other a mental
+                                        // sum.
+                                        outer: preset.segments <= 0
+                                            ? null
+                                            : (timer.completedFocusSegments %
+                                                      preset.segments) /
+                                                  preset.segments,
+                                        colors: [
+                                          accent,
+                                          Color.lerp(accent, t.secondary, 0.7)!,
+                                        ],
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // The label carries the time for
+                                            // screen readers, so the figures
+                                            // themselves are silent.
+                                            SizedBox(
+                                              width: 214,
+                                              height: 78,
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: ClockDisplay(
+                                                  remaining: timer.remaining,
+                                                  face: face,
+                                                  accent: accent,
+                                                  height: 72,
+                                                  progress: timer.progressFor(
+                                                    preset,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: Gap.xs),
+                                            _ClockCaption(
+                                              phase: timer.phase,
+                                              accent: accent,
+                                              segments: preset.segments,
+                                              cycleDone: cycleDone,
+                                              currentDot: currentDot,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    },
                             ),
                           ),
                         ),
@@ -405,7 +461,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       TextButton.icon(
                         onPressed: () => showFullscreenClock(context),
                         icon: const Icon(Icons.open_in_full_rounded, size: 15),
-                        label: const Text('Full screen'),
+                        label: Text(context.tr("Full screen")),
                         style: TextButton.styleFrom(
                           foregroundColor: t.onSurfaceVariant,
                           minimumSize: const Size(48, 48),
@@ -422,10 +478,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 const SizedBox(height: Gap.xl),
 
                 // Today --------------------------------------------------------
-                const Stagger(
+                Stagger(
                   index: 4,
                   child: SectionHeader(
-                    title: 'Today',
+                    title: context.tr("Today"),
                     icon: Icons.today_outlined,
                   ),
                 ),
@@ -437,8 +493,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         child: _InfoCapsule(
                           icon: Icons.local_fire_department_rounded,
                           color: t.tertiary,
-                          value: 'Day $streak',
-                          semanticLabel: 'Streak: $streak days',
+                          value: context.tr("Day {0}", [streak]),
+                          semanticLabel: context.tr("Streak: {0} days", [
+                            streak,
+                          ]),
                         ),
                       ),
                       const SizedBox(width: Gap.sm),
@@ -447,8 +505,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           icon: Icons.timer_rounded,
                           color: t.primary,
                           value: formatMinutes(minutesToday),
-                          semanticLabel:
-                              'Focus time today: ${formatMinutes(minutesToday)}',
+                          semanticLabel: context.tr("Focus time today: {0}", [
+                            formatMinutes(minutesToday),
+                          ]),
                         ),
                       ),
                       const SizedBox(width: Gap.sm),
@@ -456,8 +515,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         child: _InfoCapsule(
                           icon: Icons.check_circle_rounded,
                           color: t.tertiary,
-                          value: '$sessionsToday today',
-                          semanticLabel: 'Sessions today: $sessionsToday',
+                          value: context.tr("{0} today", [sessionsToday]),
+                          semanticLabel: context.tr("Sessions today: {0}", [
+                            sessionsToday,
+                          ]),
                         ),
                       ),
                     ],
@@ -525,7 +586,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     minutes: -5,
                     enabled: canShrink,
                     color: t.onSurfaceVariant,
-                    semanticLabel: 'Take five minutes off the $phaseNoun',
+                    semanticLabel: context.tr("Take five minutes off the {0}", [
+                      phaseNoun,
+                    ]),
                     onTap: () => ref
                         .read(timerProvider.notifier)
                         .nudge(const Duration(minutes: -5)),
@@ -553,12 +616,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           children: [
                             _DockAction(
                               icon: Icons.refresh_rounded,
-                              label: 'Reset',
-                              semanticLabel: 'Reset timer',
+                              label: context.tr("Reset"),
+                              semanticLabel: context.tr("Reset timer"),
                               color: t.onSurfaceVariant,
                               onTap: () => _changeTimer(
-                                title: 'Reset this focus block?',
-                                confirmLabel: 'Reset block',
+                                title: context.tr("Reset this focus block?"),
+                                confirmLabel: context.tr("Reset block"),
                                 apply: () =>
                                     ref.read(timerProvider.notifier).reset(),
                               ),
@@ -567,8 +630,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             Semantics(
                               button: true,
                               label: timer.running
-                                  ? 'Pause $phaseNoun timer'
-                                  : 'Start $phaseNoun timer',
+                                  ? context.tr("Pause {0} timer", [phaseNoun])
+                                  : context.tr("Start {0} timer", [phaseNoun]),
                               excludeSemantics: true,
                               onTap: toggleTimer,
                               child: Pressable(
@@ -627,7 +690,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                         if (labelledPlay) ...[
                                           const SizedBox(width: Gap.xs),
                                           Text(
-                                            timer.running ? 'Pause' : 'Start',
+                                            timer.running
+                                                ? context.tr("Pause")
+                                                : context.tr("Start"),
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelLarge
@@ -648,12 +713,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             SizedBox(width: compactDock ? Gap.xs : Gap.sm),
                             _DockAction(
                               icon: Icons.skip_next_rounded,
-                              label: 'Skip',
-                              semanticLabel: 'Skip to next phase',
+                              label: context.tr("Skip"),
+                              semanticLabel: context.tr("Skip to next phase"),
                               color: t.onSurfaceVariant,
                               onTap: () => _changeTimer(
-                                title: 'Skip this focus block?',
-                                confirmLabel: 'Skip block',
+                                title: context.tr("Skip this focus block?"),
+                                confirmLabel: context.tr("Skip block"),
                                 apply: () =>
                                     ref.read(timerProvider.notifier).skip(),
                               ),
@@ -668,7 +733,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     minutes: 5,
                     enabled: canGrow,
                     color: t.onSurfaceVariant,
-                    semanticLabel: 'Add five minutes to the $phaseNoun',
+                    semanticLabel: context.tr("Add five minutes to the {0}", [
+                      phaseNoun,
+                    ]),
                     onTap: () => ref
                         .read(timerProvider.notifier)
                         .nudge(const Duration(minutes: 5)),
@@ -687,7 +754,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     return Semantics(
       container: true,
       liveRegion: true,
-      label: 'Focus block complete. ${completion.minutes} XP earned.',
+      label: tr("Focus block complete. {0} XP earned.", [completion.minutes]),
       child: Card.outlined(
         // Floats over the live screen, so it takes the higher tonal surface.
         color: t.surfaceContainerHigh,
@@ -711,14 +778,19 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Focus block complete',
+                          tr("Focus block complete"),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 1),
                         Text(
                           subject == null
-                              ? '${completion.minutes} minutes of deep work'
-                              : '${subject.name} · ${completion.minutes} minutes',
+                              ? tr("{0} minutes of deep work", [
+                                  completion.minutes,
+                                ])
+                              : tr("{0} · {1} minutes", [
+                                  subject.name,
+                                  completion.minutes,
+                                ]),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: t.onSurfaceVariant),
                           maxLines: 1,
@@ -729,7 +801,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   ),
                   const SizedBox(width: Gap.sm),
                   Text(
-                    '+${completion.minutes} XP',
+                    tr("+{0} XP", [completion.minutes]),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: t.tertiary,
                       fontWeight: FontWeight.w700,
@@ -743,7 +815,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   Expanded(
                     child: FilledButton(
                       onPressed: _dismissCelebration,
-                      child: const Text('Take a break'),
+                      child: Text(tr("Take a break")),
                     ),
                   ),
                   const SizedBox(width: Gap.sm),
@@ -753,7 +825,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         ref.read(timerProvider.notifier).skip();
                         _dismissCelebration();
                       },
-                      child: const Text('Keep going'),
+                      child: Text(tr("Keep going")),
                     ),
                   ),
                 ],
@@ -805,7 +877,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Pomodoro presets',
+                                  context.tr("Pomodoro presets"),
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleMedium,
@@ -813,8 +885,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               ),
                               IconButton(
                                 tooltip: managing
-                                    ? 'Done managing presets'
-                                    : 'Manage presets',
+                                    ? context.tr("Done managing presets")
+                                    : context.tr("Manage presets"),
                                 icon: Icon(
                                   managing
                                       ? Icons.check_rounded
@@ -827,7 +899,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           ),
                           if (managing)
                             Text(
-                              'Remove any plan, or edit one you created.',
+                              context.tr(
+                                "Remove any plan, or edit one you created.",
+                              ),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           const SizedBox(height: Gap.sm),
@@ -842,8 +916,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                   return;
                                 }
                                 _changeTimer(
-                                  title: 'Change the focus plan?',
-                                  confirmLabel: 'Change plan',
+                                  title: context.tr("Change the focus plan?"),
+                                  confirmLabel: context.tr("Change plan"),
                                   apply: () {
                                     final index = ref
                                         .read(presetsProvider)
@@ -865,7 +939,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                     (p) => p.toPreset().key == presets[i].key,
                                   ))
                                     IconButton(
-                                      tooltip: 'Edit ${presets[i].name}',
+                                      tooltip: context.tr("Edit {0}", [
+                                        presetDisplayName(context, presets[i]),
+                                      ]),
                                       icon: const Icon(
                                         Icons.edit_outlined,
                                         size: 18,
@@ -880,7 +956,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                       ),
                                     ),
                                   IconButton(
-                                    tooltip: 'Remove ${presets[i].name}',
+                                    tooltip: context.tr("Remove {0}", [
+                                      presetDisplayName(context, presets[i]),
+                                    ]),
                                     icon: const Icon(
                                       Icons.remove_circle_outline_rounded,
                                       size: 18,
@@ -892,9 +970,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                             if (i == current) {
                                               Navigator.of(sheetContext).pop();
                                               _changeTimer(
-                                                title:
-                                                    'Remove the current plan?',
-                                                confirmLabel: 'Remove plan',
+                                                title: context.tr(
+                                                  "Remove the current plan?",
+                                                ),
+                                                confirmLabel: context.tr(
+                                                  "Remove plan",
+                                                ),
                                                 apply: () => unawaited(
                                                   ref
                                                       .read(
@@ -921,9 +1002,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                           ],
                           ListTile(
                             leading: const Icon(Icons.add_rounded),
-                            title: const Text('Custom plan'),
-                            subtitle: const Text(
-                              'Set your own goal and block length',
+                            title: Text(context.tr("Custom plan")),
+                            subtitle: Text(
+                              context.tr("Set your own goal and block length"),
                             ),
                             onTap: () => _editPlan(sheetContext, null),
                           ),
@@ -932,12 +1013,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               onPressed: () => ref
                                   .read(planLibraryProvider.notifier)
                                   .restoreStock(),
-                              child: const Text('Restore default plans'),
+                              child: Text(context.tr("Restore default plans")),
                             ),
                           const SizedBox(height: Gap.sm),
                           if (managing)
                             Text(
-                              'Keep at least one plan. Removing or changing the current plan resets its unfinished block.',
+                              context.tr(
+                                "Keep at least one plan. Removing or changing the current plan resets its unfinished block.",
+                              ),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                         ],
@@ -958,8 +1041,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     if (plan == null || !mounted) return;
     if (sheetContext.mounted) Navigator.of(sheetContext).pop();
     await _changeTimer(
-      title: 'Change the focus plan?',
-      confirmLabel: 'Use plan',
+      title: tr("Change the focus plan?"),
+      confirmLabel: tr("Use plan"),
       apply: () {
         unawaited(ref.read(planLibraryProvider.notifier).save(plan));
         final index = ref
@@ -1097,7 +1180,9 @@ class _AnalogFace extends StatelessWidget {
                 accent: accent,
                 height: side,
                 progress: progress,
-                phaseLabel: phase == TimerPhase.focus ? 'FOCUS' : 'BREAK',
+                phaseLabel: phase == TimerPhase.focus
+                    ? context.tr("FOCUS")
+                    : context.tr("BREAK"),
               ),
             ),
             const SizedBox(height: Gap.lg),
@@ -1138,7 +1223,7 @@ class _ClockCaption extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          phase.label,
+          context.tr(phase.label),
           style: Theme.of(context).textTheme.labelLarge
               ?.copyWith(color: accent, fontSize: 12.5, letterSpacing: 0.3),
         ),
@@ -1206,9 +1291,17 @@ class _PresetRow extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label:
-          '${preset.name}, ${preset.focus} minute focus, '
-          '${preset.shortBreak} minute break, ${preset.segments} segments',
+      label: context.tr(
+        "{0}, {1} minute focus, {2} minute break, {3} segments",
+        [
+          presetDisplayName(context, preset),
+          preset.isRandomFocus
+              ? '${preset.randomMinMinutes} to ${preset.randomMaxMinutes}'
+              : preset.focus,
+          preset.shortBreak,
+          preset.segments,
+        ],
+      ),
       excludeSemantics: true,
       onTap: onTap,
       child: ListTile(
@@ -1220,10 +1313,15 @@ class _PresetRow extends StatelessWidget {
           size: 38,
           radius: 11,
         ),
-        title: Text(preset.name),
+        title: Text(presetDisplayName(context, preset)),
         subtitle: Text(
-          '${preset.focus}m focus · ${preset.shortBreak}m break · '
-          '${preset.segments} segments',
+          context.tr("{0}m focus · {1}m break · {2} segments", [
+            preset.isRandomFocus
+                ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
+                : preset.focus,
+            preset.shortBreak,
+            preset.segments,
+          ]),
         ),
         trailing: selected
             ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)

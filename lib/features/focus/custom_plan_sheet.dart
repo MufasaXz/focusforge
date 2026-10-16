@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,18 +44,25 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
   /// number does not silently reset the other.
   late int _goal = widget.initial?.goalMinutes ?? 4 * 60;
   late int _focus = widget.initial?.focusMinutes ?? 50;
+  late bool _random = widget.initial?.isRandomFocus ?? false;
+  late RangeValues _range = RangeValues(
+    (widget.initial?.randomMinMinutes ?? 20).toDouble(),
+    (widget.initial?.randomMaxMinutes ?? 50).toDouble(),
+  );
   late final String _id =
       widget.initial?.id ??
       DateTime.now().microsecondsSinceEpoch.toRadixString(36);
   late final _name = TextEditingController(
-    text: widget.initial?.name ?? 'Custom',
+    text: widget.initial?.name ?? tr("Custom"),
   );
 
   CustomPlan get _plan => CustomPlan(
     id: _id,
     name: _name.text.trim(),
     goalMinutes: _goal,
-    focusMinutes: _focus,
+    focusMinutes: _random ? ((_range.start + _range.end) / 2).round() : _focus,
+    randomMinMinutes: _random ? _range.start.round() : null,
+    randomMaxMinutes: _random ? _range.end.round() : null,
   );
 
   @override
@@ -87,13 +96,14 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
               const SheetHandle(),
               const SizedBox(height: Gap.lg),
               Text(
-                'Your own plan',
+                context.tr("Your own plan"),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                'Set how long you mean to study and how long a block runs. '
-                'The breaks and the number of blocks follow from those two.',
+                context.tr(
+                  "Set how long you mean to study and how long a block runs. The breaks and the number of blocks follow from those two.",
+                ),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -102,15 +112,15 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
                 controller: _name,
                 maxLength: 40,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Plan name',
-                  hintText: 'e.g. Exam revision',
+                decoration: InputDecoration(
+                  labelText: context.tr("Plan name"),
+                  hintText: context.tr("e.g. Exam revision"),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: Gap.md),
               _NumberSlider(
-                label: 'Study goal',
+                label: context.tr("Study goal"),
                 value: _goal,
                 min: CustomPlan.minGoal,
                 max: CustomPlan.maxGoal,
@@ -119,20 +129,60 @@ class _CustomPlanSheetState extends ConsumerState<_CustomPlanSheet> {
                 onChanged: (v) => setState(() => _goal = v),
               ),
               const SizedBox(height: Gap.md),
-              _NumberSlider(
-                label: 'Focus block',
-                value: _focus,
-                min: CustomPlan.minFocus,
-                max: CustomPlan.maxFocus,
-                step: 5,
-                readout: '${_focus}m',
-                onChanged: (v) => setState(() => _focus = v),
+              Row(
+                children: [
+                  Expanded(child: Text(context.tr("Random focus length"))),
+                  Switch.adaptive(
+                    value: _random,
+                    onChanged: (value) => setState(() => _random = value),
+                  ),
+                ],
               ),
+              if (_random)
+                Text(
+                  context.tr(
+                    "Each block picks a time in your range. The countdown stays hidden.",
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              if (_random) ...[
+                Text(
+                  context.tr("Focus range: {0}–{1} min", [
+                    _range.start.round(),
+                    _range.end.round(),
+                  ]),
+                ),
+                RangeSlider(
+                  values: _range,
+                  min: CustomPlan.minFocus.toDouble(),
+                  max: CustomPlan.maxFocus.toDouble(),
+                  divisions: (CustomPlan.maxFocus - CustomPlan.minFocus) ~/ 5,
+                  labels: RangeLabels(
+                    context.tr("{0}m", [_range.start.round()]),
+                    context.tr("{0}m", [_range.end.round()]),
+                  ),
+                  onChanged: (range) {
+                    if (range.end - range.start >= 5) {
+                      setState(() => _range = range);
+                    }
+                  },
+                ),
+              ] else
+                _NumberSlider(
+                  label: context.tr("Focus block"),
+                  value: _focus,
+                  min: CustomPlan.minFocus,
+                  max: CustomPlan.maxFocus,
+                  step: 5,
+                  readout: context.tr("{0}m", [_focus]),
+                  onChanged: (v) => setState(() => _focus = v),
+                ),
               const SizedBox(height: Gap.lg),
               _PlanSummary(plan: plan),
               const SizedBox(height: Gap.lg),
               PrimaryAction(
-                label: 'Use this plan',
+                label: context.tr("Use this plan"),
                 enabled: _name.text.trim().isNotEmpty,
                 icon: Icons.check_rounded,
                 onTap: () => Navigator.of(context).pop(plan),
@@ -217,13 +267,27 @@ class _PlanSummary extends StatelessWidget {
     final lines = <(IconData, String)>[
       (
         Icons.timer_outlined,
-        '${plan.blocks} focus ${plan.blocks == 1 ? 'block' : 'blocks'} of '
-            '${plan.focusMinutes}m',
+        plan.isRandomFocus
+            ? context.tr("{0}–{1}m focus blocks", [
+                plan.randomMinMinutes,
+                plan.randomMaxMinutes,
+              ])
+            : context.tr("{0} focus {1} of {2}m", [
+                plan.blocks,
+                plan.blocks == 1 ? 'block' : 'blocks',
+                plan.focusMinutes,
+              ]),
       ),
-      (Icons.coffee_outlined, '${plan.shortBreak}m break between them'),
+      (
+        Icons.coffee_outlined,
+        context.tr("{0}m break between them", [plan.shortBreak]),
+      ),
       (
         Icons.self_improvement_rounded,
-        '${plan.longBreak}m long break every ${plan.cadence} blocks',
+        context.tr("{0}m long break every {1} blocks", [
+          plan.longBreak,
+          plan.cadence,
+        ]),
       ),
     ];
 
@@ -258,7 +322,14 @@ class _PlanSummary extends StatelessWidget {
           // few minutes past it. Saying so is the difference between a plan
           // the user can trust and one that looks like it cannot add up.
           Text(
-            '${formatMinutes(plan.plannedMinutes)} of focus in total',
+            plan.isRandomFocus
+                ? context.tr(
+                    "{0} study goal · Actual time is saved after each block",
+                    [formatMinutes(plan.goalMinutes)],
+                  )
+                : context.tr("{0} of focus in total", [
+                    formatMinutes(plan.plannedMinutes),
+                  ]),
             style: theme.textTheme.titleSmall?.copyWith(color: cs.primary),
           ),
         ],

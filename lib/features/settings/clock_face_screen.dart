@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,16 +34,20 @@ class ClockFaceScreen extends ConsumerWidget {
     final preset = ref.watch(presetsProvider)[timer.presetIndex];
 
     return AppPage(
-      title: 'Clock face',
-      subtitle: 'How the timer draws its figures',
+      title: context.tr("Clock face"),
+      subtitle: context.tr("How the timer draws its figures"),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final face in ClockFace.values) ...[
             _FaceCard(
               face: face,
-              remaining: timer.remaining,
-              progress: timer.progressFor(preset),
+              remaining: timer.hidesDuration(preset)
+                  ? const Duration(minutes: 25)
+                  : timer.remaining,
+              progress: timer.hidesDuration(preset)
+                  ? 0
+                  : timer.progressFor(preset),
               selected: face == selected,
               onTap: () {
                 HapticFeedback.selectionClick();
@@ -52,9 +58,9 @@ class ClockFaceScreen extends ConsumerWidget {
           ],
           const SizedBox(height: Gap.xs),
           Text(
-            'The face changes how the figures are drawn, not what they say. '
-            'The timer, the ring and the full-screen clock all read the same '
-            'value.',
+            context.tr(
+              "The face changes how the figures are drawn, not what they say. The timer, the ring and the full-screen clock all read the same value.",
+            ),
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: cs.onSurfaceVariant),
           ),
@@ -88,7 +94,10 @@ class _FaceCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${face.label} clock, ${face.blurb}',
+      label: context.tr("{0} clock, {1}", [
+        context.tr(face.label),
+        context.tr(face.blurb),
+      ]),
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
@@ -142,7 +151,7 @@ class _FaceCard extends StatelessWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      face.label,
+                      context.tr(face.label),
                       style: tt.titleSmall?.copyWith(
                         fontWeight: selected
                             ? FontWeight.w700
@@ -169,7 +178,7 @@ class _FaceCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                face.blurb,
+                context.tr(face.blurb),
                 style: tt.bodySmall?.copyWith(color: t.onSurfaceVariant),
               ),
             ],
