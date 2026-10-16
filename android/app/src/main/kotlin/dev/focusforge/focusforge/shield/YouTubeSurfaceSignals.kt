@@ -32,7 +32,7 @@ class YouTubeSurfaceSignals {
         if (surfaceReason != null) return surfaceReason
         if (rules.youtube.studyOnly && (watching || shorts) &&
             !StudyChannelPolicy(rules.youtube.studyChannels).allows(creators)) {
-            return "Choose a video from your study channels."
+            return "Choose a recognized study channel."
         }
         return null
     }

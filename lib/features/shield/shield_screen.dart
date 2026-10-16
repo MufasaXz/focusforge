@@ -15,7 +15,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/usage_providers.dart';
-import '../../core/services/app_catalog.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
@@ -1750,68 +1749,38 @@ class _YoutubeView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final rules = ref.watch(youtubeRulesProvider);
-    final installed = ref.watch(installedAppsProvider).valueOrNull;
-    final youtubeInstalled =
-        installed == null ||
-        installed.any((a) => a.packageId == AppCatalog.youtubePackage);
-    final fullyBlocked = ref
-        .watch(whitelistProvider)
-        .any(
-          (e) =>
-              e.packageId == AppCatalog.youtubePackage &&
-              e.tier == WhitelistTier.blocked,
-        );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Stagger(
-          index: 0,
-          child: GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(Gap.lg),
-              child: Row(
-                children: [
-                  AppIconAvatar(
-                    packageId: AppCatalog.youtubePackage,
-                    fallbackIcon: Icons.smart_display_rounded,
-                    fallbackColor: cs.error,
-                    size: 48,
-                    radius: 14,
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr("YouTube"),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          rules.any
-                              ? context.tr(
-                                  "Partly closed — the rest still works",
-                                )
-                              : context.tr("Everything still works"),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-        Stagger(
           index: 1,
-          child: SectionHeader(
-            title: context.tr("Surfaces"),
-            icon: Icons.tune_rounded,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: Gap.md),
+            child: Row(
+              children: [
+                Container(
+                  width: 25,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF0000),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    context.tr("YouTube"),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         Stagger(
@@ -1856,19 +1825,10 @@ class _YoutubeView extends ConsumerWidget {
                   icon: Icons.school_outlined,
                   title: context.tr("Study channels only"),
                   body: context.tr(
-                    "Pause supported video pages unless the visible creator matches a channel you selected. Add channels first.",
+                    "Recognizes supported educational creators on this device. Unrecognized channels are paused.",
                   ),
                   value: rules.studyOnly,
                   onChanged: (v) async {
-                    if (v && rules.studyChannels.isEmpty) {
-                      await showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (_) => const _StudyChannelsSheet(),
-                      );
-                      return;
-                    }
                     if (!context.mounted) return;
                     await _changeSurface(
                       context,
@@ -1880,24 +1840,6 @@ class _YoutubeView extends ConsumerWidget {
                       feature: context.tr("Study channel filtering"),
                     );
                   },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.playlist_add_check_rounded),
-                  title: Text(context.tr("Manage study channels")),
-                  subtitle: Text(
-                    rules.studyChannels.isEmpty
-                        ? context.tr("No channels selected")
-                        : context.tr("{0} selected", [
-                            rules.studyChannels.length,
-                          ]),
-                  ),
-                  trailing: const AppChevron(),
-                  onTap: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    useSafeArea: true,
-                    builder: (_) => const _StudyChannelsSheet(),
-                  ),
                 ),
                 // Only meaningful once something is being closed, and a
                 // switch that arms nothing is the inert control this screen
@@ -1926,99 +1868,6 @@ class _YoutubeView extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: Gap.lg),
-        Stagger(
-          index: 3,
-          child: Card.outlined(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.item),
-              side: BorderSide(color: cs.outlineVariant),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(Gap.md),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.science_outlined,
-                    size: 16,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: Text(
-                      context.tr(
-                        "Shorts are recognised by the names YouTube gives its own screens. Study channel filtering reads only visible creator labels on supported video pages and compares them on this device. It does not classify every video as educational. A YouTube layout update can affect recognition; full-screen pages may hide the creator.",
-                      ),
-                      style: Theme.of(context).textTheme.labelSmall
-                          ?.copyWith(height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (youtubeInstalled) ...[
-          const SizedBox(height: Gap.xl),
-          Stagger(
-            index: 4,
-            child: SectionHeader(
-              title: context.tr("Or the whole app"),
-              icon: Icons.block_rounded,
-            ),
-          ),
-          Stagger(
-            index: 5,
-            child: GlassCard(
-              clipBehavior: Clip.antiAlias,
-              child: ListTile(
-                leading: Icon(
-                  fullyBlocked
-                      ? Icons.lock_open_rounded
-                      : Icons.lock_outline_rounded,
-                  color: cs.onSurfaceVariant,
-                ),
-                title: Text(
-                  fullyBlocked
-                      ? context.tr("Stop blocking YouTube")
-                      : context.tr("Block all of YouTube"),
-                ),
-                subtitle: Text(
-                  fullyBlocked
-                      ? context.tr("Removes it from the blocked list")
-                      : context.tr(
-                          "Closes the app entirely, Shorts and lectures alike",
-                        ),
-                ),
-                onTap: () async {
-                  if (!fullyBlocked &&
-                      !await ensureShieldAccess(context, ref)) {
-                    return;
-                  }
-                  if (!context.mounted) return;
-                  HapticFeedback.selectionClick();
-                  unawaited(
-                    _applyLocalChange(context, ref, () async {
-                      final notifier = ref.read(whitelistProvider.notifier);
-                      if (fullyBlocked) {
-                        await notifier.remove(
-                          'pkg:${AppCatalog.youtubePackage}',
-                        );
-                      } else {
-                        await notifier.addInstalledApp(
-                          packageId: AppCatalog.youtubePackage,
-                          name: 'YouTube',
-                          tier: WhitelistTier.blocked,
-                        );
-                      }
-                    }),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -2042,133 +1891,6 @@ Future<void> _changeSurface(
   }
   if (!context.mounted) return;
   await _applyLocalChange(context, ref, apply);
-}
-
-class _StudyChannelsSheet extends ConsumerStatefulWidget {
-  const _StudyChannelsSheet();
-
-  @override
-  ConsumerState<_StudyChannelsSheet> createState() =>
-      _StudyChannelsSheetState();
-}
-
-class _StudyChannelsSheetState extends ConsumerState<_StudyChannelsSheet> {
-  final controller = TextEditingController();
-  String? error;
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> addChannel() async {
-    final values = YoutubeRules.normalizeStudyChannels([controller.text]);
-    if (values.isEmpty) {
-      setState(
-        () => error = tr(
-          "Enter a channel name or @handle, up to 100 characters.",
-        ),
-      );
-      return;
-    }
-    final current = ref.read(youtubeRulesProvider).studyChannels;
-    await ref.read(youtubeRulesProvider.notifier).setStudyChannels([
-      ...current,
-      values.single,
-    ]);
-    controller.clear();
-    if (mounted) setState(() => error = null);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final channels = ref.watch(youtubeRulesProvider).studyChannels;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Gap.xl,
-        Gap.lg,
-        Gap.xl,
-        Gap.xl + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .8,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.tr("Study channels"),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                IconButton(
-                  tooltip: context.tr("Close"),
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.sm),
-            Text(
-              context.tr(
-                "Add the exact creator name shown below a video, or its @handle when YouTube displays it. Only the current visible creator is compared; names and handles can differ.",
-              ),
-            ),
-            const SizedBox(height: Gap.lg),
-            TextField(
-              controller: controller,
-              maxLength: 100,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => addChannel(),
-              decoration: InputDecoration(
-                labelText: context.tr("Channel name or @handle"),
-                errorText: error,
-              ),
-            ),
-            const SizedBox(height: Gap.sm),
-            FilledButton.icon(
-              onPressed: channels.length < 100 ? addChannel : null,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(context.tr("Add channel")),
-            ),
-            const SizedBox(height: Gap.md),
-            if (channels.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: Gap.md),
-                child: Text(context.tr("No channels selected")),
-              )
-            else
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: channels.length,
-                  itemBuilder: (context, index) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(channels[index]),
-                    trailing: IconButton(
-                      tooltip: context.tr("Remove channel"),
-                      icon: const Icon(Icons.remove_circle_outline_rounded),
-                      onPressed: () => ref
-                          .read(youtubeRulesProvider.notifier)
-                          .setStudyChannels([
-                            for (var i = 0; i < channels.length; i++)
-                              if (i != index) channels[i],
-                          ]),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _SurfaceSwitch extends StatelessWidget {

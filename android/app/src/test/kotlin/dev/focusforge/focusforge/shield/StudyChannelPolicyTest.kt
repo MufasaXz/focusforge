@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StudyChannelPolicyTest {
+    @Test fun recognizesKnownStudyCreatorsWithoutManualSetup() {
+        val policy = StudyChannelPolicy(emptyList())
+        assertTrue(policy.allows(listOf("Khan Academy")))
+        assertTrue(policy.allows(listOf("@3blue1brown")))
+        assertFalse(policy.allows(listOf("Khan Academy reaction clips")))
+        assertFalse(policy.allows(listOf("Daily entertainment")))
+    }
     @Test fun studyChannelConfigurationSurvivesNativePersistence() {
         val raw = """{"version":2,"youtube":{"studyOnly":true,"studyChannels":["@teacher","Open Science"]}}"""
         val rules = ShieldRules.parse(raw)

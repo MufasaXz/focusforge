@@ -389,31 +389,23 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets('study channels can be added, persisted and removed locally', (
+  testWidgets('study recognition enables without manual channel setup', (
     tester,
   ) async {
     final container = containerFor(accessible: true);
     await mount(tester, container, const ShieldScreen());
     await tester.tap(find.text('YouTube'));
-    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Study channels only'));
     await tester.tap(
       find.widgetWithText(SwitchListTile, 'Study channels only'),
     );
     await tester.pumpAndSettle();
-    expect(container.read(youtubeRulesProvider).studyOnly, isFalse);
-    await tester.enterText(find.byType(TextField), ' @teacher ');
-    await tester.tap(find.text('Add channel'));
-    await tester.pumpAndSettle();
-    expect(container.read(youtubeRulesProvider).studyChannels, ['@teacher']);
-    expect(store.getMap(StoreKeys.youtubeRules)?['studyChannels'], [
-      '@teacher',
-    ]);
-    await tester.tap(find.byTooltip('Remove channel'));
-    await tester.pumpAndSettle();
-    expect(container.read(youtubeRulesProvider).studyChannels, isEmpty);
-    expect(find.text('No channels selected'), findsWidgets);
+    expect(container.read(youtubeRulesProvider).studyOnly, isTrue);
+    expect(find.text('Manage study channels'), findsNothing);
+    expect(find.text('Block all of YouTube'), findsNothing);
+    expect(find.text('Everything still works'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });

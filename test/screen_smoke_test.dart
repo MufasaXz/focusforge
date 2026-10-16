@@ -429,7 +429,7 @@ void main() {
     });
 
     testWidgets(
-      'the YouTube tab explains surface and study-channel detection',
+      'the YouTube tab has concise controls and states recognition limits',
       (tester) async {
         useTallPhone(tester);
         await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
@@ -441,7 +441,7 @@ void main() {
         expect(find.text('Block home & search'), findsOneWidget);
         expect(
           find.textContaining(
-            'It does not classify every video as educational.',
+            'Unrecognized channels are paused.',
           ),
           findsOneWidget,
           reason: 'the screen must explain the limits of creator matching',

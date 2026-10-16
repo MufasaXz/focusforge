@@ -30,7 +30,7 @@ Future<bool> confirmShieldAccess(
             const SizedBox(height: 16),
             Text(
               context.tr(
-                "Shorts are recognised by the names YouTube gives its own screens. Study channel filtering reads only visible creator labels on supported video pages and compares them on this device. It does not classify every video as educational. A YouTube layout update can affect recognition; full-screen pages may hide the creator.",
+                "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.",
               ),
             ),
           ],
