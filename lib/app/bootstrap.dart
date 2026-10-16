@@ -89,7 +89,7 @@ Future<ProviderContainer> bootstrap() async {
       }
     }
   });
-  if (authService.usesRemoteCredentials) {
+  if (authService.usesRemoteCredentials && !authService.signedIn) {
     final local = container.read(userProvider);
     if (!local.isAnonymous) {
       container

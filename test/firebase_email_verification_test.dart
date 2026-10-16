@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,11 +11,13 @@ import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/study_backup_service.dart';
 
 class _Backup implements StudyBackupBackend {
+  StudyBackup? saved;
   bool failLoad = false;
   bool failSave = false;
   Object? loadFailure;
   int failuresLeft = 0;
   int loads = 0;
+  int saves = 0;
   Completer<StudyBackup?>? delayedLoad;
   @override
   Future<StudyBackup?> load(String uid) async {
@@ -22,12 +25,14 @@ class _Backup implements StudyBackupBackend {
     if (failuresLeft-- > 0) throw loadFailure!;
     if (failLoad) throw StateError('offline');
     if (delayedLoad != null) return delayedLoad!.future;
-    return null;
+    return saved;
   }
 
   @override
   Future<void> save(String uid, StudyBackup backup) async {
+    saves++;
     if (failSave) throw StateError('offline');
+    saved = backup;
   }
 }
 
@@ -178,6 +183,171 @@ void main() {
     expect(service.signedIn, isFalse);
     expect(store.getMap(StoreKeys.user)?['uid'], 'guest');
   });
+  test(
+    'an app update keeps the existing session open during background sync',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      await store.setMap(
+        StoreKeys.user,
+        const UserProfile(
+          uid: 'email-account',
+          displayName: 'Ari',
+          isAnonymous: false,
+          onboardingComplete: true,
+        ).toJson(),
+      );
+      // A linked profile from an older release has no private-backup marker.
+      await store.remove('achievements.linked.email-account');
+      final backend = _Backup()..delayedLoad = Completer<StudyBackup?>();
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      expect(service.signedIn, isTrue);
+      expect(service.current?.displayName, 'Ari');
+      expect(service.restorationPending, isFalse);
+      expect(service.recoveryState.value, isNull);
+      final syncing = service.restore();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.signedIn, isTrue);
+      expect(service.recoveryState.value, isNull);
+      backend.delayedLoad!.complete(null);
+      await syncing;
+      await service.signOut();
+      backend.delayedLoad = Completer<StudyBackup?>();
+      final signingIn = service.signInWithEmail(
+        'person@example.com',
+        'password',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.recoveryState.value, isNotNull);
+      backend.delayedLoad!.complete(null);
+      await signingIn;
+    },
+  );
+  test(
+    'an older linked session stays signed in when background sync is offline',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      await store.setMap(
+        StoreKeys.user,
+        const UserProfile(
+          uid: 'email-account',
+          isAnonymous: false,
+          onboardingComplete: true,
+        ).toJson(),
+      );
+      await store.remove('achievements.linked.email-account');
+      await store.setInt(StoreKeys.dailyGoal, 480);
+      final backend = _Backup()..failLoad = true;
+      final backup = StudyBackupService(store, backend);
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: backup,
+      );
+      await service.restore();
+      expect(service.signedIn, isTrue);
+      expect(service.restorationPending, isFalse);
+      expect(service.recoveryState.value, isNull);
+      expect(store.getInt(StoreKeys.dailyGoal), 480);
+      // The failed server read must still prevent uploading unmerged settings.
+      await expectLater(backup.flush(), throwsStateError);
+      expect(backend.saves, 0);
+    },
+  );
+  for (final localName in ['Old name', '']) {
+    test(
+      'normalizing an upgraded profile ($localName) cannot outrank newer saved settings',
+      () async {
+        service.dispose();
+        auth.user.verified = true;
+        final legacy = {
+          'uid': 'email-account',
+          'displayName': localName,
+          'isAnonymous': false,
+          'onboardingComplete': true,
+        };
+        await store.setMap(StoreKeys.user, legacy);
+        await store.remove('study.modified.email-account');
+        await store.setInt(StoreKeys.dailyGoal, 180);
+        final backend = _Backup()
+          ..saved = StudyBackup(
+            settings: {
+              StoreKeys.user: jsonEncode({
+                ...legacy,
+                'displayName': 'Saved name',
+              }),
+              StoreKeys.dailyGoal: 480,
+            },
+            sessions: [],
+            modifiedAt: 123,
+          );
+        final backup = StudyBackupService(store, backend);
+        service = FirebaseAuthService(
+          store,
+          firebaseAuth: auth,
+          studyBackup: backup,
+        );
+        await service.restore();
+        await backup.flush();
+        expect(store.getMap(StoreKeys.user)?['displayName'], 'Saved name');
+        expect(store.getInt(StoreKeys.dailyGoal), 480);
+        expect(backend.saved?.modifiedAt, 123);
+        expect(backend.saved?.settings[StoreKeys.dailyGoal], 480);
+      },
+    );
+  }
+  test(
+    'signout cancels a delayed background read before it completes',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      await store.setMap(
+        StoreKeys.user,
+        const UserProfile(
+          uid: 'email-account',
+          isAnonymous: false,
+          onboardingComplete: true,
+        ).toJson(),
+      );
+      final delayed = Completer<StudyBackup?>();
+      final backend = _Backup()..delayedLoad = delayed;
+      final backup = StudyBackupService(store, backend);
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: backup,
+      );
+      final events = <UserProfile?>[];
+      final subscription = service.changes.listen(events.add);
+      addTearDown(subscription.cancel);
+      final syncing = backup.flush().then<Object?>(
+        (_) => null,
+        onError: (Object error) => error,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(backend.loads, 1);
+      final closing = service.signOut();
+      var closed = false;
+      unawaited(closing.then((_) => closed = true));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final closedBeforeRead = closed;
+      delayed.complete(null);
+      await closing;
+      await syncing;
+      await Future<void>.delayed(Duration.zero);
+      expect(closedBeforeRead, isTrue);
+      expect(auth.closed, isTrue);
+      expect(service.signedIn, isFalse);
+      expect(backend.saves, 0);
+      expect(events.whereType<UserProfile>(), isEmpty);
+      expect(store.getMap('study.account.email-account'), isNotNull);
+    },
+  );
   test('verified email account signs in and preserves setup', () async {
     auth.user.verified = true;
     final profile = await service.signInWithEmail(

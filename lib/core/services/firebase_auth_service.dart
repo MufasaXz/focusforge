@@ -39,13 +39,21 @@ class FirebaseAuthService extends AuthService {
        _googleClient = googleSignIn {
     final credential = _auth.currentUser;
     _credentialUid = credential?.uid;
-    if (studyBackup != null &&
-        credential != null &&
+    if (credential != null &&
         !credential.isAnonymous &&
         !_requiresEmailVerification(credential) &&
         !_isDeletedCredential(credential)) {
-      _restorationPending = true;
-      recoveryState.value = AccountRecoveryStage.connecting;
+      final stored = _store.getMap(StoreKeys.user);
+      if (stored?['uid'] == credential.uid && stored?['isAnonymous'] == false) {
+        // An update/relaunch retains this credential and its local snapshot.
+        // Reconcile quietly; it is not a new sign-in or an account switch.
+        _current = UserProfile.fromJson(stored!);
+        _returning = true;
+        studyBackup?.resumeLocal(_current!);
+      } else if (studyBackup != null) {
+        _restorationPending = true;
+        recoveryState.value = AccountRecoveryStage.connecting;
+      }
     }
     studyBackup?.onReconciled = (profile) {
       if (!_disposed &&
@@ -419,7 +427,7 @@ class FirebaseAuthService extends AuthService {
     _reauthenticatedAt = null;
     _invalidateRecovery();
     try {
-      await studyBackup?.flush();
+      await studyBackup?.prepareSignOut();
     } catch (_) {
       // flush caches the latest account snapshot before attempting upload.
       // Offline backup must never prevent closing the credential.
@@ -674,6 +682,18 @@ class FirebaseAuthService extends AuthService {
     bool profileEdit = false,
   }) {
     _observeCredential();
+    if (!profileEdit &&
+        !profile.isAnonymous &&
+        signedIn &&
+        _current?.uid == profile.uid) {
+      final stored = _store.getMap(StoreKeys.user);
+      if (stored?['uid'] == profile.uid && stored?['isAnonymous'] == false) {
+        // SDK startup/restore is hydration. Do not save provider-filled names
+        // or onboarding defaults as edits before background reconciliation.
+        _current = UserProfile.fromJson(stored!);
+        return Future.value(_current!);
+      }
+    }
     final generation = _credentialGeneration;
     if (!profileEdit &&
         _profileRecoveryUid == profile.uid &&

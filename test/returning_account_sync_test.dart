@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,10 @@ import 'package:focusforge/core/services/leaderboard_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/study_backup_service.dart';
 import 'package:focusforge/core/services/profile_photo.dart';
+import 'package:focusforge/core/providers/shield_providers.dart';
+import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/features/profile/profile_screen.dart';
+import 'package:focusforge/shared/widgets/account_recovery_overlay.dart';
 import 'package:image/image.dart' as img;
 
 import 'dart:typed_data';
@@ -77,8 +82,10 @@ class _RemoteAuth implements FirebaseAuth {
 
 class _Backup implements StudyBackupBackend {
   StudyBackup? saved;
+  Completer<StudyBackup?>? delayedLoad;
   @override
-  Future<StudyBackup?> load(String uid) async => saved;
+  Future<StudyBackup?> load(String uid) async =>
+      delayedLoad == null ? saved : await delayedLoad!.future;
   @override
   Future<void> save(String uid, StudyBackup backup) async => saved = backup;
 }
@@ -125,6 +132,98 @@ class _Board implements LeaderboardService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'upgraded linked profile remains open while cloud data reconciles',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = await LocalStore.open();
+      await store.clearAll();
+      const account = UserProfile(
+        uid: 'returning-user',
+        displayName: 'Alex',
+        isAnonymous: false,
+        onboardingComplete: true,
+      );
+      await store.setMap(StoreKeys.user, account.toJson());
+      final remoteAuth = _RemoteAuth();
+      final backend = _Backup()..delayedLoad = Completer<StudyBackup?>();
+      final backup = StudyBackupService(store, backend);
+      final auth = FirebaseAuthService(
+        store,
+        firebaseAuth: remoteAuth,
+        studyBackup: backup,
+      );
+      final engine = RecordingShieldService();
+      final container = ProviderContainer(
+        overrides: [
+          localStoreProvider.overrideWithValue(store),
+          authServiceProvider.overrideWithValue(auth),
+          shieldServiceProvider.overrideWithValue(engine),
+        ],
+      );
+      container.read(userProvider.notifier).hydrate(auth.current);
+      final bridge = auth.changes.listen((profile) {
+        if (profile == null) return;
+        hydrateStudyAccount(container, store);
+        container.read(userProvider.notifier).hydrate(profile);
+      });
+      addTearDown(() async {
+        await bridge.cancel();
+        container.dispose();
+        auth.dispose();
+        engine.dispose();
+        await remoteAuth.controller.close();
+      });
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: AccountRecoveryOverlay(
+                service: auth,
+                child: const ProfileScreen(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(container.read(accountUidProvider), 'returning-user');
+      expect(find.text('Alex'), findsOneWidget);
+      expect(find.text('Link an account'), findsNothing);
+      expect(find.text('Restoring your account'), findsNothing);
+      expect(auth.recoveryState.value, isNull);
+      backend.delayedLoad!.complete(
+        StudyBackup(
+          settings: {
+            StoreKeys.user: jsonEncode(account.toJson()),
+            StoreKeys.dailyGoal: 480,
+          },
+          sessions: [
+            FocusSession(
+              id: 'other-device',
+              subjectId: 'math',
+              ownerUid: 'returning-user',
+              startedAt: DateTime.now(),
+              minutes: 60,
+            ).toJson(),
+          ],
+          modifiedAt: 1,
+        ),
+      );
+      // Flush crosses the actual deferred reconciliation path, then publishes
+      // the merged account snapshot through the auth/provider bridge.
+      await tester.runAsync(backup.flush);
+      await tester.pumpAndSettle();
+      expect(container.read(accountUidProvider), 'returning-user');
+      expect(container.read(sessionsProvider).single.id, 'other-device');
+      expect(container.read(dailyGoalProvider).defaultMinutes, 480);
+      expect(find.text('Link an account'), findsNothing);
+      expect(find.text('Restoring your account'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   test('restoring a real credential hydrates weekly score, consent and own-row recognition', () async {
     SharedPreferences.setMockInitialValues({});

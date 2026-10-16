@@ -167,7 +167,11 @@ class StudyBackupService {
     final raw = settings[StoreKeys.user];
     if (raw is String) {
       try {
-        final user = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+        // Defaults added by a newer app are normalization, not a user edit.
+        // Compare the same canonical shape used by profile persistence.
+        final user = UserProfile.fromJson(
+          Map<String, dynamic>.from(jsonDecode(raw) as Map),
+        ).toJson();
         user.remove('uid');
         user.remove('isAnonymous');
         settings[StoreKeys.user] = user;
@@ -228,6 +232,22 @@ class StudyBackupService {
   void _schedule(String uid, Duration delay) {
     _timer?.cancel();
     _timer = Timer(delay, () => unawaited(flush().catchError((Object _) {})));
+  }
+
+  /// Continues a credential-backed local session while server reconciliation
+  /// runs in the background. No cloud write can precede that successful read.
+  void resumeLocal(UserProfile profile) {
+    final stored = store.getMap(StoreKeys.user);
+    if (profile.isAnonymous ||
+        stored?['uid'] != profile.uid ||
+        stored?['isAnonymous'] != false) {
+      return;
+    }
+    _generation++;
+    _uid = profile.uid;
+    _deferred = true;
+    _settingsState = _settingsSignature(profile.uid);
+    _schedule(profile.uid, const Duration(milliseconds: 500));
   }
 
   /// Called before publishing an authenticated profile. Identity switches are
@@ -437,11 +457,23 @@ class StudyBackupService {
     return next;
   }
 
+  /// Cache unsynced local data without waiting behind deferred server reads.
+  /// A normal connected session still gets its best-effort final upload.
+  Future<void> prepareSignOut() async {
+    if (!_deferred) return flush();
+    final uid = _uid;
+    disconnect();
+    if (uid != null && store.getMap(StoreKeys.user)?['uid'] == uid) {
+      await store.setMap(_cache(uid), _capture(uid).toJson());
+    }
+  }
+
   void disconnect() {
     _generation++;
     _uid = null;
     _deferred = false;
     _timer?.cancel();
+    _writes = Future.value();
   }
 
   void dispose() {
