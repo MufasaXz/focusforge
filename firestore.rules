@@ -95,9 +95,11 @@ service cloud.firestore {
     match /leaderboard/{week}/entries/{uid} {
       allow read: if signedIn();
       allow create, update: if self(uid) && dayKey(week) &&
-        request.resource.data.keys().hasOnly(['ownerUid','name','minutes','updatedAt']) &&
+        request.resource.data.keys().hasOnly(['ownerUid','name','minutes','level','updatedAt']) &&
         request.resource.data.ownerUid == uid &&
         boundedInt(request.resource.data.minutes, 10080) &&
+        (!request.resource.data.keys().hasAny(['level']) ||
+          (request.resource.data.level is int && request.resource.data.level >= 1)) &&
         request.resource.data.name is string && request.resource.data.name.size() > 0 &&
         request.resource.data.name.size() <= 60 && localTimestamp(request.resource.data.updatedAt);
       allow delete: if owner(uid);

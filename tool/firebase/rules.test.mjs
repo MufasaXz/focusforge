@@ -83,6 +83,16 @@ test('group join cannot inject another member or create an invite for an existin
     name:'Anon',targetHours:10,createdAt:now(),ownerUid:'anon',memberIds:['anon'],inviteCode:'OTHER23456'}));
 });
 
+test('leaderboard accepts optional positive integer levels and preserves row ownership', async () => {
+  const ref = doc(db('student'), 'leaderboard/2026-10-12/entries/student');
+  const summary = {ownerUid:'student',name:'Alex',minutes:60,updatedAt:now()};
+  await assertSucceeds(setDoc(ref, summary));
+  await assertSucceeds(setDoc(ref, {...summary, level:7}));
+  for (const level of [0, -1, 1.5, '7', null]) {
+    await assertFails(setDoc(ref, {...summary, level}));
+  }
+  await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), {...summary, level:7}));
+});
 test('leaderboard accepts bounded weekly summary and rejects invalid timestamp or totals', async () => {
   const ref=doc(db('student'),'leaderboard/2026-10-12/entries/student');
   await assertSucceeds(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:10080,updatedAt:now()}));

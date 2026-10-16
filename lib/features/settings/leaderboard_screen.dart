@@ -55,7 +55,7 @@ class LeaderboardScreen extends ConsumerWidget {
             GateItem(
               Icons.public_rounded,
               'Your row, your name',
-              'Only your name and this week\'s hours are published',
+              'Share your name, level and this week\'s hours',
             ),
           ],
         ),
@@ -144,46 +144,98 @@ class _BoardRowTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
-    final rankStyle =
-        (rank == 1 ? theme.textTheme.titleLarge : theme.textTheme.titleMedium)
-            ?.copyWith(
-              color: entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            );
+    final compact =
+        MediaQuery.sizeOf(context).width < 360 ||
+        MediaQuery.textScalerOf(context).scale(14) > 19;
+    final foreground = entry.isMe ? cs.onPrimaryContainer : cs.onSurface;
+    final muted = entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+    final level = entry.level == null
+        ? 'Level unavailable'
+        : 'Level ${entry.level}';
+    final menu = !entry.isMe && entry.uid.isNotEmpty
+        ? CommunityMemberMenu(uid: entry.uid, name: entry.name)
+        : null;
 
-    return Column(
-      children: [
-        ListTile(
-          tileColor: entry.isMe ? cs.primaryContainer : null,
-          leading: SizedBox(width: 28, child: Text('$rank', style: rankStyle)),
-          title: Text(
-            entry.isMe ? '${entry.name} (you)' : entry.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: entry.isMe ? cs.onPrimaryContainer : null,
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: Gap.md,
+        vertical: Gap.sm,
+      ),
+      tileColor: entry.isMe ? cs.primaryContainer : null,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              rank.toString().padLeft(2, '0'),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: rank <= 3 ? cs.primary : cs.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
-          subtitle: MediaQuery.textScalerOf(context).scale(14) > 19
-              ? Text(formatHoursShort(entry.hours))
-              : null,
-          trailing: MediaQuery.textScalerOf(context).scale(14) > 19
-              ? null
-              : Text(
-                  formatHoursShort(entry.hours),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: entry.isMe
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
+          if (!compact) ...[
+            const SizedBox(width: Gap.sm),
+            ExcludeSemantics(
+              child: CircleAvatar(
+                radius: 19,
+                backgroundColor: entry.isMe
+                    ? cs.primary
+                    : cs.surfaceContainerHighest,
+                foregroundColor: entry.isMe
+                    ? cs.onPrimary
+                    : cs.onSurfaceVariant,
+                child: Text(
+                  entry.initials,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
                   ),
                 ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      title: Text(
+        entry.isMe ? '${entry.name} (you)' : entry.name,
+        maxLines: compact ? 2 : 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleSmall?.copyWith(color: foreground),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: Gap.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              level,
+              style: theme.textTheme.labelMedium?.copyWith(color: muted),
+            ),
+            if (compact)
+              Text(
+                formatHoursShort(entry.hours),
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              ),
+          ],
         ),
-        if (!entry.isMe && entry.uid.isNotEmpty)
-          Align(
-            alignment: Alignment.centerRight,
-            child: CommunityMemberMenu(uid: entry.uid, name: entry.name),
-          ),
-      ],
+      ),
+      trailing: compact
+          ? menu
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  formatHoursShort(entry.hours),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: foreground,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                ?menu,
+              ],
+            ),
     );
   }
 }
@@ -242,8 +294,8 @@ class _BoardSwitch extends ConsumerWidget {
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: Text(
-                    'A row is your name and this week\'s hours. Not your '
-                    'subjects, not your sessions, not what you studied.',
+                    'Your display name, account ID, level and weekly focus time '
+                    'are visible to signed-in users when you opt in.',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),

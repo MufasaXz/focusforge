@@ -13,7 +13,6 @@ import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/models/focus_goal.dart';
 import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
@@ -196,11 +195,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ringKey: targets.ring,
           onFocus: _startFocusing,
         ),
-      if (goal != null &&
-          goal.subjectMinutes.values.any((value) => value > 0)) ...[
-        const SizedBox(height: Gap.lg),
-        _SubjectAllocationCard(plan: goal),
-      ],
       const UsageAccessCard(),
       if (sessions.isNotEmpty) ...[
         const SizedBox(height: Gap.xl),
@@ -773,9 +767,7 @@ class _PlanGoalCard extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(Radii.hero),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
         boxShadow: [
           BoxShadow(
             color: cs.primary.withValues(alpha: 0.14),
@@ -824,143 +816,6 @@ class _PlanGoalCard extends StatelessWidget {
 }
 
 /// A compact, solid study plan separate from the day's progress gauge.
-class _SubjectAllocationCard extends ConsumerWidget {
-  const _SubjectAllocationCard({required this.plan});
-  final FocusGoalPlan plan;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final subjects = {for (final s in ref.watch(subjectsProvider)) s.id: s};
-    final totals = ref.watch(activeSubjectGoalMinutesProvider);
-    final allocations = plan.subjectMinutes.entries
-        .where((e) => e.value > 0)
-        .toList();
-    return Material(
-      key: const ValueKey('subject-allocation-tile'),
-      color: cs.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              "Today's subjects",
-              style: tt.titleMedium?.copyWith(letterSpacing: -.3),
-            ),
-            const SizedBox(height: Gap.xs),
-            Text(
-              'A place for every minute',
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.md),
-            for (var i = 0; i < allocations.length; i++) ...[
-              if (i > 0)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: Gap.md),
-                  child: Divider(height: 1),
-                ),
-              Builder(
-                builder: (context) {
-                  final entry = allocations[i];
-                  final subject = subjects[entry.key];
-                  final completed = totals[entry.key] ?? 0;
-                  final color = subject == null
-                      ? cs.primary
-                      : harmonize(subject.color, cs.primary);
-                  final name = subject?.name ?? 'Removed subject';
-                  final progress = (completed / entry.value).clamp(0.0, 1.0);
-                  final narrow =
-                      MediaQuery.textScalerOf(context).scale(14) > 21;
-                  final target = Text(
-                    formatMinutes(entry.value),
-                    style: tt.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  );
-                  return Semantics(
-                    label:
-                        '$name, ${formatMinutes(completed)} completed of ${formatMinutes(entry.value)} planned',
-                    child: ExcludeSemantics(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 3,
-                            height: narrow ? 58 : 44,
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                          const SizedBox(width: Gap.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (narrow) ...[
-                                  Text(
-                                    name,
-                                    style: tt.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: Gap.xs),
-                                  target,
-                                ] else
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          name,
-                                          style: tt.bodyMedium?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: Gap.md),
-                                      target,
-                                    ],
-                                  ),
-                                const SizedBox(height: Gap.xs),
-                                Text(
-                                  '${formatMinutes(completed)} completed',
-                                  style: tt.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: Gap.sm),
-                                LinearProgressIndicator(
-                                  value: progress,
-                                  color: color,
-                                  backgroundColor: cs.surfaceContainerHighest,
-                                  minHeight: 3,
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _StatChip extends StatelessWidget {
   const _StatChip({
     required this.icon,

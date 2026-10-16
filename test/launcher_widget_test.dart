@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/models/study.dart';
+import 'package:flutter/material.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/widget_service.dart';
@@ -70,7 +72,7 @@ void main() {
   );
 
   test(
-    'a seeded subject name is available to widgets before a catalogue is saved',
+    'widgets use a chosen subject name and never invent an unchosen template',
     () async {
       final store = await LocalStore.open();
       await store.clearAll();
@@ -78,10 +80,21 @@ void main() {
         overrides: [localStoreProvider.overrideWithValue(store)],
       );
       addTearDown(container.dispose);
+      expect(container.read(subjectsProvider), isEmpty);
+      await container
+          .read(subjectsProvider.notifier)
+          .add(
+            const Subject(
+              id: 'math',
+              name: 'Math',
+              icon: Icons.book,
+              color: Colors.blue,
+            ),
+          );
       container.read(timerProvider.notifier).setSubject('math');
       await Future<void>.delayed(Duration.zero);
       expect(store.getMap(StoreKeys.presets)?['subjectName'], 'Math');
-      expect(store.getString(StoreKeys.subjects), isNull);
+      expect(store.getList(StoreKeys.subjects).single['name'], 'Math');
       container.read(timerProvider.notifier).setSubject(null);
       await Future<void>.delayed(Duration.zero);
       expect(store.getMap(StoreKeys.presets)?['subjectName'], isNull);

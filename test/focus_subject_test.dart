@@ -62,7 +62,7 @@ void main() {
   }
 
   Future<void> addSubject(WidgetTester tester, String name) async {
-    await tester.tap(find.text('New'));
+    await tester.tap(find.bySemanticsLabel('Add a subject'));
     await settle(tester);
     expect(find.text('New subject'), findsOneWidget, reason: 'the sheet opens');
     await tester.enterText(find.byType(TextField), name);
@@ -148,7 +148,7 @@ void main() {
           reason: '${subject.name} is on the device and has to be offered',
         );
       }
-      expect(find.text('New'), findsOneWidget);
+      expect(find.text('Add a subject'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -181,6 +181,8 @@ void main() {
       );
       expect(find.text('Thesis'), findsWidgets);
       expect(find.text('Not tagged'), findsNothing);
+      expect(container.read(subjectsProvider).map((s) => s.id), ['thesis']);
+      expect(store.getList(StoreKeys.subjects).map((s) => s['id']), ['thesis']);
       expect(tester.takeException(), isNull);
     });
 
@@ -193,6 +195,17 @@ void main() {
       );
       await settle(tester);
 
+      await container
+          .read(subjectsProvider.notifier)
+          .add(
+            const Subject(
+              id: 'math',
+              name: 'Math',
+              icon: Icons.book,
+              color: Colors.blue,
+            ),
+          );
+      await settle(tester);
       final before = container.read(subjectsProvider).length;
       await addSubject(tester, 'Math');
 
@@ -215,6 +228,17 @@ void main() {
       );
       await settle(tester);
 
+      await container
+          .read(subjectsProvider.notifier)
+          .add(
+            const Subject(
+              id: 'math',
+              name: 'Math',
+              icon: Icons.book,
+              color: Colors.blue,
+            ),
+          );
+      await settle(tester);
       // The chip and the "Studying" label both read "Math", so the tap has to
       // name the one it means: the chip in the row.
       final chip = find.descendant(

@@ -484,6 +484,16 @@ void main() {
       useTallPhone(tester);
       final container = freshContainer();
       final now = DateTime.now();
+      await container
+          .read(subjectsProvider.notifier)
+          .add(
+            const Subject(
+              id: 'math',
+              name: 'Math',
+              icon: Icons.book,
+              color: Colors.blue,
+            ),
+          );
 
       await tipsSeen();
       await container

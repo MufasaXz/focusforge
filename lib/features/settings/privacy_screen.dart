@@ -162,7 +162,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ListTile(
                   title: Text('Leaderboard scores'),
                   subtitle: Text(
-                    'Display name, account ID and weekly focus minutes · Visible to signed-in users when you opt in',
+                    'Display name, account ID, level and weekly focus minutes · Visible to signed-in users when you opt in',
                   ),
                   leading: Icon(Icons.leaderboard_outlined),
                 ),

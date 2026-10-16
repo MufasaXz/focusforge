@@ -745,6 +745,7 @@ final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
         uid: row.uid,
         name: row.name,
         hours: row.minutes / 60,
+        level: row.level,
         isMe: myUid != null && row.uid == myUid,
       ),
   ];
@@ -828,6 +829,7 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
       uid: uid,
       name: name.isEmpty ? 'A student' : name,
       minutes: minutes,
+      level: ref.read(statsProvider).level,
     );
   }
 
@@ -840,6 +842,14 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
   }
 
   ref.listen(sessionsProvider, (previous, next) => unawaited(publish()));
+  ref.listen(
+    statsProvider.select((stats) => stats.level),
+    (_, _) => unawaited(publish()),
+  );
+  ref.listen(
+    userProvider.select((user) => user.displayName),
+    (_, _) => unawaited(publish()),
+  );
   ref.listen(boardOptInProvider, (previous, next) {
     unawaited(next ? publish() : withdraw());
   });

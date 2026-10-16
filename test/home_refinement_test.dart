@@ -15,7 +15,6 @@ import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
 import 'package:focusforge/features/dashboard/widgets/screen_time_card.dart';
 import 'package:focusforge/features/onboarding/coach_marks.dart';
-import 'package:focusforge/shared/widgets/glass_surface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +36,7 @@ void main() {
     double width = 400,
     double scale = 1,
     FocusGoalPlan? plan,
+    bool withSession = false,
   }) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = Size(width, 1400);
@@ -74,6 +74,16 @@ void main() {
         color: Colors.green,
       ).toJson(),
     ]);
+    if (withSession) {
+      container.read(sessionsProvider.notifier).hydrate([
+        FocusSession(
+          id: 'home-session',
+          subjectId: 'math',
+          startedAt: DateTime.now(),
+          minutes: 25,
+        ).toJson(),
+      ]);
+    }
     if (plan != null && plan.totalMinutes > 0) {
       await container.read(focusGoalPlannerProvider.notifier).save(plan);
     }
@@ -96,13 +106,14 @@ void main() {
   }
 
   testWidgets(
-    'subject allocations have their own solid tile outside the goal gauge',
+    'allocated goals keep one subject breakdown without a duplicate tile',
     (tester) async {
       await mountHome(
         tester,
         access: () => false,
         width: 320,
         scale: 2,
+        withSession: true,
         plan: FocusGoalPlan(
           scope: FocusGoalScope.day,
           date: DateTime.now(),
@@ -110,31 +121,14 @@ void main() {
           subjectMinutes: const {'math': 45, 'science': 75},
         ),
       );
-      final gauge = find.byKey(const ValueKey('daily-goal-tile'));
-      final subjects = find.byKey(const ValueKey('subject-allocation-tile'));
-      expect(gauge, findsOneWidget);
-      await tester.scrollUntilVisible(subjects, 200);
-      expect(subjects, findsOneWidget);
+      expect(find.byKey(const ValueKey('daily-goal-tile')), findsOneWidget);
       expect(
-        find.descendant(of: gauge, matching: find.text('Mathematics')),
+        find.byKey(const ValueKey('subject-allocation-tile')),
         findsNothing,
       );
-      expect(
-        find.descendant(of: subjects, matching: find.text('Mathematics')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: subjects, matching: find.text('45m')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: subjects, matching: find.text('1h 15m')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: subjects, matching: find.byType(GlassCard)),
-        findsNothing,
-      );
+      expect(find.text("Today's subjects"), findsNothing);
+      await tester.scrollUntilVisible(find.text('Subject breakdown'), 200);
+      expect(find.text('Subject breakdown'), findsOneWidget);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },

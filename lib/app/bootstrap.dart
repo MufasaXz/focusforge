@@ -105,15 +105,11 @@ Future<ProviderContainer> bootstrap() async {
       .hydrate(store.getString(StoreKeys.clockFace));
 
   // -- Study -----------------------------------------------------------------
-  //
-  // `getList` returns the same empty list for a missing key as for a stored
-  // `[]`, so the raw string is read alongside it: no key means a first run,
-  // which keeps the seed catalogue; a stored empty list means the user has
-  // genuinely removed every subject and must stay empty.
-  final subjectsJson = store.getString(StoreKeys.subjects);
+  // The stored catalogue contains only user choices. A missing key and an
+  // explicitly empty list both restore as empty, without adding templates.
   container
       .read(subjectsProvider.notifier)
-      .hydrate(subjectsJson == null ? null : store.getList(StoreKeys.subjects));
+      .hydrate(store.getList(StoreKeys.subjects));
   container
       .read(sessionsProvider.notifier)
       .hydrate(store.getList(StoreKeys.sessions));
@@ -222,18 +218,16 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 /// launch. Resetting them here, in the file that already knows how to hydrate
 /// every one, keeps memory and storage telling the same story.
 ///
-/// Call this *after* `deleteAccount()`. The wipe below is deliberately the
-/// last write, except for the two values written after it: the one-shot
-/// demo-history marker and an explicit empty subject list. The onboarding that
-/// follows a deletion is not a first run, and must not seed demo sessions —
-/// or the seed catalogue — over the user's blank slate.
+/// Call this after account deletion. Reset live providers before clearing
+/// persistence, then retain the deleted-credential marker and empty subject
+/// catalogue so the next onboarding flow starts from the blank state.
 Future<void> resetPersistedState(ProviderContainer container) async {
   final store = container.read(localStoreProvider);
   final deletedCredential = store.getString('auth.deletedCredential');
   await container.read(achievementsProvider.notifier).suspendForDeletion();
 
   // Subjects are user data, so the list is emptied outright rather than left
-  // to fall back to the seed catalogue. Their counters are derived from the
+  // to retain a previous catalogue. Their counters are derived from the
   // session log, so clearing the list is what zeroes the breakdown.
   for (final subject in container.read(subjectsProvider)) {
     await container.read(subjectsProvider.notifier).remove(subject.id);
@@ -296,8 +290,6 @@ Future<void> resetPersistedState(ProviderContainer container) async {
     await store.setString('auth.deletedCredential', deletedCredential);
   }
   container.invalidate(achievementsProvider);
-  // The wipe erased the empty subject list the removals above wrote, and
-  // an absent key reads as a first run — which would restore the seed
-  // catalogue. Writing the empty list back keeps the deleted state deleted.
+  // Persist the blank catalogue for a fresh onboarding flow.
   await store.setList(StoreKeys.subjects, const []);
 }

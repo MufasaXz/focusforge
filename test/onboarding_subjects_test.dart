@@ -83,6 +83,38 @@ void main() {
     await submitName(tester, name);
   }
 
+  testWidgets('a new user keeps only onboarding choices and later additions', (
+    tester,
+  ) async {
+    await store.clearAll();
+    final container = freshContainer();
+    expect(container.read(subjectsProvider), isEmpty);
+    await tester.pumpWidget(wrap(container, SubjectsStep(onNext: () {})));
+    await settle(tester);
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, 'Math'))
+          .selected,
+      isFalse,
+    );
+    await tester.tap(find.widgetWithText(FilterChip, 'Math'));
+    await settle(tester);
+    await addCustom(tester, 'Thesis');
+    expect(container.read(subjectsProvider).map((s) => s.name), [
+      'Math',
+      'Thesis',
+    ]);
+    final restored = freshContainer();
+    restored
+        .read(subjectsProvider.notifier)
+        .hydrate(store.getList(StoreKeys.subjects));
+    expect(restored.read(subjectsProvider).map((s) => s.name), [
+      'Math',
+      'Thesis',
+    ]);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'subjects setup asks for subjects and leaves goal planning to Home',
     (tester) async {
@@ -130,8 +162,8 @@ void main() {
         );
         expect(
           after.where((s) => s.id == 'math').length,
-          1,
-          reason: 'the seed entry is untouched, with no shadow duplicate',
+          0,
+          reason: 'an unselected template must not enter the stored list',
         );
       });
     }
@@ -262,11 +294,10 @@ void main() {
         );
         await settle(tester);
 
-        expect(
-          container.read(subjectsProvider).where((s) => s.id == 'physics'),
-          hasLength(1),
-          reason: 'a seeded subject matching a template starts selected',
-        );
+        expect(container.read(subjectsProvider), isEmpty);
+        await tester.tap(find.widgetWithText(FilterChip, 'Physics'));
+        await settle(tester);
+        expect(container.read(subjectsProvider).map((s) => s.id), ['physics']);
 
         await tester.tap(find.widgetWithText(FilterChip, 'Physics'));
         await settle(tester);

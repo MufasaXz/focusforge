@@ -15,7 +15,7 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
   /// recomputed from the session log on every [build], which is what keeps the
   /// breakdown from disagreeing with the ring above it, and from carrying
   /// yesterday's minutes into today.
-  List<Subject> _base = SeedData.subjects;
+  List<Subject> _base = const [];
 
   @override
   List<Subject> build() =>
@@ -25,12 +25,9 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
 
   /// Restores the stored catalogue.
   ///
-  /// Null means no key was ever written — a first run — so the seed catalogue
-  /// is kept deliberately. A non-null list is authoritative even when empty:
-  /// [LocalStore.getList] returns the same empty list for a missing key as for
-  /// a stored `[]`, so bootstrap resolves the ambiguity before calling here.
-  /// A user who removed every subject, or deleted their account, must not have
-  /// the seed come back on the next launch.
+  /// New users start empty. Templates are suggestions in onboarding, not
+  /// stored subjects; only choices and later additions enter this catalogue.
+  /// A saved list remains authoritative, including an explicitly empty list.
   void hydrate(List<Map<String, dynamic>>? stored) {
     if (stored == null) return;
     _base = stored.map(Subject.fromJson).toList(growable: false);

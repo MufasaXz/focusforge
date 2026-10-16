@@ -162,6 +162,10 @@ class _AppShellState extends ConsumerState<AppShell>
     final shielded = ref.watch(activeShieldCountProvider) > 0;
     final wide = MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint;
     final reduce = MediaQuery.disableAnimationsOf(context);
+    final navShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(28),
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+    );
 
     // Keyed by branch index, so the bar's order and the router's branches stay
     // one list rather than two that have to agree.
@@ -316,17 +320,52 @@ class _AppShellState extends ConsumerState<AppShell>
                         child: DecoratedBox(
                           key: const ValueKey('nav-pill'),
                           decoration: ShapeDecoration(
-                            shape: const StadiumBorder(),
+                            shape: navShape,
                             color: cs.surfaceContainerLow,
+                            shadows: [
+                              BoxShadow(
+                                color: cs.shadow.withValues(
+                                  alpha: isDark ? .18 : .07,
+                                ),
+                                blurRadius: 24,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
                           child: GlassCard(
-                            shape: const StadiumBorder(),
-                            child: NavigationBar(
-                              height: 72,
-                              backgroundColor: Colors.transparent,
-                              selectedIndex: selectedIndex,
-                              onDestinationSelected: _select,
-                              destinations: destinations,
+                            shape: navShape,
+                            child: NavigationBarTheme(
+                              data: NavigationBarTheme.of(context).copyWith(
+                                indicatorColor: cs.primaryContainer,
+                                iconTheme: WidgetStateProperty.resolveWith(
+                                  (states) => IconThemeData(
+                                    size: 22,
+                                    color: states.contains(WidgetState.selected)
+                                        ? cs.onPrimaryContainer
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                                labelTextStyle: WidgetStateProperty.resolveWith(
+                                  (
+                                    states,
+                                  ) => theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight:
+                                        states.contains(WidgetState.selected)
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: states.contains(WidgetState.selected)
+                                        ? cs.onSurface
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              child: NavigationBar(
+                                height: 72,
+                                backgroundColor: Colors.transparent,
+                                selectedIndex: selectedIndex,
+                                onDestinationSelected: _select,
+                                destinations: destinations,
+                              ),
                             ),
                           ),
                         ),

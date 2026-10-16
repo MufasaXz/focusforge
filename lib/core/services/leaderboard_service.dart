@@ -7,30 +7,41 @@ import 'package:flutter/foundation.dart';
 
 /// One row of a week's board, as it is stored.
 ///
-/// Deliberately three fields. A board that carried subjects, session counts or
-/// streaks would be publishing more about a person than the question it
-/// answers — "who studied most this week" — needs.
+/// The public weekly summary: display name, minutes and account level.
+/// Older clients did not share a level; those rows keep it unknown.
 @immutable
 class BoardRow {
-  const BoardRow({required this.uid, required this.name, required this.minutes});
+  const BoardRow({
+    required this.uid,
+    required this.name,
+    required this.minutes,
+    this.level,
+  });
 
   final String uid;
   final String name;
   final int minutes;
+  final int? level;
 
-  Map<String, dynamic> toJson() => {'name': name, 'minutes': minutes};
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'minutes': minutes,
+    if (level != null) 'level': level,
+  };
 
   static BoardRow? fromJson(String uid, Object? raw) {
     if (raw is! Map) return null;
     final minutes = raw['minutes'];
     if (minutes is! num) return null;
     final name = raw['name'];
+    final level = raw['level'];
     return BoardRow(
       uid: uid,
       name: name is String && name.trim().isNotEmpty
           ? name.trim()
           : 'A student',
       minutes: minutes.toInt(),
+      level: level is int && level > 0 ? level : null,
     );
   }
 }
@@ -60,6 +71,7 @@ abstract class LeaderboardService {
     required String uid,
     required String name,
     required int minutes,
+    required int level,
   });
 
   /// This week's rows, best first.
@@ -91,10 +103,8 @@ class FirebaseLeaderboardService implements LeaderboardService {
 
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> _entries(String week) => _db
-      .collection('leaderboard')
-      .doc(week)
-      .collection('entries');
+  CollectionReference<Map<String, dynamic>> _entries(String week) =>
+      _db.collection('leaderboard').doc(week).collection('entries');
 
   @override
   bool get available => true;
@@ -108,11 +118,13 @@ class FirebaseLeaderboardService implements LeaderboardService {
     required String uid,
     required String name,
     required int minutes,
+    required int level,
   }) async {
     await _entries(week).doc(uid).set({
       'ownerUid': uid,
       'name': name,
       'minutes': minutes,
+      'level': level,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
@@ -124,7 +136,8 @@ class FirebaseLeaderboardService implements LeaderboardService {
       .snapshots()
       .map(
         (snapshot) => [
-          for (final doc in snapshot.docs) ?BoardRow.fromJson(doc.id, doc.data()),
+          for (final doc in snapshot.docs)
+            ?BoardRow.fromJson(doc.id, doc.data()),
         ],
       );
 
@@ -154,6 +167,7 @@ class UnavailableLeaderboardService implements LeaderboardService {
     required String uid,
     required String name,
     required int minutes,
+    required int level,
   }) async {}
 
   @override

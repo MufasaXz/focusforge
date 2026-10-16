@@ -140,11 +140,13 @@ class LeaderboardEntry {
     required this.hours,
     this.isMe = false,
     this.group,
+    this.level,
   });
 
   final String uid;
   final String name;
   final double hours;
+  final int? level;
   final bool isMe;
   final String? group;
 
