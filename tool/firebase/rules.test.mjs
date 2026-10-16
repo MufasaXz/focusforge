@@ -16,6 +16,26 @@ before(async () => {
 });
 after(async () => { await env?.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
+test('study backups are private, verified account only, bounded and fenced by deletion', async () => {
+  const store=db('student');
+  const settings={version:1,ownerUid:'student',data:JSON.stringify({subjects:[]}),modifiedAt:Date.now()};
+  const session={ownerUid:'student',id:'s-1',subjectId:'math',label:'Math',startedAt:Date.now(),minutes:240,completed:true};
+  await assertSucceeds(setDoc(doc(store,'users/student/preferences/studyBackup'),settings));
+  await assertSucceeds(setDoc(doc(store,'users/student/sessionData/s-1'),session));
+  await assertSucceeds(getDocs(collection(store,'users/student/sessionData')));
+  await assertFails(getDoc(doc(db('other'),'users/student/preferences/studyBackup')));
+  await assertFails(getDocs(collection(db('other'),'users/student/sessionData')));
+  await assertFails(setDoc(doc(db('other'),'users/student/sessionData/s-2'),session));
+  await assertFails(setDoc(doc(db('guest',true),'users/guest/preferences/studyBackup'),{...settings,ownerUid:'guest'}));
+  await assertFails(setDoc(doc(store,'users/student/preferences/studyBackup'),{...settings,data:'x'.repeat(300001)}));
+  await assertFails(setDoc(doc(store,'users/student/sessionData/s-1'),{...session,minutes:-1}));
+  await assertFails(setDoc(doc(store,'users/student/sessionData/s-1'),{...session,ownerUid:'other'}));
+  await assertSucceeds(setDoc(doc(store,'accountDeletions/student'),{requestedAt:serverTimestamp()}));
+  await assertFails(setDoc(doc(store,'users/student/preferences/studyBackup'),settings));
+  await assertFails(setDoc(doc(store,'users/student/sessionData/s-2'),session));
+  await assertSucceeds(deleteDoc(doc(store,'users/student/preferences/studyBackup')));
+  await assertSucceeds(deleteDoc(doc(store,'users/student/sessionData/s-1')));
+});
 const now = () => Date.now();
 async function seedGroup() {
   const store = db('owner'), batch = writeBatch(store);

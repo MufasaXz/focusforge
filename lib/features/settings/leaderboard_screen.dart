@@ -6,11 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/providers/community_providers.dart';
 import '../../shared/widgets/community_safety.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/form_controls.dart';
 import 'account_gate.dart';
 
 /// The week, measured — against last week, and against everybody else on the
@@ -58,11 +58,7 @@ class LeaderboardScreen extends ConsumerWidget {
       );
     }
 
-    final hidden = ref.watch(blockedCommunityUsersProvider);
-    final board = [
-      for (final entry in ref.watch(leaderboardProvider))
-        if (!hidden.contains(entry.uid)) entry,
-    ];
+    final board = ref.watch(leaderboardProvider);
     final myRow = ref.watch(myRankProvider);
     final optedIn = ref.watch(boardOptInProvider);
     final available = ref.watch(leaderboardServiceProvider).available;
@@ -78,6 +74,27 @@ class LeaderboardScreen extends ConsumerWidget {
       title: 'Leaderboard',
       subtitle:
           '${dates.formatShortDate(monday)} – ${dates.formatShortDate(sunday)}',
+      trailing: optedIn
+          ? PopupMenuButton<String>(
+              tooltip: 'Sharing options',
+              onSelected: (_) async {
+                try {
+                  await ref.read(boardOptInProvider.notifier).set(false);
+                } catch (_) {
+                  if (context.mounted) {
+                    showAppSnack(
+                      context,
+                      'Could not turn off sharing. Check your connection and retry.',
+                      danger: true,
+                    );
+                  }
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'off', child: Text('Turn off sharing')),
+              ],
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -148,12 +165,13 @@ class LeaderboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: Gap.md),
-            _BoardSwitch(
-              optedIn: optedIn,
-              myRow: myRow,
-              minutes: (thisWeek * 60).round(),
-            ),
+            if (!optedIn) const SizedBox(height: Gap.md),
+            if (!optedIn)
+              _BoardSwitch(
+                optedIn: optedIn,
+                myRow: myRow,
+                minutes: (thisWeek * 60).round(),
+              ),
           ],
         ],
       ),
@@ -181,9 +199,6 @@ class _BoardRowTile extends StatelessWidget {
     final level = entry.level == null
         ? 'Level unavailable'
         : 'Level ${entry.level}';
-    final menu = !entry.isMe && entry.uid.isNotEmpty
-        ? CommunityMemberMenu(uid: entry.uid, name: entry.name)
-        : null;
     final medal = switch (rank) {
       1 => harmonize(const Color(0xFFB8860B), cs.primary),
       2 => cs.secondary,
@@ -317,7 +332,7 @@ class _BoardRowTile extends StatelessWidget {
         ),
       ),
       trailing: compact
-          ? menu
+          ? null
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -328,7 +343,6 @@ class _BoardRowTile extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-                ?menu,
               ],
             ),
     );

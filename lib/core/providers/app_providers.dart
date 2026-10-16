@@ -45,15 +45,24 @@ class UserNotifier extends Notifier<UserProfile> {
 
   void _resetConsentFor(UserProfile profile) {
     if (state.uid.isNotEmpty && state.uid != profile.uid) {
-      ref.read(boardOptInProvider.notifier).hydrate(false);
+      ref
+          .read(boardOptInProvider.notifier)
+          .hydrate(
+            _store.getBool('leaderboard.consent.${profile.uid}') ??
+                (_store.getMap(StoreKeys.user)?['uid'] == profile.uid
+                    ? _store.getBool(StoreKeys.boardOptIn)
+                    : false),
+          );
     }
   }
 
   Future<void> save(UserProfile profile) async {
     final identityChanged = state.uid.isNotEmpty && state.uid != profile.uid;
     _resetConsentFor(profile);
-    if (identityChanged) await _store.setBool(StoreKeys.boardOptIn, false);
     state = profile;
+    if (identityChanged) {
+      await _store.setBool(StoreKeys.boardOptIn, ref.read(boardOptInProvider));
+    }
     await _store.setMap(StoreKeys.user, profile.toJson());
   }
 
@@ -211,5 +220,9 @@ final accountUidProvider = Provider<String?>((ref) {
   final profile = ref.watch(userProvider);
   final auth = ref.watch(authServiceProvider);
   if (auth.usesRemoteCredentials && !auth.signedIn) return null;
+  if (profile.isAnonymous) return null;
+  if (auth.usesRemoteCredentials && auth.current?.uid != profile.uid) {
+    return null;
+  }
   return profile.uid.isEmpty ? null : profile.uid;
 });

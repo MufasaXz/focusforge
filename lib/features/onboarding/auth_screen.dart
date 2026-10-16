@@ -51,22 +51,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   AuthService get _auth => ref.read(authServiceProvider);
 
-  /// Re-anchors the auth layer on the profile the app actually holds.
-  ///
-  /// `AuthService` now takes the stored profile as the base for every
-  /// credential operation, so this is no longer what keeps the user's edits
-  /// from being lost; it only keeps the service's in-memory cache — and the
-  /// `signedIn` flag the flow reads — in step with `UserNotifier`, which the
-  /// auth layer never hears from directly.
-  ///
-  /// Skipped while no session exists: a cold install has a blank profile, and
-  /// the auth layer must mint a uid rather than adopt an empty one.
-  Future<void> _syncSession() async {
-    final current = ref.read(userProvider);
-    if (current.uid.isEmpty) return;
-    await _auth.updateProfile(current);
-  }
-
   Future<void> _run(String id, Future<UserProfile?> Function() action) async {
     if (_busy != null) return;
     setState(() {
@@ -74,7 +58,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _done = null;
     });
     try {
-      await _syncSession();
       final profile = await action();
       if (!mounted) return;
       // Adopt the identity the auth layer just minted, immediately.
@@ -85,7 +68,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       // — and the user silently ends up anonymous again, locked out of study
       // groups and the leaderboard. Adopting here closes that window.
       if (profile != null) {
-        await ref.read(userProvider.notifier).save(profile);
+        ref.read(userProvider.notifier).hydrate(profile);
       }
       if (!mounted) return;
       // A held tick, not an instant cut: the user pressed a button and the
@@ -167,7 +150,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (_busy != null) return;
     setState(() => _busy = 'email');
     try {
-      await _syncSession();
       if (!mounted) return;
       final profile = await showModalBottomSheet<UserProfile>(
         context: context,
@@ -177,7 +159,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         builder: (_) => EmailAuthSheet(service: _auth),
       );
       if (profile == null || !mounted) return;
-      await ref.read(userProvider.notifier).save(profile);
+      ref.read(userProvider.notifier).hydrate(profile);
       if (!mounted) return;
       HapticFeedback.lightImpact();
       _finish();
@@ -233,6 +215,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_auth.restorationPending) ...[
+                  Text(
+                    'Your saved study data could not be loaded. Connect to the internet and try again.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  FilledButton.icon(
+                    onPressed: _busy == null
+                        ? () => _run('restore', _auth.restore)
+                        : null,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry account recovery'),
+                  ),
+                  const SizedBox(height: Gap.lg),
+                ],
                 Stagger(
                   index: 0,
                   child: Padding(
@@ -286,7 +283,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 2,
                   child: Text(
-                    'Join groups, compare focus time and back up badges.',
+                    'Restore your study data, join groups and compare focus time.',
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),

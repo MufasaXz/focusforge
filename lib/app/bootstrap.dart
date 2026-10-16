@@ -15,6 +15,7 @@ import '../core/services/auth_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
 import '../core/services/local_store.dart';
+import '../core/services/study_backup_service.dart';
 import 'router.dart';
 
 /// Opens the store and rebuilds every persisted notifier from it.
@@ -64,25 +65,42 @@ Future<ProviderContainer> bootstrap() async {
   // local history but must close account gates, just like the UI action.
   authService.changes.listen((profile) {
     if (profile != null) {
+      if (authService.current?.uid != profile.uid) return;
+      hydrateStudyAccount(container, store);
       container.read(userProvider.notifier).hydrate(profile);
     } else {
+      if (authService.signedIn) return;
+      if (authService.restorationPending) {
+        // Credential changes precede an awaited cloud restore. Stop the old
+        // segment before that wait, including a guest segment being linked.
+        container.read(timerProvider.notifier).setPreset(0);
+        container.read(timerProvider.notifier).setSubject(null);
+      }
       final local = container.read(userProvider);
       if (!local.isAnonymous) {
+        // Gate closure is synchronous; a delayed whole-profile disk write
+        // must never overwrite a sign-in that arrives just after this event.
         container
             .read(userProvider.notifier)
-            .save(local.copyWith(isAnonymous: true));
+            .hydrate(local.copyWith(isAnonymous: true));
       }
     }
   });
-  final restored = await authService.restore();
+  UserProfile? restored;
+  try {
+    restored = await authService.restore();
+  } on AuthException {
+    // Show a retryable account screen. An unavailable backup must neither
+    // abort the first frame nor be interpreted as an empty cloud account.
+  }
   if (restored != null) {
     container.read(userProvider.notifier).hydrate(restored);
   } else if (authService.usesRemoteCredentials) {
     final local = container.read(userProvider);
     if (!local.isAnonymous) {
-      await container
+      container
           .read(userProvider.notifier)
-          .save(local.copyWith(isAnonymous: true));
+          .hydrate(local.copyWith(isAnonymous: true));
     }
   }
 
@@ -202,11 +220,43 @@ Future<AuthService> _openAuthService(LocalStore store) async {
     // erase older disk data before opening cloud listeners.
     await prepareFirestoreCache(FirebaseFirestore.instance);
     debugPrint('[auth] Firebase initialised: using FirebaseAuthService.');
-    return FirebaseAuthService(store);
+    return FirebaseAuthService(
+      store,
+      studyBackup: StudyBackupService(
+        store,
+        FirebaseStudyBackupBackend(FirebaseFirestore.instance),
+      ),
+    );
   } catch (_) {
     debugPrint('[auth] Firebase unavailable: using the local account store.');
     return GuestOnlyAuthService(store);
   }
+}
+
+/// Restore the private account snapshot before publishing its linked profile.
+void hydrateStudyAccount(ProviderContainer container, LocalStore store) {
+  container
+      .read(sessionsProvider.notifier)
+      .hydrate(store.getList(StoreKeys.sessions));
+  container
+      .read(subjectsProvider.notifier)
+      .hydrate(store.getList(StoreKeys.subjects));
+  container
+      .read(customPlanProvider.notifier)
+      .hydrate(store.getMap(StoreKeys.customPlan));
+  container
+      .read(dailyGoalProvider.notifier)
+      .hydrate(
+        store.getInt(StoreKeys.dailyGoal),
+        store.getMap(StoreKeys.dailyGoalDays),
+      );
+  container
+      .read(statsProvider.notifier)
+      .hydrate(GamificationStats.fromJson(store.getMap(StoreKeys.stats) ?? {}));
+  container.invalidate(focusGoalPlannerProvider);
+  container
+      .read(boardOptInProvider.notifier)
+      .hydrate(store.getBool(StoreKeys.boardOptIn));
 }
 
 /// Puts every persisted notifier back to its cold-start value and wipes the

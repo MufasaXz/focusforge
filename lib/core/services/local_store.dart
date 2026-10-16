@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'widget_service.dart';
@@ -19,6 +20,8 @@ class LocalStore {
   LocalStore._(this._prefs);
 
   final SharedPreferences _prefs;
+  final _changes = StreamController<String>.broadcast(sync: true);
+  Stream<String> get changes => _changes.stream;
 
   static LocalStore? _instance;
 
@@ -54,6 +57,7 @@ class LocalStore {
 
   Future<void> setString(String key, String value) async {
     await _prefs.setString(_k(key), value);
+    _changes.add(key);
     if ({
       StoreKeys.sessions,
       StoreKeys.presets,
@@ -74,6 +78,7 @@ class LocalStore {
 
   Future<void> setBool(String key, bool value) async {
     await _prefs.setBool(_k(key), value);
+    _changes.add(key);
     if (key == StoreKeys.amoled) await WidgetService.refresh();
   }
 
@@ -81,13 +86,21 @@ class LocalStore {
 
   Future<void> setInt(String key, int value) async {
     await _prefs.setInt(_k(key), value);
+    _changes.add(key);
     if (key == StoreKeys.dailyGoal) await WidgetService.refresh();
   }
 
   double? getDouble(String key) => _read<double>(key);
 
-  Future<void> setDouble(String key, double value) =>
-      _prefs.setDouble(_k(key), value);
+  Future<void> setDouble(String key, double value) async {
+    await _prefs.setDouble(_k(key), value);
+    _changes.add(key);
+  }
+
+  Future<void> remove(String key) async {
+    await _prefs.remove(_k(key));
+    _changes.add(key);
+  }
 
   // -- Structured ------------------------------------------------------------
 

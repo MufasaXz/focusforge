@@ -68,6 +68,8 @@ class AuthException implements Exception {
 /// credential is remote. Separate services back up earned badge IDs and
 /// handle optional aggregate sharing; detailed session logs stay local.
 abstract class AuthService {
+  /// A credential exists, but its private study snapshot still needs recovery.
+  bool get restorationPending => false;
   bool get needsEmailVerification => false;
   String? get verificationEmail => null;
   DateTime? get verificationResendAvailableAt => null;

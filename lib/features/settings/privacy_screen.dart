@@ -71,7 +71,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                         : user.displayName,
                   ),
                   subtitle: Text(
-                    user.isAnonymous ? 'On this device · no account required' : 'Linked account · detailed history stays on this device',
+                    user.isAnonymous
+                        ? 'On this device · no account required'
+                        : 'Linked account · private study backup',
                   ),
                 ),
                 ListTile(
@@ -122,12 +124,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     size: 42,
                     radius: 12,
                   ),
-                  title: const Text('Your detailed history stays here'),
+                  title: const Text('Your study history, kept private'),
                   subtitle: const Text(
-                    'Focus sessions, shield events and settings '
-                    'are stored locally and kept when you sign out. They belong '
-                    'to this device, so signing in again restores its setup. '
-                    'Optional sharing uses this device’s totals. Clear local '
+                    'Guest study and Shield events '
+                    'stay on this device. Linked accounts privately back up study sessions, subjects, plans and goals. They belong '
+                    'to your account, so signing in restores your study setup. '
+                    'Leaderboard sharing is optional. Clear local '
                     'analytics before handing your phone to someone else.',
                   ),
                 ),
@@ -135,12 +137,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             ),
             AppSection(
               title: 'What’s in the cloud',
-              footnote: 'Sharing starts when you join a group or opt into the board. Badge backups are private.',
+              footnote: 'Study and badge backups are private. Public sharing starts only when you opt in.',
               children: const [
                 ListTile(
                   title: Text('Your account'),
                   subtitle: Text(
-                    'Sign-in credentials are handled by Firebase. Profile choices and avatar stay on this device.',
+                    'Sign-in credentials are handled by Firebase. Your profile, subjects, custom plans, goals and focus sessions are backed up privately for linked accounts.',
                   ),
                   leading: Icon(Icons.person_outline),
                 ),
@@ -148,7 +150,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   title: Text('Earned achievements'),
                   subtitle: Text(
                     'Badge IDs and earned dates are backed up privately for linked accounts. '
-                    'Sign in to the same account to recover them. Detailed sessions stay on this device.',
+                    'Sign in to the same account to recover your badges and study history.',
                   ),
                   leading: Icon(Icons.workspace_premium_outlined),
                 ),
@@ -162,7 +164,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ListTile(
                   title: Text('Leaderboard scores'),
                   subtitle: Text(
-                    'Display name, account ID, level and weekly focus minutes · Visible to signed-in users when you opt in',
+                    'Display name, account ID, level and weekly minutes · Shared when you opt in, including after sign-out, until you turn sharing off or delete your account',
                   ),
                   leading: Icon(Icons.leaderboard_outlined),
                 ),
@@ -286,7 +288,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       message:
           'This removes your focus history, streak totals, subject '
           'progress and shield statistics from this device. Badges and '
-          'weekly targets are kept.',
+          'weekly targets are kept. Saved cloud study history can return '
+          'when you recover your account.',
       confirmLabel: 'Clear analytics',
       icon: Icons.cleaning_services_rounded,
       destructive: true,
@@ -494,7 +497,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     final confirmed = await showAppConfirmDialog(
       context: context,
       title: 'Sign out?',
-      message: 'Your setup and detailed history stay on this device. Sign in again to reconnect sharing.',
+      message: 'Your study data stays on this device. Online changes are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.',
       confirmLabel: 'Sign out',
       icon: Icons.logout_rounded,
     );

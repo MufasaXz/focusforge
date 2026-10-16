@@ -87,6 +87,26 @@ service cloud.firestore {
         allow read: if owner(uid) && (cleanupAccount() || deleting(uid));
         allow delete: if owner(uid);
       }
+      // Private returning-account backup. App usage and Shield records are
+      // excluded; only study setup and completed focus sessions are stored.
+      match /preferences/studyBackup {
+        allow create, update: if account() && self(uid) &&
+          request.resource.data.keys().hasOnly(['version','ownerUid','data','modifiedAt']) &&
+          request.resource.data.version == 1 && request.resource.data.ownerUid == uid &&
+          request.resource.data.data is string && request.resource.data.data.size() <= 300000 &&
+          localTimestamp(request.resource.data.modifiedAt);
+      }
+      match /sessionData/{session} {
+        allow create, update: if account() && self(uid) &&
+          request.resource.data.keys().hasOnly(['id','subjectId','startedAt','minutes','completed','label','ownerUid']) &&
+          request.resource.data.ownerUid == uid &&
+          request.resource.data.id is string && request.resource.data.id.size() > 0 && request.resource.data.id.size() <= 200 &&
+          request.resource.data.subjectId is string && request.resource.data.subjectId.size() <= 200 &&
+          request.resource.data.label is string && request.resource.data.label.size() <= 200 &&
+          localTimestamp(request.resource.data.startedAt) &&
+          boundedInt(request.resource.data.minutes, 1440) &&
+          request.resource.data.completed is bool;
+      }
       match /{privateCollection}/{record=**} {
         allow read, delete: if owner(uid) && privateCollection != 'achievements';
         allow create, update: if false;

@@ -12,13 +12,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
+import 'study_backup_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
 ///
-/// Firebase holds only the credential. The profile record — persona, name,
-/// daily goal, onboarding state — stays in [LocalStore], which is the app's
-/// privacy position. Optional study groups and achievement backups have separate services;
-/// detailed logs stay local and the timer keeps working without a network.
+/// LocalStore supports offline study. Verified linked accounts privately back
+/// up study settings and sessions before a restored profile is published.
+/// Optional groups, leaderboard sharing and badge backups have separate services.
 ///
 /// Constructed only after `Firebase.initializeApp()` has succeeded; see
 /// `bootstrap()`, which falls back to [LocalAuthService] otherwise.
@@ -32,10 +32,20 @@ class FirebaseAuthService extends AuthService {
     FirebaseFirestore? firestore,
     FirestoreAccountCleanup? accountCleanup,
     GoogleSignIn? googleSignIn,
+    this.studyBackup,
   }) : _auth = firebaseAuth ?? FirebaseAuth.instance,
        _firestoreOverride = firestore,
        _cleanupOverride = accountCleanup,
        _googleClient = googleSignIn {
+    studyBackup?.onReconciled = (profile) {
+      if (!_disposed &&
+          _auth.currentUser?.uid == profile.uid &&
+          !_restorationPending &&
+          !_requiresEmailVerification(_auth.currentUser!)) {
+        _current = profile;
+        _controller.add(profile);
+      }
+    };
     // `authStateChanges()` is the single source of stream events: it fires
     // both for sessions started through this class and for ones it never saw
     // — a session restored on launch, a sign-out from elsewhere. Re-keying
@@ -43,7 +53,13 @@ class FirebaseAuthService extends AuthService {
     // listeners from ever observing a profile with a defaulted persona,
     // name or goal.
     _authSub = _auth.authStateChanges().listen((user) {
-      unawaited(_onAuthStateChanged(user));
+      unawaited(
+        _onAuthStateChanged(user).catchError((Object error) {
+          debugPrint(
+            '[auth] Session restoration will retry on the next sign-in.',
+          );
+        }),
+      );
     });
   }
 
@@ -51,6 +67,12 @@ class FirebaseAuthService extends AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore? _firestoreOverride;
   final FirestoreAccountCleanup? _cleanupOverride;
+  final StudyBackupService? studyBackup;
+  Future<void> _profileWrites = Future.value();
+  bool _disposed = false;
+  bool _restorationPending = false;
+  @override
+  bool get restorationPending => _restorationPending;
 
   final _controller = StreamController<UserProfile?>.broadcast();
   StreamSubscription<User?>? _authSub;
@@ -149,9 +171,12 @@ class FirebaseAuthService extends AuthService {
 
   @override
   bool get signedIn =>
-      _auth.currentUser != null &&
-      !_isDeletedCredential(_auth.currentUser!) &&
-      !needsEmailVerification;
+      (_auth.currentUser != null &&
+          !_restorationPending &&
+          _current?.uid == _auth.currentUser?.uid &&
+          !_isDeletedCredential(_auth.currentUser!) &&
+          !needsEmailVerification) ||
+      (_auth.currentUser == null && _current?.isAnonymous == true);
 
   bool _isDeletedCredential(User user) =>
       _store.getString('auth.deletedCredential') == user.uid;
@@ -167,6 +192,7 @@ class FirebaseAuthService extends AuthService {
       return null;
     }
     if (user == null || _isDeletedCredential(user)) {
+      _restorationPending = false;
       if (user != null) {
         try {
           await _auth.signOut();
@@ -179,13 +205,7 @@ class FirebaseAuthService extends AuthService {
     return _persist(_profileFor(user));
   }
 
-  /// Signs in anonymously, then re-keys the stored profile to the new uid.
-  ///
-  /// Firebase mints a fresh anonymous user on every call, so unlike the local
-  /// implementation a second "Skip for now" produces a new uid. The stored
-  /// record is still the base: persona, name, goal and timezone survive, and
-  /// only the uid changes. Starting from a fresh [UserProfile] instead would
-  /// silently reset everything the user edited during onboarding.
+  /// Opens a device-only guest immediately, preserving local setup choices.
   @override
   Future<UserProfile> signInAnonymously() async {
     if (_auth.currentUser case final user?) {
@@ -194,9 +214,17 @@ class FirebaseAuthService extends AuthService {
       }
       return _persist(_profileFor(user));
     }
+    // Guest study needs no network credential. A local identity is promoted
+    // when the user later proves ownership of an email/Google account.
     _returning = false;
-    final credential = await _guard(() => _auth.signInAnonymously());
-    return _persist(_profileFor(credential.user!));
+    final stored = _store.getMap(StoreKeys.user);
+    final base = stored == null
+        ? UserProfile(
+            uid: 'local-${DateTime.now().microsecondsSinceEpoch}',
+            createdAt: DateTime.now(),
+          )
+        : UserProfile.fromJson(stored).copyWith(isAnonymous: true);
+    return _persist(base);
   }
 
   /// Signs in with an email credential, then applies the same merge as the
@@ -375,6 +403,13 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<void> signOut() async {
     _reauthenticatedAt = null;
+    try {
+      await studyBackup?.flush();
+    } catch (_) {
+      // flush caches the latest account snapshot before attempting upload.
+      // Offline backup must never prevent closing the credential.
+    }
+    studyBackup?.disconnect();
     await _guard(() => _auth.signOut());
     try {
       await _googleSignIn().signOut();
@@ -383,6 +418,7 @@ class FirebaseAuthService extends AuthService {
       // not report a failed sign-out after it succeeded.
     }
     _current = null;
+    _restorationPending = false;
     _controller.add(null);
   }
 
@@ -427,6 +463,7 @@ class FirebaseAuthService extends AuthService {
 
   @override
   Future<void> deleteAccount() async {
+    studyBackup?.disconnect();
     final user = _auth.currentUser;
     if (user == null) {
       // Sign out leaves the cloud account intact. Erase only this device
@@ -508,7 +545,12 @@ class FirebaseAuthService extends AuthService {
 
   @override
   Future<void> updateProfile(UserProfile profile) async {
-    await _persist(profile);
+    final userNow = _auth.currentUser;
+    if (userNow != null && userNow.uid != profile.uid) return;
+    await _persist(
+      profile.copyWith(isAnonymous: userNow?.isAnonymous ?? true),
+      profileEdit: true,
+    );
 
     final user = _auth.currentUser;
     if (user == null ||
@@ -519,7 +561,9 @@ class FirebaseAuthService extends AuthService {
     // Best effort: the device record above is the source of truth and a
     // rename must work offline. A failed push is retried on the next save.
     try {
-      await user.updateDisplayName(profile.displayName);
+      unawaited(
+        user.updateDisplayName(profile.displayName).catchError((Object _) {}),
+      );
     } on FirebaseAuthException {
       // Deliberately swallowed — see above.
     }
@@ -527,17 +571,25 @@ class FirebaseAuthService extends AuthService {
 
   @override
   void dispose() {
+    _disposed = true;
+    studyBackup?.dispose();
     final sub = _authSub;
     if (sub != null) unawaited(sub.cancel());
     _controller.close();
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
+    if (_disposed || user?.uid != _auth.currentUser?.uid) return;
+    // A device-only guest has no Firebase credential. The SDK's initial null
+    // event must not undo a completed local Skip action.
+    if (user == null && _current?.isAnonymous == true) return;
     if (user == null ||
         _isDeletedCredential(user) ||
         _requiresEmailVerification(user)) {
       _current = null;
-      _controller.add(null);
+      _restorationPending = false;
+      studyBackup?.disconnect();
+      if (!_disposed) _controller.add(null);
       return;
     }
     await _persist(_profileFor(user));
@@ -598,9 +650,58 @@ class FirebaseAuthService extends AuthService {
     return email == null ? '' : _nameFromEmail(email);
   }
 
-  Future<UserProfile> _persist(UserProfile profile) async {
+  Future<UserProfile> _persist(
+    UserProfile profile, {
+    bool profileEdit = false,
+  }) {
+    final next = _profileWrites
+        .catchError((Object _) {})
+        .then((_) => _writeProfile(profile, profileEdit: profileEdit));
+    _profileWrites = next.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return next;
+  }
+
+  Future<UserProfile> _writeProfile(
+    UserProfile profile, {
+    required bool profileEdit,
+  }) async {
     if (needsEmailVerification) {
       throw const AuthException(AuthFailure.emailVerificationRequired);
+    }
+    final credential = _auth.currentUser;
+    if (_disposed ||
+        (credential != null && credential.uid != profile.uid) ||
+        (credential == null && !profile.isAnonymous)) {
+      throw const AuthException(AuthFailure.cancelled);
+    }
+    profile = profile.copyWith(isAnonymous: credential?.isAnonymous ?? true);
+    if (!profileEdit && credential != null) profile = _profileFor(credential);
+    final backup = studyBackup;
+    if (!profile.isAnonymous && backup != null) {
+      if (_store.getMap(StoreKeys.user)?['uid'] != profile.uid) {
+        _restorationPending = true;
+        _current = null;
+        if (!_disposed) _controller.add(null);
+      }
+      try {
+        profile = await backup.connect(profile);
+      } catch (_) {
+        if (_disposed || _auth.currentUser?.uid != credential?.uid) {
+          throw const AuthException(AuthFailure.cancelled);
+        }
+        _restorationPending = true;
+        if (!_disposed) _controller.add(null);
+        throw const AuthException(AuthFailure.network);
+      }
+    }
+    if (_disposed || _auth.currentUser?.uid != credential?.uid) {
+      throw const AuthException(AuthFailure.cancelled);
+    }
+    if (_returning && !profile.isAnonymous && !profile.onboardingComplete) {
+      profile = profile.copyWith(onboardingComplete: true);
     }
     await _store.prepareAchievementIdentity(profile.uid);
     final key = 'achievements.linked.${profile.uid}';
@@ -611,9 +712,14 @@ class FirebaseAuthService extends AuthService {
     if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
       await _store.setBool(StoreKeys.boardOptIn, false);
     }
+    _restorationPending = false;
     _current = profile;
     await _store.setMap(StoreKeys.user, profile.toJson());
-    _controller.add(profile);
+    if (_disposed || _auth.currentUser?.uid != credential?.uid) {
+      _current = null;
+      throw const AuthException(AuthFailure.cancelled);
+    }
+    if (!_disposed) _controller.add(profile);
     return profile;
   }
 

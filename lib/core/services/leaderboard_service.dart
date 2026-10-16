@@ -77,7 +77,8 @@ abstract class LeaderboardService {
   /// This week's rows, best first.
   Stream<List<BoardRow>> watch(String week, {int limit = 100});
 
-  /// Removes this device's row, so leaving the board is immediate.
+  /// Removes this account's published rows from every week. [week] also
+  /// identifies the current row written by clients predating ownerUid.
   Future<void> withdraw(String week, String uid);
 
   void dispose();
@@ -89,7 +90,8 @@ abstract class LeaderboardService {
 /// which is what makes the read a plain ordered query with no composite index
 /// to create and no scan of every week that has ever been played.
 class FirebaseLeaderboardService implements LeaderboardService {
-  FirebaseLeaderboardService();
+  FirebaseLeaderboardService({this.firestore});
+  final FirebaseFirestore? firestore;
 
   /// True when Firebase has an app to talk to — the same check the parent
   /// layer makes, and for the same reason.
@@ -101,7 +103,7 @@ class FirebaseLeaderboardService implements LeaderboardService {
     }
   }
 
-  FirebaseFirestore get _db => FirebaseFirestore.instance;
+  FirebaseFirestore get _db => firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _entries(String week) =>
       _db.collection('leaderboard').doc(week).collection('entries');
@@ -120,13 +122,16 @@ class FirebaseLeaderboardService implements LeaderboardService {
     required int minutes,
     required int level,
   }) async {
-    await _entries(week).doc(uid).set({
-      'ownerUid': uid,
-      'name': name,
-      'minutes': minutes,
-      'level': level,
-      'updatedAt': DateTime.now().millisecondsSinceEpoch,
-    });
+    await _entries(week)
+        .doc(uid)
+        .set({
+          'ownerUid': uid,
+          'name': name,
+          'minutes': minutes,
+          'level': level,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        })
+        .timeout(const Duration(seconds: 12));
   }
 
   @override
@@ -142,8 +147,40 @@ class FirebaseLeaderboardService implements LeaderboardService {
       );
 
   @override
-  Future<void> withdraw(String week, String uid) =>
-      _entries(week).doc(uid).delete();
+  Future<void> withdraw(String week, String uid) async {
+    const wait = Duration(seconds: 12);
+    // Retain direct deletion for a legacy current-week row without ownerUid.
+    await _entries(week).doc(uid).delete().timeout(wait);
+    final owned = _db
+        .collectionGroup('entries')
+        .where('ownerUid', isEqualTo: uid);
+    QueryDocumentSnapshot<Map<String, dynamic>>? last;
+    while (true) {
+      Query<Map<String, dynamic>> query = owned.limit(200);
+      if (last != null) query = query.startAfterDocument(last);
+      final page = await query
+          .get(const GetOptions(source: Source.server))
+          .timeout(wait);
+      if (page.docs.isEmpty) return;
+      final batch = _db.batch();
+      var count = 0;
+      for (final doc in page.docs) {
+        final path = doc.reference.path.split('/');
+        // Other features can use an entries collection too. Opt-out affects
+        // leaderboard rows only, even when they carry the same ownerUid.
+        if (path.length == 4 &&
+            path[0] == 'leaderboard' &&
+            path[2] == 'entries' &&
+            doc.id == uid) {
+          batch.delete(doc.reference);
+          count++;
+        }
+      }
+      if (count > 0) await batch.commit().timeout(wait);
+      if (page.docs.length < 200) return;
+      last = page.docs.last;
+    }
+  }
 
   @override
   void dispose() {}

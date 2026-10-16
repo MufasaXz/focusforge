@@ -94,6 +94,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (ref.read(authServiceProvider).needsEmailVerification) {
         return location == '/verify-email' ? null : '/verify-email';
       }
+      if (ref.read(authServiceProvider).restorationPending) {
+        return location == '/auth' ? null : '/auth';
+      }
       if (location == '/verify-email') {
         return onboarded ? '/dashboard' : '/onboarding';
       }

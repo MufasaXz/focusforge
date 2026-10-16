@@ -7,6 +7,24 @@ import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/firebase_auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/study_backup_service.dart';
+
+class _Backup implements StudyBackupBackend {
+  bool failLoad = false;
+  bool failSave = false;
+  Completer<StudyBackup?>? delayedLoad;
+  @override
+  Future<StudyBackup?> load(String uid) async {
+    if (failLoad) throw StateError('offline');
+    if (delayedLoad != null) return delayedLoad!.future;
+    return null;
+  }
+
+  @override
+  Future<void> save(String uid, StudyBackup backup) async {
+    if (failSave) throw StateError('offline');
+  }
+}
 
 class _Info implements UserInfo {
   @override
@@ -234,4 +252,84 @@ void main() {
     expect(service.current, isNull);
     expect(store.getMap(StoreKeys.user)?['onboardingComplete'], isTrue);
   });
+  test(
+    'canceled cloud recovery cannot reopen the gate after signout',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup()..delayedLoad = Completer<StudyBackup?>();
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      final pending = service.restore().then(
+        (_) => null,
+        onError: (Object _) => null,
+      );
+      await Future<void>.delayed(Duration.zero);
+      await service.signOut();
+      backend.delayedLoad!.complete(null);
+      await pending;
+      expect(service.restorationPending, isFalse);
+      expect(service.signedIn, isFalse);
+      expect(await service.restore(), isNull);
+      expect(service.restorationPending, isFalse);
+    },
+  );
+  test(
+    'offline signout closes credentials and keeps the pending local backup',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup();
+      final backup = StudyBackupService(store, backend);
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: backup,
+      );
+      await service.restore();
+      await backup.flush();
+      backend.failSave = true;
+      await store.setInt(StoreKeys.dailyGoal, 480);
+      await service.signOut();
+      expect(auth.closed, isTrue);
+      expect(service.current, isNull);
+      expect(store.getMap('study.account.email-account'), isNotNull);
+    },
+  );
+  test('failed account recovery stays retryable without replacing local or cloud data', () async {
+    service.dispose();
+    auth.user.verified = true;
+    final backend = _Backup()..failLoad = true;
+    service = FirebaseAuthService(
+      store,
+      firebaseAuth: auth,
+      studyBackup: StudyBackupService(store, backend),
+    );
+    await expectLater(service.restore(), throwsA(isA<AuthException>()));
+    expect(service.restorationPending, isTrue);
+    expect(service.current, isNull);
+    expect(service.signedIn, isFalse);
+    expect(store.getMap(StoreKeys.user)?['uid'], 'guest');
+    backend.failLoad = false;
+    final recovered = await service.restore();
+    expect(recovered?.uid, 'email-account');
+    expect(service.restorationPending, isFalse);
+    expect(service.signedIn, isTrue);
+  });
+  test(
+    'guest skip works locally and survives the initial null SDK event',
+    () async {
+      auth.closed = true;
+      final guest = await service.signInAnonymously();
+      expect(guest.isAnonymous, isTrue);
+      expect(service.current?.uid, guest.uid);
+      auth.controller.add(null);
+      await Future<void>.delayed(Duration.zero);
+      expect(service.current?.uid, guest.uid);
+      expect(service.signedIn, isTrue);
+    },
+  );
 }

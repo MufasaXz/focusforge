@@ -10,6 +10,7 @@ import '../services/achievement_service.dart';
 import 'app_providers.dart';
 import 'shield_providers.dart';
 import 'study_providers.dart';
+import 'goal_planner_providers.dart';
 
 // -- Achievements ------------------------------------------------------------
 
@@ -681,6 +682,16 @@ final groupPublisherProvider = Provider<void>((ref) {
 });
 
 // -- Leaderboard -------------------------------------------------------------
+bool _ownsBoardTime(Ref ref, String owner) {
+  final uid = ref.watch(userProvider.select((user) => user.uid));
+  final store = ref.read(localStoreProvider);
+  final historyOwner =
+      store.getString(StoreKeys.achievementHistoryOwner) ?? uid;
+  final aliases = store.getMap(StoreKeys.achievementAliases) ?? const {};
+  return owner == uid ||
+      aliases[owner] == uid ||
+      (owner.isEmpty && historyOwner == uid);
+}
 
 /// Hours of completed focus logged since Monday 00:00 local — the span the
 /// subject rings and the heatmap call "this week".
@@ -690,10 +701,15 @@ final groupPublisherProvider = Provider<void>((ref) {
 /// board and the rest of the app on different weeks.
 final leaderboardWeekHoursProvider = Provider<double>((ref) {
   final now = DateTime.now();
+  ref.watch(focusCalendarDateProvider);
   final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   var minutes = 0;
   for (final session in ref.watch(sessionsProvider)) {
     if (!session.completed) continue;
+    if (!_ownsBoardTime(ref, session.ownerUid) ||
+        session.startedAt.isAfter(now)) {
+      continue;
+    }
     if (session.startedAt.isBefore(monday)) continue;
     minutes += session.minutes;
   }
@@ -714,6 +730,7 @@ final previousWeekHoursProvider = Provider<double>((ref) {
   var minutes = 0;
   for (final session in ref.watch(sessionsProvider)) {
     if (!session.completed) continue;
+    if (!_ownsBoardTime(ref, session.ownerUid)) continue;
     final at = session.startedAt;
     if (at.isBefore(lastMonday) || !at.isBefore(thisMonday)) continue;
     minutes += session.minutes;
@@ -727,7 +744,13 @@ final weekSessionCountProvider = Provider<int>((ref) {
   final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   return ref
       .watch(sessionsProvider)
-      .where((s) => s.completed && !s.startedAt.isBefore(monday))
+      .where(
+        (s) =>
+            s.completed &&
+            _ownsBoardTime(ref, s.ownerUid) &&
+            !s.startedAt.isBefore(monday) &&
+            !s.startedAt.isAfter(now),
+      )
       .length;
 });
 
@@ -772,16 +795,53 @@ final leaderboardServiceProvider = Provider<LeaderboardService>((ref) {
 /// Off by default, and off means nothing is written: publishing a study
 /// record under someone's name is not something to opt out of afterwards.
 class BoardOptInNotifier extends Notifier<bool> {
+  final _requests = <String, int>{};
+  bool _disposed = false;
+
   @override
-  bool build() => false;
+  bool build() {
+    _disposed = false;
+    ref.onDispose(() => _disposed = true);
+    return false;
+  }
 
   LocalStore get _store => ref.read(localStoreProvider);
 
   void hydrate(bool? stored) => state = stored ?? false;
 
   Future<void> set(bool value) async {
+    final uid = ref.read(accountUidProvider) ?? ref.read(userProvider).uid;
+    final week = ref.read(currentWeekKeyProvider);
+    final service = ref.read(leaderboardServiceProvider);
+    final linked = ref.read(accountUidProvider) == uid;
+    final request = (_requests[uid] ?? 0) + 1;
+    _requests[uid] = request;
+    bool ownsRequest() => !_disposed && _requests[uid] == request;
+    bool isCurrent() => ownsRequest() && ref.read(userProvider).uid == uid;
     state = value;
-    await _store.setBool(StoreKeys.boardOptIn, value);
+    await _store.setBool('leaderboard.consent.$uid', value);
+    if (isCurrent()) await _store.setBool(StoreKeys.boardOptIn, value);
+    if (!ownsRequest()) return;
+    if (!value && uid.isNotEmpty && linked) {
+      try {
+        await ref.read(boardPublishQueueProvider).run(() {
+          if (!ownsRequest()) return Future<void>.value();
+          if (ref.read(accountUidProvider) != uid) {
+            throw StateError('Account changed before sharing was withdrawn');
+          }
+          return service.withdraw(week, uid);
+        });
+      } catch (_) {
+        if (ownsRequest()) {
+          await _store.setBool('leaderboard.consent.$uid', true);
+          if (isCurrent()) {
+            state = true;
+            await _store.setBool(StoreKeys.boardOptIn, true);
+          }
+        }
+        rethrow;
+      }
+    }
   }
 }
 
@@ -789,11 +849,21 @@ final boardOptInProvider = NotifierProvider<BoardOptInNotifier, bool>(
   BoardOptInNotifier.new,
 );
 
-/// This week's board key. Fixed for the run — a week that turns over while the
-/// app is open is a detail the next launch handles.
+/// This week's board key, refreshed with the calendar on foreground return.
 final currentWeekKeyProvider = Provider<String>(
-  (ref) => weekKey(DateTime.now()),
+  (ref) => weekKey(ref.watch(focusCalendarDateProvider)),
 );
+
+class BoardPublishQueue {
+  Future<void> _pending = Future.value();
+  Future<void> run(Future<void> Function() action) {
+    final next = _pending.catchError((Object _) {}).then((_) => action());
+    _pending = next;
+    return next;
+  }
+}
+
+final boardPublishQueueProvider = Provider((ref) => BoardPublishQueue());
 
 /// This week's rows, best first.
 final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
@@ -812,8 +882,16 @@ final weekBoardProvider = StreamProvider<List<BoardRow>>((ref) {
 /// withdrawn the moment the switch goes off, so leaving the board is
 /// immediate rather than at the end of the week.
 final leaderboardPublisherProvider = Provider<void>((ref) {
+  Timer? retry;
+  var disposed = false;
+  var generation = 0;
+  ref.onDispose(() {
+    disposed = true;
+    retry?.cancel();
+  });
+
   Future<void> publish() async {
-    if (ref.read(accountMutationProvider)) return;
+    if (disposed || ref.read(accountMutationProvider)) return;
     final service = ref.read(leaderboardServiceProvider);
     final uid = ref.read(accountUidProvider);
     if (!service.available || uid == null) return;
@@ -824,36 +902,58 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
     if (minutes <= 0) return;
 
     final name = ref.read(userProvider).displayName.trim();
-    await service.publish(
-      week: ref.read(currentWeekKeyProvider),
-      uid: uid,
-      name: name.isEmpty ? 'A student' : name,
-      minutes: minutes,
-      level: ref.read(statsProvider).level,
+    final week = ref.read(currentWeekKeyProvider);
+    final level = ref.read(statsProvider).level;
+    await ref.read(boardPublishQueueProvider).run(() async {
+      if (disposed ||
+          ref.read(accountUidProvider) != uid ||
+          !ref.read(boardOptInProvider) ||
+          ref.read(currentWeekKeyProvider) != week ||
+          ref.read(accountMutationProvider)) {
+        return;
+      }
+      await service.publish(
+        week: week,
+        uid: uid,
+        name: name.isEmpty ? 'A student' : name,
+        minutes: minutes,
+        level: level,
+      );
+    });
+  }
+
+  void schedule() {
+    if (disposed) return;
+    final request = ++generation;
+    retry?.cancel();
+    final uid = ref.read(accountUidProvider);
+    unawaited(
+      publish().catchError((Object _) {
+        if (disposed ||
+            request != generation ||
+            uid == null ||
+            ref.read(accountUidProvider) != uid ||
+            !ref.read(boardOptInProvider) ||
+            ref.read(accountMutationProvider)) {
+          return;
+        }
+        retry = Timer(const Duration(seconds: 30), schedule);
+      }),
     );
   }
 
-  Future<void> withdraw() async {
-    if (ref.read(accountMutationProvider)) return;
-    final service = ref.read(leaderboardServiceProvider);
-    final uid = ref.read(accountUidProvider);
-    if (!service.available || uid == null) return;
-    await service.withdraw(ref.read(currentWeekKeyProvider), uid);
-  }
-
-  ref.listen(sessionsProvider, (previous, next) => unawaited(publish()));
+  ref.listen(sessionsProvider, (previous, next) => schedule());
   ref.listen(
     statsProvider.select((stats) => stats.level),
-    (_, _) => unawaited(publish()),
+    (_, _) => schedule(),
   );
-  ref.listen(
-    userProvider.select((user) => user.displayName),
-    (_, _) => unawaited(publish()),
-  );
+  ref.listen(userProvider, (_, _) => schedule());
   ref.listen(boardOptInProvider, (previous, next) {
-    unawaited(next ? publish() : withdraw());
+    schedule();
   });
-  unawaited(publish());
+  ref.listen(currentWeekKeyProvider, (_, _) => schedule());
+  ref.listen(accountUidProvider, (_, _) => schedule());
+  schedule();
 });
 
 // -- Notifications -----------------------------------------------------------

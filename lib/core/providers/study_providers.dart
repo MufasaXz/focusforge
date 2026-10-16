@@ -243,15 +243,19 @@ final rangeBarsProvider = Provider.family<List<DayBar>, StudyRange>((
   range,
 ) {
   final sessions = ref.watch(sessionsProvider);
-  final today = _dateOnly(DateTime.now());
+  final today = ref.watch(focusCalendarDateProvider);
 
   return switch (range) {
     StudyRange.week => List.generate(7, (i) {
-      final day = DateTime(today.year, today.month, today.day - (6 - i));
+      final day = DateTime(
+        today.year,
+        today.month,
+        today.day - today.weekday + 1 + i,
+      );
       return DayBar(
         _weekdayLetter(day.weekday),
         _minutesOn(sessions, day) / 60,
-        isToday: i == 6,
+        isToday: _sameDay(day, today),
         date: day,
       );
     }),
@@ -708,6 +712,18 @@ class TimerNotifier extends Notifier<TimerState> {
       _disposed = true;
       _ticker?.cancel();
       _completions.close();
+    });
+    ref.listen(userProvider, (previous, next) {
+      if (previous == null || previous.uid.isEmpty) return;
+      if (previous.uid != next.uid ||
+          (!previous.isAnonymous && next.isAnonymous)) {
+        // A live block belongs to its starting identity. Never append it to
+        // another account's freshly restored session log.
+        _pendingRecovery = null;
+        _ticker?.cancel();
+        state = TimerState(remaining: _presets.first.focusDuration);
+        unawaited(_persist());
+      }
     });
     // Bootstrap hydrates the session log in the same synchronous pass as this
     // notifier, but not necessarily before it. A recovered block must not be
