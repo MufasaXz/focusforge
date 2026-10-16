@@ -1845,6 +1845,39 @@ class _YoutubeView extends ConsumerWidget {
             ),
           ),
         ),
+        const SizedBox(height: Gap.lg),
+        Stagger(
+          index: 3,
+          child: Card.outlined(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.item),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(Gap.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.science_outlined,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      context.tr(
+                        "Shorts are recognised by the names YouTube gives its own screens, not by reading what is on them. A future YouTube update can rename them, and the block would stop firing until FocusForge is updated to match.",
+                      ),
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
