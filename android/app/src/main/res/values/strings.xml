@@ -2,8 +2,8 @@
 <resources>
   <string name="ff_block_back">Back to what matters</string>
   <string name="ff_block_anyway">Pause and breathe</string>
-  <string name="accessibility_service_summary">Optional YouTube Shorts, feed and study-channel filters.</string>
-  <string name="accessibility_service_description">FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.</string>
+  <string name="accessibility_service_summary">Optional YouTube Shorts and feed filters.</string>
+  <string name="accessibility_service_description">FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters, to distinguish these screens from ordinary videos. Screen checks stay on your device and are not retained or uploaded. While a YouTube pause is visible, application window package names are checked only to close the pause when you leave; other apps’ contents are not inspected. It does not read messages, passwords or text you type. Pause decisions and their times are saved only on this device for Shield insights. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without any of these.</string>
   <string name="ff_widget_description">A retro countdown and today’s completed focus time. Tap to open Focus.</string>
   <string name="ff_goal_widget_description">Your daily focus goal, completion ring and remaining minutes.</string>
   <string name="ff_study_widget_description">Current study subject, live countdown and daily progress.</string>

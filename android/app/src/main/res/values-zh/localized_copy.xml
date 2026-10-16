@@ -83,10 +83,12 @@
   <string name="ff_copy_7c71b77df96c" formatted="false">周一至周日完成的专注时间、每周总计和活跃天数。点击以打开仪表板。</string>
   <string name="ff_copy_cdd9d2e0a56e" formatted="false">仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符。学习频道仅将可见的创作者姓名或句柄与该设备上捆绑的教育创作者目录进行比较。某些教育频道可能无法被识别。不会保存或上传创建者标签。其他应用程序的内容、消息、密码和键入的文本不会被读取。暂停决定和时间保留在此设备上。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些权限即可工作。</string>
   <string name="ff_copy_ada49350069b" formatted="false">选择公认的学习渠道。</string>
+  <string name="ff_copy_60d50f8362bc" formatted="false">仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符，以将这些屏幕与普通视频区分开来。屏幕检查保留在您的设备上，不会保留或上传。虽然 YouTube 暂停可见，但仅检查应用程序窗口包名称以在您离开时关闭暂停；其他应用程序的内容不会被检查。它不会读取您输入的消息、密码或文本。暂停决策及其时间仅保存在此设备上，以供 Shield 洞察。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些即可工作。</string>
+  <string name="ff_copy_ae65b32f89c1" formatted="false">可选的 YouTube Shorts 和 Feed 过滤器。</string>
   <string name="ff_block_back" formatted="false">回到重要的事情</string>
   <string name="ff_block_anyway" formatted="false">暂停并呼吸</string>
-  <string name="accessibility_service_summary" formatted="false">可选的 YouTube Shorts、提要和学习频道过滤器。</string>
-  <string name="accessibility_service_description" formatted="false">仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符。学习频道仅将可见的创作者姓名或句柄与该设备上捆绑的教育创作者目录进行比较。某些教育频道可能无法被识别。不会保存或上传创建者标签。其他应用程序的内容、消息、密码和键入的文本不会被读取。暂停决定和时间保留在此设备上。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些权限即可工作。</string>
+  <string name="accessibility_service_summary" formatted="false">可选的 YouTube Shorts 和 Feed 过滤器。</string>
+  <string name="accessibility_service_description" formatted="false">仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符，以将这些屏幕与普通视频区分开来。屏幕检查保留在您的设备上，不会保留或上传。虽然 YouTube 暂停可见，但仅检查应用程序窗口包名称以在您离开时关闭暂停；其他应用程序的内容不会被检查。它不会读取您输入的消息、密码或文本。暂停决策及其时间仅保存在此设备上，以供 Shield 洞察。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些即可工作。</string>
   <string name="ff_widget_description" formatted="false">复古倒计时和今天完成的专注时间。点击以打开焦点。</string>
   <string name="ff_goal_widget_description" formatted="false">您的每日专注目标、完成环和剩余分钟数。</string>
   <string name="ff_study_widget_description" formatted="false">当前学习科目，实时倒计时和每日进度。</string>
