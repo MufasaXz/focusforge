@@ -45,7 +45,7 @@ void main() {
       await tester.pumpWidget(wrap(UsageAccessStep(onNext: () {})));
       await tester.pumpAndSettle();
 
-      expect(find.text('See your real screen time'), findsOneWidget);
+      expect(find.text('Screen-time access'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Allow usage access'), 220);
       await tester.pumpAndSettle();
       expect(find.text('Allow usage access'), findsOneWidget);

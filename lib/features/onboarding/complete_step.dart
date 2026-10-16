@@ -10,11 +10,8 @@ import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/utils/format.dart';
-import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
-import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
@@ -86,233 +83,54 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
 
     return StepScaffold(
       title: "You're all set",
-      eyebrow: 'READY WHEN YOU ARE',
-      subtitle:
-          'Your starting point is saved. Make it a little better each day.',
+      eyebrow: 'READY TO FOCUS',
+      subtitle: 'Your first session is ready.',
       primaryLabel: 'Open FocusForge',
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
-        Stagger(
-          index: 2,
+        ContentCard(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                user.focusIntention.label,
-                style: Theme.of(context).textTheme.titleLarge,
+              ListTile(
+                leading: IconBadge(
+                  icon: persona.icon,
+                  color: cs.primary,
+                  size: 40,
+                ),
+                title: const Text('Profile'),
+                subtitle: Text(persona.label),
               ),
-              const SizedBox(height: Gap.sm),
-              Text(
-                user.focusIntention.tip,
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(color: cs.onSurfaceVariant),
+              const Divider(height: 1, indent: 72),
+              ListTile(
+                leading: IconBadge(
+                  icon: Icons.menu_book_outlined,
+                  color: cs.primary,
+                  size: 40,
+                ),
+                title: const Text('Subjects'),
+                subtitle: Text('$subjectCount selected'),
               ),
-              const SizedBox(height: Gap.xl),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final columns =
-                      constraints.maxWidth < 300 ||
-                          MediaQuery.textScalerOf(context).scale(14) > 20
-                      ? 1
-                      : 2;
-                  final width =
-                      (constraints.maxWidth - Gap.sm * (columns - 1)) / columns;
-                  final tiles = [
-                    _StatTile(
-                      icon: persona.icon,
-                      color: harmonize(persona.color, cs.primary),
-                      value: persona.label,
-                      label: 'Profile',
-                    ),
-                    ...[
-                      _StatTile(
-                        icon: Icons.menu_book_rounded,
-                        color: cs.secondary,
-                        value: '$subjectCount',
-                        label: subjectCount == 1 ? 'Subject' : 'Subjects',
-                      ),
-                      _StatTile(
-                        icon: Icons.timer_outlined,
-                        color: cs.secondary,
-                        value: formatMinutes(preset.focus),
-                        label: 'Focus block',
-                      ),
-                      _StatTile(
-                        icon: Icons.flag_outlined,
-                        color: cs.tertiary,
-                        value: 'Plan from Home',
-                        label: 'Your next step',
-                      ),
-                    ],
-                  ];
-                  // Measure the longest value at the actual tile width. Fixed
-                  // heights clip long roles on compact phones; independent
-                  // heights make the grid uneven.
-                  double textHeight(String text, TextStyle? style) {
-                    final painter = TextPainter(
-                      text: TextSpan(text: text, style: style),
-                      textDirection: Directionality.of(context),
-                      textScaler: MediaQuery.textScalerOf(context),
-                    )..layout(maxWidth: width - Gap.lg * 2);
-                    final height = painter.height;
-                    painter.dispose();
-                    return height;
-                  }
-
-                  final valueStyle = Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(letterSpacing: -0.4);
-                  final valueHeight = tiles
-                      .map((tile) => textHeight(tile.value, valueStyle))
-                      .reduce((a, b) => a > b ? a : b);
-                  final labelHeight = tiles
-                      .map(
-                        (tile) => textHeight(
-                          tile.label,
-                          Theme.of(context).textTheme.labelSmall,
-                        ),
-                      )
-                      .reduce((a, b) => a > b ? a : b);
-                  final tileHeight =
-                      Gap.lg * 2 +
-                      34 +
-                      Gap.md +
-                      valueHeight +
-                      1 +
-                      labelHeight +
-                      2;
-                  return Wrap(
-                    spacing: Gap.sm,
-                    runSpacing: Gap.sm,
-                    children: [
-                      for (final tile in tiles)
-                        SizedBox(
-                          width: width,
-                          height: columns == 2 ? tileHeight : null,
-                          child: tile,
-                        ),
-                    ],
-                  );
-                },
+              const Divider(height: 1, indent: 72),
+              ListTile(
+                leading: IconBadge(
+                  icon: Icons.timer_outlined,
+                  color: cs.primary,
+                  size: 40,
+                ),
+                title: Text(preset.name),
+                subtitle: Text(
+                  '${preset.focus} min focus · ${preset.shortBreak} min break',
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: Gap.xl),
-        Stagger(index: 4, child: SectionHeader(title: preset.name)),
-        Stagger(
-          index: 5,
-          child: ContentCard(
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-              child: Column(
-                children: [
-                  _Tip(
-                    icon: Icons.timer_outlined,
-                    text:
-                        '${preset.focus} minutes of focus, then a ${preset.shortBreak}-minute break. Start your first session from Home.',
-                  ),
-                  _Tip(
-                    icon: Icons.insights_outlined,
-                    text: 'Tap a chart day to see your completed sessions.',
-                    divider: true,
-                  ),
-                  _Tip(
-                    icon: Icons.notifications_outlined,
-                    text: 'Want a visible countdown? Enable timer notifications in Profile → App access.',
-                    divider: true,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// One reflected choice on the celebration screen — persona, subjects and blocks — so the user sees the setup actually configured something.
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.icon,
-    required this.color,
-    required this.value,
-    required this.label,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    // Quiet accents distinguish choices against the neutral setup summary.
-    return ContentCard(
-      color: Color.alphaBlend(
-        color.withValues(alpha: .035),
-        cs.surfaceContainerLow,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.item),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            IconBadge(icon: icon, color: color, size: 34, radius: Radii.tile),
-            const SizedBox(height: Gap.md),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(letterSpacing: -0.4),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One row of the Quick tips card: a tonal badge plus the one thing to try.
-class _Tip extends StatelessWidget {
-  const _Tip({required this.icon, required this.text, this.divider = false});
-
-  final IconData icon;
-  final String text;
-  final bool divider;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Column(
-      children: [
-        if (divider)
-          Padding(
-            // Indented past the leading slot to the title, not the badge.
-            padding: const EdgeInsets.only(left: Gap.lg + 40 + Gap.lg),
-            child: Divider(height: 1, thickness: 1, color: cs.outlineVariant),
-          ),
-        ListTile(
-          leading: IconBadge(
-            icon: icon,
-            color: cs.primary,
-            size: 36,
-            radius: Radii.tile,
-          ),
-          title: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: Gap.lg),
+        Text(
+          'Start your session from Home. Adjust your plan anytime.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );

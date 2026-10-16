@@ -41,6 +41,22 @@ class FocusGoalPlannerNotifier extends Notifier<FocusGoalPlanner> {
     await ref.read(localStoreProvider).setMap(storageKey, next.toJson());
     state = next;
   }
+
+  /// Keep the daily target when a catalogue entry leaves its optional split.
+  /// Dropping only one allocation would violate the exact-total invariant.
+  Future<void> removeSubjectAllocation(String subjectId) async {
+    final plan = state.day;
+    if (plan == null || !plan.subjectMinutes.containsKey(subjectId)) return;
+    await save(
+      FocusGoalPlan(
+        scope: plan.scope,
+        date: plan.date,
+        totalMinutes: plan.totalMinutes,
+        subjectMinutes: const {},
+        repeatThisWeek: plan.repeatThisWeek,
+      ),
+    );
+  }
 }
 
 final focusGoalPlannerProvider =

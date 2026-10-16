@@ -7,6 +7,7 @@ import '../../../core/providers/study_providers.dart';
 import '../../../shared/widgets/app_page.dart';
 import '../../../shared/widgets/pressable.dart';
 import 'subject_sheet.dart';
+import 'manage_subjects_sheet.dart';
 
 /// What the next finished block will be logged against.
 ///
@@ -67,6 +68,21 @@ class SubjectPicker extends ConsumerWidget {
               _ClearTag(
                 onTap: () => ref.read(timerProvider.notifier).setSubject(null),
               ),
+            if (subjects.isNotEmpty)
+              if (MediaQuery.textScalerOf(context).scale(14) > 20)
+                IconButton(
+                  tooltip: 'Manage subjects',
+                  onPressed: () => showManageSubjectsSheet(context),
+                  icon: const Icon(Icons.tune_rounded),
+                )
+              else
+                TextButton(
+                  onPressed: () => showManageSubjectsSheet(context),
+                  child: const Tooltip(
+                    message: 'Manage subjects',
+                    child: Text('Manage'),
+                  ),
+                ),
           ],
         ),
         const SizedBox(height: Gap.xs + 2),

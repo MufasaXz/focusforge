@@ -278,7 +278,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 1,
                   child: Text(
-                    'Your space starts here',
+                    'Sign in to connect',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -286,7 +286,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 2,
                   child: Text(
-                    'Sign in for study groups, the leaderboard and private badge backups.',
+                    'Join groups, compare focus time and back up badges.',
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -335,23 +335,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 6,
                   child: Text(
                     googleLive
-                        ? 'An account is optional. Start on this device and sign in later. '
-                              'Your detailed study log stays on your phone.'
+                        ? 'An account is optional. You can sign in later.'
                         : providers.contains('email')
                         ? 'Google sign-in is not available in this build. Use email or skip — you can link an account later.'
                         : 'Account sign-in is unavailable right now. Skip to study on this device and try signing in later.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-                const SizedBox(height: Gap.md),
-                Stagger(
-                  index: 7,
-                  child: Text(
-                    'Your study log stays on this device.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),

@@ -93,9 +93,9 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
     final initials = _initialsOf(_name.text);
 
     return StepScaffold(
-      title: 'Set up your profile',
-      eyebrow: 'A LITTLE ABOUT YOU',
-      subtitle: 'Just the essentials — you can add the rest later.',
+      title: 'Your profile',
+      eyebrow: 'ABOUT YOU',
+      subtitle: 'What should we call you?',
       onPrimary: _commit,
       children: [
         Stagger(
@@ -120,7 +120,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
-              'Leave it blank to stay nameless — everything still works.',
+              'Optional. You can change it later.',
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),

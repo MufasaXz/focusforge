@@ -737,7 +737,7 @@ final weekSessionCountProvider = Provider<int>((ref) {
 /// published — a board with nobody on it is a real state, and inventing a
 /// rival is the one kind of demo data a user cannot tell from a real one.
 final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
-  final rows = ref.watch(weekBoardProvider).value ?? const <BoardRow>[];
+  final rows = ref.watch(weekBoardProvider).valueOrNull ?? const <BoardRow>[];
   final myUid = ref.watch(accountUidProvider);
   return [
     for (final row in rows)

@@ -79,10 +79,10 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
     final granted = _status == PermissionOutcome.granted;
 
     return StepScaffold(
-      title: 'See your real screen time',
+      title: 'Screen-time access',
       eyebrow: 'OPTIONAL ACCESS',
       subtitle: supported
-          ? 'Usage Access helps FocusForge recognize selected apps and keep your on-device screen-time totals accurate.'
+          ? 'Optional access for app boundaries and screen-time totals.'
           : 'This device does not need any extra access for the focus timer.',
       primaryLabel: 'Continue',
       onPrimary: widget.onNext,
@@ -94,9 +94,7 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
               label: const Text('Continue without access'),
             )
           : null,
-      footnote: supported
-          ? 'Optional. You can enable or revoke this later in Android Settings.'
-          : null,
+      footnote: supported ? 'Change this anytime in Android Settings.' : null,
       children: [
         if (supported) ...[
           _AccessPreview(
@@ -104,12 +102,10 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
                 ? Icons.check_circle_outline_rounded
                 : Icons.query_stats_rounded,
             color: granted ? cs.tertiary : cs.primary,
-            title: granted
-                ? 'Usage Access is on'
-                : 'Keep your boundaries accurate',
+            title: granted ? 'Usage Access is on' : 'Recognize selected apps',
             body: granted
-                ? 'FocusForge can now recognize a selected foreground app and show local screen-time totals.'
-                : 'This access lets FocusForge identify which selected app is open and calculate screen-time totals on this device.',
+                ? 'App detection and local screen-time totals are ready.'
+                : 'Detect when a selected app is open and measure time spent in apps.',
           ),
           const SizedBox(height: Gap.md),
           _PrivacyNote(color: cs.tertiary),
@@ -200,7 +196,7 @@ class _PrivacyNote extends StatelessWidget {
       const SizedBox(width: Gap.sm),
       Expanded(
         child: Text(
-          'Only app names and time totals are used. The history stays on this device and FocusForge never reads message content.',
+          'App names and time totals stay on this device. Message content is never read.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
         ),
       ),

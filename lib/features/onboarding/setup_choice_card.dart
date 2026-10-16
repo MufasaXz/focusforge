@@ -40,16 +40,6 @@ class SetupChoiceCard extends StatelessWidget {
     }
 
     const radius = Radii.card;
-    // Premium selected state: a soft directional tint plus a quiet lift, so
-    // the chosen answer reads as a card that rose rather than a row that
-    // changed colour. Unselected cards stay flat on the step surface.
-    final selectedShadow = [
-      BoxShadow(
-        color: accent.withValues(alpha: 0.22),
-        blurRadius: 18,
-        offset: const Offset(0, 8),
-      ),
-    ];
     return Semantics(
       label: '$title. $description${badge == null ? '' : '. $badge'}',
       checked: selected,
@@ -60,23 +50,14 @@ class SetupChoiceCard extends StatelessWidget {
         duration: duration,
         curve: Motion.decelerate,
         decoration: BoxDecoration(
-          gradient: selected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    accent.withValues(alpha: 0.20),
-                    accent.withValues(alpha: 0.08),
-                  ],
-                )
-              : null,
-          color: selected ? null : cs.surfaceContainerLow,
+          color: selected
+              ? Color.alphaBlend(accent.withValues(alpha: .08), cs.surface)
+              : cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
             color: selected ? accent : cs.outlineVariant.withValues(alpha: .45),
             width: selected ? 1.5 : 1,
           ),
-          boxShadow: selected ? selectedShadow : null,
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -88,7 +69,7 @@ class SetupChoiceCard extends StatelessWidget {
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
                 children: [
-                  IconBadge(icon: icon, color: accent, size: 48, radius: 16),
+                  IconBadge(icon: icon, color: accent, size: 40, radius: 12),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: Column(

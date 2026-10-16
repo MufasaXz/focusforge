@@ -49,7 +49,7 @@ void main() {
     await store.setMap('setup.progress', {'uid': 'alice', 'step': 7});
     await mount(tester, 'alice');
     expect(find.text('Starting plan'), findsOneWidget);
-    expect(find.text('Find your starting pace'), findsOneWidget);
+    expect(find.text('Choose your pace'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.text('Subjects'), findsOneWidget);

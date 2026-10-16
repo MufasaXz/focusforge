@@ -11,6 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/app.dart';
 import 'package:focusforge/app/router.dart';
+import 'package:focusforge/app/theme/app_theme.dart';
+import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/profile_step.dart';
+import 'package:focusforge/features/onboarding/starting_plan_step.dart';
+import 'package:focusforge/features/onboarding/complete_step.dart';
 import 'package:focusforge/core/models/focus_goal.dart';
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/models/user.dart';
@@ -143,7 +148,7 @@ void main() {
       await tester.runAsync(() async {
         final image = await render.toImage(pixelRatio: 2);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        final file = File('build/followup-review/$name.png');
+        final file = File('build/refinement-2032-review/$name.png');
         await file.parent.create(recursive: true);
         await file.writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
@@ -163,6 +168,40 @@ void main() {
       await capture('breakdown-${mode.name}');
       container.read(routerProvider).go('/profile/leaderboard');
       await capture('leaderboard-${mode.name}');
+      container.read(routerProvider).go('/focus');
+      await capture('focus-${mode.name}');
+      await tester.tap(find.byTooltip('Manage subjects'));
+      await capture('subjects-${mode.name}');
+      await tester.tap(find.bySemanticsLabel('Close'));
+      await tester.pumpAndSettle();
+      for (final step in <String, Widget>{
+        'focus-choice': PersonaStep(onNext: () {}),
+        'profile': ProfileStep(onNext: () {}),
+        'plan': StartingPlanStep(onNext: () {}),
+        'complete': const CompleteStep(),
+      }.entries) {
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: RepaintBoundary(
+              key: boundary,
+              child: MaterialApp(
+                theme: mode == ThemePreference.light
+                    ? AppTheme.light()
+                    : AppTheme.dark(),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(disableAnimations: true),
+                  child: child!,
+                ),
+                home: Scaffold(body: SafeArea(child: step.value)),
+              ),
+            ),
+          ),
+        );
+        await capture('setup-${step.key}-${mode.name}');
+      }
     }
     await tester.pumpWidget(const SizedBox());
   });

@@ -41,6 +41,41 @@ class _Board implements LeaderboardService {
 }
 
 void main() {
+  testWidgets('a failed board offers retry instead of claiming nobody joined', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        accountUidProvider.overrideWithValue('me'),
+        leaderboardServiceProvider.overrideWithValue(_Board()),
+        weekBoardProvider.overrideWith(
+          (ref) => Stream.error(StateError('offline')),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'me', isAnonymous: false));
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const LeaderboardScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Could not load this week’s standings.'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.textContaining('Nobody'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   test('board preserves a shared level and keeps legacy levels unknown', () {
     final current = BoardRow.fromJson('alex', {
       'name': 'Alex',
@@ -121,7 +156,7 @@ void main() {
   });
 
   for (final dark in [false, true]) {
-    testWidgets('weekly glass summary fits 320dp at 2x, dark=$dark', (
+    testWidgets('weekly summary and standings fit 320dp at 2x, dark=$dark', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(320, 844);
@@ -192,14 +227,17 @@ void main() {
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
-      await tester.scrollUntilVisible(find.text('Alex (you)'), 160);
-      expect(find.text('Alex (you)'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Alex'), 160);
+      expect(find.text('Alex'), findsOneWidget);
       expect(find.text('Level 7'), findsOneWidget);
+      expect(find.text('You'), findsOneWidget);
+      expect(find.text('#2'), findsOneWidget);
+      expect(find.text('Level unavailable'), findsOneWidget);
       expect(
         tester
             .widget<ListTile>(
               find.ancestor(
-                of: find.text('Alex (you)'),
+                of: find.text('Alex'),
                 matching: find.byType(ListTile),
               ),
             )

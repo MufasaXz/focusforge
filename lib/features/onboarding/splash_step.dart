@@ -81,25 +81,9 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                     opacity: _fade(0, 0.55),
                     child: ScaleTransition(
                       scale: logoScale,
-                      // The app's own mark, not a stock glyph — the first thing the
-                      // user sees should be the thing they tapped to get here.
-                      // Premium finish: a soft primary halo behind the mark, so
-                      // the splash reads as lit rather than printed.
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(context).colorScheme.primary
-                                  .withValues(alpha: 0.28),
-                              blurRadius: 64,
-                              spreadRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: const AppMark(
-                          size: 108,
-                          semanticLabel: 'FocusForge',
-                        ),
+                      child: const AppMark(
+                        size: 108,
+                        semanticLabel: 'FocusForge',
                       ),
                     ),
                   ),

@@ -154,9 +154,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
     final cs = Theme.of(context).colorScheme;
     return StepScaffold(
       title: _persona.subjectPrompt,
-      subtitle:
-          'Tap to select — or add your own. You can change these any '
-          'time.',
+      subtitle: 'Pick your subjects or add your own.',
       primaryEnabled: _selected.isNotEmpty,
       primaryLabel: _selected.isEmpty
           ? 'Pick at least one'

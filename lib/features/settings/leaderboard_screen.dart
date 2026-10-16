@@ -11,7 +11,6 @@ import '../../shared/widgets/community_safety.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
 import 'account_gate.dart';
 
 /// The week, measured — against last week, and against everybody else on the
@@ -36,14 +35,11 @@ class LeaderboardScreen extends ConsumerWidget {
     // behind a real account — the same gate study groups use.
     if (!signedIn) {
       return AppPage(
-        title: 'Your week',
-        subtitle: 'A real account is required',
+        title: 'Leaderboard',
+        subtitle: 'A week of focus, together',
         child: const AccountGate(
           title: 'Sign in to see the board',
-          subtitle:
-              'The weekly board compares you with other people, so it needs a '
-              'real account. Your own week above stays on this device either '
-              'way.',
+          subtitle: 'Sign in to compare weekly focus time. Sharing your score is optional.',
           unlocked: 'The weekly board is unlocked.',
           sectionTitle: 'What the board adds',
           items: [
@@ -70,34 +66,48 @@ class LeaderboardScreen extends ConsumerWidget {
     final myRow = ref.watch(myRankProvider);
     final optedIn = ref.watch(boardOptInProvider);
     final available = ref.watch(leaderboardServiceProvider).available;
-    final loading = ref.watch(weekBoardProvider).isLoading;
+    final boardState = ref.watch(weekBoardProvider);
+    final loading = boardState.isLoading;
+    final myIndex = board.indexWhere((entry) => entry.isMe);
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day - now.weekday + 1);
+    final sunday = monday.add(const Duration(days: 6));
+    final dates = MaterialLocalizations.of(context);
 
     return AppPage(
-      title: 'Your week',
-      subtitle: 'Monday to today',
+      title: 'Leaderboard',
+      subtitle:
+          '${dates.formatShortDate(monday)} – ${dates.formatShortDate(sunday)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (thisWeek <= 0 && lastWeek <= 0)
-            const EmptyState(
-              icon: Icons.insights_outlined,
-              title: 'No focus logged this week',
-              subtitle:
-                  'Finish a session and this page fills in — your hours, your '
-                  'streak, and how this week compares with the last one.',
-            )
-          else ...[
-            _WeekCard(
-              thisWeek: thisWeek,
-              lastWeek: lastWeek,
-              sessions: sessions,
-            ),
-            const SizedBox(height: Gap.xl),
-          ],
-          const SectionHeader(
-            title: 'This week\'s board',
-            icon: Icons.leaderboard_rounded,
+          _WeekCard(
+            thisWeek: thisWeek,
+            lastWeek: lastWeek,
+            sessions: sessions,
+            standing: myIndex < 0 ? null : myIndex + 1,
           ),
+          const SizedBox(height: Gap.xl),
+          Wrap(
+            spacing: Gap.md,
+            runSpacing: Gap.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              Text(
+                'Weekly standings',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              if (board.isNotEmpty)
+                Text(
+                  '${board.length} focusing',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
           if (!available)
             const _NoBackendCard()
           else ...[
@@ -107,13 +117,32 @@ class LeaderboardScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (loading && board.isEmpty)
+                  if (boardState.hasError)
+                    Padding(
+                      padding: const EdgeInsets.all(Gap.lg),
+                      child: Column(
+                        children: [
+                          const Text('Could not load this week’s standings.'),
+                          TextButton.icon(
+                            onPressed: () => ref.invalidate(weekBoardProvider),
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (loading && board.isEmpty)
                     const _BoardLoading()
                   else if (board.isEmpty)
                     _EmptyBoard(optedIn: optedIn)
                   else
                     for (var i = 0; i < board.length; i++) ...[
-                      if (i > 0) const Divider(height: 1),
+                      if (i > 0)
+                        const Divider(
+                          height: 1,
+                          indent: Gap.lg,
+                          endIndent: Gap.lg,
+                        ),
                       _BoardRowTile(rank: i + 1, entry: board[i]),
                     ],
                 ],
@@ -155,23 +184,58 @@ class _BoardRowTile extends StatelessWidget {
     final menu = !entry.isMe && entry.uid.isNotEmpty
         ? CommunityMemberMenu(uid: entry.uid, name: entry.name)
         : null;
+    final medal = switch (rank) {
+      1 => harmonize(const Color(0xFFB8860B), cs.primary),
+      2 => cs.secondary,
+      3 => cs.tertiary,
+      _ => cs.onSurfaceVariant,
+    };
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: Gap.md,
         vertical: Gap.sm,
       ),
-      tileColor: entry.isMe ? cs.primaryContainer : null,
+      tileColor: entry.isMe
+          ? cs.primaryContainer
+          : rank == 1
+          ? Color.alphaBlend(
+              cs.primary.withValues(alpha: .04),
+              cs.surfaceContainerLow,
+            )
+          : null,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 28,
-            child: Text(
-              rank.toString().padLeft(2, '0'),
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: rank <= 3 ? cs.primary : cs.onSurfaceVariant,
-                fontFeatures: const [FontFeature.tabularFigures()],
+          Semantics(
+            label: 'Rank $rank',
+            excludeSemantics: true,
+            child: Container(
+              width: compact ? 32 : 38,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: rank <= 3 ? medal.withValues(alpha: .12) : null,
+                borderRadius: BorderRadius.circular(Radii.tile),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (rank <= 3 && !compact)
+                    Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 15,
+                      color: medal,
+                    ),
+                  Text(
+                    '$rank',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: rank <= 3 ? medal : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -197,11 +261,42 @@ class _BoardRowTile extends StatelessWidget {
           ],
         ],
       ),
-      title: Text(
-        entry.isMe ? '${entry.name} (you)' : entry.name,
-        maxLines: compact ? 2 : 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.titleSmall?.copyWith(color: foreground),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            entry.name,
+            maxLines: compact ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (entry.isMe)
+            Padding(
+              padding: const EdgeInsets.only(top: Gap.xs),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gap.sm,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    'You',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.onPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: Gap.xs),
@@ -266,7 +361,7 @@ class _BoardSwitch extends ConsumerWidget {
         children: [
           SwitchListTile.adaptive(
             value: optedIn,
-            title: const Text('Appear on the board'),
+            title: const Text('Share my weekly score'),
             subtitle: Text(
               optedIn
                   ? minutes <= 0
@@ -401,11 +496,13 @@ class _WeekCard extends StatelessWidget {
     required this.thisWeek,
     required this.lastWeek,
     required this.sessions,
+    this.standing,
   });
 
   final double thisWeek;
   final double lastWeek;
   final int sessions;
+  final int? standing;
 
   @override
   Widget build(BuildContext context) {
@@ -433,12 +530,15 @@ class _WeekCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionHeader(
-              title: 'Your weekly rhythm',
-              icon: Icons.insights_outlined,
+            Text(
+              'YOUR WEEK',
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 1.2),
             ),
+            const SizedBox(height: Gap.md),
             Wrap(
-              spacing: Gap.md,
+              alignment: WrapAlignment.spaceBetween,
+              spacing: Gap.xl,
               runSpacing: Gap.sm,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
@@ -458,22 +558,43 @@ class _WeekCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (lastWeek > 0)
-                  Chip(
-                    avatar: Icon(
-                      up
-                          ? Icons.trending_up_rounded
-                          : Icons.trending_down_rounded,
-                      size: 15,
-                      color: accent,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      standing == null ? '—' : '#$standing',
+                      style: Theme.of(context).textTheme.displaySmall
+                          ?.copyWith(color: cs.primary),
                     ),
-                    label: Text(
-                      '${up ? '+' : '−'}${formatHoursShort(delta.abs())}',
+                    Text(
+                      'your standing',
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    backgroundColor: accent.withValues(alpha: 0.14),
-                  ),
+                  ],
+                ),
               ],
             ),
+            if (lastWeek > 0) ...[
+              const SizedBox(height: Gap.sm),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Chip(
+                  avatar: Icon(
+                    up
+                        ? Icons.trending_up_rounded
+                        : Icons.trending_down_rounded,
+                    size: 15,
+                    color: accent,
+                  ),
+                  label: Text(
+                    '${up ? '+' : '−'}${formatHoursShort(delta.abs())}',
+                  ),
+                  backgroundColor: accent.withValues(alpha: 0.14),
+                ),
+              ),
+            ],
             const SizedBox(height: Gap.md),
             Semantics(
               label: 'This week against last week',
@@ -498,7 +619,7 @@ class _WeekCard extends StatelessWidget {
                 Text(
                   lastWeek > 0
                       ? 'Last week ${formatHoursShort(lastWeek)}'
-                      : 'No week before this one yet',
+                      : 'A fresh start this week',
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),

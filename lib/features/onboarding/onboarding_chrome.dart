@@ -34,7 +34,7 @@ class StepScaffold extends StatefulWidget {
     this.primaryBusy = false,
     this.secondary,
     this.footnote,
-    this.eyebrow = 'MAKE IT YOURS',
+    this.eyebrow = 'YOUR SETUP',
   });
 
   final String title;
@@ -81,7 +81,7 @@ class _StepScaffoldState extends State<StepScaffold> {
     final body = <Widget>[
       if (MediaQuery.sizeOf(context).height >= 400) ...[
         Eyebrow(widget.eyebrow),
-        const SizedBox(height: Gap.lg),
+        const SizedBox(height: Gap.md),
       ],
       Stagger(
         index: 0,
@@ -89,8 +89,8 @@ class _StepScaffoldState extends State<StepScaffold> {
           header: true,
           child: Text(
             widget.title,
-            style: Theme.of(context).textTheme.headlineLarge
-                ?.copyWith(letterSpacing: -1.1),
+            style: Theme.of(context).textTheme.headlineMedium
+                ?.copyWith(letterSpacing: -.6),
           ),
         ),
       ),
@@ -101,7 +101,7 @@ class _StepScaffoldState extends State<StepScaffold> {
             padding: const EdgeInsets.only(top: Gap.md),
             child: Text(
               widget.subtitle!,
-              style: Theme.of(context).textTheme.bodyLarge
+              style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: t.onSurfaceVariant),
             ),
           ),
@@ -195,30 +195,12 @@ class _StepScaffoldState extends State<StepScaffold> {
   }
 }
 
-/// A quiet solid action area keeps the next step clear in every theme.
-///
-/// Premium finish: a hairline gradient wash lifts the action off the step
-/// body without adding elevation — the footer reads as the same surface,
-/// just closer.
+/// A solid action area keeps the next step clear.
 class _StepFooter extends StatelessWidget {
   const _StepFooter({required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [cs.surfaceContainerLow, cs.surface],
-        ),
-        border: Border(
-          top: BorderSide(color: cs.outlineVariant.withValues(alpha: .45)),
-        ),
-      ),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) =>
+      ColoredBox(color: Theme.of(context).colorScheme.surface, child: child);
 }

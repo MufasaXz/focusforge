@@ -20,9 +20,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/models/focus_goal.dart';
 import 'package:focusforge/core/models/subject_naming.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/focus/subject_picker.dart';
 
@@ -126,6 +128,182 @@ void main() {
   });
 
   group('SubjectPicker', () {
+    testWidgets('subject management remains usable at 320dp with large text', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 480);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final container = freshContainer();
+      await container
+          .read(subjectsProvider.notifier)
+          .add(
+            const Subject(
+              id: 'research',
+              name: 'Research and dissertation',
+              icon: Icons.book,
+              color: Colors.blue,
+            ),
+          );
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: const Scaffold(body: SubjectPicker(accent: Colors.blue)),
+          ),
+        ),
+      );
+      await settle(tester);
+      await tester.tap(find.byTooltip('Manage subjects'));
+      await settle(tester);
+      await tester.scrollUntilVisible(
+        find.byTooltip('Remove Research and dissertation'),
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byTooltip('Remove Research and dissertation'));
+      await settle(tester);
+      await tester.tap(find.text('Remove'));
+      await settle(tester);
+      expect(container.read(subjectsProvider), isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      'manage confirms removal, clears the tag and preserves earned time',
+      (tester) async {
+        final container = freshContainer();
+        final subjects = container.read(subjectsProvider.notifier);
+        await subjects.add(
+          const Subject(
+            id: 'math',
+            name: 'Math',
+            icon: Icons.book,
+            color: Colors.blue,
+          ),
+        );
+        await subjects.add(
+          const Subject(
+            id: 'physics',
+            name: 'Physics',
+            icon: Icons.science,
+            color: Colors.green,
+          ),
+        );
+        container.read(timerProvider.notifier).setSubject('math');
+        await container
+            .read(sessionsProvider.notifier)
+            .record(
+              FocusSession(
+                id: 'earned',
+                subjectId: 'math',
+                startedAt: DateTime.now(),
+                minutes: 25,
+                completed: true,
+              ),
+            );
+        await container
+            .read(focusGoalPlannerProvider.notifier)
+            .save(
+              FocusGoalPlan(
+                scope: FocusGoalScope.day,
+                date: DateTime.now(),
+                totalMinutes: 60,
+                subjectMinutes: {'math': 30, 'physics': 30},
+              ),
+            );
+        await tester.pumpWidget(
+          wrap(container, const SubjectPicker(accent: Colors.blue)),
+        );
+        await settle(tester);
+        await tester.tap(find.byTooltip('Manage subjects'));
+        await settle(tester);
+        await tester.tap(find.byTooltip('Remove Math'));
+        await settle(tester);
+        expect(find.text('Remove Math?'), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await settle(tester);
+        expect(container.read(subjectsProvider), hasLength(2));
+        expect(container.read(timerProvider).subjectId, 'math');
+        await tester.tap(find.byTooltip('Remove Math'));
+        await settle(tester);
+        await tester.tap(find.text('Remove'));
+        await settle(tester);
+        expect(container.read(subjectsProvider).map((s) => s.id), ['physics']);
+        expect(store.getList(StoreKeys.subjects).map((s) => s['id']), [
+          'physics',
+        ]);
+        expect(container.read(timerProvider).subjectId, isNull);
+        expect(container.read(sessionsProvider).single.minutes, 25);
+        expect(container.read(sessionsProvider).single.subjectId, 'math');
+        expect(container.read(sessionsProvider).single.label, 'Math');
+        expect(store.getList(StoreKeys.sessions).single['label'], 'Math');
+        expect(container.read(focusMinutesTodayProvider), 25);
+        final goal = container.read(activeFocusGoalProvider)!;
+        expect(goal.totalMinutes, 60);
+        expect(goal.subjectMinutes, isEmpty);
+        final restored = FocusGoalPlanner.fromJson(
+          store.getMap(FocusGoalPlannerNotifier.storageKey),
+        );
+        expect(restored.day!.totalMinutes, 60);
+        expect(restored.day!.subjectMinutes, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'removing another subject keeps the running tag and can empty the catalogue',
+      (tester) async {
+        final container = freshContainer();
+        await container
+            .read(subjectsProvider.notifier)
+            .add(
+              const Subject(
+                id: 'math',
+                name: 'Math',
+                icon: Icons.book,
+                color: Colors.blue,
+              ),
+            );
+        await container
+            .read(subjectsProvider.notifier)
+            .add(
+              const Subject(
+                id: 'physics',
+                name: 'Physics',
+                icon: Icons.science,
+                color: Colors.green,
+              ),
+            );
+        container.read(timerProvider.notifier).setSubject('math');
+        await tester.pumpWidget(
+          wrap(container, const SubjectPicker(accent: Colors.blue)),
+        );
+        await settle(tester);
+        await tester.tap(find.byTooltip('Manage subjects'));
+        await settle(tester);
+        await tester.tap(find.byTooltip('Remove Physics'));
+        await settle(tester);
+        await tester.tap(find.text('Remove'));
+        await settle(tester);
+        expect(container.read(timerProvider).subjectId, 'math');
+        await tester.tap(find.byTooltip('Remove Math'));
+        await settle(tester);
+        await tester.tap(find.text('Remove'));
+        await settle(tester);
+        expect(container.read(subjectsProvider), isEmpty);
+        expect(store.getList(StoreKeys.subjects), isEmpty);
+        expect(find.text('No subjects yet'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('the row lists every subject and the chip that adds one', (
       tester,
     ) async {

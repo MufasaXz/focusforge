@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/seed.dart';
 import '../services/local_store.dart';
 import 'app_providers.dart';
+import 'goal_planner_providers.dart';
 
 // -- Subjects ----------------------------------------------------------------
 
@@ -46,9 +47,23 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
   }
 
   Future<void> remove(String id) async {
-    _base = _base.where((s) => s.id != id).toList(growable: false);
+    final subject = _base.where((s) => s.id == id).firstOrNull;
+    if (subject == null) return;
+    final sessions = ref.read(sessionsProvider.notifier);
+    final goals = ref.read(focusGoalPlannerProvider.notifier);
+    final next = _base.where((s) => s.id != id).toList(growable: false);
+    _base = next;
     state = _withDerivedCounters(_base, ref.read(sessionsProvider));
+    if (ref.read(timerProvider).subjectId == id) {
+      ref.read(timerProvider.notifier).setSubject(null);
+    }
+    // Publish the catalogue before yielding so a simultaneous selection or
+    // addition starts from this change instead of a stale snapshot.
     await _persist();
+    await goals.removeSubjectAllocation(id);
+    // Publishing session labels rebuilds this notifier's derived counters.
+    // Do it last, after the catalogue and timer no longer reference the ID.
+    await sessions.retainSubjectName(id, subject.name);
   }
 
   Future<void> setWeeklyTarget(String id, double hours) async {
@@ -112,6 +127,34 @@ class SessionsNotifier extends Notifier<List<FocusSession>> {
     StoreKeys.sessions,
     state.map((s) => s.toJson()).toList(growable: false),
   );
+
+  /// Keep legacy sessions readable after removing their catalogue entry.
+  /// No minutes, ownership, timestamps or IDs change.
+  Future<void> retainSubjectName(String id, String name) async {
+    if (!state.any((s) => s.subjectId == id && s.label.isEmpty)) return;
+    final next = [
+      for (final s in state)
+        if (s.subjectId == id && s.label.isEmpty)
+          FocusSession(
+            id: s.id,
+            subjectId: s.subjectId,
+            startedAt: s.startedAt,
+            minutes: s.minutes,
+            completed: s.completed,
+            label: name,
+            ownerUid: s.ownerUid,
+          )
+        else
+          s,
+    ];
+    // Match record(): publish before yielding, so a timer completion cannot
+    // be overwritten when the label write finishes.
+    state = next;
+    await _store.setList(
+      StoreKeys.sessions,
+      next.map((s) => s.toJson()).toList(),
+    );
+  }
 
   /// Appends [session] and returns whether it was added.
   ///

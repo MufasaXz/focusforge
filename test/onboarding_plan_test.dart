@@ -10,7 +10,6 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/onboarding/starting_plan_step.dart';
-import 'package:focusforge/features/focus/widgets/clock_faces.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -73,10 +72,7 @@ void main() {
         advanced = true;
       },
     );
-    expect(
-      tester.widget<RetroClock>(find.byType(RetroClock)).remaining,
-      const Duration(minutes: 50),
-    );
+    expect(find.text('50 min focus'), findsOneWidget);
     await tester.tap(find.text('Use this plan'));
     await tester.pumpAndSettle();
     expect(advanced, isTrue);
@@ -147,12 +143,9 @@ void main() {
             .where((plan) => plan.name == 'Morning reading'),
         hasLength(1),
       );
-      await tester.scrollUntilVisible(find.byType(RetroClock), -180);
+      await tester.scrollUntilVisible(find.text('50 min focus'), -180);
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<RetroClock>(find.byType(RetroClock)).remaining,
-        const Duration(minutes: 50),
-      );
+      expect(find.text('50 min focus'), findsOneWidget);
       await tester.tap(find.text('Use this plan'));
       await tester.pumpAndSettle();
       expect(

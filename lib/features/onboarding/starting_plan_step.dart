@@ -8,7 +8,6 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/services/local_store.dart';
 import '../focus/custom_plan_sheet.dart';
-import '../focus/widgets/clock_faces.dart';
 import 'onboarding_chrome.dart';
 import 'setup_choice_card.dart';
 
@@ -95,31 +94,13 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
     final selected = plans.firstWhere((plan) => plan.key == _selectedKey);
 
     return StepScaffold(
-      title: 'Find your starting pace',
+      title: 'Choose your pace',
       eyebrow: 'YOUR FIRST SESSION',
       subtitle:
-          'Based on your focus preference, we suggest a ${suggested.focus}-minute block. Choose what feels manageable today.',
+          'We suggest ${suggested.focus} minutes. Pick what works for you.',
       primaryLabel: 'Use this plan',
       onPrimary: _save,
-      footnote: 'Start small. Your pace can change with your day.',
       children: [
-        Center(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final size = (constraints.maxWidth * .72).clamp(128.0, 210.0);
-              return Semantics(
-                label: '${selected.name}, ${selected.focus} minute focus block',
-                child: RetroClock(
-                  remaining: selected.focusDuration,
-                  accent: cs.primary,
-                  size: size,
-                  progress: 0,
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: Gap.lg),
         Semantics(
           liveRegion: true,
           child: Padding(
@@ -147,7 +128,7 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
             child: SetupChoiceCard(
               title: plan.name,
               description:
-                  '${plan.focus} minutes of focus · ${plan.shortBreak} minute breaks',
+                  '${plan.focus} min focus · ${plan.shortBreak} min break',
               badge: plan.key == suggested.key ? 'Suggested' : null,
               icon: plan.icon,
               color: cs.primary,

@@ -173,7 +173,7 @@ void main() {
           );
           final decoration = underlay.decoration as ShapeDecoration;
           expect(decoration.color!.a, 1);
-          expect(decoration.shape, isA<RoundedRectangleBorder>());
+          expect(decoration.shape, isA<StadiumBorder>());
           expect(find.byType(NavigationBar).hitTestable(), findsOneWidget);
         }
         await settle(tester);

@@ -59,9 +59,7 @@ class _PersonaStepState extends ConsumerState<PersonaStep> {
     return StepScaffold(
       title: 'What brings you here?',
       eyebrow: 'YOUR FOCUS',
-      subtitle:
-          'Choose one thing you would like to make easier. '
-          'We will shape your first session around it.',
+      subtitle: 'Choose your focus. We’ll suggest a starting plan.',
       onPrimary: _save,
       children: [
         Text('I am here for', style: Theme.of(context).textTheme.titleMedium),
