@@ -54,6 +54,30 @@ void main() {
   });
   tearDown(() => service.dispose());
 
+  test(
+    'session-only cloud backup preserves unversioned local settings',
+    () async {
+      await store.setMap(StoreKeys.user, alice.toJson());
+      await store.setList(StoreKeys.subjects, [
+        {'id': 'saved-local'},
+      ]);
+      await store.setBool(StoreKeys.boardOptIn, true);
+      final db = FakeFirebaseFirestore();
+      await db.doc('users/alice/sessionData/partial').set({
+        'id': 'partial',
+        'ownerUid': 'alice',
+        'minutes': 25,
+        'startedAt': 1,
+      });
+      final partial = StudyBackupService(store, FirebaseStudyBackupBackend(db));
+      addTearDown(partial.dispose);
+      await partial.connect(alice);
+      expect(store.getList(StoreKeys.subjects).single['id'], 'saved-local');
+      expect(store.getBool(StoreKeys.boardOptIn), isTrue);
+      expect(store.getList(StoreKeys.sessions).single['id'], 'partial');
+    },
+  );
+
   for (final remoteRevision in [
     0,
     DateTime.now().millisecondsSinceEpoch - 1000,

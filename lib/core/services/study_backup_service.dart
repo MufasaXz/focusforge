@@ -12,14 +12,17 @@ class StudyBackup {
     required this.settings,
     required this.sessions,
     required this.modifiedAt,
+    this.hasSettings = true,
   });
   final Map<String, dynamic> settings;
   final List<Map<String, dynamic>> sessions;
   final int modifiedAt;
+  final bool hasSettings;
   Map<String, dynamic> toJson() => {
     'settings': settings,
     'sessions': sessions,
     'modifiedAt': modifiedAt,
+    'hasSettings': hasSettings,
   };
   static StudyBackup? fromJson(Map<String, dynamic>? json) {
     if (json == null || json['settings'] is! Map) return null;
@@ -30,6 +33,7 @@ class StudyBackup {
           .map((s) => Map<String, dynamic>.from(s))
           .toList(),
       modifiedAt: json['modifiedAt'] is int ? json['modifiedAt'] as int : 0,
+      hasSettings: json['hasSettings'] != false,
     );
   }
 }
@@ -76,9 +80,14 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
     if (!config.exists && rows.isEmpty) return null;
     final data = config.data();
     Map<String, dynamic> settings = {};
+    var hasSettings = false;
     try {
-      final decoded = jsonDecode(data?['data'] as String? ?? '{}');
-      if (decoded is Map<String, dynamic>) settings = decoded;
+      final encoded = data?['data'];
+      final decoded = encoded is String ? jsonDecode(encoded) : null;
+      if (decoded is Map<String, dynamic>) {
+        settings = decoded;
+        hasSettings = true;
+      }
     } on FormatException {
       /* A corrupt config must not erase valid sessions. */
     }
@@ -86,6 +95,7 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
       settings: settings,
       sessions: rows,
       modifiedAt: data?['modifiedAt'] as int? ?? 0,
+      hasSettings: hasSettings,
     );
   }
 
@@ -284,11 +294,15 @@ class StudyBackupService {
       local = _capture(profile.uid);
     }
     final guest = firstLink ? _capture(oldUid) : null;
+    // A first upload can write session batches before its settings document.
+    // Missing or corrupt settings have no revision to compete with local data.
+    final remoteSettings = remote?.hasSettings == true ? remote : null;
     final base =
         local != null &&
-            (remote == null || local.modifiedAt > remote.modifiedAt)
+            (remoteSettings == null ||
+                local.modifiedAt > remoteSettings.modifiedAt)
         ? local
-        : remote;
+        : remoteSettings;
     final chosen = base ?? guest;
     final merged = <String, Map<String, dynamic>>{};
     for (final backup in [remote, local, guest]) {
@@ -343,7 +357,13 @@ class StudyBackupService {
       );
       checkCurrent();
       if (oldUid.isNotEmpty && oldUid != profile.uid) {
-        await store.remove(StoreKeys.presets);
+        final pending = store.getMap(StoreKeys.presets);
+        await store.setMap(StoreKeys.presets, {
+          if (pending?['pendingCompletions'] is List)
+            'pendingCompletions': pending!['pendingCompletions'],
+          if (pending?['pendingStats'] is List)
+            'pendingStats': pending!['pendingStats'],
+        });
         checkCurrent();
       }
       await store.setMap(StoreKeys.user, restored.toJson());
