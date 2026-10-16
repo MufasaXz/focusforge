@@ -6,7 +6,6 @@ import '../../../core/models/study.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../shared/widgets/app_page.dart';
 import '../../../shared/widgets/pressable.dart';
-import 'subject_sheet.dart';
 import 'manage_subjects_sheet.dart';
 
 /// What the next finished block will be logged against.
@@ -64,25 +63,6 @@ class SubjectPicker extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (selected != null)
-              _ClearTag(
-                onTap: () => ref.read(timerProvider.notifier).setSubject(null),
-              ),
-            if (subjects.isNotEmpty)
-              if (MediaQuery.textScalerOf(context).scale(14) > 20)
-                IconButton(
-                  tooltip: 'Manage subjects',
-                  onPressed: () => showManageSubjectsSheet(context),
-                  icon: const Icon(Icons.tune_rounded),
-                )
-              else
-                TextButton(
-                  onPressed: () => showManageSubjectsSheet(context),
-                  child: const Tooltip(
-                    message: 'Manage subjects',
-                    child: Text('Manage'),
-                  ),
-                ),
           ],
         ),
         const SizedBox(height: Gap.xs + 2),
@@ -102,9 +82,12 @@ class SubjectPicker extends ConsumerWidget {
               separatorBuilder: (_, _) => const SizedBox(width: Gap.sm),
               itemBuilder: (context, i) {
                 if (i == subjects.length) {
-                  return _AddChip(
-                    onTap: () => _add(context, ref),
-                    label: subjects.isEmpty ? 'Add a subject' : 'New',
+                  return Tooltip(
+                    message: 'Manage subjects',
+                    child: _AddChip(
+                      onTap: () => showManageSubjectsSheet(context),
+                      label: 'Manage',
+                    ),
                   );
                 }
                 final subject = subjects[i];
@@ -122,17 +105,6 @@ class SubjectPicker extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  /// Creates a subject and tags the running session with it.
-  ///
-  /// Selecting what was just made is the whole point of adding it from here:
-  /// the user is about to study it, and a subject that arrives unselected
-  /// would have to be tapped before the session it was created for.
-  Future<void> _add(BuildContext context, WidgetRef ref) async {
-    final subject = await showSubjectSheet(context);
-    if (subject == null) return;
-    ref.read(timerProvider.notifier).setSubject(subject.id);
   }
 }
 
@@ -245,7 +217,7 @@ class _AddChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      label: 'Add a subject',
+      label: 'Manage subjects',
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
@@ -261,7 +233,7 @@ class _AddChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add_rounded, size: 14, color: cs.primary),
+                  Icon(Icons.tune_rounded, size: 14, color: cs.primary),
                   const SizedBox(width: Gap.xs + 1),
                   Text(
                     label,
@@ -336,42 +308,4 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DashedBorderPainter old) =>
       old.radius != radius || old.color != color;
-}
-
-class _ClearTag extends StatelessWidget {
-  const _ClearTag({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: 'Clear the subject tag',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.9,
-        child: Container(
-          alignment: Alignment.center,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.sm,
-            vertical: Gap.xs,
-          ),
-          child: Text(
-            'Clear',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontSize: 10.5,
-              color: cs.onSurfaceVariant,
-              decoration: TextDecoration.underline,
-              decorationColor: cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

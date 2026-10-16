@@ -63,14 +63,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> addSubject(WidgetTester tester, String name) async {
-    await tester.tap(find.bySemanticsLabel('Add a subject'));
+  Future<void> addSubject(
+    WidgetTester tester,
+    String name, {
+    bool closeSheet = true,
+  }) async {
+    await tester.tap(find.bySemanticsLabel('Manage subjects'));
     await settle(tester);
-    expect(find.text('New subject'), findsOneWidget, reason: 'the sheet opens');
+    expect(
+      find.text('Manage subjects'),
+      findsOneWidget,
+      reason: 'the sheet opens',
+    );
     await tester.enterText(find.byType(TextField), name);
     await tester.pump();
     await tester.tap(find.text('Add subject'));
     await settle(tester);
+    if (closeSheet && find.byType(TextField).evaluate().isNotEmpty) {
+      await tester.tap(find.bySemanticsLabel('Close'));
+      await settle(tester);
+    }
   }
 
   group('SubjectNaming', () {
@@ -160,6 +172,13 @@ void main() {
         ),
       );
       await settle(tester);
+      await tester.scrollUntilVisible(
+        find.byTooltip('Manage subjects'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.drag(find.byType(ListView).first, const Offset(-300, 0));
+      await settle(tester);
       await tester.tap(find.byTooltip('Manage subjects'));
       await settle(tester);
       await tester.scrollUntilVisible(
@@ -222,6 +241,7 @@ void main() {
           wrap(container, const SubjectPicker(accent: Colors.blue)),
         );
         await settle(tester);
+        await tester.ensureVisible(find.byTooltip('Manage subjects'));
         await tester.tap(find.byTooltip('Manage subjects'));
         await settle(tester);
         await tester.tap(find.byTooltip('Remove Math'));
@@ -286,6 +306,7 @@ void main() {
           wrap(container, const SubjectPicker(accent: Colors.blue)),
         );
         await settle(tester);
+        await tester.ensureVisible(find.byTooltip('Manage subjects'));
         await tester.tap(find.byTooltip('Manage subjects'));
         await settle(tester);
         await tester.tap(find.byTooltip('Remove Physics'));
@@ -326,7 +347,7 @@ void main() {
           reason: '${subject.name} is on the device and has to be offered',
         );
       }
-      expect(find.text('Add a subject'), findsOneWidget);
+      expect(find.text('Manage'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -385,10 +406,10 @@ void main() {
           );
       await settle(tester);
       final before = container.read(subjectsProvider).length;
-      await addSubject(tester, 'Math');
+      await addSubject(tester, 'Math', closeSheet: false);
 
       expect(
-        find.text('New subject'),
+        find.text('Manage subjects'),
         findsOneWidget,
         reason: 'the sheet stays open so the name can be corrected',
       );
