@@ -9,18 +9,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/data/seed.dart';
 import '../../../core/utils/format.dart';
 
-/// Today's focus split across subjects, as a donut.
-///
-/// The ring itself is one spoken sentence — "Subject breakdown. Math 1 hour 5
-/// minutes, Physics 52 minutes…" — so the chart is legible to a screen reader
-/// without walking the legend item by item. The legend stays live underneath
-/// that label, because it is the control surface as well as the key.
-///
-/// Two details are lifted from a budgeting app whose donut got them right.
-/// Every slice is guaranteed a minimum sweep, so a subject that got two
-/// minutes is still an arc rather than a hairline the stroke caps swallow; and
-/// the selected slice lifts out of the ring, which is what makes a tap feel
-/// like it landed on *that* slice rather than on the chart as a whole.
+/// Today's total and subject shares, with a selectable ring and readable rows.
 class SubjectBreakdown extends StatefulWidget {
   const SubjectBreakdown({super.key, required this.subjects});
 
@@ -58,6 +47,19 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
   );
 
   int? _selected;
+
+  @override
+  void didUpdateWidget(SubjectBreakdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selected != null &&
+        (_selected! >= widget.subjects.length ||
+            _selected! >= oldWidget.subjects.length ||
+            oldWidget.subjects[_selected!].id !=
+                widget.subjects[_selected!].id)) {
+      _selected = null;
+      _pop.value = 0;
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -130,9 +132,11 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
           onTapAt: (local, size) => _hitTest(local, size, sweeps),
         );
 
-        final legend = Wrap(
-          spacing: Gap.lg,
-          runSpacing: Gap.md,
+        final total = widget.subjects.fold<int>(
+          0,
+          (sum, s) => sum + s.minutesToday,
+        );
+        final legend = Column(
           children: [
             for (var i = 0; i < widget.subjects.length; i++)
               _Legend(
@@ -140,6 +144,7 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
                 icon: widget.subjects[i].icon,
                 label: widget.subjects[i].name,
                 value: formatMinutes(widget.subjects[i].minutesToday),
+                share: total > 0 ? widget.subjects[i].minutesToday / total : 0,
                 selected: _selected == i,
                 onTap: () => _select(i),
               ),
@@ -151,24 +156,22 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
           children: [
             Semantics(
               label: _summary(widget.subjects),
-              child: ExcludeSemantics(
-                child: wide
-                    ? Row(
-                        children: [
-                          ring,
-                          const SizedBox(width: Gap.xl),
-                          Expanded(child: legend),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ring,
-                          const SizedBox(height: Gap.xl),
-                          legend,
-                        ],
-                      ),
-              ),
+              child: wide
+                  ? Row(
+                      children: [
+                        ExcludeSemantics(child: ring),
+                        const SizedBox(width: Gap.xl),
+                        Expanded(child: legend),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Center(child: ExcludeSemantics(child: ring)),
+                        const SizedBox(height: Gap.lg),
+                        legend,
+                      ],
+                    ),
             ),
           ],
         );
@@ -353,7 +356,8 @@ class _DonutPainter extends CustomPainter {
     var start = -math.pi / 2;
     for (var i = 0; i < sweeps.length; i++) {
       // The stagger is what makes the ring draw itself rather than appear.
-      final t = ((progress - i * 0.08) / (1 - i * 0.08)).clamp(0.0, 1.0);
+      final delay = sweeps.length <= 1 ? 0.0 : i / sweeps.length * .35;
+      final t = ((progress - delay) / (1 - delay)).clamp(0.0, 1.0);
       final eased = Curves.easeOutCubic.transform(t);
 
       final full = sweeps[i];
@@ -390,6 +394,7 @@ class _Legend extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.share,
     required this.selected,
     required this.onTap,
   });
@@ -398,6 +403,7 @@ class _Legend extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final double share;
   final bool selected;
   final VoidCallback onTap;
 
@@ -412,7 +418,7 @@ class _Legend extends StatelessWidget {
       label: '$label, $value',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.pill),
+        borderRadius: BorderRadius.circular(Radii.item),
         child: AnimatedContainer(
           duration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
@@ -420,28 +426,61 @@ class _Legend extends StatelessWidget {
           curve: Motion.standard,
           padding: const EdgeInsets.symmetric(
             horizontal: Gap.sm,
-            vertical: Gap.xs,
+            vertical: Gap.md,
           ),
           decoration: BoxDecoration(
             color: selected ? cs.surfaceContainerHighest : Colors.transparent,
-            borderRadius: BorderRadius.circular(Radii.pill),
+            borderRadius: BorderRadius.circular(Radii.item),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 13, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                value,
-                style: tt.labelMedium?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(11),
                 ),
+                child: Icon(icon, size: 18, color: color),
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.titleSmall,
+                    ),
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: share.clamp(0, 1),
+                        minHeight: 3,
+                        color: color,
+                        backgroundColor: cs.surfaceContainerHighest,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    value,
+                    style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${(share * 100).round()}%',
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
               ),
             ],
           ),
