@@ -196,6 +196,10 @@ class _StepScaffoldState extends State<StepScaffold> {
 }
 
 /// A quiet solid action area keeps the next step clear in every theme.
+///
+/// Premium finish: a hairline gradient wash lifts the action off the step
+/// body without adding elevation — the footer reads as the same surface,
+/// just closer.
 class _StepFooter extends StatelessWidget {
   const _StepFooter({required this.child});
   final Widget child;
@@ -205,7 +209,11 @@ class _StepFooter extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [cs.surfaceContainerLow, cs.surface],
+        ),
         border: Border(
           top: BorderSide(color: cs.outlineVariant.withValues(alpha: .45)),
         ),
