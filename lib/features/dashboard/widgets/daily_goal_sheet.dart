@@ -43,7 +43,10 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
     final plan = ref
         .read(focusGoalPlannerProvider)
         .forDate(ref.read(focusCalendarDateProvider));
-    _total = plan?.totalMinutes ?? 60;
+    _total =
+        plan?.totalMinutes ??
+        ref.read(focusGoalPlannerProvider).day?.totalMinutes ??
+        60;
     _repeatThisWeek = plan?.repeatThisWeek ?? false;
     _allocations.addAll(plan?.subjectMinutes ?? const {});
     _wheel = FixedExtentScrollController(initialItem: (_total / _step).round());

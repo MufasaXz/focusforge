@@ -184,6 +184,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final left = <Widget>[
       if (goal == null)
         _PlanGoalCard(
+          savedGoalMinutes: ref
+              .watch(focusGoalPlannerProvider)
+              .day
+              ?.totalMinutes,
           onPlan: () => showDailyGoalSheet(context),
           ctaKey: targets.emptyCta,
         )
@@ -196,7 +200,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onFocus: _startFocusing,
         ),
       const UsageAccessCard(),
-      if (sessions.isNotEmpty) ...[
+      if ((_range == StudyRange.month
+          ? sessions.isNotEmpty
+          : days.any((day) => day.hours > 0))) ...[
         const SizedBox(height: Gap.xl),
         SectionHeader(
           title: _range == StudyRange.week
@@ -743,9 +749,14 @@ class _TrackerPanel extends StatelessWidget {
 
 /// A first target is an explicit choice, rather than a shipped default.
 class _PlanGoalCard extends StatelessWidget {
-  const _PlanGoalCard({required this.onPlan, this.ctaKey});
+  const _PlanGoalCard({
+    required this.onPlan,
+    this.ctaKey,
+    this.savedGoalMinutes,
+  });
   final VoidCallback onPlan;
   final Key? ctaKey;
+  final int? savedGoalMinutes;
 
   @override
   Widget build(BuildContext context) {
@@ -791,13 +802,17 @@ class _PlanGoalCard extends StatelessWidget {
             ),
             const SizedBox(height: Gap.md),
             Text(
-              'Make room for focus',
+              savedGoalMinutes == null
+                  ? 'Make room for focus'
+                  : 'Your goal · ${formatMinutes(savedGoalMinutes!)}',
               textAlign: TextAlign.center,
               style: tt.headlineSmall,
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              'Choose your focus time for today. Subject targets are optional.',
+              savedGoalMinutes == null
+                  ? 'Choose your focus time for today. Subject targets are optional.'
+                  : 'Your saved target is ready whenever you are.',
               textAlign: TextAlign.center,
               style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),

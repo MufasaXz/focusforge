@@ -589,7 +589,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                     boxShadow: [
                                       BoxShadow(
                                         color: accent.withValues(alpha: 0.35),
-                                        blurRadius: 18,
+                                        blurRadius: 14,
                                         offset: const Offset(0, 6),
                                       ),
                                     ],
