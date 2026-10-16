@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -65,7 +67,7 @@ class _StepScaffoldState extends State<StepScaffold> {
       if (mounted) {
         showAppSnack(
           context,
-          'Could not save this step. Try again.',
+          tr("Could not save this step. Try again."),
           danger: true,
         );
       }
@@ -79,10 +81,8 @@ class _StepScaffoldState extends State<StepScaffold> {
     final t = Theme.of(context).colorScheme;
 
     final body = <Widget>[
-      if (MediaQuery.sizeOf(context).height >= 400) ...[
-        Eyebrow(widget.eyebrow),
-        const SizedBox(height: Gap.md),
-      ],
+      Eyebrow(widget.eyebrow),
+      const SizedBox(height: Gap.md),
       Stagger(
         index: 0,
         child: Semantics(
@@ -150,8 +150,11 @@ class _StepScaffoldState extends State<StepScaffold> {
         final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
         // A keyboard or landscape viewport needs one scroll surface; a pinned
         // footer must not consume the space needed to reach the fields.
-        if (constraints.maxHeight < 400 ||
-            (largeText && constraints.maxHeight < 650)) {
+        // Decide from the height before the IME opened. Replacing the layout
+        // while Android resizes for its keyboard would dispose the focused
+        // text field and immediately close that keyboard again.
+        final layoutHeight = MediaQuery.sizeOf(context).height;
+        if (layoutHeight < 400 || (largeText && layoutHeight < 650)) {
           return ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: [
