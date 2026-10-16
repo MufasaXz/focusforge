@@ -54,6 +54,41 @@ void main() {
   });
   tearDown(() => service.dispose());
 
+  for (final remoteRevision in [
+    0,
+    DateTime.now().millisecondsSinceEpoch - 1000,
+  ]) {
+    test(
+      'unversioned account cache keeps saved settings at revision $remoteRevision',
+      () async {
+        await store.setMap(StoreKeys.user, alice.toJson());
+        await store.setBool(StoreKeys.boardOptIn, false);
+        await store.setList(StoreKeys.subjects, [
+          {'id': 'old-local'},
+        ]);
+        backend.accounts['alice'] = StudyBackup(
+          settings: {
+            StoreKeys.user: jsonEncode(alice.toJson()),
+            StoreKeys.boardOptIn: true,
+            StoreKeys.subjects: jsonEncode([
+              {'id': 'saved-math'},
+            ]),
+          },
+          sessions: [],
+          modifiedAt: remoteRevision,
+        );
+        await service.connect(alice);
+        expect(store.getBool(StoreKeys.boardOptIn), isTrue);
+        expect(store.getList(StoreKeys.subjects).single['id'], 'saved-math');
+        await service.flush();
+        expect(
+          backend.accounts['alice']!.settings[StoreKeys.boardOptIn],
+          isTrue,
+        );
+      },
+    );
+  }
+
   test(
     'canceling restore during a local write cannot replace the next account',
     () async {

@@ -185,9 +185,10 @@ class StudyBackupService {
     return StudyBackup(
       settings: settings,
       sessions: sessions,
-      modifiedAt:
-          store.getInt('study.modified.$uid') ??
-          DateTime.now().millisecondsSinceEpoch,
+      // Older installs have no settings revision. Reading their cache is not
+      // a new edit: a fabricated "now" would outrank the saved account and
+      // upload stale subjects, goals or sharing consent over that backup.
+      modifiedAt: store.getInt('study.modified.$uid') ?? 0,
     );
   }
 
@@ -285,7 +286,7 @@ class StudyBackupService {
     final guest = firstLink ? _capture(oldUid) : null;
     final base =
         local != null &&
-            (remote == null || local.modifiedAt >= remote.modifiedAt)
+            (remote == null || local.modifiedAt > remote.modifiedAt)
         ? local
         : remote;
     final chosen = base ?? guest;
