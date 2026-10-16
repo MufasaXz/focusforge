@@ -118,203 +118,219 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final average = ref.watch(rangeAverageHoursProvider(_range));
     final heatmapWeeks = ref.watch(heatmapWeeksProvider);
 
-    // A tablet has room for two columns; a phone does not, and two narrow
-    // columns are worse than one. Threshold on the window rather than on the
-    // column this screen is handed: the shell caps the column at
-    // [AppShell.maxWideContentWidth] and the rail takes its width first, so
-    // the two agree within a breakpoint's width of each other, and the window
-    // is the number that does not change under a `LayoutBuilder` that a
-    // scroll view can defer.
-    final wide = MediaQuery.sizeOf(context).width >= Layout.wide;
+    // Measure the room remaining beside the rail, including split windows.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= Layout.wide;
 
-    // The first-run tips, built from what is actually on screen. A tip whose
-    // subject is not rendered — the ring before the first session, the streak
-    // chip at zero — is left out rather than pointed at nothing.
-    final targets = ref.watch(coachTargetsProvider);
-    final spots = <CoachSpot>[
-      if (goal == null)
-        CoachSpot(
-          target: targets.emptyCta,
-          icon: Icons.play_arrow_rounded,
-          title: context.tr("Plan your focus time"),
-          body: context.tr(
-            "Set your daily focus time. Your progress ring appears when you save.",
+        // The first-run tips, built from what is actually on screen. A tip whose
+        // subject is not rendered — the ring before the first session, the streak
+        // chip at zero — is left out rather than pointed at nothing.
+        final targets = ref.watch(coachTargetsProvider);
+        final spots = <CoachSpot>[
+          if (goal == null)
+            CoachSpot(
+              target: targets.emptyCta,
+              icon: Icons.play_arrow_rounded,
+              title: context.tr("Plan your focus time"),
+              body: context.tr(
+                "Set your daily focus time. Your progress ring appears when you save.",
+              ),
+            )
+          else
+            CoachSpot(
+              target: targets.ring,
+              icon: Icons.donut_large_rounded,
+              title: context.tr("Your daily progress"),
+              body: context.tr(
+                "This ring fills as you focus — it starts moving the moment a block runs, and keeps what you finish.",
+              ),
+            ),
+          if (streak > 0)
+            CoachSpot(
+              target: targets.streak,
+              icon: Icons.local_fire_department_rounded,
+              title: context.tr("Build your streak"),
+              body: context.tr("Study every day and the flame keeps growing."),
+            ),
+          CoachSpot(
+            target: targets.focusTab,
+            icon: Icons.timer_rounded,
+            title: context.tr("Your timer lives here"),
+            body: context.tr(
+              "The Focus tab starts a Pomodoro and runs the shield while it counts down.",
+            ),
           ),
-        )
-      else
-        CoachSpot(
-          target: targets.ring,
-          icon: Icons.donut_large_rounded,
-          title: context.tr("Your daily progress"),
-          body: context.tr(
-            "This ring fills as you focus — it starts moving the moment a block runs, and keeps what you finish.",
+          CoachSpot(
+            target: targets.shieldTab,
+            icon: Icons.shield_outlined,
+            title: context.tr("Start blocking apps like this"),
+            body: context.tr(
+              "The Shield tab lists the apps you can close. Switch one on, and it stops opening until you switch it off.",
+            ),
           ),
-        ),
-      if (streak > 0)
-        CoachSpot(
-          target: targets.streak,
-          icon: Icons.local_fire_department_rounded,
-          title: context.tr("Build your streak"),
-          body: context.tr("Study every day and the flame keeps growing."),
-        ),
-      CoachSpot(
-        target: targets.focusTab,
-        icon: Icons.timer_rounded,
-        title: context.tr("Your timer lives here"),
-        body: context.tr(
-          "The Focus tab starts a Pomodoro and runs the shield while it counts down.",
-        ),
-      ),
-      CoachSpot(
-        target: targets.shieldTab,
-        icon: Icons.shield_outlined,
-        title: context.tr("Start blocking apps like this"),
-        body: context.tr(
-          "The Shield tab lists the apps you can close. Switch one on, and it stops opening until you switch it off.",
-        ),
-      ),
-    ];
+        ];
 
-    final greeting = _Greeting(
-      name: user.firstName,
-      streak: streak,
-      now: now,
-      streakKey: targets.streak,
-    );
+        final greeting = _Greeting(
+          name: user.firstName,
+          streak: streak,
+          now: now,
+          streakKey: targets.streak,
+        );
 
-    // The two columns, in reading order: what today looks like, then what the
-    // log says. Only used when there is width for them.
-    //
-    final left = <Widget>[
-      if (goal == null)
-        _PlanGoalCard(
-          savedGoalMinutes: ref
-              .watch(focusGoalPlannerProvider)
-              .day
-              ?.totalMinutes,
-          onPlan: () => showDailyGoalSheet(context),
-          ctaKey: targets.emptyCta,
-        )
-      else
-        _DailyOverview(
-          sessionsToday: sessionsToday,
-          totalHours: stats.totalFocusHours,
-          level: stats.level,
-          ringKey: targets.ring,
-          onFocus: _startFocusing,
-        ),
-      const UsageAccessCard(),
-      if ((_range == StudyRange.month
-          ? sessions.isNotEmpty
-          : days.any((day) => day.hours > 0))) ...[
-        const SizedBox(height: Gap.xl),
-        SectionHeader(
-          title: _range == StudyRange.week
-              ? context.tr("Weekly progress")
-              : context.tr("Monthly progress"),
-          icon: Icons.bar_chart_rounded,
-        ),
-        _TrackerPanel(
-          range: _range,
-          onRangeChanged: (r) => setState(() => _range = r),
-          total: total,
-          average: average,
-          days: days,
-          onDayTap: (day) => _openDay(day),
-        ),
-        const SizedBox(height: Gap.xl),
-        // Both of these are month-shaped reads: the grid covers five weeks and
-        // the card names the leader of the span the chart is showing. They
-        // answer "how has this month gone", which the week view never asks, so
-        // they appear with the month rather than padding the week's page.
-        if (_range == StudyRange.month) ...[
-          SectionHeader(
-            title: context.tr("Top subject"),
-            icon: Icons.workspace_premium_rounded,
-          ),
-          TopSubjectCard(range: _range),
-          const SizedBox(height: Gap.xl),
-          SectionHeader(
-            title: context.tr("Focus heatmap"),
-            icon: Icons.calendar_month_rounded,
-          ),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(Gap.lg),
-              child: FocusHeatmap(
-                weeks: heatmapWeeks,
-                // The same sheet the tracker's bars open: a day is a day, and
-                // which of the two views it was reached from is not a fact
-                // about the day.
-                onDayTap: (date) => showDaySummarySheet(context, date),
+        // The two columns, in reading order: what today looks like, then what the
+        // log says. Only used when there is width for them.
+        //
+        final left = <Widget>[
+          if (goal == null)
+            _PlanGoalCard(
+              savedGoalMinutes: ref
+                  .watch(focusGoalPlannerProvider)
+                  .day
+                  ?.totalMinutes,
+              onPlan: () => showDailyGoalSheet(context),
+              ctaKey: targets.emptyCta,
+            )
+          else
+            _DailyOverview(
+              sessionsToday: sessionsToday,
+              totalHours: stats.totalFocusHours,
+              level: stats.level,
+              ringKey: targets.ring,
+              onFocus: _startFocusing,
+            ),
+          const UsageAccessCard(),
+        ];
+        final history = <Widget>[
+          if ((_range == StudyRange.month
+              ? sessions.isNotEmpty
+              : days.any((day) => day.hours > 0))) ...[
+            const SizedBox(height: Gap.xl),
+            SectionHeader(
+              title: _range == StudyRange.week
+                  ? context.tr("Weekly progress")
+                  : context.tr("Monthly progress"),
+              icon: Icons.bar_chart_rounded,
+            ),
+            _TrackerPanel(
+              range: _range,
+              onRangeChanged: (r) => setState(() => _range = r),
+              total: total,
+              average: average,
+              days: days,
+              onDayTap: (day) => _openDay(day),
+            ),
+            const SizedBox(height: Gap.xl),
+            // Both of these are month-shaped reads: the grid covers five weeks and
+            // the card names the leader of the span the chart is showing. They
+            // answer "how has this month gone", which the week view never asks, so
+            // they appear with the month rather than padding the week's page.
+            if (_range == StudyRange.month) ...[
+              SectionHeader(
+                title: context.tr("Top subject"),
+                icon: Icons.workspace_premium_rounded,
+              ),
+              TopSubjectCard(range: _range),
+              const SizedBox(height: Gap.xl),
+              SectionHeader(
+                title: context.tr("Focus heatmap"),
+                icon: Icons.calendar_month_rounded,
+              ),
+              GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(Gap.lg),
+                  child: FocusHeatmap(
+                    weeks: heatmapWeeks,
+                    // The same sheet the tracker's bars open: a day is a day, and
+                    // which of the two views it was reached from is not a fact
+                    // about the day.
+                    onDayTap: (date) => showDaySummarySheet(context, date),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ];
+
+        final right = <Widget>[
+          if (sessions.isNotEmpty) ...[
+            SectionHeader(
+              title: context.tr("Subject breakdown"),
+              icon: Icons.donut_large_rounded,
+            ),
+            GlassCard(
+              child: Padding(
+                padding: const EdgeInsets.all(Gap.lg),
+                child: SubjectBreakdown(subjects: subjects),
+              ),
+            ),
+          ],
+        ];
+
+        return CoachMarks(
+          spots: spots,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: history.isEmpty ? Layout.readable : double.infinity,
+              ),
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                color: cs.primary,
+                backgroundColor: cs.surface,
+                child: wide && history.isNotEmpty
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: _padding(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Stagger(index: 0, child: greeting),
+                            const SizedBox(height: Gap.xl),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: _staggered([
+                                      ...left,
+                                      ...right,
+                                    ], from: 1),
+                                  ),
+                                ),
+                                const SizedBox(width: Gap.xl),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: _staggered(
+                                      history,
+                                      from: 1 + left.length + right.length,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: _padding(context),
+                        children: [
+                          Stagger(index: 0, child: greeting),
+                          const SizedBox(height: Gap.xl),
+                          ..._staggered([...left, ...history, ...right]),
+                        ],
+                      ),
               ),
             ),
           ),
-        ],
-      ],
-    ];
-
-    final right = <Widget>[
-      if (sessions.isNotEmpty) ...[
-        SectionHeader(
-          title: context.tr("Subject breakdown"),
-          icon: Icons.donut_large_rounded,
-        ),
-        GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(Gap.lg),
-            child: SubjectBreakdown(subjects: subjects),
-          ),
-        ),
-      ],
-    ];
-
-    return CoachMarks(
-      spots: spots,
-      child: RefreshIndicator(
-        onRefresh: _refresh,
-        color: cs.primary,
-        backgroundColor: cs.surface,
-        child: wide
-            ? SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: _padding(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Stagger(index: 0, child: greeting),
-                    const SizedBox(height: Gap.xl),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _staggered(left, from: 1),
-                          ),
-                        ),
-                        const SizedBox(width: Gap.xl),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _staggered(right, from: 1 + left.length),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              )
-            : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: _padding(context),
-                children: [
-                  Stagger(index: 0, child: greeting),
-                  const SizedBox(height: Gap.xl),
-                  ..._staggered([...left, ...right]),
-                ],
-              ),
-      ),
+        );
+      },
     );
   }
 

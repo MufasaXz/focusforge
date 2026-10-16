@@ -155,122 +155,132 @@ class ProfileScreen extends ConsumerWidget {
       ),
     ];
 
-    final wide = MediaQuery.sizeOf(context).width >= Layout.wide;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= Layout.wide;
 
-    // Stagger plays once per element lifetime. The tab's branch is built the
-    // first time it is shown (go_router does not preload branches), so the
-    // entrance lands on the first visit and never on a rebuild.
-    //
-    // Two counters when the columns are side by side, one when they are
-    // stacked: the entrance is a single sweep down the page, so the numbering
-    // has to follow the order the eye reads rather than the order the code
-    // builds. Side by side, that is the left column first.
-    var index = 0;
-    var prefIndex = 0;
-    Widget stagger(Widget child) => Stagger(index: index++, child: child);
-    Widget prefStagger(Widget child) =>
-        Stagger(index: wide ? prefIndex++ : index++, child: child);
+        // Stagger plays once per element lifetime. The tab's branch is built the
+        // first time it is shown (go_router does not preload branches), so the
+        // entrance lands on the first visit and never on a rebuild.
+        //
+        // Two counters when the columns are side by side, one when they are
+        // stacked: the entrance is a single sweep down the page, so the numbering
+        // has to follow the order the eye reads rather than the order the code
+        // builds. Side by side, that is the left column first.
+        var index = 0;
+        var prefIndex = 0;
+        Widget stagger(Widget child) => Stagger(index: index++, child: child);
+        Widget prefStagger(Widget child) =>
+            Stagger(index: wide ? prefIndex++ : index++, child: child);
 
-    // Identity and progress in one column, everything that is a setting in the
-    // other. Stacked — which is every phone — it is the same page it has
-    // always been, in the same order.
-    final identity = <Widget>[
-      stagger(
-        _HeroCard(
-          user: user,
-          stats: stats,
-          streak: streak,
-          unlocked: unlocked,
-          totalBadges: achievements.length,
-        ),
-      ),
-      const SizedBox(height: Gap.lg),
-      if (user.isAnonymous) ...[
-        stagger(const _AnonymousCard()),
-        const SizedBox(height: Gap.lg),
-      ],
-    ];
+        // Identity and progress in one column, everything that is a setting in the
+        // other. Stacked — which is every phone — it is the same page it has
+        // always been, in the same order.
+        final identity = <Widget>[
+          stagger(
+            _HeroCard(
+              user: user,
+              stats: stats,
+              streak: streak,
+              unlocked: unlocked,
+              totalBadges: achievements.length,
+            ),
+          ),
+          const SizedBox(height: Gap.lg),
+          if (user.isAnonymous) ...[
+            stagger(const _AnonymousCard()),
+            const SizedBox(height: Gap.lg),
+          ],
+        ];
 
-    final prefs = <Widget>[
-      prefStagger(
-        SectionHeader(
-          title: context.tr("Appearance"),
-          icon: Icons.palette_outlined,
-        ),
-      ),
-      prefStagger(const _AppearanceCard()),
-      const SizedBox(height: Gap.xl),
-      for (final group in [
-        (context.tr("Progress & community"), settings.take(3)),
-        (context.tr("Preferences"), settings.skip(3).take(2)),
-        (context.tr("App & privacy"), settings.skip(5)),
-      ])
-        prefStagger(
-          _ProfileSection(
-            title: group.$1,
-            icon: group.$1 == 'Progress & community'
-                ? Icons.explore_outlined
-                : group.$1 == 'Preferences'
-                ? Icons.settings_outlined
-                : Icons.tune_rounded,
-            children: [
-              for (final (i, spec) in group.$2.indexed) ...[
-                if (i > 0)
-                  Divider(
-                    color: t.outlineVariant.withValues(alpha: 0.4),
-                    height: 1,
-                    indent: 72,
-                    endIndent: Gap.lg,
+        final prefs = <Widget>[
+          prefStagger(
+            SectionHeader(
+              title: context.tr("Appearance"),
+              icon: Icons.palette_outlined,
+            ),
+          ),
+          prefStagger(const _AppearanceCard()),
+          const SizedBox(height: Gap.xl),
+        ];
+        for (final group in [
+          (context.tr("Progress & community"), settings.take(3)),
+          (context.tr("Preferences"), settings.skip(3).take(2)),
+          (context.tr("App & privacy"), settings.skip(5)),
+        ]) {
+          final section = prefStagger(
+            _ProfileSection(
+              title: group.$1,
+              icon: group.$1 == 'Progress & community'
+                  ? Icons.explore_outlined
+                  : group.$1 == 'Preferences'
+                  ? Icons.settings_outlined
+                  : Icons.tune_rounded,
+              children: [
+                for (final (i, spec) in group.$2.indexed) ...[
+                  if (i > 0)
+                    Divider(
+                      color: t.outlineVariant.withValues(alpha: 0.4),
+                      height: 1,
+                      indent: 72,
+                      endIndent: Gap.lg,
+                    ),
+                  _SettingTile(
+                    spec: spec,
+                    onTap: () => unawaited(_openSetting(context, ref, spec)),
                   ),
-                _SettingTile(
-                  spec: spec,
-                  onTap: () => unawaited(_openSetting(context, ref, spec)),
-                ),
+                ],
+              ],
+            ),
+          );
+          if (wide && group.$2.first == settings.first) {
+            identity.add(section);
+          } else {
+            prefs.add(section);
+          }
+        }
+
+        return _TabEntrance(
+          // The entrance waits for the branch to be on screen; see [_TabEntrance].
+          // Keyed so the motion-capture harness can grab this vertical list
+          // directly instead of the horizontal subject carousel inside it.
+          child: ListView(
+            key: const ValueKey('profile-scroll'),
+            padding: EdgeInsets.fromLTRB(
+              Gap.lg + 4,
+              MediaQuery.paddingOf(context).top + Gap.xl,
+              Gap.lg + 4,
+              kNavBarClearance,
+            ),
+            children: [
+              if (wide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: identity,
+                      ),
+                    ),
+                    const SizedBox(width: Gap.xl),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: prefs,
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                ...identity,
+                const SizedBox(height: Gap.xl),
+                ...prefs,
               ],
             ],
           ),
-        ),
-    ];
-
-    return _TabEntrance(
-      // The entrance waits for the branch to be on screen; see [_TabEntrance].
-      // Keyed so the motion-capture harness can grab this vertical list
-      // directly instead of the horizontal subject carousel inside it.
-      child: ListView(
-        key: const ValueKey('profile-scroll'),
-        padding: EdgeInsets.fromLTRB(
-          Gap.lg + 4,
-          MediaQuery.paddingOf(context).top + Gap.xl,
-          Gap.lg + 4,
-          kNavBarClearance,
-        ),
-        children: [
-          if (wide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: identity,
-                  ),
-                ),
-                const SizedBox(width: Gap.xl),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: prefs,
-                  ),
-                ),
-              ],
-            )
-          else ...[
-            ...identity,
-            const SizedBox(height: Gap.xl),
-            ...prefs,
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }

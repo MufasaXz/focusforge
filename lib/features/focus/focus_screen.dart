@@ -195,16 +195,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         !hiddenTime && planned - nudge >= TimerNotifier.minSegment;
     final canGrow = !hiddenTime && planned + nudge <= TimerNotifier.maxSegment;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final compactDock = MediaQuery.sizeOf(context).width < 360;
-    final labelledPlay =
-        MediaQuery.sizeOf(context).width >= 390 &&
-        MediaQuery.textScalerOf(context).scale(14) <= 19;
-
-    // The dock floats above the nav-bar band; the scroll view has to clear both,
-    // plus the home-indicator inset the nav bar itself grows by.
-    final dockBottom = kNavBarClearance + safeBottom;
-    final listBottom = dockBottom + _dockHeight + Gap.lg;
-
     // The engine emits focus completions on the stream. A break ending is only
     // visible as a phase change, so it is recognised by the break's target
     // instant having passed — a skipped break still has its target in the
@@ -233,519 +223,571 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       ref.read(timerProvider.notifier).toggle();
     }
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          // The entrance waits for the branch to be on screen; see
-          // [_TabEntrance].
-          child: _TabEntrance(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                Gap.lg + 4,
-                MediaQuery.paddingOf(context).top + Gap.lg,
-                Gap.lg + 4,
-                listBottom,
-              ),
-              children: [
-                // No headline. The screen opens on the preset and the subject
-                // tags and then the clock, which is what the tab is for; a
-                // title over it only spent height on words the rail already
-                // says. Stagger plays once per element lifetime, and this
-                // branch is built the first time the tab is shown (go_router
-                // does not preload branches) — so the entrance lands on first
-                // visit, not on every timer rebuild.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Portrait and split windows keep a single-column reading order.
+        final wide = constraints.maxWidth >= 900;
+        final columnWidth = wide
+            ? (constraints.maxWidth - Gap.xl) / 2
+            : constraints.maxWidth;
+        final compactDock = columnWidth < (wide ? 430 : 360);
+        final labelledPlay =
+            columnWidth >= (wide ? 440 : 390) &&
+            MediaQuery.textScalerOf(context).scale(14) <= 19;
+        final dockBottom =
+            wide || MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint
+            ? Gap.lg + safeBottom
+            : kNavBarClearance + safeBottom;
+        final listBottom = dockBottom + _dockHeight + Gap.lg;
+        final timerContent = <Widget>[
+          // No headline. The screen opens on the preset and the subject
+          // tags and then the clock, which is what the tab is for; a
+          // title over it only spent height on words the rail already
+          // says. Stagger plays once per element lifetime, and this
+          // branch is built the first time the tab is shown (go_router
+          // does not preload branches) — so the entrance lands on first
+          // visit, not on every timer rebuild.
 
-                // Preset ------------------------------------------------------
-                Stagger(
-                  index: 0,
-                  child: Center(
+          // Preset ------------------------------------------------------
+          Stagger(
+            index: 0,
+            child: Center(
+              child: Semantics(
+                button: true,
+                label: context.tr("Preset: {0}. Change preset", [
+                  presetDisplayName(context, preset),
+                ]),
+                excludeSemantics: true,
+                onTap: () => _showPresetSheet(context),
+                child: FilterChip(
+                  onSelected: (_) => _showPresetSheet(context),
+                  // A menu trigger, not a filter: a selected state and a
+                  // checkmark would misstate what the chip does.
+                  showCheckmark: false,
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(preset.icon, size: 15, color: accent),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          presetDisplayName(context, preset),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.expand_more_rounded,
+                        size: 16,
+                        color: t.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: Gap.lg),
+
+          // Subject tags ------------------------------------------------
+          Stagger(index: 1, child: SubjectPicker(accent: accent)),
+          const SizedBox(height: Gap.xl),
+
+          // Timer -------------------------------------------------------
+          Stagger(
+            index: 2,
+            child: Column(
+              children: [
+                Center(
+                  // The ring is the clock's own frame, so the gesture
+                  // that opens it full screen belongs on the ring rather
+                  // than on a button beside it. A single tap is left
+                  // alone: nothing else on this screen wants it, and
+                  // swallowing it would make the ring feel like a
+                  // control the user has to be careful with.
+                  child: GestureDetector(
+                    onDoubleTap: () => showFullscreenClock(context),
+                    // A double tap is not a gesture a screen reader can
+                    // perform, so the same route is the clock's own
+                    // action — the label says what it reads, the hint
+                    // says what it does.
                     child: Semantics(
                       button: true,
-                      label: context.tr("Preset: {0}. Change preset", [
-                        presetDisplayName(context, preset),
+                      label: context.tr("{0}, {1} remaining, {2}", [
+                        context.tr(timer.phase.label),
+                        clock,
+                        timer.running ? 'running' : 'paused',
                       ]),
-                      excludeSemantics: true,
-                      onTap: () => _showPresetSheet(context),
-                      child: FilterChip(
-                        onSelected: (_) => _showPresetSheet(context),
-                        // A menu trigger, not a filter: a selected state and a
-                        // checkmark would misstate what the chip does.
-                        showCheckmark: false,
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(preset.icon, size: 15, color: accent),
-                            const SizedBox(width: 7),
-                            Flexible(
-                              child: Text(
-                                presetDisplayName(context, preset),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.expand_more_rounded,
-                              size: 16,
-                              color: t.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
+                      hint: context.tr("Opens the clock full screen"),
+                      onTap: () => showFullscreenClock(context),
+                      // Two faces bring their own frame. The flip board
+                      // is a wide rectangle and a dial around it both
+                      // fights its shape and shrinks it; the analog face
+                      // is a dial, and a ring outside a dial is a circle
+                      // around a circle. Both take the width instead,
+                      // and the ring stays with the faces that fit it.
+                      child: ExcludeSemantics(
+                        child: hiddenTime
+                            ? Container(
+                                width: 252,
+                                height: 252,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: accent.withValues(alpha: .35),
+                                    width: 3,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.shuffle_rounded,
+                                      size: 38,
+                                      color: accent,
+                                    ),
+                                    const SizedBox(height: Gap.md),
+                                    Text(
+                                      context.tr("Time stays hidden"),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    const SizedBox(height: Gap.xs),
+                                    Text(
+                                      timer.running
+                                          ? context.tr("Stay with your subject")
+                                          : context.tr("Ready when you are"),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : switch (face) {
+                                ClockFace.flip => _FlipClock(
+                                  remaining: timer.remaining,
+                                  accent: accent,
+                                  phase: timer.phase,
+                                  segments: preset.segments,
+                                  cycleDone: cycleDone,
+                                  currentDot: currentDot,
+                                ),
+                                ClockFace.retro ||
+                                ClockFace.analog => _AnalogFace(
+                                  face: face,
+                                  remaining: timer.remaining,
+                                  accent: accent,
+                                  phase: timer.phase,
+                                  segments: preset.segments,
+                                  cycleDone: cycleDone,
+                                  currentDot: currentDot,
+                                  progress: timer.progressFor(preset),
+                                ),
+                                _ => ProgressRing(
+                                  value: timer.progressFor(preset),
+                                  size: 252,
+                                  stroke: 12,
+                                  ticks: 60,
+                                  // The second horizon: how far through the set of
+                                  // focus blocks this session is. The inner arc
+                                  // answers "how much longer", which is a different
+                                  // question from "how many more", and a timer that
+                                  // shows only one of them makes the other a mental
+                                  // sum.
+                                  outer: preset.segments <= 0
+                                      ? null
+                                      : (timer.completedFocusSegments %
+                                                preset.segments) /
+                                            preset.segments,
+                                  colors: [
+                                    accent,
+                                    Color.lerp(accent, t.secondary, 0.7)!,
+                                  ],
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // The label carries the time for
+                                      // screen readers, so the figures
+                                      // themselves are silent.
+                                      SizedBox(
+                                        width: 214,
+                                        height: 78,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: ClockDisplay(
+                                            remaining: timer.remaining,
+                                            face: face,
+                                            accent: accent,
+                                            height: 72,
+                                            progress: timer.progressFor(preset),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: Gap.xs),
+                                      _ClockCaption(
+                                        phase: timer.phase,
+                                        accent: accent,
+                                        segments: preset.segments,
+                                        cycleDone: cycleDone,
+                                        currentDot: currentDot,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              },
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: Gap.lg),
-
-                // Subject tags ------------------------------------------------
-                Stagger(index: 1, child: SubjectPicker(accent: accent)),
-                const SizedBox(height: Gap.xl),
-
-                // Timer -------------------------------------------------------
-                Stagger(
-                  index: 2,
-                  child: Column(
-                    children: [
-                      Center(
-                        // The ring is the clock's own frame, so the gesture
-                        // that opens it full screen belongs on the ring rather
-                        // than on a button beside it. A single tap is left
-                        // alone: nothing else on this screen wants it, and
-                        // swallowing it would make the ring feel like a
-                        // control the user has to be careful with.
-                        child: GestureDetector(
-                          onDoubleTap: () => showFullscreenClock(context),
-                          // A double tap is not a gesture a screen reader can
-                          // perform, so the same route is the clock's own
-                          // action — the label says what it reads, the hint
-                          // says what it does.
-                          child: Semantics(
-                            button: true,
-                            label: context.tr("{0}, {1} remaining, {2}", [
-                              context.tr(timer.phase.label),
-                              clock,
-                              timer.running ? 'running' : 'paused',
-                            ]),
-                            hint: context.tr("Opens the clock full screen"),
-                            onTap: () => showFullscreenClock(context),
-                            // Two faces bring their own frame. The flip board
-                            // is a wide rectangle and a dial around it both
-                            // fights its shape and shrinks it; the analog face
-                            // is a dial, and a ring outside a dial is a circle
-                            // around a circle. Both take the width instead,
-                            // and the ring stays with the faces that fit it.
-                            child: ExcludeSemantics(
-                              child: hiddenTime
-                                  ? Container(
-                                      width: 252,
-                                      height: 252,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: accent.withValues(alpha: .35),
-                                          width: 3,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.shuffle_rounded,
-                                            size: 38,
-                                            color: accent,
-                                          ),
-                                          const SizedBox(height: Gap.md),
-                                          Text(
-                                            context.tr("Time stays hidden"),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                          const SizedBox(height: Gap.xs),
-                                          Text(
-                                            timer.running
-                                                ? context.tr(
-                                                    "Stay with your subject",
-                                                  )
-                                                : context.tr(
-                                                    "Ready when you are",
-                                                  ),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall,
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : switch (face) {
-                                      ClockFace.flip => _FlipClock(
-                                        remaining: timer.remaining,
-                                        accent: accent,
-                                        phase: timer.phase,
-                                        segments: preset.segments,
-                                        cycleDone: cycleDone,
-                                        currentDot: currentDot,
-                                      ),
-                                      ClockFace.retro ||
-                                      ClockFace.analog => _AnalogFace(
-                                        face: face,
-                                        remaining: timer.remaining,
-                                        accent: accent,
-                                        phase: timer.phase,
-                                        segments: preset.segments,
-                                        cycleDone: cycleDone,
-                                        currentDot: currentDot,
-                                        progress: timer.progressFor(preset),
-                                      ),
-                                      _ => ProgressRing(
-                                        value: timer.progressFor(preset),
-                                        size: 252,
-                                        stroke: 12,
-                                        ticks: 60,
-                                        // The second horizon: how far through the set of
-                                        // focus blocks this session is. The inner arc
-                                        // answers "how much longer", which is a different
-                                        // question from "how many more", and a timer that
-                                        // shows only one of them makes the other a mental
-                                        // sum.
-                                        outer: preset.segments <= 0
-                                            ? null
-                                            : (timer.completedFocusSegments %
-                                                      preset.segments) /
-                                                  preset.segments,
-                                        colors: [
-                                          accent,
-                                          Color.lerp(accent, t.secondary, 0.7)!,
-                                        ],
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // The label carries the time for
-                                            // screen readers, so the figures
-                                            // themselves are silent.
-                                            SizedBox(
-                                              width: 214,
-                                              height: 78,
-                                              child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: ClockDisplay(
-                                                  remaining: timer.remaining,
-                                                  face: face,
-                                                  accent: accent,
-                                                  height: 72,
-                                                  progress: timer.progressFor(
-                                                    preset,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: Gap.xs),
-                                            _ClockCaption(
-                                              phase: timer.phase,
-                                              accent: accent,
-                                              segments: preset.segments,
-                                              cycleDone: cycleDone,
-                                              currentDot: currentDot,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    },
-                            ),
-                          ),
-                        ),
-                      ),
-                      // A visible, keyboard-accessible alternative to the
-                      // clock's double tap, kept outside its figures.
-                      const SizedBox(height: Gap.md),
-                      TextButton.icon(
-                        onPressed: () => showFullscreenClock(context),
-                        icon: const Icon(Icons.open_in_full_rounded, size: 15),
-                        label: Text(context.tr("Full screen")),
-                        style: TextButton.styleFrom(
-                          foregroundColor: t.onSurfaceVariant,
-                          minimumSize: const Size(48, 48),
-                          textStyle: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: Gap.xl),
-
-                // Ambient mixer ------------------------------------------------
-                const Stagger(index: 3, child: AmbientMixerSection()),
-                const SizedBox(height: Gap.xl),
-
-                // Today --------------------------------------------------------
-                Stagger(
-                  index: 4,
-                  child: SectionHeader(
-                    title: context.tr("Today"),
-                    icon: Icons.today_outlined,
-                  ),
-                ),
-                Stagger(
-                  index: 5,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _InfoCapsule(
-                          icon: Icons.local_fire_department_rounded,
-                          color: t.tertiary,
-                          value: context.tr("Day {0}", [streak]),
-                          semanticLabel: context.tr("Streak: {0} days", [
-                            streak,
-                          ]),
-                        ),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Expanded(
-                        child: _InfoCapsule(
-                          icon: Icons.timer_rounded,
-                          color: t.primary,
-                          value: formatMinutes(minutesToday),
-                          semanticLabel: context.tr("Focus time today: {0}", [
-                            formatMinutes(minutesToday),
-                          ]),
-                        ),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Expanded(
-                        child: _InfoCapsule(
-                          icon: Icons.check_circle_rounded,
-                          color: t.tertiary,
-                          value: context.tr("{0} today", [sessionsToday]),
-                          semanticLabel: context.tr("Sessions today: {0}", [
-                            sessionsToday,
-                          ]),
-                        ),
-                      ),
-                    ],
+                // A visible, keyboard-accessible alternative to the
+                // clock's double tap, kept outside its figures.
+                const SizedBox(height: Gap.md),
+                TextButton.icon(
+                  onPressed: () => showFullscreenClock(context),
+                  icon: const Icon(Icons.open_in_full_rounded, size: 15),
+                  label: Text(context.tr("Full screen")),
+                  style: TextButton.styleFrom(
+                    foregroundColor: t.onSurfaceVariant,
+                    minimumSize: const Size(48, 48),
+                    textStyle: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: Gap.xl),
+        ];
+        final ambientContent = <Widget>[
+          // Ambient mixer ------------------------------------------------
+          const Stagger(index: 3, child: AmbientMixerSection()),
+          const SizedBox(height: Gap.xl),
 
-        // Completion banner ---------------------------------------------------
-        Positioned(
-          left: Gap.lg + 4,
-          right: Gap.lg + 4,
-          bottom: dockBottom + _dockHeight + Gap.sm,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _dockWidth),
-              child: IgnorePointer(
-                ignoring: _celebration == null,
-                child: AnimatedSwitcher(
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 340),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.25),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+          // Today --------------------------------------------------------
+          Stagger(
+            index: 4,
+            child: SectionHeader(
+              title: context.tr("Today"),
+              icon: Icons.today_outlined,
+            ),
+          ),
+          Stagger(
+            index: 5,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.local_fire_department_rounded,
+                    color: t.tertiary,
+                    value: context.tr("Day {0}", [streak]),
+                    semanticLabel: context.tr("Streak: {0} days", [streak]),
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.timer_rounded,
+                    color: t.primary,
+                    value: formatMinutes(minutesToday),
+                    semanticLabel: context.tr("Focus time today: {0}", [
+                      formatMinutes(minutesToday),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.check_circle_rounded,
+                    color: t.tertiary,
+                    value: context.tr("{0} today", [sessionsToday]),
+                    semanticLabel: context.tr("Sessions today: {0}", [
+                      sessionsToday,
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ];
+        final timerPane = Stack(
+          children: [
+            Positioned.fill(
+              child: ListView(
+                key: const ValueKey('focus-timer-scroll'),
+                padding: EdgeInsets.fromLTRB(
+                  Gap.lg + 4,
+                  MediaQuery.paddingOf(context).top + Gap.lg,
+                  Gap.lg + 4,
+                  listBottom,
+                ),
+                children: [...timerContent, if (!wide) ...ambientContent],
+              ),
+            ),
+            // Completion banner ---------------------------------------------------
+            Positioned(
+              left: Gap.lg + 4,
+              right: Gap.lg + 4,
+              bottom: dockBottom + _dockHeight + Gap.sm,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _dockWidth),
+                  child: IgnorePointer(
+                    ignoring: _celebration == null,
+                    child: AnimatedSwitcher(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 340),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.25),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: _celebration == null
+                          ? const SizedBox.shrink(
+                              key: ValueKey('no-celebration'),
+                            )
+                          : KeyedSubtree(
+                              key: ValueKey('celebration-$_celebrationId'),
+                              child: _buildBanner(t, _celebration!),
+                            ),
                     ),
                   ),
-                  child: _celebration == null
-                      ? const SizedBox.shrink(key: ValueKey('no-celebration'))
-                      : KeyedSubtree(
-                          key: ValueKey('celebration-$_celebrationId'),
-                          child: _buildBanner(t, _celebration!),
-                        ),
                 ),
               ),
             ),
-          ),
-        ),
 
-        // Pinned session dock --------------------------------------------------
-        Positioned(
-          left: Gap.lg + 4,
-          right: Gap.lg + 4,
-          bottom: dockBottom,
-          child: Center(
-            child: ConstrainedBox(
-              // The bar keeps its own width and the ±5 controls sit outside
-              // it. On a narrow screen the bar gives up width instead: a nudge
-              // that scrolled off the row would be worse than a shorter pill.
-              constraints: const BoxConstraints(
-                maxWidth: _dockWidth + 2 * (_nudgeSize + Gap.sm),
-              ),
-              child: Row(
-                children: [
-                  _DockNudge(
-                    minutes: -5,
-                    enabled: canShrink,
-                    color: t.onSurfaceVariant,
-                    semanticLabel: context.tr("Take five minutes off the {0}", [
-                      phaseNoun,
-                    ]),
-                    onTap: () => ref
-                        .read(timerProvider.notifier)
-                        .nudge(const Duration(minutes: -5)),
+            // Pinned session dock --------------------------------------------------
+            Positioned(
+              left: Gap.lg + 4,
+              right: Gap.lg + 4,
+              bottom: dockBottom,
+              child: Center(
+                child: ConstrainedBox(
+                  // The bar keeps its own width and the ±5 controls sit outside
+                  // it. On a narrow screen the bar gives up width instead: a nudge
+                  // that scrolled off the row would be worse than a shorter pill.
+                  constraints: const BoxConstraints(
+                    maxWidth: _dockWidth + 2 * (_nudgeSize + Gap.sm),
                   ),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: GlassCard(
-                      color: t.surfaceContainerHigh,
-                      shape: const StadiumBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: compactDock ? Gap.xs : Gap.sm,
-                          vertical: Gap.sm,
+                  child: Row(
+                    children: [
+                      _DockNudge(
+                        minutes: -5,
+                        enabled: canShrink,
+                        color: t.onSurfaceVariant,
+                        semanticLabel: context.tr(
+                          "Take five minutes off the {0}",
+                          [phaseNoun],
                         ),
-                        // Centred rather than spread. The bar keeps its full
-                        // width — it is a surface the thumb lands on, and a
-                        // shrink-wrapped pill floating over the page reads as
-                        // a tooltip — but the three controls sit together in
-                        // the middle of it, because Reset and Skip are one
-                        // gesture away from the play button, not a reach away
-                        // from it.
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _DockAction(
-                              icon: Icons.refresh_rounded,
-                              label: context.tr("Reset"),
-                              semanticLabel: context.tr("Reset timer"),
-                              color: t.onSurfaceVariant,
-                              onTap: () => _changeTimer(
-                                title: context.tr("Reset this focus block?"),
-                                confirmLabel: context.tr("Reset block"),
-                                apply: () =>
-                                    ref.read(timerProvider.notifier).reset(),
-                              ),
+                        onTap: () => ref
+                            .read(timerProvider.notifier)
+                            .nudge(const Duration(minutes: -5)),
+                      ),
+                      const SizedBox(width: Gap.sm),
+                      Expanded(
+                        child: GlassCard(
+                          color: t.surfaceContainerHigh,
+                          shape: const StadiumBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: compactDock ? Gap.xs : Gap.sm,
+                              vertical: Gap.sm,
                             ),
-                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
-                            Semantics(
-                              button: true,
-                              label: timer.running
-                                  ? context.tr("Pause {0} timer", [phaseNoun])
-                                  : context.tr("Start {0} timer", [phaseNoun]),
-                              excludeSemantics: true,
-                              onTap: toggleTimer,
-                              child: Pressable(
-                                onTap: toggleTimer,
-                                scale: 0.92,
-                                child: AnimatedContainer(
-                                  duration:
-                                      MediaQuery.disableAnimationsOf(context)
-                                      ? Duration.zero
-                                      : Motion.base,
-                                  width: labelledPlay ? 104 : 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(
-                                      timer.running ? 26 : 16,
+                            // Centred rather than spread. The bar keeps its full
+                            // width — it is a surface the thumb lands on, and a
+                            // shrink-wrapped pill floating over the page reads as
+                            // a tooltip — but the three controls sit together in
+                            // the middle of it, because Reset and Skip are one
+                            // gesture away from the play button, not a reach away
+                            // from it.
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _DockAction(
+                                  icon: Icons.refresh_rounded,
+                                  label: context.tr("Reset"),
+                                  semanticLabel: context.tr("Reset timer"),
+                                  color: t.onSurfaceVariant,
+                                  onTap: () => _changeTimer(
+                                    title: context.tr(
+                                      "Reset this focus block?",
                                     ),
-                                    color: accent,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accent.withValues(alpha: 0.35),
-                                        blurRadius: 14,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
+                                    confirmLabel: context.tr("Reset block"),
+                                    apply: () => ref
+                                        .read(timerProvider.notifier)
+                                        .reset(),
                                   ),
-                                  child: AnimatedSwitcher(
-                                    duration:
-                                        MediaQuery.disableAnimationsOf(context)
-                                        ? Duration.zero
-                                        : Motion.quick,
-                                    switchInCurve: Motion.decelerate,
-                                    switchOutCurve: Curves.easeInCubic,
-                                    transitionBuilder: (child, animation) =>
-                                        FadeTransition(
-                                          opacity: animation,
-                                          child: ScaleTransition(
-                                            scale: Tween<double>(
-                                              begin: 0.8,
-                                              end: 1,
-                                            ).animate(animation),
-                                            child: child,
-                                          ),
+                                ),
+                                SizedBox(width: compactDock ? Gap.xs : Gap.sm),
+                                Semantics(
+                                  button: true,
+                                  label: timer.running
+                                      ? context.tr("Pause {0} timer", [
+                                          phaseNoun,
+                                        ])
+                                      : context.tr("Start {0} timer", [
+                                          phaseNoun,
+                                        ]),
+                                  excludeSemantics: true,
+                                  onTap: toggleTimer,
+                                  child: Pressable(
+                                    onTap: toggleTimer,
+                                    scale: 0.92,
+                                    child: AnimatedContainer(
+                                      duration:
+                                          MediaQuery.disableAnimationsOf(
+                                            context,
+                                          )
+                                          ? Duration.zero
+                                          : Motion.base,
+                                      width: labelledPlay ? 104 : 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          timer.running ? 26 : 16,
                                         ),
-                                    child: Row(
-                                      key: ValueKey(timer.running),
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          timer.running
-                                              ? Icons.pause_rounded
-                                              : Icons.play_arrow_rounded,
-                                          size: labelledPlay ? 22 : 27,
-                                          color: _onPhaseColor(t, timer.phase),
-                                        ),
-                                        if (labelledPlay) ...[
-                                          const SizedBox(width: Gap.xs),
-                                          Text(
-                                            timer.running
-                                                ? context.tr("Pause")
-                                                : context.tr("Start"),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelLarge
-                                                ?.copyWith(
-                                                  color: _onPhaseColor(
-                                                    t,
-                                                    timer.phase,
-                                                  ),
-                                                ),
+                                        color: accent,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: accent.withValues(
+                                              alpha: 0.35,
+                                            ),
+                                            blurRadius: 14,
+                                            offset: const Offset(0, 6),
                                           ),
                                         ],
-                                      ],
+                                      ),
+                                      child: AnimatedSwitcher(
+                                        duration:
+                                            MediaQuery.disableAnimationsOf(
+                                              context,
+                                            )
+                                            ? Duration.zero
+                                            : Motion.quick,
+                                        switchInCurve: Motion.decelerate,
+                                        switchOutCurve: Curves.easeInCubic,
+                                        transitionBuilder: (child, animation) =>
+                                            FadeTransition(
+                                              opacity: animation,
+                                              child: ScaleTransition(
+                                                scale: Tween<double>(
+                                                  begin: 0.8,
+                                                  end: 1,
+                                                ).animate(animation),
+                                                child: child,
+                                              ),
+                                            ),
+                                        child: Row(
+                                          key: ValueKey(timer.running),
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              timer.running
+                                                  ? Icons.pause_rounded
+                                                  : Icons.play_arrow_rounded,
+                                              size: labelledPlay ? 22 : 27,
+                                              color: _onPhaseColor(
+                                                t,
+                                                timer.phase,
+                                              ),
+                                            ),
+                                            if (labelledPlay) ...[
+                                              const SizedBox(width: Gap.xs),
+                                              Text(
+                                                timer.running
+                                                    ? context.tr("Pause")
+                                                    : context.tr("Start"),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelLarge
+                                                    ?.copyWith(
+                                                      color: _onPhaseColor(
+                                                        t,
+                                                        timer.phase,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                                SizedBox(width: compactDock ? Gap.xs : Gap.sm),
+                                _DockAction(
+                                  icon: Icons.skip_next_rounded,
+                                  label: context.tr("Skip"),
+                                  semanticLabel: context.tr(
+                                    "Skip to next phase",
+                                  ),
+                                  color: t.onSurfaceVariant,
+                                  onTap: () => _changeTimer(
+                                    title: context.tr("Skip this focus block?"),
+                                    confirmLabel: context.tr("Skip block"),
+                                    apply: () =>
+                                        ref.read(timerProvider.notifier).skip(),
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
-                            _DockAction(
-                              icon: Icons.skip_next_rounded,
-                              label: context.tr("Skip"),
-                              semanticLabel: context.tr("Skip to next phase"),
-                              color: t.onSurfaceVariant,
-                              onTap: () => _changeTimer(
-                                title: context.tr("Skip this focus block?"),
-                                confirmLabel: context.tr("Skip block"),
-                                apply: () =>
-                                    ref.read(timerProvider.notifier).skip(),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: Gap.sm),
+                      _DockNudge(
+                        minutes: 5,
+                        enabled: canGrow,
+                        color: t.onSurfaceVariant,
+                        semanticLabel: context.tr(
+                          "Add five minutes to the {0}",
+                          [phaseNoun],
+                        ),
+                        onTap: () => ref
+                            .read(timerProvider.notifier)
+                            .nudge(const Duration(minutes: 5)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: Gap.sm),
-                  _DockNudge(
-                    minutes: 5,
-                    enabled: canGrow,
-                    color: t.onSurfaceVariant,
-                    semanticLabel: context.tr("Add five minutes to the {0}", [
-                      phaseNoun,
-                    ]),
-                    onTap: () => ref
-                        .read(timerProvider.notifier)
-                        .nudge(const Duration(minutes: 5)),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+        return _TabEntrance(
+          child: wide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: timerPane),
+                    const SizedBox(width: Gap.xl),
+                    Expanded(
+                      child: ListView(
+                        key: const ValueKey('focus-ambient-scroll'),
+                        padding: const EdgeInsets.fromLTRB(
+                          0,
+                          Gap.xl,
+                          Gap.lg + 4,
+                          Gap.xl,
+                        ),
+                        children: ambientContent,
+                      ),
+                    ),
+                  ],
+                )
+              : timerPane,
+        );
+      },
     );
   }
 

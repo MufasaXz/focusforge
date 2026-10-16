@@ -22,6 +22,7 @@ import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/settings/privacy_screen.dart';
+import 'package:focusforge/shared/widgets/app_page.dart';
 
 /// Keeps real local authentication/storage behaviour while replacing the
 /// external credential check and remote deletion response at the UI boundary.
@@ -146,7 +147,16 @@ void main() {
 
   Future<void> openDeletion(WidgetTester tester) async {
     expect(find.text('Delete account'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Delete account'), 180);
+    await tester.scrollUntilVisible(
+      find.text('Delete account'),
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byType(AppPage).last,
+            matching: find.byType(Scrollable),
+          )
+          .last,
+    );
     await tester.ensureVisible(find.text('Delete account'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete account'));

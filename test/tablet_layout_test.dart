@@ -27,6 +27,8 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/providers/study_providers.dart';
+import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/profile/profile_screen.dart';
@@ -158,6 +160,62 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    for (final viewport in const [Size(1280, 800), Size(800, 1280)]) {
+      testWidgets('tablet navigation floats mid-left at $viewport', (
+        tester,
+      ) async {
+        useViewport(tester, viewport);
+        tester.view.padding = const FakeViewPadding(top: 28, bottom: 24);
+        await pumpApp(tester, freshContainer());
+        final rail = tester.getRect(find.byType(NavigationRail));
+        expect(rail.left, greaterThanOrEqualTo(16));
+        expect(rail.height, lessThan(500));
+        expect(rail.center.dy, closeTo((28 + viewport.height - 24) / 2, 1));
+        expect(rail.top, greaterThan(28));
+        expect(tester.takeException(), isNull);
+      });
+    }
+    testWidgets(
+      'tablet controls stay reachable in a short window with large text',
+      (tester) async {
+        useViewport(tester, const Size(1000, 420));
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpApp(tester, freshContainer());
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Focus').last);
+        await settle(tester);
+        expect(
+          find.bySemanticsLabel('Start focus timer').hitTestable(),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('You').last);
+        await settle(tester);
+        expect(find.byType(ProfileScreen), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'tablet focus keeps the mixer beside the timer and clear of controls',
+      (tester) async {
+        useViewport(tester, const Size(1280, 800));
+        await pumpApp(tester, freshContainer());
+        await tester.tap(find.text('Focus').last);
+        await settle(tester);
+        final timer = tester.getRect(find.text('25:00').first);
+        final ambient = tester.getRect(find.text('Ambient mix'));
+        final start = tester.getRect(
+          find.bySemanticsLabel('Start focus timer'),
+        );
+        expect(ambient.left, greaterThan(timer.right));
+        expect(ambient.top, lessThan(timer.bottom));
+        expect(start.right, lessThan(ambient.left));
+        expect(start.bottom, lessThanOrEqualTo(784));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('phone pill retains an opaque underlay during branch fades', (
       tester,
     ) async {
@@ -259,6 +317,31 @@ void main() {
   });
 
   group('Content measure', () {
+    for (final hasOldSessions in [false, true]) {
+      testWidgets(
+        'Home centers an inactive week, older sessions=$hasOldSessions',
+        (tester) async {
+          useTablet(tester);
+          final container = freshContainer();
+          if (hasOldSessions) {
+            container.read(sessionsProvider.notifier).hydrate([
+              FocusSession(
+                id: 'old',
+                subjectId: 'math',
+                startedAt: DateTime.now().subtract(const Duration(days: 20)),
+                minutes: 60,
+              ).toJson(),
+            ]);
+          }
+          await pumpApp(tester, container);
+          final body = tester.getRect(find.byType(ListView).first);
+          expect(body.width, lessThanOrEqualTo(Layout.readable));
+          expect(body.center.dx, greaterThan(640));
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
     /// A router with one route on it.
     ///
     /// Pushed pages read the router for their back button, so the page cannot
