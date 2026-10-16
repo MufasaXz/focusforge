@@ -139,41 +139,47 @@ class LeaderboardScreen extends ConsumerWidget {
           else ...[
             ContentCard(
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (boardState.hasError)
-                    Padding(
-                      padding: const EdgeInsets.all(Gap.lg),
-                      child: Column(
-                        children: [
-                          Text(
-                            context.tr("Could not load this week’s standings."),
-                          ),
-                          TextButton.icon(
-                            onPressed: () => ref.invalidate(weekBoardProvider),
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: Text(context.tr("Try again")),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (loading && board.isEmpty)
-                    const _BoardLoading()
-                  else if (board.isEmpty)
-                    _EmptyBoard(optedIn: optedIn)
-                  else
-                    for (var i = 0; i < board.length; i++) ...[
-                      if (i > 0)
-                        const Divider(
-                          height: 1,
-                          indent: Gap.lg,
-                          endIndent: Gap.lg,
+              child: Padding(
+                padding: const EdgeInsets.all(Gap.sm),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (boardState.hasError)
+                      Padding(
+                        padding: const EdgeInsets.all(Gap.lg),
+                        child: Column(
+                          children: [
+                            Text(
+                              context.tr(
+                                "Could not load this week’s standings.",
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () =>
+                                  ref.invalidate(weekBoardProvider),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: Text(context.tr("Try again")),
+                            ),
+                          ],
                         ),
-                      _BoardRowTile(rank: i + 1, entry: board[i]),
-                    ],
-                ],
+                      )
+                    else if (loading && board.isEmpty)
+                      const _BoardLoading()
+                    else if (board.isEmpty)
+                      _EmptyBoard(optedIn: optedIn)
+                    else
+                      for (var i = 0; i < board.length; i++) ...[
+                        if (i > 0)
+                          const Divider(
+                            height: 1,
+                            indent: Gap.lg,
+                            endIndent: Gap.lg,
+                          ),
+                        _BoardRowTile(rank: i + 1, entry: board[i]),
+                      ],
+                  ],
+                ),
               ),
             ),
             if (!optedIn) const SizedBox(height: Gap.md),
@@ -191,7 +197,7 @@ class LeaderboardScreen extends ConsumerWidget {
 }
 
 /// One row of the board. The user's own row is the one that has to be findable
-/// at a glance, so it is the only one that gets a fill.
+/// at a glance, so it is the only one that gets a gold outline.
 class _BoardRowTile extends StatelessWidget {
   const _BoardRowTile({required this.rank, required this.entry});
 

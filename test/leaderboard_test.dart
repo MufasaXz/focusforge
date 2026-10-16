@@ -15,6 +15,9 @@ import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/leaderboard_service.dart';
 import 'package:focusforge/features/settings/leaderboard_screen.dart';
+import 'package:focusforge/shared/widgets/glass_surface.dart';
+
+import 'dart:math' as math;
 
 class _Board implements LeaderboardService {
   final publishedLevels = <int>[];
@@ -447,6 +450,47 @@ void main() {
         find.ancestor(of: find.text('Alex'), matching: find.byType(ListTile)),
       );
       expect((selfTile.shape! as RoundedRectangleBorder).side.width, 1.5);
+      final selfFinder = find.ancestor(
+        of: find.text('Alex'),
+        matching: find.byType(ListTile),
+      );
+      final cardFinder = find.ancestor(
+        of: selfFinder,
+        matching: find.byType(ContentCard),
+      );
+      final cardMaterial = tester.widget<Material>(
+        find.descendant(of: cardFinder, matching: find.byType(Material)).first,
+      );
+      final cardRect = tester.getRect(cardFinder);
+      final rowRect = tester.getRect(selfFinder).shift(-cardRect.topLeft);
+      final clip = cardMaterial.shape!.getOuterPath(
+        Offset.zero & cardRect.size,
+      );
+      final radius = (selfTile.shape! as RoundedRectangleBorder).borderRadius
+          .resolve(TextDirection.ltr)
+          .bottomRight
+          .x;
+      for (var step = 1; step < 10; step++) {
+        final angle = math.pi / 2 * step / 10;
+        final bottomRight = Offset(
+          rowRect.right - radius + radius * math.cos(angle),
+          rowRect.bottom - radius + radius * math.sin(angle),
+        );
+        final bottomLeft = Offset(
+          rowRect.left + rowRect.right - bottomRight.dx,
+          bottomRight.dy,
+        );
+        expect(
+          clip.contains(bottomRight),
+          isTrue,
+          reason: 'bottom-right outline must stay inside the card clip',
+        );
+        expect(
+          clip.contains(bottomLeft),
+          isTrue,
+          reason: 'bottom-left outline must stay inside the card clip',
+        );
+      }
       expect(tester.takeException(), isNull);
     });
   }
