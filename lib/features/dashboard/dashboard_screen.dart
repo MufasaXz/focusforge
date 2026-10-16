@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import '../../shared/widgets/glass_surface.dart';
@@ -134,40 +136,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         CoachSpot(
           target: targets.emptyCta,
           icon: Icons.play_arrow_rounded,
-          title: 'Plan your focus time',
-          body: 'Set your daily focus time. Your progress ring appears when you save.',
+          title: context.tr("Plan your focus time"),
+          body: context.tr(
+            "Set your daily focus time. Your progress ring appears when you save.",
+          ),
         )
       else
         CoachSpot(
           target: targets.ring,
           icon: Icons.donut_large_rounded,
-          title: 'Your daily progress',
-          body:
-              'This ring fills as you focus — it starts moving the moment a '
-              'block runs, and keeps what you finish.',
+          title: context.tr("Your daily progress"),
+          body: context.tr(
+            "This ring fills as you focus — it starts moving the moment a block runs, and keeps what you finish.",
+          ),
         ),
       if (streak > 0)
         CoachSpot(
           target: targets.streak,
           icon: Icons.local_fire_department_rounded,
-          title: 'Build your streak',
-          body: 'Study every day and the flame keeps growing.',
+          title: context.tr("Build your streak"),
+          body: context.tr("Study every day and the flame keeps growing."),
         ),
       CoachSpot(
         target: targets.focusTab,
         icon: Icons.timer_rounded,
-        title: 'Your timer lives here',
-        body:
-            'The Focus tab starts a Pomodoro and runs the shield while it '
-            'counts down.',
+        title: context.tr("Your timer lives here"),
+        body: context.tr(
+          "The Focus tab starts a Pomodoro and runs the shield while it counts down.",
+        ),
       ),
       CoachSpot(
         target: targets.shieldTab,
         icon: Icons.shield_outlined,
-        title: 'Start blocking apps like this',
-        body:
-            'The Shield tab lists the apps you can close. Switch one on, and '
-            'it stops opening until you switch it off.',
+        title: context.tr("Start blocking apps like this"),
+        body: context.tr(
+          "The Shield tab lists the apps you can close. Switch one on, and it stops opening until you switch it off.",
+        ),
       ),
     ];
 
@@ -206,8 +210,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         const SizedBox(height: Gap.xl),
         SectionHeader(
           title: _range == StudyRange.week
-              ? 'Weekly progress'
-              : 'Monthly progress',
+              ? context.tr("Weekly progress")
+              : context.tr("Monthly progress"),
           icon: Icons.bar_chart_rounded,
         ),
         _TrackerPanel(
@@ -224,14 +228,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         // answer "how has this month gone", which the week view never asks, so
         // they appear with the month rather than padding the week's page.
         if (_range == StudyRange.month) ...[
-          const SectionHeader(
-            title: 'Top subject',
+          SectionHeader(
+            title: context.tr("Top subject"),
             icon: Icons.workspace_premium_rounded,
           ),
           TopSubjectCard(range: _range),
           const SizedBox(height: Gap.xl),
-          const SectionHeader(
-            title: 'Focus heatmap',
+          SectionHeader(
+            title: context.tr("Focus heatmap"),
             icon: Icons.calendar_month_rounded,
           ),
           GlassCard(
@@ -252,8 +256,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final right = <Widget>[
       if (sessions.isNotEmpty) ...[
-        const SectionHeader(
-          title: 'Subject breakdown',
+        SectionHeader(
+          title: context.tr("Subject breakdown"),
           icon: Icons.donut_large_rounded,
         ),
         GlassCard(
@@ -345,7 +349,7 @@ String _spokenMinutes(int minutes) {
     if (h > 0) '$h ${h == 1 ? 'hour' : 'hours'}',
     if (m > 0) '$m ${m == 1 ? 'minute' : 'minutes'}',
   ];
-  return parts.isEmpty ? 'no focus logged' : parts.join(' ');
+  return parts.isEmpty ? tr("no focus logged") : parts.join(' ');
 }
 
 /// Greeting plus the streak pill — the one number worth surfacing in chrome.
@@ -377,12 +381,15 @@ class _Greeting extends StatelessWidget {
               Text(
                 // A nameless user gets "Good morning", not "Good morning, " —
                 // the comma only belongs there when something follows it.
-                [greetingFor(now), if (name.isNotEmpty) name].join(', '),
+                [
+                  greetingFor(now, locale: Localizations.localeOf(context)),
+                  if (name.isNotEmpty) name,
+                ].join(', '),
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 3),
               Text(
-                formatDate(now),
+                formatDate(now, locale: Localizations.localeOf(context)),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -479,10 +486,14 @@ class _DailyOverview extends ConsumerWidget {
               value: progress,
               size: 224,
               stroke: 16,
-              semanticLabel:
-                  'Focus goal, ${_spokenMinutes(minutesToday)} of '
-                  '${_spokenMinutes(goalMinutes)}, '
-                  '${(progress * 100).round()} percent of goal',
+              semanticLabel: context.tr(
+                "Focus goal, {0} of {1}, {2} percent of goal",
+                [
+                  _spokenMinutes(minutesToday),
+                  _spokenMinutes(goalMinutes),
+                  (progress * 100).round(),
+                ],
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 26),
                 child: Column(
@@ -507,7 +518,7 @@ class _DailyOverview extends ConsumerWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      'Focus today',
+                      context.tr("Focus today"),
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -517,7 +528,7 @@ class _DailyOverview extends ConsumerWidget {
             const SizedBox(height: Gap.lg),
             _GoalRow(
               goalMinutes: goalMinutes,
-              label: "Today's goal",
+              label: context.tr("Today's goal"),
               onTap: () => showDailyGoalSheet(context),
             ),
             const SizedBox(height: Gap.md),
@@ -527,7 +538,7 @@ class _DailyOverview extends ConsumerWidget {
                   _StatChip(
                     icon: Icons.task_alt_rounded,
                     value: '$sessionsToday',
-                    label: 'Sessions',
+                    label: context.tr("Sessions"),
                   ),
                   _StatChip(
                     icon: Icons.timelapse_rounded,
@@ -535,12 +546,12 @@ class _DailyOverview extends ConsumerWidget {
                     // minutes is 0.4h, and rounding it to "0h" reads as though
                     // nothing was logged.
                     value: formatHoursShort(totalHours),
-                    label: 'All time',
+                    label: context.tr("All time"),
                   ),
                   _StatChip(
                     icon: Icons.military_tech_rounded,
                     value: '$level',
-                    label: 'Level',
+                    label: context.tr("Level"),
                   ),
                 ];
 
@@ -610,13 +621,18 @@ class _GoalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final today = formatDate(DateTime.now()).split(',').first;
+    final today = formatWeekday(
+      DateTime.now(),
+      locale: Localizations.localeOf(context),
+    );
 
     return Semantics(
       button: true,
-      label:
-          "$label, $today, ${_spokenMinutes(goalMinutes)}. "
-          'Opens the goal editor',
+      label: context.tr("{0}, {1}, {2}. Opens the goal editor", [
+        label,
+        today,
+        _spokenMinutes(goalMinutes),
+      ]),
       excludeSemantics: true,
       onTap: onTap,
       child: InkWell(
@@ -692,12 +708,14 @@ class _TrackerPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              month ? 'This month' : 'Last 7 days',
+              month ? context.tr("This month") : context.tr("Last 7 days"),
               style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.md),
             AppSegmentedControl<StudyRange>(
-              options: {for (final r in StudyRange.values) r: r.label},
+              options: {
+                for (final r in StudyRange.values) r: context.tr(r.label),
+              },
               selected: range,
               onChanged: onRangeChanged,
             ),
@@ -712,8 +730,8 @@ class _TrackerPanel extends StatelessWidget {
             const SizedBox(height: Gap.xs),
             Text(
               total <= 0
-                  ? 'Your finished focus sessions will appear here.'
-                  : 'Total completed focus',
+                  ? context.tr("Your finished focus sessions will appear here.")
+                  : context.tr("Total completed focus"),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
@@ -722,11 +740,14 @@ class _TrackerPanel extends StatelessWidget {
               runSpacing: Gap.sm,
               children: [
                 Text(
-                  '$activeDays active ${activeDays == 1 ? 'day' : 'days'}',
+                  context.tr("{0} active {1}", [
+                    activeDays,
+                    activeDays == 1 ? 'day' : 'days',
+                  ]),
                   style: tt.labelMedium,
                 ),
                 Text(
-                  '${formatHoursShort(average)} / active day',
+                  context.tr("{0} / active day", [formatHoursShort(average)]),
                   style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
@@ -736,8 +757,10 @@ class _TrackerPanel extends StatelessWidget {
             const SizedBox(height: Gap.md),
             Text(
               month
-                  ? 'Swipe through the dates. Tap a day for its subjects.'
-                  : 'Tap a day to see the subjects you focused on.',
+                  ? context.tr(
+                      "Swipe through the dates. Tap a day for its subjects.",
+                    )
+                  : context.tr("Tap a day to see the subjects you focused on."),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -803,16 +826,20 @@ class _PlanGoalCard extends StatelessWidget {
             const SizedBox(height: Gap.md),
             Text(
               savedGoalMinutes == null
-                  ? 'Make room for focus'
-                  : 'Your goal · ${formatMinutes(savedGoalMinutes!)}',
+                  ? context.tr("Make room for focus")
+                  : context.tr("Your goal · {0}", [
+                      formatMinutes(savedGoalMinutes!),
+                    ]),
               textAlign: TextAlign.center,
               style: tt.headlineSmall,
             ),
             const SizedBox(height: Gap.sm),
             Text(
               savedGoalMinutes == null
-                  ? 'Choose your focus time for today. Subject targets are optional.'
-                  : 'Your saved target is ready whenever you are.',
+                  ? context.tr(
+                      "Choose your focus time for today. Subject targets are optional.",
+                    )
+                  : context.tr("Your saved target is ready whenever you are."),
               textAlign: TextAlign.center,
               style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
@@ -821,7 +848,7 @@ class _PlanGoalCard extends StatelessWidget {
               key: ctaKey,
               onPressed: onPlan,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Set goal'),
+              label: Text(context.tr("Set goal")),
             ),
           ],
         ),

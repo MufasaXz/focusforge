@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -119,7 +121,9 @@ class _FocusHeatmapState extends State<FocusHeatmap>
 
     return Semantics(
       container: true,
-      label: 'Focus heatmap, ${widget.weeks.length} weeks of focus history',
+      label: context.tr("Focus heatmap, {0} weeks of focus history", [
+        widget.weeks.length,
+      ]),
       child: Column(
         children: [
           Row(
@@ -174,7 +178,7 @@ class _FocusHeatmapState extends State<FocusHeatmap>
             builder: (context, _) => Row(
               children: [
                 Text(
-                  'Less',
+                  context.tr("Less"),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(fontSize: 10, color: t.onSurfaceVariant),
                 ),
@@ -190,7 +194,7 @@ class _FocusHeatmapState extends State<FocusHeatmap>
                 ],
                 const SizedBox(width: Gap.sm),
                 Text(
-                  'More',
+                  context.tr("More"),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(fontSize: 10, color: t.onSurfaceVariant),
                 ),
@@ -206,28 +210,12 @@ class _FocusHeatmapState extends State<FocusHeatmap>
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
-const _monthsShort = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
 /// "Tuesday 14 Oct - 2.5 hours focused" — the same sentence is used for the
 /// tooltip and for the cell's semantics label.
 String _spokenValue(HeatCell cell) {
-  final date =
-      '${cell.weekday} ${cell.date.day} ${_monthsShort[cell.date.month - 1]}';
-  if (cell.hours <= 0) return '$date - no focus logged';
-  return '$date - ${spokenHours(cell.hours)} focused';
+  final date = formatDate(cell.date);
+  if (cell.hours <= 0) return tr("{0} - no focus logged", [date]);
+  return tr("{0} - {1} focused", [date, spokenHours(cell.hours)]);
 }
 
 /// Maps a 0..1 intensity onto one of five discrete levels.
@@ -314,7 +302,9 @@ class _Cell extends StatelessWidget {
 
     return Semantics(
       button: onTap != null,
-      label: onTap == null ? label : '$label. Tap for the day\'s breakdown',
+      label: onTap == null
+          ? label
+          : context.tr("{0}. Tap for the day's breakdown", [label]),
       child: onTap == null
           ? surface
           : GestureDetector(

@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../app/theme/app_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -153,12 +154,15 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return StepScaffold(
-      title: _persona.subjectPrompt,
-      subtitle: 'Pick your subjects or add your own.',
+      title: context.tr(_persona.subjectPrompt),
+      subtitle: context.tr("Pick your subjects or add your own."),
       primaryEnabled: _selected.isNotEmpty,
       primaryLabel: _selected.isEmpty
-          ? 'Pick at least one'
-          : 'Continue with ${_selected.length} ${_selected.length == 1 ? 'subject' : 'subjects'}',
+          ? context.tr("Pick at least one")
+          : context.tr("Continue with {0} {1}", [
+              _selected.length,
+              _selected.length == 1 ? 'subject' : 'subjects',
+            ]),
       onPrimary: _commit,
       children: [
         Stagger(
@@ -184,7 +188,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
                 selected: false,
                 onSelected: (_) => _addCustom(),
                 avatar: Icon(Icons.add_rounded, size: 18, color: cs.primary),
-                label: const Text('Add custom'),
+                label: Text(context.tr("Add custom")),
               ),
             ],
           ),
@@ -252,12 +256,12 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Add a subject',
+              context.tr("Add a subject"),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              'Name it the way you think about it.',
+              context.tr("Name it the way you think about it."),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -265,7 +269,7 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
             const SizedBox(height: Gap.lg),
             AppTextField(
               controller: _controller,
-              hint: 'e.g. Thesis',
+              hint: context.tr("e.g. Thesis"),
               autofocus: true,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submit(),
@@ -292,7 +296,7 @@ class _CustomSubjectDialogState extends State<_CustomSubjectDialog> {
               ),
             ],
             const SizedBox(height: Gap.lg),
-            PrimaryAction(label: 'Add subject', onTap: _submit),
+            PrimaryAction(label: context.tr("Add subject"), onTap: _submit),
           ],
         ),
       ),

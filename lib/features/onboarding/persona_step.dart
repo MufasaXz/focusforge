@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -57,12 +59,15 @@ class _PersonaStepState extends ConsumerState<PersonaStep> {
     if (!_intentionEdited) _intention = profile.focusIntention;
 
     return StepScaffold(
-      title: 'What brings you here?',
-      eyebrow: 'YOUR FOCUS',
-      subtitle: 'Choose your focus. We’ll suggest a starting plan.',
+      title: context.tr("What brings you here?"),
+      eyebrow: context.tr("YOUR FOCUS"),
+      subtitle: context.tr("Choose your focus. We’ll suggest a starting plan."),
       onPrimary: _save,
       children: [
-        Text('I am here for', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          context.tr("I am here for"),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: Gap.md),
         Wrap(
           spacing: Gap.sm,
@@ -71,7 +76,7 @@ class _PersonaStepState extends ConsumerState<PersonaStep> {
             for (final persona in Persona.values)
               ChoiceChip(
                 avatar: Icon(persona.icon, size: 18),
-                label: Text(persona.label),
+                label: Text(context.tr(persona.label)),
                 selected: persona == _persona,
                 onSelected: (_) => setState(() {
                   _persona = persona;
@@ -82,7 +87,7 @@ class _PersonaStepState extends ConsumerState<PersonaStep> {
         ),
         const SizedBox(height: Gap.xl),
         Text(
-          'What would help most?',
+          context.tr("What would help most?"),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: Gap.md),
@@ -90,8 +95,8 @@ class _PersonaStepState extends ConsumerState<PersonaStep> {
           Padding(
             padding: const EdgeInsets.only(bottom: Gap.md),
             child: SetupChoiceCard(
-              title: intention.label,
-              description: intention.description,
+              title: context.tr(intention.label),
+              description: context.tr(intention.description),
               icon: intention.icon,
               color: cs.primary,
               selected: intention == _intention,

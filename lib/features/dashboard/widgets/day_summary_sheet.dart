@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -61,13 +63,19 @@ class DaySummarySheet extends ConsumerWidget {
                         children: [
                           Text(
                             isToday
-                                ? 'Today'
-                                : formatDate(day).split(',').first,
+                                ? context.tr("Today")
+                                : formatWeekday(
+                                    day,
+                                    locale: Localizations.localeOf(context),
+                                  ),
                             style: tt.titleLarge,
                           ),
                           const SizedBox(height: Gap.xs),
                           Text(
-                            formatDate(day),
+                            formatDate(
+                              day,
+                              locale: Localizations.localeOf(context),
+                            ),
                             style: tt.labelSmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -98,8 +106,10 @@ class DaySummarySheet extends ConsumerWidget {
                       ),
                       Text(
                         summary.sessions == 1
-                            ? '1 completed session'
-                            : '${summary.sessions} completed sessions',
+                            ? context.tr("1 completed session")
+                            : context.tr("{0} completed sessions", [
+                                summary.sessions,
+                              ]),
                         style: tt.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -116,7 +126,7 @@ class DaySummarySheet extends ConsumerWidget {
                   const SizedBox(height: Gap.lg),
                   Semantics(
                     header: true,
-                    child: Text('Sessions', style: tt.titleSmall),
+                    child: Text(context.tr("Sessions"), style: tt.titleSmall),
                   ),
                   const SizedBox(height: Gap.sm),
                   for (var i = 0; i < sessions.length; i++)
@@ -148,7 +158,8 @@ class _SessionRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final name =
-        subject?.name ?? (session.label.isEmpty ? 'Unassigned' : session.label);
+        subject?.name ??
+        (session.label.isEmpty ? context.tr("Unassigned") : session.label);
     final time = MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(session.startedAt),
       alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
@@ -158,8 +169,11 @@ class _SessionRow extends StatelessWidget {
         : harmonize(subject!.color, cs.primary);
 
     return Semantics(
-      label:
-          '$name, started at $time, ${formatMinutes(session.minutes)} focused',
+      label: context.tr("{0}, started at {1}, {2} focused", [
+        name,
+        time,
+        formatMinutes(session.minutes),
+      ]),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gap.md),
@@ -214,9 +228,11 @@ class _SliceRow extends StatelessWidget {
     final share = total <= 0 ? 0.0 : (slice.minutes / total).clamp(0.0, 1.0);
 
     return Semantics(
-      label:
-          '${slice.name}, ${formatMinutes(slice.minutes)}, '
-          '${(share * 100).round()} percent of the day',
+      label: context.tr("{0}, {1}, {2} percent of the day", [
+        slice.name,
+        formatMinutes(slice.minutes),
+        (share * 100).round(),
+      ]),
       child: ExcludeSemantics(
         child: Row(
           children: [
@@ -302,11 +318,12 @@ class _NothingStudied extends StatelessWidget {
           radius: 17,
         ),
         const SizedBox(height: Gap.lg),
-        Text('No focus logged', style: tt.titleSmall),
+        Text(context.tr("No focus logged"), style: tt.titleSmall),
         const SizedBox(height: Gap.sm),
         Text(
-          'Nothing was finished on this day. Sessions count towards a day '
-          'when the block they belong to runs to the end.',
+          context.tr(
+            "Nothing was finished on this day. Sessions count towards a day when the block they belong to runs to the end.",
+          ),
           textAlign: TextAlign.center,
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),

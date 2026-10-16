@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -967,7 +969,7 @@ class RetroClock extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'REMAINING',
+                  context.tr("REMAINING"),
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: size * 0.032,

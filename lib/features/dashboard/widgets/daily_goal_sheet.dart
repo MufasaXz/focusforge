@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,7 +108,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Could not save your goal. Please try again.';
+          _error = tr("Could not save your goal. Please try again.");
         });
       }
     }
@@ -141,7 +143,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
             children: [
               const SheetHandle(),
               const SizedBox(height: Gap.lg),
-              Text('Set your daily goal', style: tt.titleLarge),
+              Text(context.tr("Set your daily goal"), style: tt.titleLarge),
               const SizedBox(height: Gap.xs),
               SizedBox(
                 height: 140,
@@ -169,7 +171,9 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                     )
                       Center(
                         child: Text(
-                          value == 0 ? '0h · No target' : formatMinutes(value),
+                          value == 0
+                              ? context.tr("0h · No target")
+                              : formatMinutes(value),
                           style: tt.headlineSmall?.copyWith(
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
@@ -184,7 +188,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 child: SwitchListTile.adaptive(
                   key: const ValueKey('repeat-daily-goal'),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Repeat through Sunday'),
+                  title: Text(context.tr("Repeat through Sunday")),
                   value: _repeatThisWeek,
                   onChanged: _saving
                       ? null
@@ -195,12 +199,15 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text('Subjects · optional', style: tt.titleMedium),
+                  Text(
+                    context.tr("Subjects · optional"),
+                    style: tt.titleMedium,
+                  ),
                   TextButton(
                     onPressed: _saving || subjects.isEmpty
                         ? null
                         : () => _splitEvenly(subjects),
-                    child: const Text('Split evenly'),
+                    child: Text(context.tr("Split evenly")),
                   ),
                 ],
               ),
@@ -208,7 +215,9 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: Gap.md),
                   child: Text(
-                    'Add a subject from the Focus page to plan your time.',
+                    context.tr(
+                      "Add a subject from the Focus page to plan your time.",
+                    ),
                     style: tt.bodyMedium,
                   ),
                 ),
@@ -240,18 +249,29 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${formatMinutes(assigned)} assigned / ${formatMinutes(_total)} target',
+                        context.tr("{0} assigned / {1} target", [
+                          formatMinutes(assigned),
+                          formatMinutes(_total),
+                        ]),
                         style: tt.labelLarge,
                       ),
                       const SizedBox(height: Gap.xs),
                       Text(
                         _total == 0
-                            ? 'Choose a focus target above zero.'
+                            ? context.tr("Choose a focus target above zero.")
                             : difference == 0
-                            ? 'Every minute has a place. Your plan is ready.'
+                            ? context.tr(
+                                "Every minute has a place. Your plan is ready.",
+                              )
                             : difference > 0
-                            ? 'Give your subjects the remaining ${formatMinutes(difference)}.'
-                            : 'Reduce subject time by ${formatMinutes(-difference)} to match your target.',
+                            ? context.tr(
+                                "Give your subjects the remaining {0}.",
+                                [formatMinutes(difference)],
+                              )
+                            : context.tr(
+                                "Reduce subject time by {0} to match your target.",
+                                [formatMinutes(-difference)],
+                              ),
                         style: tt.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -278,12 +298,12 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                           dimension: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save goal'),
+                      : Text(context.tr("Save goal")),
                 ),
               ),
               TextButton(
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
+                child: Text(context.tr("Cancel")),
               ),
             ],
           ),

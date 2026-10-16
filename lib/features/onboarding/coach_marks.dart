@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show clampDouble;
@@ -533,7 +535,7 @@ class _Bubble extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: onDismiss,
-                    tooltip: 'Dismiss tips',
+                    tooltip: context.tr("Dismiss tips"),
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
                     icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
@@ -566,7 +568,9 @@ class _Bubble extends StatelessWidget {
                   const Spacer(),
                   FilledButton(
                     onPressed: onNext,
-                    child: Text(last ? 'Got it' : 'Next'),
+                    child: Text(
+                      last ? context.tr("Got it") : context.tr("Next"),
+                    ),
                   ),
                 ],
               ),

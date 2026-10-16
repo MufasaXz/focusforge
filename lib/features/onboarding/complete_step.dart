@@ -1,3 +1,5 @@
+import '../../core/localization/display_labels.dart';
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:async';
@@ -82,10 +84,10 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         plans[ref.watch(timerProvider).presetIndex.clamp(0, plans.length - 1)];
 
     return StepScaffold(
-      title: "You're all set",
-      eyebrow: 'READY TO FOCUS',
-      subtitle: 'Your first session is ready.',
-      primaryLabel: 'Open FocusForge',
+      title: context.tr("You're all set"),
+      eyebrow: context.tr("READY TO FOCUS"),
+      subtitle: context.tr("Your first session is ready."),
+      primaryLabel: context.tr("Open FocusForge"),
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
@@ -98,8 +100,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                   color: cs.primary,
                   size: 40,
                 ),
-                title: const Text('Profile'),
-                subtitle: Text(persona.label),
+                title: Text(context.tr("Profile")),
+                subtitle: Text(context.tr(persona.label)),
               ),
               const Divider(height: 1, indent: 72),
               ListTile(
@@ -108,8 +110,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                   color: cs.primary,
                   size: 40,
                 ),
-                title: const Text('Subjects'),
-                subtitle: Text('$subjectCount selected'),
+                title: Text(context.tr("Subjects")),
+                subtitle: Text(context.tr("{0} selected", [subjectCount])),
               ),
               const Divider(height: 1, indent: 72),
               ListTile(
@@ -118,9 +120,12 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                   color: cs.primary,
                   size: 40,
                 ),
-                title: Text(preset.name),
+                title: Text(presetDisplayName(context, preset)),
                 subtitle: Text(
-                  '${preset.focus} min focus · ${preset.shortBreak} min break',
+                  context.tr("{0} min focus · {1} min break", [
+                    preset.focus,
+                    preset.shortBreak,
+                  ]),
                 ),
               ),
             ],
@@ -128,7 +133,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
         ),
         const SizedBox(height: Gap.lg),
         Text(
-          'Start your session from Home. Adjust your plan anytime.',
+          context.tr("Start your session from Home. Adjust your plan anytime."),
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: cs.onSurfaceVariant),
         ),

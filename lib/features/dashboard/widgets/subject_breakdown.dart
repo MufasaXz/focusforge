@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -99,7 +101,7 @@ class _SubjectBreakdownState extends State<SubjectBreakdown>
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(
-              'No subjects yet — add one from the Focus tab.',
+              context.tr("No subjects yet — add one from the Focus tab."),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
@@ -258,7 +260,7 @@ class _Ring extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      subject?.name ?? 'Today',
+                      subject?.name ?? context.tr("Today"),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
@@ -503,12 +505,12 @@ String _spokenMinutes(int minutes) {
     if (h > 0) '$h ${h == 1 ? 'hour' : 'hours'}',
     if (m > 0) '$m ${m == 1 ? 'minute' : 'minutes'}',
   ];
-  return parts.isEmpty ? 'no time' : parts.join(' ');
+  return parts.isEmpty ? tr("no time") : parts.join(' ');
 }
 
 String _summary(List<Subject> subjects) {
   final parts = [
     for (final s in subjects) '${s.name} ${_spokenMinutes(s.minutesToday)}',
   ];
-  return 'Subject breakdown. ${parts.join(', ')}.';
+  return tr("Subject breakdown. {0}.", [parts.join(', ')]);
 }

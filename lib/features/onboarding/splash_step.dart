@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -104,7 +106,7 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                   FadeTransition(
                     opacity: _fade(0.35, 0.85),
                     child: Text(
-                      'Less scrolling. More studying.',
+                      context.tr("Less scrolling. More studying."),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,

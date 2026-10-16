@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -106,13 +108,13 @@ class _StudyTrackerState extends State<StudyTracker>
               children: [
                 Expanded(
                   child: Text(
-                    'Daily focus',
+                    context.tr("Daily focus"),
                     style: Theme.of(context).textTheme.labelSmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
                 Text(
-                  '${formatHoursShort(maxHours)} scale',
+                  context.tr("{0} scale", [formatHoursShort(maxHours)]),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),
@@ -151,9 +153,15 @@ class _StudyTrackerState extends State<StudyTracker>
                                 container: true,
                                 button: true,
                                 selected: _selected == i,
-                                label:
-                                    '${days[i].date == null ? days[i].label : formatDate(days[i].date!)}. '
-                                    '${spokenHours(days[i].hours)} focused. View day summary',
+                                label: context.tr(
+                                  "{0}. {1} focused. View day summary",
+                                  [
+                                    days[i].date == null
+                                        ? days[i].label
+                                        : formatDate(days[i].date!),
+                                    spokenHours(days[i].hours),
+                                  ],
+                                ),
                                 excludeSemantics: true,
                                 onTap: () => _select(i),
                                 child: Pressable(
@@ -214,8 +222,10 @@ class _StudyTrackerState extends State<StudyTracker>
       for (final day in days)
         if (day.hours > 0) '${_spokenDay(day)} ${spokenHours(day.hours)}',
     ];
-    if (parts.isEmpty) return 'Study tracker. Nothing logged in this window.';
-    return 'Study tracker. ${parts.join(', ')}';
+    if (parts.isEmpty) {
+      return tr("Study tracker. Nothing logged in this window.");
+    }
+    return tr("Study tracker. {0}", [parts.join(', ')]);
   }
 
   static String _spokenDay(DayBar day) {

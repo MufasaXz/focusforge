@@ -1,3 +1,4 @@
+import '../../../core/localization/app_strings.dart';
 import '../../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -47,13 +48,14 @@ class AppDistribution extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No apps shielded yet',
+                      context.tr("No apps shielded yet"),
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Pick the apps you open without meaning to and they '
-                      'close themselves.',
+                      context.tr(
+                        "Pick the apps you open without meaning to and they close themselves.",
+                      ),
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -65,7 +67,7 @@ class AppDistribution extends ConsumerWidget {
                         minimumSize: const Size(0, 36),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('Choose apps'),
+                      child: Text(context.tr("Choose apps")),
                     ),
                   ],
                 ),
@@ -107,7 +109,9 @@ class AppDistribution extends ConsumerWidget {
               minimumSize: const Size(0, 36),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text('${sorted.length - shown.length} more in Shield'),
+            child: Text(
+              context.tr("{0} more in Shield", [sorted.length - shown.length]),
+            ),
           ),
         ],
       ],
@@ -155,10 +159,13 @@ class _RuleSummary extends StatelessWidget {
         Semantics(
           button: true,
           container: true,
-          label:
-              '${entry.name}. ${_ruleLabel(entry)}. '
-              '${usageAccess ? '${formatMinutes(entry.usedMinutes)} today' : 'Usage unavailable'}. '
-              'Opens the Shield tab',
+          label: context.tr("{0}. {1}. {2}. Opens the Shield tab", [
+            entry.name,
+            _ruleLabel(entry),
+            usageAccess
+                ? '${formatMinutes(entry.usedMinutes)} today'
+                : 'Usage unavailable',
+          ]),
           onTap: open,
           child: ExcludeSemantics(
             child: Pressable(
@@ -257,10 +264,11 @@ class _RuleSummary extends StatelessWidget {
   }
 
   static String _ruleLabel(WhitelistEntry entry) => switch (entry.tier) {
-    WhitelistTier.blocked => 'Closes when opened',
-    WhitelistTier.focusOnly => 'Closes while focusing',
-    WhitelistTier.budgeted =>
-      '${formatMinutes(entry.budgetMinutes ?? 0)} a day',
-    WhitelistTier.alwaysAllowed => 'Never closed',
+    WhitelistTier.blocked => tr("Closes when opened"),
+    WhitelistTier.focusOnly => tr("Closes while focusing"),
+    WhitelistTier.budgeted => tr("{0} a day", [
+      formatMinutes(entry.budgetMinutes ?? 0),
+    ]),
+    WhitelistTier.alwaysAllowed => tr("Never closed"),
   };
 }

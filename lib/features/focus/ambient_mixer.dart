@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:async';
@@ -37,7 +38,7 @@ class AmbientMixerSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
-          title: 'Ambient mix',
+          title: context.tr("Ambient mix"),
           icon: Icons.graphic_eq_outlined,
           trailing: SizedBox(
             height: 48,
@@ -48,7 +49,7 @@ class AmbientMixerSection extends ConsumerWidget {
                       ref.read(activeSoundsProvider.notifier).clear(),
                     ),
                     icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                    label: const Text('Stop all'),
+                    label: Text(context.tr("Stop all")),
                   ),
           ),
         ),
@@ -115,8 +116,9 @@ class AmbientMixerSection extends ConsumerWidget {
                             const SizedBox(width: Gap.sm),
                             Expanded(
                               child: Text(
-                                'Tap to layer sounds under your session. '
-                                'They keep playing while the timer runs.',
+                                context.tr(
+                                  "Tap to layer sounds under your session. They keep playing while the timer runs.",
+                                ),
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: t.onSurfaceVariant),
                               ),
@@ -144,7 +146,7 @@ class AmbientMixerSection extends ConsumerWidget {
                               Row(
                                 children: [
                                   Text(
-                                    'Levels',
+                                    context.tr("Levels"),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
@@ -158,8 +160,10 @@ class AmbientMixerSection extends ConsumerWidget {
                                   const Spacer(),
                                   Text(
                                     playing.length == 1
-                                        ? '1 playing'
-                                        : '${playing.length} playing',
+                                        ? context.tr("1 playing")
+                                        : context.tr("{0} playing", [
+                                            playing.length,
+                                          ]),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
@@ -221,7 +225,10 @@ class _AmbientTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: '${tile.name} ambience, ${active ? 'on' : 'off'}',
+      label: context.tr("{0} ambience, {1}", [
+        context.tr(tile.name),
+        active ? 'on' : 'off',
+      ]),
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
@@ -266,7 +273,7 @@ class _AmbientTile extends StatelessWidget {
               ),
               const SizedBox(height: Gap.sm),
               Text(
-                tile.name,
+                context.tr(tile.name),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium
                     ?.copyWith(color: t.onSurface),
@@ -380,7 +387,7 @@ class _VolumeRow extends StatelessWidget {
 
     return MergeSemantics(
       child: Semantics(
-        label: '${sound.name} volume',
+        label: context.tr("{0} volume", [context.tr(sound.name)]),
         child: Padding(
           padding: const EdgeInsets.only(top: Gap.sm),
           child: Column(
@@ -392,7 +399,7 @@ class _VolumeRow extends StatelessWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      sound.name,
+                      context.tr(sound.name),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: t.onSurface,
                         fontWeight: FontWeight.w600,
@@ -427,7 +434,7 @@ class _VolumeRow extends StatelessWidget {
                   // The name is on the node's label; the formatter only has to
                   // describe the value, or it is announced twice.
                   semanticFormatterCallback: (v) =>
-                      '${(v * 100).round()} percent',
+                      context.tr("{0} percent", [(v * 100).round()]),
                 ),
               ),
             ],

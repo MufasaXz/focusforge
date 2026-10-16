@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -62,11 +64,13 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
               FilledButton.tonalIcon(
                 onPressed: _opening ? null : _request,
                 icon: const Icon(Icons.timelapse_rounded),
-                label: const Text('Allow app usage'),
+                label: Text(context.tr("Allow app usage")),
               ),
               const SizedBox(height: Gap.sm),
               Text(
-                'Let your selected app boundaries and daily budgets detect which app is open. App usage stays on this device. Your focus timer works without this access.',
+                context.tr(
+                  "Let your selected app boundaries and daily budgets detect which app is open. App usage stays on this device. Your focus timer works without this access.",
+                ),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -81,19 +85,21 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
     final allow = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Why FocusForge asks for app usage'),
+        title: Text(context.tr("Why FocusForge asks for app usage")),
         scrollable: true,
-        content: const Text(
-          'Usage Access lets FocusForge read which app is open and how long apps are used. We use this on your device to show screen-time totals and enforce the app boundaries and daily budgets you choose.\n\nThis data stays on this device and is not uploaded. It does not let us read messages, typed text or browsing content. Access is optional: your focus timer and study history work without it. You can revoke it in Android Settings at any time.\n\nContinue to Android Usage Access settings, select FocusForge and decide whether to allow it.',
+        content: Text(
+          context.tr(
+            "Usage Access lets FocusForge read which app is open and how long apps are used. We use this on your device to show screen-time totals and enforce the app boundaries and daily budgets you choose.\n\nThis data stays on this device and is not uploaded. It does not let us read messages, typed text or browsing content. Access is optional: your focus timer and study history work without it. You can revoke it in Android Settings at any time.\n\nContinue to Android Usage Access settings, select FocusForge and decide whether to allow it.",
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not now'),
+            child: Text(context.tr("Not now")),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Open usage settings'),
+            child: Text(context.tr("Open usage settings")),
           ),
         ],
       ),

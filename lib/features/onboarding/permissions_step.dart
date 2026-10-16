@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -78,13 +79,18 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
     }
     if (!mounted) return;
     showAppSnack(context, switch (permission) {
-      AppPermission.accessibility =>
-        'Choose FocusForge in Accessibility, then allow access.',
-      AppPermission.usageAccess =>
-        'Choose FocusForge, then allow usage access.',
-      AppPermission.overlay => 'Allow FocusForge to display over other apps.',
-      AppPermission.notifications =>
-        'Allow notifications to keep your timer visible.',
+      AppPermission.accessibility => tr(
+        "Choose FocusForge in Accessibility, then allow access.",
+      ),
+      AppPermission.usageAccess => tr(
+        "Choose FocusForge, then allow usage access.",
+      ),
+      AppPermission.overlay => tr(
+        "Allow FocusForge to display over other apps.",
+      ),
+      AppPermission.notifications => tr(
+        "Allow notifications to keep your timer visible.",
+      ),
     });
     setState(() => _requesting = permission);
     final outcome = await _manager.request(permission);
@@ -99,7 +105,7 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
     if (outcome == PermissionOutcome.openedSettings) {
       showAppSnack(
         context,
-        'Find FocusForge in that list, turn it on, then come back here.',
+        tr("Find FocusForge in that list, turn it on, then come back here."),
       );
     }
   }
@@ -117,26 +123,26 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
         .length;
 
     return StepScaffold(
-      title: 'Make room for focus',
-      subtitle:
-          'Enable the features you want. The focus timer works without '
-          'these, and you can return to permissions later.',
+      title: context.tr("Make room for focus"),
+      subtitle: context.tr(
+        "Enable the features you want. The focus timer works without these, and you can return to permissions later.",
+      ),
       onPrimary: widget.onNext,
       primaryEnabled: _requesting == null,
       primaryLabel: permissions.isEmpty || granted == permissions.length
-          ? 'Done'
-          : 'Continue for now',
-      footnote:
-          'Optional. Access is confirmed by your device, and you can revoke '
-          'it in system settings.',
+          ? context.tr("Done")
+          : context.tr("Continue for now"),
+      footnote: context.tr(
+        "Optional. Access is confirmed by your device, and you can revoke it in system settings.",
+      ),
       children: [
         if (permissions.isEmpty)
-          const Text('No extra permissions are needed on this device.')
+          Text(context.tr("No extra permissions are needed on this device."))
         else ...[
           Semantics(
             liveRegion: true,
             child: Text(
-              '$granted of ${permissions.length} enabled',
+              context.tr("{0} of {1} enabled", [granted, permissions.length]),
               style: Theme.of(context).textTheme.labelLarge
                   ?.copyWith(color: cs.primary),
             ),
@@ -169,8 +175,9 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: Text(
-                  'Your detailed study log and installed app list stay on this device. '
-                  'Optional study groups share only the totals and timer status you choose.',
+                  context.tr(
+                    "Your detailed study log and installed app list stay on this device. Optional study groups share only the totals and timer status you choose.",
+                  ),
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),
@@ -201,10 +208,10 @@ class _Permission {
   final String platform;
 }
 
-const _permissions = <_Permission>[
+final _permissions = <_Permission>[
   _Permission(
     kind: AppPermission.overlay,
-    title: 'Show app pause screens',
+    title: tr("Show app pause screens"),
     icon: Icons.layers_outlined,
     why: 'Draws the pause screen over apps you choose. Normal app boundaries also need Usage access to detect which app is open.',
     privacy: 'Pause screens run on your device. Android settings and emergency apps are never covered.',
@@ -212,7 +219,7 @@ const _permissions = <_Permission>[
   ),
   _Permission(
     kind: AppPermission.notifications,
-    title: 'Keep your timer in view',
+    title: tr("Keep your timer in view"),
     icon: Icons.notifications_active_rounded,
     why: 'Shows your running countdown and subject in a quiet ongoing notification. Compatible dynamic bars can pick it up.',
     privacy:
@@ -222,7 +229,7 @@ const _permissions = <_Permission>[
   ),
   _Permission(
     kind: AppPermission.usageAccess,
-    title: 'Understand your screen time',
+    title: tr("Understand your screen time"),
     icon: Icons.query_stats_rounded,
     why:
         'Reads screen time per app so the dashboard can show where your day '
@@ -287,12 +294,14 @@ class _PermissionCard extends StatelessWidget {
             const SizedBox(height: Gap.sm),
             if (permission.kind == AppPermission.overlay) ...[
               Text(
-                'How to allow pause screens',
+                context.tr("How to allow pause screens"),
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                '1. Open Draw over other apps settings.\n2. Choose FocusForge and allow access.\n3. Return here. Usage access is also needed for app boundaries.',
+                context.tr(
+                  "1. Open Draw over other apps settings.\n2. Choose FocusForge and allow access.\n3. Return here. Usage access is also needed for app boundaries.",
+                ),
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: Gap.md),
@@ -361,7 +370,9 @@ class _Action extends StatelessWidget {
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(
-              busy ? 'Opening permission…' : 'Checking access…',
+              busy
+                  ? context.tr("Opening permission…")
+                  : context.tr("Checking access…"),
               style: theme.textTheme.labelMedium,
             ),
           ),
@@ -371,13 +382,13 @@ class _Action extends StatelessWidget {
 
     if (status == PermissionOutcome.granted) {
       return Semantics(
-        label: '$title granted',
+        label: context.tr("{0} granted", [title]),
         child: Row(
           children: [
             Icon(Icons.check_circle, size: 18, color: cs.tertiary),
             const SizedBox(width: Gap.sm),
             Text(
-              'Granted',
+              context.tr("Granted"),
               style: theme.textTheme.labelLarge?.copyWith(color: cs.tertiary),
             ),
           ],
@@ -396,7 +407,7 @@ class _Action extends StatelessWidget {
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(
-              'Not available on this device',
+              context.tr("Not available on this device"),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -414,7 +425,7 @@ class _Action extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Turned off — only Settings can change it',
+            context.tr("Turned off — only Settings can change it"),
             style: theme.textTheme.labelLarge?.copyWith(
               color: cs.onSurfaceVariant,
             ),
@@ -422,7 +433,7 @@ class _Action extends StatelessWidget {
           const SizedBox(height: Gap.sm),
           TextButton(
             onPressed: onOpenSettings,
-            child: const Text('Open Settings'),
+            child: Text(context.tr("Open Settings")),
           ),
         ],
       );
@@ -433,23 +444,26 @@ class _Action extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Waiting for you to turn it on in Settings',
+            context.tr("Waiting for you to turn it on in Settings"),
             style: theme.textTheme.labelLarge?.copyWith(
               color: cs.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: Gap.sm),
-          TextButton(onPressed: onEnable, child: const Text('Open again')),
+          TextButton(
+            onPressed: onEnable,
+            child: Text(context.tr("Open again")),
+          ),
         ],
       );
     }
 
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: AlignmentDirectional.centerEnd,
       child: FilledButton.tonalIcon(
         onPressed: onEnable,
         icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-        label: const Text('Enable'),
+        label: Text(context.tr("Enable")),
       ),
     );
   }

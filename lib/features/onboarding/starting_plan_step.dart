@@ -1,3 +1,6 @@
+import '../../core/localization/display_labels.dart';
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -94,11 +97,12 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
     final selected = plans.firstWhere((plan) => plan.key == _selectedKey);
 
     return StepScaffold(
-      title: 'Choose your pace',
-      eyebrow: 'YOUR FIRST SESSION',
-      subtitle:
-          'We suggest ${suggested.focus} minutes. Pick what works for you.',
-      primaryLabel: 'Use this plan',
+      title: context.tr("Choose your pace"),
+      eyebrow: context.tr("YOUR FIRST SESSION"),
+      subtitle: context.tr("We suggest {0} minutes. Pick what works for you.", [
+        suggested.focus,
+      ]),
+      primaryLabel: context.tr("Use this plan"),
       onPrimary: _save,
       children: [
         Semantics(
@@ -110,12 +114,12 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
               runSpacing: Gap.sm,
               children: [
                 Text(
-                  '${selected.focus} min focus',
+                  context.tr("{0} min focus", [selected.focus]),
                   style: Theme.of(context).textTheme.titleMedium
                       ?.copyWith(color: cs.primary),
                 ),
                 Text(
-                  '${selected.shortBreak} min break',
+                  context.tr("{0} min break", [selected.shortBreak]),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -126,10 +130,12 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
           Padding(
             padding: const EdgeInsets.only(bottom: Gap.md),
             child: SetupChoiceCard(
-              title: plan.name,
-              description:
-                  '${plan.focus} min focus · ${plan.shortBreak} min break',
-              badge: plan.key == suggested.key ? 'Suggested' : null,
+              title: presetDisplayName(context, plan),
+              description: context.tr("{0} min focus · {1} min break", [
+                plan.focus,
+                plan.shortBreak,
+              ]),
+              badge: plan.key == suggested.key ? context.tr("Suggested") : null,
               icon: plan.icon,
               color: cs.primary,
               selected: plan.key == _selectedKey,
@@ -143,7 +149,7 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
         OutlinedButton.icon(
           onPressed: _createPlan,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Create your own plan'),
+          label: Text(context.tr("Create your own plan")),
         ),
       ],
     );

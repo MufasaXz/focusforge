@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -67,7 +69,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
       if (mounted) setState(() => _error = null);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Could not add this subject. Try again.');
+        setState(() => _error = tr("Could not add this subject. Try again."));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -87,19 +89,25 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
       context: context,
       builder: (context) => AlertDialog(
         scrollable: true,
-        title: Text('Remove ${subject.name}?'),
+        title: Text(context.tr("Remove {0}?", [subject.name])),
         content: Text(
-          'Completed sessions and earned focus time stay in your history.'
-          '${allocated ? '\n\nYour daily target stays the same. Its subject split will be cleared so you can plan it again.' : ''}',
+          context.tr(
+            "Completed sessions and earned focus time stay in your history.{0}",
+            [
+              allocated
+                  ? '\n\nYour daily target stays the same. Its subject split will be cleared so you can plan it again.'
+                  : '',
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr("Cancel")),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove'),
+            child: Text(context.tr("Remove")),
           ),
         ],
       ),
@@ -112,7 +120,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
       if (mounted) {
         showAppSnack(
           context,
-          'Could not remove this subject. Try again.',
+          tr("Could not remove this subject. Try again."),
           danger: true,
         );
       }
@@ -148,7 +156,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Manage subjects',
+                          context.tr("Manage subjects"),
                           style: theme.textTheme.titleLarge,
                         ),
                       ),
@@ -158,7 +166,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: Gap.md),
                     child: Text(
-                      'Add a subject or tidy your list.',
+                      context.tr("Add a subject or tidy your list."),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -173,8 +181,8 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                     onChanged: (_) => setState(() => _error = null),
                     onSubmitted: (_) => _add(),
                     decoration: InputDecoration(
-                      labelText: 'Subject name',
-                      hintText: 'e.g. Mathematics',
+                      labelText: context.tr("Subject name"),
+                      hintText: context.tr("e.g. Mathematics"),
                       errorText: _error,
                       prefixIcon: Icon(SubjectAppearance.icon(_name.text)),
                     ),
@@ -183,16 +191,16 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                   FilledButton.icon(
                     onPressed: _busy || _name.text.trim().isEmpty ? null : _add,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add subject'),
+                    label: Text(context.tr("Add subject")),
                   ),
                   const SizedBox(height: Gap.md),
                   Column(
                     children: [
                       if (subjects.isEmpty)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.all(Gap.xl),
                           child: Text(
-                            'No subjects yet',
+                            context.tr("No subjects yet"),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -210,7 +218,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                           ),
                           title: Text(subject.name),
                           trailing: IconButton(
-                            tooltip: 'Remove ${subject.name}',
+                            tooltip: context.tr("Remove {0}", [subject.name]),
                             onPressed: _busy ? null : () => _remove(subject),
                             icon: const Icon(
                               Icons.remove_circle_outline_rounded,

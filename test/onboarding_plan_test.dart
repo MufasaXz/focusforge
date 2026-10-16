@@ -134,6 +134,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Morning reading');
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Use this plan').last);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Use this plan').last);
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();

@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,19 +47,21 @@ class ScreenTimeCard extends ConsumerWidget {
     }
 
     if (screenTime.hasError) {
-      return const _Notice(
+      return _Notice(
         icon: Icons.error_outline_rounded,
-        body: 'The usage service did not answer. Pull down to try again.',
+        body: context.tr(
+          "The usage service did not answer. Pull down to try again.",
+        ),
       );
     }
 
     final rows = screenTime.valueOrNull ?? const <ScreenTimeRow>[];
     if (rows.isEmpty) {
-      return const _Notice(
+      return _Notice(
         icon: Icons.hourglass_empty_rounded,
-        body:
-            'No app has been opened yet today. This fills in as the day goes '
-            'on.',
+        body: context.tr(
+          "No app has been opened yet today. This fills in as the day goes on.",
+        ),
       );
     }
 
@@ -93,7 +97,10 @@ class _Rows extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 3),
               child: Text(
-                'across ${rows.length} ${rows.length == 1 ? 'app' : 'apps'}',
+                context.tr("across {0} {1}", [
+                  rows.length,
+                  rows.length == 1 ? 'app' : 'apps',
+                ]),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -108,7 +115,7 @@ class _Rows extends StatelessWidget {
         if (rows.length > shown.length) ...[
           const SizedBox(height: Gap.md),
           Text(
-            'and ${rows.length - shown.length} more',
+            context.tr("and {0} more", [rows.length - shown.length]),
             style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: cs.onSurfaceVariant),
           ),
@@ -130,7 +137,10 @@ class _Row extends StatelessWidget {
     final share = busiest == 0 ? 0.0 : row.minutes / busiest;
 
     return Semantics(
-      label: '${row.name}, ${formatMinutes(row.minutes)} today',
+      label: context.tr("{0}, {1} today", [
+        row.name,
+        formatMinutes(row.minutes),
+      ]),
       child: ExcludeSemantics(
         child: Row(
           children: [

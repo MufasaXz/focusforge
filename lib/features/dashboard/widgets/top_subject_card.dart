@@ -1,3 +1,4 @@
+import '../../../core/localization/app_strings.dart';
 import '../../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -40,18 +41,26 @@ class TopSubjectCard extends ConsumerWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      'Nothing logged this $span yet — finish a session and '
-                      'your leading subject lands here.',
+                      context.tr(
+                        "Nothing logged this {0} yet — finish a session and your leading subject lands here.",
+                        [span],
+                      ),
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                 ],
               )
             : Semantics(
-                label:
-                    'Top subject this $span: ${top.name}, '
-                    '${spokenHours(top.minutes / 60)} across '
-                    '${top.sessions} ${top.sessions == 1 ? 'session' : 'sessions'}',
+                label: context.tr(
+                  "Top subject this {0}: {1}, {2} across {3} {4}",
+                  [
+                    span,
+                    top.name,
+                    spokenHours(top.minutes / 60),
+                    top.sessions,
+                    top.sessions == 1 ? 'session' : 'sessions',
+                  ],
+                ),
                 child: ExcludeSemantics(
                   child: Row(
                     children: [

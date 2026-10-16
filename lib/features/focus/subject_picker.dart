@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,7 +40,7 @@ class SubjectPicker extends ConsumerWidget {
         Row(
           children: [
             Text(
-              'Studying',
+              context.tr("Studying"),
               style: tt.labelSmall?.copyWith(
                 color: cs.onSurfaceVariant,
                 letterSpacing: 1.0,
@@ -51,7 +53,7 @@ class SubjectPicker extends ConsumerWidget {
             // it too, but a chip scrolled out of view cannot.
             Expanded(
               child: Text(
-                selected == null ? 'Not tagged' : selected.name,
+                selected == null ? context.tr("Not tagged") : selected.name,
                 style: tt.labelSmall?.copyWith(
                   fontSize: 11.5,
                   color: selected == null
@@ -83,10 +85,10 @@ class SubjectPicker extends ConsumerWidget {
               itemBuilder: (context, i) {
                 if (i == subjects.length) {
                   return Tooltip(
-                    message: 'Manage subjects',
+                    message: context.tr("Manage subjects"),
                     child: _AddChip(
                       onTap: () => showManageSubjectsSheet(context),
-                      label: 'Manage',
+                      label: context.tr("Manage"),
                     ),
                   );
                 }
@@ -129,9 +131,10 @@ class _SubjectChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label:
-          'Subject ${subject.name}, '
-          '${selected ? 'selected' : 'not selected'}',
+      label: context.tr("Subject {0}, {1}", [
+        subject.name,
+        selected ? 'selected' : 'not selected',
+      ]),
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
@@ -186,7 +189,7 @@ class _SubjectChip extends StatelessWidget {
                 if (subject.minutesToday > 0) ...[
                   const SizedBox(width: 6),
                   Text(
-                    '${subject.minutesToday}m',
+                    context.tr("{0}m", [subject.minutesToday]),
                     style: tt.labelSmall?.copyWith(
                       fontSize: 10,
                       color: selected
@@ -217,7 +220,7 @@ class _AddChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      label: 'Manage subjects',
+      label: context.tr("Manage subjects"),
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(

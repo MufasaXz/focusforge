@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -147,11 +149,15 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('New subject', style: tt.titleMedium),
+                          Text(
+                            context.tr("New subject"),
+                            style: tt.titleMedium,
+                          ),
                           const SizedBox(height: 2),
                           Text(
-                            'Sessions you run with it selected are logged '
-                            'against it.',
+                            context.tr(
+                              "Sessions you run with it selected are logged against it.",
+                            ),
                             style: tt.labelSmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -160,7 +166,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                       ),
                     ),
                     SheetCloseButton(
-                      label: 'Cancel',
+                      label: context.tr("Cancel"),
                       onTap: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -175,7 +181,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                   cursorColor: cs.primary,
                   onSubmitted: (_) => _submit(),
                   decoration: InputDecoration(
-                    hintText: 'e.g. Thesis',
+                    hintText: context.tr("e.g. Thesis"),
                     hintStyle: tt.bodyLarge?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -215,7 +221,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                   ),
                 ],
                 const SizedBox(height: Gap.xl),
-                _FieldLabel(text: 'Icon'),
+                _FieldLabel(text: context.tr("Icon")),
                 const SizedBox(height: Gap.sm),
                 Wrap(
                   spacing: Gap.sm,
@@ -231,7 +237,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                   ],
                 ),
                 const SizedBox(height: Gap.xl),
-                _FieldLabel(text: 'Colour'),
+                _FieldLabel(text: context.tr("Colour")),
                 const SizedBox(height: Gap.sm),
                 Wrap(
                   spacing: Gap.sm,
@@ -249,7 +255,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                 FilledButton.icon(
                   onPressed: _name.text.trim().isEmpty ? null : _submit,
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add subject'),
+                  label: Text(context.tr("Add subject")),
                 ),
               ],
             ),

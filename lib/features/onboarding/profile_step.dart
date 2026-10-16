@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -93,9 +95,9 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
     final initials = _initialsOf(_name.text);
 
     return StepScaffold(
-      title: 'Your profile',
-      eyebrow: 'ABOUT YOU',
-      subtitle: 'What should we call you?',
+      title: context.tr("Your profile"),
+      eyebrow: context.tr("ABOUT YOU"),
+      subtitle: context.tr("What should we call you?"),
       onPrimary: _commit,
       children: [
         Stagger(
@@ -103,12 +105,15 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
           child: Center(child: _Avatar(initials: initials)),
         ),
         const SizedBox(height: Gap.xl),
-        const Stagger(index: 3, child: SectionHeader(title: 'Display name')),
+        Stagger(
+          index: 3,
+          child: SectionHeader(title: context.tr("Display name")),
+        ),
         Stagger(
           index: 4,
           child: AppTextField(
             controller: _name,
-            hint: 'Your name',
+            hint: context.tr("Your name"),
             icon: Icons.badge_outlined,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
@@ -120,14 +125,14 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
-              'Optional. You can change it later.',
+              context.tr("Optional. You can change it later."),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
         const SizedBox(height: Gap.xl),
-        const Stagger(index: 6, child: SectionHeader(title: 'Timezone')),
+        Stagger(index: 6, child: SectionHeader(title: context.tr("Timezone"))),
         Stagger(
           index: 7,
           child: Card.outlined(
@@ -148,14 +153,14 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               subtitle: Text(
-                'Detected from your device',
+                context.tr("Detected from your device"),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
               trailing: Chip(
                 visualDensity: VisualDensity.compact,
                 label: Text(
-                  'Auto',
+                  context.tr("Auto"),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: cs.tertiary),
                 ),

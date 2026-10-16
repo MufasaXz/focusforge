@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -92,7 +94,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (mounted) {
         showAppSnack(
           context,
-          'Could not continue. Please try again.',
+          tr("Could not continue. Please try again."),
           danger: true,
         );
       }
@@ -111,7 +113,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       context.goNamed(AppRoutes.dashboard);
       showAppSnack(
         context,
-        '${_auth.welcomeMessage(profile)} Your setup and focus history are ready.',
+        tr("{0} Your setup and focus history are ready.", [
+          _auth.welcomeMessage(profile),
+        ]),
       );
       return;
     }
@@ -119,7 +123,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (_auth.isReturningUser) {
       showAppSnack(
         context,
-        '${_auth.welcomeMessage(profile)} Let’s finish setting up this device.',
+        tr("{0} Let’s finish setting up this device.", [
+          _auth.welcomeMessage(profile),
+        ]),
       );
     }
     if (done != null) {
@@ -167,7 +173,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (mounted) {
         showAppSnack(
           context,
-          'Could not open sign-in. Please try again.',
+          tr("Could not open sign-in. Please try again."),
           danger: true,
         );
       }
@@ -217,7 +223,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 if (_auth.restorationPending) ...[
                   Text(
-                    'Your saved study data could not be loaded. Connect to the internet and try again.',
+                    context.tr(
+                      "Your saved study data could not be loaded. Connect to the internet and try again.",
+                    ),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: Gap.sm),
@@ -226,7 +234,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ? () => _run('restore', _auth.restore)
                         : null,
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Retry account recovery'),
+                    label: Text(context.tr("Retry account recovery")),
                   ),
                   const SizedBox(height: Gap.lg),
                 ],
@@ -254,7 +262,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ),
                         const SizedBox(height: Gap.xxl),
                         Text(
-                          'Make room for\nwhat matters.',
+                          context.tr("Make room for\nwhat matters."),
                           style: Theme.of(context).textTheme.headlineLarge
                               ?.copyWith(
                                 letterSpacing: -1.2,
@@ -263,7 +271,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ),
                         const SizedBox(height: Gap.md),
                         Text(
-                          'A quieter space to study, one session at a time.',
+                          context.tr(
+                            "A quieter space to study, one session at a time.",
+                          ),
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: cs.onSurfaceVariant),
                         ),
@@ -275,7 +285,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 1,
                   child: Text(
-                    'Sign in to connect',
+                    context.tr("Sign in to connect"),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -283,7 +293,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 2,
                   child: Text(
-                    'Restore your study data, join groups and compare focus time.',
+                    context.tr(
+                      "Restore your study data, join groups and compare focus time.",
+                    ),
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -292,7 +304,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 3,
                   child: ProviderRow(
-                    label: 'Continue with Google',
+                    label: context.tr("Continue with Google"),
                     leading: const GoogleMark(),
                     busy: _busy == 'google',
                     done: _done == 'google',
@@ -310,7 +322,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 4,
                   child: ProviderRow(
-                    label: 'Continue with Email',
+                    label: context.tr("Continue with Email"),
                     leading: const MailMark(),
                     busy: _busy == 'email',
                     onTap: _busy == null && providers.contains('email')
@@ -322,7 +334,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Stagger(
                   index: 5,
                   child: GhostAction(
-                    label: 'Skip for now',
+                    label: context.tr("Skip for now"),
                     icon: Icons.arrow_forward_rounded,
                     onTap: _busy == null ? _skip : null,
                   ),
@@ -332,10 +344,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 6,
                   child: Text(
                     googleLive
-                        ? 'An account is optional. You can sign in later.'
+                        ? context.tr(
+                            "An account is optional. You can sign in later.",
+                          )
                         : providers.contains('email')
-                        ? 'Google sign-in is not available in this build. Use email or skip — you can link an account later.'
-                        : 'Account sign-in is unavailable right now. Skip to study on this device and try signing in later.',
+                        ? context.tr(
+                            "Google sign-in is not available in this build. Use email or skip — you can link an account later.",
+                          )
+                        : context.tr(
+                            "Account sign-in is unavailable right now. Skip to study on this device and try signing in later.",
+                          ),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),

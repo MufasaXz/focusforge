@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,17 +57,17 @@ class _GoalStepState extends ConsumerState<GoalStep> {
     final suggestions = SeedData.goalSuggestions(_persona);
 
     return StepScaffold(
-      title: 'Set your daily goal',
-      eyebrow: 'YOUR DAILY RHYTHM',
-      subtitle:
-          'A target you can hit most days is worth more than a heroic '
-          'one you abandon.',
+      title: context.tr("Set your daily goal"),
+      eyebrow: context.tr("YOUR DAILY RHYTHM"),
+      subtitle: context.tr(
+        "A target you can hit most days is worth more than a heroic one you abandon.",
+      ),
       onPrimary: _commit,
       children: [
         Stagger(
           index: 2,
           child: Semantics(
-            label: 'Daily goal',
+            label: context.tr("Daily goal"),
             value: formatMinutes(_minutes.round()),
             excludeSemantics: true,
             child: Center(
@@ -88,7 +90,7 @@ class _GoalStepState extends ConsumerState<GoalStep> {
           index: 3,
           child: Center(
             child: Text(
-              'of focus per day',
+              context.tr("of focus per day"),
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
@@ -115,17 +117,23 @@ class _GoalStepState extends ConsumerState<GoalStep> {
             padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
             child: Row(
               children: [
-                Text('30m', style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  formatMinutes(30),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
                 const Spacer(),
-                Text('6h', style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  formatMinutes(360),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: Gap.xl),
-        const Stagger(
+        Stagger(
           index: 6,
-          child: SectionHeader(title: 'Suggested for you'),
+          child: SectionHeader(title: context.tr("Suggested for you")),
         ),
         Stagger(
           index: 7,
@@ -155,7 +163,10 @@ class _GoalStepState extends ConsumerState<GoalStep> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_label(i), textAlign: TextAlign.center),
+                            Text(
+                              context.tr(_label(i)),
+                              textAlign: TextAlign.center,
+                            ),
                             const SizedBox(height: Gap.xs),
                             Text(
                               formatMinutes(suggestions[i]),
@@ -215,11 +226,11 @@ class _GoalStepState extends ConsumerState<GoalStep> {
   static String _label(int i) => const ['Light', 'Recommended', 'Intense'][i];
 
   String get _insight => switch (_persona) {
-    Persona.student =>
-      'Short daily blocks beat one long cram session — your memory '
-          'consolidates between sessions, not during them.',
-    Persona.professional =>
-      'A protected block beats a busy day. Deep work is what compounds, '
-          'so defend the same window every day.',
+    Persona.student => tr(
+      "Short daily blocks beat one long cram session — your memory consolidates between sessions, not during them.",
+    ),
+    Persona.professional => tr(
+      "A protected block beats a busy day. Deep work is what compounds, so defend the same window every day.",
+    ),
   };
 }

@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -101,7 +103,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       }
     } catch (_) {
       if (mounted) {
-        showAppSnack(context, 'Could not save your setup progress. Try again.');
+        showAppSnack(
+          context,
+          tr("Could not save your setup progress. Try again."),
+        );
       }
     } finally {
       _moving = false;
@@ -297,7 +302,7 @@ class _FlowHeader extends StatelessWidget {
         children: [
           IconButton(
             onPressed: onBack,
-            tooltip: 'Back',
+            tooltip: context.tr("Back"),
             icon: const Icon(Icons.arrow_back_rounded, size: 20),
           ),
           const SizedBox(width: Gap.sm),
@@ -312,7 +317,7 @@ class _FlowHeader extends StatelessWidget {
                     ),
                     // Tabular so the count never shifts width as it advances.
                     Text(
-                      '$index of $total',
+                      context.tr("{0} of {1}", [index, total]),
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -321,8 +326,8 @@ class _FlowHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.sm),
                 Semantics(
-                  label: 'Setup progress, $title',
-                  value: 'Step $index of $total',
+                  label: context.tr("Setup progress, {0}", [title]),
+                  value: context.tr("Step {0} of {1}", [index, total]),
                   child: ExcludeSemantics(
                     child: LinearProgressIndicator(
                       value: index / total,

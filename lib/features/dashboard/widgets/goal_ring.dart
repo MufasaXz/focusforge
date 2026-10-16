@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -34,7 +36,8 @@ class GoalRing extends StatelessWidget {
     final target = value.clamp(0.0, 1.0);
 
     return Semantics(
-      label: semanticLabel ?? '${(target * 100).round()} percent',
+      label:
+          semanticLabel ?? context.tr("{0} percent", [(target * 100).round()]),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: target),
         // Short on purpose: the value ticks up while a block runs, and a long

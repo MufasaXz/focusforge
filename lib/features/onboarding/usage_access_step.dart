@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,7 +66,7 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
       if (status == PermissionOutcome.openedSettings) {
         showAppSnack(
           context,
-          'Choose FocusForge in Usage access, turn it on, then come back.',
+          tr("Choose FocusForge in Usage access, turn it on, then come back."),
         );
       }
     } finally {
@@ -79,22 +81,28 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
     final granted = _status == PermissionOutcome.granted;
 
     return StepScaffold(
-      title: 'Screen-time access',
-      eyebrow: 'OPTIONAL ACCESS',
+      title: context.tr("Screen-time access"),
+      eyebrow: context.tr("OPTIONAL ACCESS"),
       subtitle: supported
-          ? 'Optional access for app boundaries and screen-time totals.'
-          : 'This device does not need any extra access for the focus timer.',
-      primaryLabel: 'Continue',
+          ? context.tr(
+              "Optional access for app boundaries and screen-time totals.",
+            )
+          : context.tr(
+              "This device does not need any extra access for the focus timer.",
+            ),
+      primaryLabel: context.tr("Continue"),
       onPrimary: widget.onNext,
       primaryBusy: _busy,
       secondary: supported && !granted
           ? TextButton.icon(
               onPressed: _busy ? null : widget.onNext,
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text('Continue without access'),
+              label: Text(context.tr("Continue without access")),
             )
           : null,
-      footnote: supported ? 'Change this anytime in Android Settings.' : null,
+      footnote: supported
+          ? context.tr("Change this anytime in Android Settings.")
+          : null,
       children: [
         if (supported) ...[
           _AccessPreview(
@@ -102,10 +110,16 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
                 ? Icons.check_circle_outline_rounded
                 : Icons.query_stats_rounded,
             color: granted ? cs.tertiary : cs.primary,
-            title: granted ? 'Usage Access is on' : 'Recognize selected apps',
+            title: granted
+                ? context.tr("Usage Access is on")
+                : context.tr("Recognize selected apps"),
             body: granted
-                ? 'App detection and local screen-time totals are ready.'
-                : 'Detect when a selected app is open and measure time spent in apps.',
+                ? context.tr(
+                    "App detection and local screen-time totals are ready.",
+                  )
+                : context.tr(
+                    "Detect when a selected app is open and measure time spent in apps.",
+                  ),
           ),
           const SizedBox(height: Gap.md),
           _PrivacyNote(color: cs.tertiary),
@@ -119,14 +133,20 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.settings_outlined),
-            label: Text(granted ? 'Enabled' : 'Allow usage access'),
+            label: Text(
+              granted
+                  ? context.tr("Enabled")
+                  : context.tr("Allow usage access"),
+            ),
           ),
         ] else
           _AccessPreview(
             icon: Icons.check_circle_outline_rounded,
             color: cs.tertiary,
-            title: 'You are ready to focus',
-            body: 'Your timer works without any extra device access.',
+            title: context.tr("You are ready to focus"),
+            body: context.tr(
+              "Your timer works without any extra device access.",
+            ),
           ),
       ],
     );
@@ -196,7 +216,9 @@ class _PrivacyNote extends StatelessWidget {
       const SizedBox(width: Gap.sm),
       Expanded(
         child: Text(
-          'App names and time totals stay on this device. Message content is never read.',
+          context.tr(
+            "App names and time totals stay on this device. Message content is never read.",
+          ),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
         ),
       ),
