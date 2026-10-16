@@ -1,0 +1,36 @@
+name: usage_stats
+description: >-
+  Query Android usage statistics: app usage, events, configuration changes,
+  app standby buckets, storage usage and per-app network data.
+version: 2.0.1
+homepage: https://github.com/Parassharmaa/usage_stats
+repository: https://github.com/Parassharmaa/usage_stats
+issue_tracker: https://github.com/Parassharmaa/usage_stats/issues
+documentation: https://github.com/Parassharmaa/usage_stats#readme
+
+topics:
+  - android
+  - usage-stats
+  - analytics
+  - statistics
+  - network-usage
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.github.parassharmaa.usage_stats
+        pluginClass: UsageStatsPlugin

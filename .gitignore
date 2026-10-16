@@ -69,3 +69,8 @@ app.*.map.json
 /.firebase/
 
 /functions/node_modules/
+
+# Vendored build plugins and path packages keep generated output local.
+/third_party/**/.gradle/
+/third_party/**/.kotlin/
+/third_party/**/build/
