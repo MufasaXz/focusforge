@@ -118,10 +118,14 @@ class AppTheme {
       ),
 
       // Premium controls: a confident filled action, a hairline outline and a
-      // quiet text action. One radius family, one height, every screen.
+      // quiet text action. One radius family, one height, every screen. The
+      // minimum width stays finite (M3's 64dp) so a button inside a Row —
+      // the coach-mark "Got it", a dialog action — measures instead of
+      // forcing an infinite width. Full-width actions opt in with a
+      // SizedBox/Expanded around them, as PrimaryAction already does.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size(64, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.item),
           ),
@@ -135,7 +139,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size(64, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.item),
           ),

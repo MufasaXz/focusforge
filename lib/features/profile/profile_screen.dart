@@ -294,11 +294,33 @@ class _HeroCard extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 380 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    return ContentCard(
+    // Premium hero: a soft primary wash with a quiet lift, so the identity
+    // card reads as the page's cover rather than another flat tile.
+    return Container(
       key: const ValueKey('profile-hero'),
-      color: t.surface,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              t.primary.withValues(alpha: 0.10),
+              t.surface,
+            ),
+            t.surface,
+          ],
+        ),
         borderRadius: BorderRadius.circular(Radii.hero),
+        border: Border.all(
+          color: t.primary.withValues(alpha: 0.22),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: t.primary.withValues(alpha: 0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(Gap.xl),

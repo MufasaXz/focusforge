@@ -757,18 +757,46 @@ class _PlanGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return Card.filled(
-      color: cs.surfaceContainerLow,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
+    // Premium empty state: a soft primary wash with a quiet lift, so the
+    // first-run goal reads as an invitation rather than an empty card.
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.12),
+              cs.surfaceContainerLow,
+            ),
+            cs.surfaceContainerLow,
+          ],
+        ),
         borderRadius: BorderRadius.circular(Radii.hero),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.28),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cs.primary.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
+        padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.flag_outlined, color: cs.primary, size: 34),
+            Center(
+              child: IconBadge(
+                icon: Icons.flag_outlined,
+                color: cs.primary,
+                size: 52,
+                radius: 17,
+              ),
+            ),
             const SizedBox(height: Gap.md),
             Text(
               'Make room for focus',

@@ -264,11 +264,26 @@ class _ShieldStatusPill extends StatelessWidget {
         child: Pressable(
           scale: 0.94,
           onTap: onTap,
-          // A tonal status pill. The armed state is carried by the tertiary
-          // border and the dot, not by a glow.
-          child: ContentCard(
-            shape: StadiumBorder(
-              side: BorderSide(color: on ? cs.tertiary : cs.outlineVariant),
+          // Premium status pill: the armed state lifts with a quiet tertiary
+          // glow, so protection reads as active rather than outlined.
+          child: Container(
+            decoration: ShapeDecoration(
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: on ? cs.tertiary : cs.outlineVariant,
+                  width: on ? 1.5 : 1,
+                ),
+              ),
+              color: cs.surfaceContainerLow,
+              shadows: on
+                  ? [
+                      BoxShadow(
+                        color: cs.tertiary.withValues(alpha: 0.28),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : null,
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(

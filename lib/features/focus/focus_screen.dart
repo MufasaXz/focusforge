@@ -586,6 +586,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                       timer.running ? 26 : 16,
                                     ),
                                     color: accent,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: accent.withValues(alpha: 0.35),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
                                   ),
                                   child: AnimatedSwitcher(
                                     duration:
