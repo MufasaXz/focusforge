@@ -1,4 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
+
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,16 +89,7 @@ Future<ProviderContainer> bootstrap() async {
       }
     }
   });
-  UserProfile? restored;
-  try {
-    restored = await authService.restore();
-  } on AuthException {
-    // Show a retryable account screen. An unavailable backup must neither
-    // abort the first frame nor be interpreted as an empty cloud account.
-  }
-  if (restored != null) {
-    container.read(userProvider.notifier).hydrate(restored);
-  } else if (authService.usesRemoteCredentials) {
+  if (authService.usesRemoteCredentials) {
     final local = container.read(userProvider);
     if (!local.isAnonymous) {
       container
@@ -192,6 +186,10 @@ Future<ProviderContainer> bootstrap() async {
   // Warm the router so the first navigation resolves its redirect immediately
   // rather than after a frame.
   container.read(routerProvider);
+
+  // Paint the local shell and recovery surface while the server responds.
+  // The changes bridge above adopts the complete restored snapshot together.
+  unawaited(authService.restore().catchError((Object error) => null));
 
   return container;
 }

@@ -37,6 +37,16 @@ class FirebaseAuthService extends AuthService {
        _firestoreOverride = firestore,
        _cleanupOverride = accountCleanup,
        _googleClient = googleSignIn {
+    final credential = _auth.currentUser;
+    _credentialUid = credential?.uid;
+    if (studyBackup != null &&
+        credential != null &&
+        !credential.isAnonymous &&
+        !_requiresEmailVerification(credential) &&
+        !_isDeletedCredential(credential)) {
+      _restorationPending = true;
+      recoveryState.value = AccountRecoveryStage.connecting;
+    }
     studyBackup?.onReconciled = (profile) {
       if (!_disposed &&
           _auth.currentUser?.uid == profile.uid &&
@@ -69,6 +79,10 @@ class FirebaseAuthService extends AuthService {
   final FirestoreAccountCleanup? _cleanupOverride;
   final StudyBackupService? studyBackup;
   Future<void> _profileWrites = Future.value();
+  Future<UserProfile>? _profileRecovery;
+  String? _profileRecoveryUid;
+  String? _credentialUid;
+  int _credentialGeneration = 0;
   bool _disposed = false;
   bool _restorationPending = false;
   @override
@@ -403,6 +417,7 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<void> signOut() async {
     _reauthenticatedAt = null;
+    _invalidateRecovery();
     try {
       await studyBackup?.flush();
     } catch (_) {
@@ -572,6 +587,8 @@ class FirebaseAuthService extends AuthService {
   @override
   void dispose() {
     _disposed = true;
+    _credentialGeneration++;
+    recoveryState.dispose();
     studyBackup?.dispose();
     final sub = _authSub;
     if (sub != null) unawaited(sub.cancel());
@@ -580,6 +597,7 @@ class FirebaseAuthService extends AuthService {
 
   Future<void> _onAuthStateChanged(User? user) async {
     if (_disposed || user?.uid != _auth.currentUser?.uid) return;
+    _observeCredential();
     // A device-only guest has no Firebase credential. The SDK's initial null
     // event must not undo a completed local Skip action.
     if (user == null && _current?.isAnonymous == true) return;
@@ -588,6 +606,7 @@ class FirebaseAuthService extends AuthService {
         _requiresEmailVerification(user)) {
       _current = null;
       _restorationPending = false;
+      recoveryState.value = null;
       studyBackup?.disconnect();
       if (!_disposed) _controller.add(null);
       return;
@@ -654,20 +673,73 @@ class FirebaseAuthService extends AuthService {
     UserProfile profile, {
     bool profileEdit = false,
   }) {
+    _observeCredential();
+    final generation = _credentialGeneration;
+    if (!profileEdit &&
+        _profileRecoveryUid == profile.uid &&
+        _profileRecovery != null) {
+      return _profileRecovery!;
+    }
     final next = _profileWrites
         .catchError((Object _) {})
-        .then((_) => _writeProfile(profile, profileEdit: profileEdit));
+        .then(
+          (_) => _writeProfile(
+            profile,
+            profileEdit: profileEdit,
+            generation: generation,
+          ),
+        );
     _profileWrites = next.then<void>(
       (_) {},
       onError: (Object _, StackTrace _) {},
     );
+    if (!profileEdit) {
+      _profileRecoveryUid = profile.uid;
+      _profileRecovery = next;
+      unawaited(
+        next.then<void>(
+          (_) {
+            if (identical(_profileRecovery, next)) _profileRecovery = null;
+          },
+          onError: (Object _, StackTrace _) {
+            if (identical(_profileRecovery, next)) _profileRecovery = null;
+          },
+        ),
+      );
+    }
     return next;
+  }
+
+  void _observeCredential() {
+    final uid = _auth.currentUser?.uid;
+    if (_credentialUid == uid) return;
+    _invalidateRecovery();
+    _credentialUid = uid;
+  }
+
+  void _invalidateRecovery() {
+    _credentialGeneration++;
+    _credentialUid = null;
+    _profileRecovery = null;
+    _profileRecoveryUid = null;
+    // A canceled network read must not hold up the next credential session.
+    // StudyBackupService separately fences its own in-flight reads/writes.
+    _profileWrites = Future.value();
+    _restorationPending = false;
+    if (!_disposed) recoveryState.value = null;
   }
 
   Future<UserProfile> _writeProfile(
     UserProfile profile, {
     required bool profileEdit,
+    required int generation,
   }) async {
+    bool isCurrent() => !_disposed && generation == _credentialGeneration;
+    void checkCurrent() {
+      if (!isCurrent()) throw const AuthException(AuthFailure.cancelled);
+    }
+
+    checkCurrent();
     if (needsEmailVerification) {
       throw const AuthException(AuthFailure.emailVerificationRequired);
     }
@@ -681,44 +753,89 @@ class FirebaseAuthService extends AuthService {
     if (!profileEdit && credential != null) profile = _profileFor(credential);
     final backup = studyBackup;
     if (!profile.isAnonymous && backup != null) {
+      final showRecovery = _current?.uid != profile.uid || _restorationPending;
+      if (showRecovery) recoveryState.value = AccountRecoveryStage.connecting;
       if (_store.getMap(StoreKeys.user)?['uid'] != profile.uid) {
         _restorationPending = true;
         _current = null;
         if (!_disposed) _controller.add(null);
       }
       try {
-        profile = await backup.connect(profile);
-      } catch (_) {
-        if (_disposed || _auth.currentUser?.uid != credential?.uid) {
+        for (var attempt = 0; ; attempt++) {
+          try {
+            if (showRecovery) {
+              recoveryState.value = AccountRecoveryStage.restoring;
+            }
+            profile = await backup.connect(profile);
+            break;
+          } catch (error) {
+            if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
+              rethrow;
+            }
+            final code = error is FirebaseException ? error.code : '';
+            final refreshCredential =
+                attempt == 0 &&
+                (code == 'permission-denied' || code == 'unauthenticated');
+            final transient =
+                error is TimeoutException ||
+                const {
+                  'unavailable',
+                  'deadline-exceeded',
+                  'aborted',
+                  'network-request-failed',
+                }.contains(code);
+            if (attempt >= 2 || (!transient && !refreshCredential)) rethrow;
+            if (showRecovery) {
+              recoveryState.value = AccountRecoveryStage.retrying;
+            }
+            if (refreshCredential) await credential!.getIdToken(true);
+            await Future<void>.delayed(
+              Duration(milliseconds: 300 * (attempt + 1)),
+            );
+            if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
+              throw const AuthException(AuthFailure.cancelled);
+            }
+          }
+        }
+      } catch (error) {
+        if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
           throw const AuthException(AuthFailure.cancelled);
         }
         _restorationPending = true;
         if (!_disposed) _controller.add(null);
-        throw const AuthException(AuthFailure.network);
+        final code = error is FirebaseException
+            ? error.code
+            : error.runtimeType.toString();
+        debugPrint('[auth] Account recovery failed: $code');
+        throw AuthException(AuthFailure.recoveryFailed, code);
+      } finally {
+        if (isCurrent()) recoveryState.value = null;
       }
     }
-    if (_disposed || _auth.currentUser?.uid != credential?.uid) {
+    if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
       throw const AuthException(AuthFailure.cancelled);
     }
     if (_returning && !profile.isAnonymous && !profile.onboardingComplete) {
       profile = profile.copyWith(onboardingComplete: true);
     }
     await _store.prepareAchievementIdentity(profile.uid);
+    checkCurrent();
     final key = 'achievements.linked.${profile.uid}';
     if (!profile.isAnonymous || _store.getBool(key) == null) {
       await _store.setBool(key, !profile.isAnonymous);
+      checkCurrent();
     }
     final oldUid = _store.getMap(StoreKeys.user)?['uid'];
     if (oldUid is String && oldUid.isNotEmpty && oldUid != profile.uid) {
       await _store.setBool(StoreKeys.boardOptIn, false);
+      checkCurrent();
+    }
+    await _store.setMap(StoreKeys.user, profile.toJson());
+    if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
+      throw const AuthException(AuthFailure.cancelled);
     }
     _restorationPending = false;
     _current = profile;
-    await _store.setMap(StoreKeys.user, profile.toJson());
-    if (_disposed || _auth.currentUser?.uid != credential?.uid) {
-      _current = null;
-      throw const AuthException(AuthFailure.cancelled);
-    }
     if (!_disposed) _controller.add(profile);
     return profile;
   }

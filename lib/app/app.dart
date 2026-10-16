@@ -5,6 +5,7 @@ import '../core/providers/app_providers.dart';
 import 'router.dart';
 import '../core/localization/app_strings.dart';
 import 'theme/app_theme.dart';
+import '../shared/widgets/account_recovery_overlay.dart';
 
 /// The application root.
 ///
@@ -33,6 +34,10 @@ class FocusForgeApp extends ConsumerWidget {
       ),
       themeMode: settings.mode.mode,
       routerConfig: router,
+      builder: (context, child) => AccountRecoveryOverlay(
+        service: ref.read(authServiceProvider),
+        child: child ?? const SizedBox.shrink(),
+      ),
       scrollBehavior: const _NoGlowScrollBehavior(),
     );
   }

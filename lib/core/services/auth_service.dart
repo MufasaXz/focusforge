@@ -2,6 +2,8 @@ import '../localization/app_strings.dart';
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/user.dart';
 import 'local_store.dart';
 
@@ -21,6 +23,7 @@ enum AuthFailure {
   cloudSyncPending,
   cleanupFailed,
   emailVerificationRequired,
+  recoveryFailed,
   unknown,
 }
 
@@ -50,12 +53,15 @@ class AuthException implements Exception {
     AuthFailure.cloudSyncPending => 'Your latest changes could not sync. Deletion has not started and your data is kept. Connect to the internet and retry.',
     AuthFailure.cleanupFailed => 'Deletion could not be confirmed. Your local history is kept; some cloud records may already be removed. Retry or contact support through the account-deletion page.',
     AuthFailure.emailVerificationRequired => 'Verify your email address before signing in. Open the link in your inbox, then return here.',
+    AuthFailure.recoveryFailed => 'Your account data could not be restored yet. Your saved data is kept. Retry account recovery.',
     AuthFailure.unknown => 'Something went wrong.',
   });
 
   @override
   String toString() => 'AuthException($failure): $message';
 }
+
+enum AccountRecoveryStage { connecting, restoring, retrying }
 
 /// Account handling — the seam every screen talks to.
 ///
@@ -70,6 +76,8 @@ class AuthException implements Exception {
 /// credential is remote. Separate services back up earned badge IDs and
 /// handle optional aggregate sharing; detailed session logs stay local.
 abstract class AuthService {
+  final recoveryState = ValueNotifier<AccountRecoveryStage?>(null);
+
   /// A credential exists, but its private study snapshot still needs recovery.
   bool get restorationPending => false;
   bool get needsEmailVerification => false;

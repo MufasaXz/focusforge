@@ -12,9 +12,14 @@ import 'package:focusforge/core/services/study_backup_service.dart';
 class _Backup implements StudyBackupBackend {
   bool failLoad = false;
   bool failSave = false;
+  Object? loadFailure;
+  int failuresLeft = 0;
+  int loads = 0;
   Completer<StudyBackup?>? delayedLoad;
   @override
   Future<StudyBackup?> load(String uid) async {
+    loads++;
+    if (failuresLeft-- > 0) throw loadFailure!;
     if (failLoad) throw StateError('offline');
     if (delayedLoad != null) return delayedLoad!.future;
     return null;
@@ -319,6 +324,140 @@ void main() {
     expect(service.restorationPending, isFalse);
     expect(service.signedIn, isTrue);
   });
+  test(
+    'temporary cloud failure automatically recovers without another sign-in',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup()
+        ..loadFailure = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+        )
+        ..failuresLeft = 1;
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      final profile = await service.restore();
+      expect(profile?.uid, 'email-account');
+      expect(service.signedIn, isTrue);
+      expect(backend.loads, 2);
+    },
+  );
+
+  test(
+    'cloud permission rejection refreshes credential before one retry',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup()
+        ..loadFailure = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+        )
+        ..failuresLeft = 1;
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      expect((await service.restore())?.uid, 'email-account');
+      expect(auth.user.events, contains('refresh:true'));
+      expect(service.signedIn, isTrue);
+    },
+  );
+
+  test(
+    'non-network recovery errors are not described as an internet failure',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup()..failLoad = true;
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      await expectLater(
+        service.restore(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.failure,
+            'failure',
+            isNot(AuthFailure.network),
+          ),
+        ),
+      );
+      expect(store.getMap(StoreKeys.user)?['uid'], 'guest');
+      expect(service.restorationPending, isTrue);
+    },
+  );
+
+  test('SDK event and explicit restore share a single account read', () async {
+    service.dispose();
+    auth.user.verified = true;
+    final backend = _Backup()..delayedLoad = Completer<StudyBackup?>();
+    service = FirebaseAuthService(
+      store,
+      firebaseAuth: auth,
+      studyBackup: StudyBackupService(store, backend),
+    );
+    final first = service.restore();
+    auth.controller.add(auth.user);
+    final second = service.restore();
+    await Future<void>.delayed(Duration.zero);
+    expect(backend.loads, 1);
+    backend.delayedLoad!.complete(null);
+    expect((await first)?.uid, 'email-account');
+    expect((await second)?.uid, 'email-account');
+    expect(service.recoveryState.value, isNull);
+  });
+
+  test('same-account relogin starts a fresh recovery after signout', () async {
+    service.dispose();
+    auth.user.verified = true;
+    final oldRead = Completer<StudyBackup?>();
+    final backend = _Backup()..delayedLoad = oldRead;
+    service = FirebaseAuthService(
+      store,
+      firebaseAuth: auth,
+      studyBackup: StudyBackupService(store, backend),
+    );
+    final first = service.restore().then<Object?>(
+      (value) => value,
+      onError: (Object error) => error,
+    );
+    await Future<void>.delayed(Duration.zero);
+    await service.signOut();
+    backend.delayedLoad = null;
+    final second = service
+        .signInWithEmail('person@example.com', 'password')
+        .then<Object?>((value) => value, onError: (Object error) => error);
+    expect(
+      await second.timeout(const Duration(seconds: 2)),
+      isA<UserProfile>().having(
+        (profile) => profile.uid,
+        'uid',
+        'email-account',
+      ),
+    );
+    oldRead.complete(null);
+    expect(
+      await first,
+      isA<AuthException>().having(
+        (error) => error.failure,
+        'failure',
+        AuthFailure.cancelled,
+      ),
+    );
+    expect(backend.loads, 2);
+    expect(service.signedIn, isTrue);
+    expect(service.restorationPending, isFalse);
+    expect(service.recoveryState.value, isNull);
+  });
+
   test(
     'guest skip works locally and survives the initial null SDK event',
     () async {

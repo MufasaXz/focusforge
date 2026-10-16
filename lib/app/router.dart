@@ -85,6 +85,7 @@ class AppRoutes {
 ///    surface — no nav bar competing for attention.
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _AuthRouterRefresh(ref.read(authServiceProvider).changes);
+  var recovering = ref.read(authServiceProvider).restorationPending;
   ref.onDispose(refresh.dispose);
   return GoRouter(
     refreshListenable: refresh,
@@ -97,10 +98,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         return location == '/verify-email' ? null : '/verify-email';
       }
       if (ref.read(authServiceProvider).restorationPending) {
+        recovering = true;
         return location == '/auth' ? null : '/auth';
       }
+      final recovered = recovering && ref.read(authServiceProvider).signedIn;
+      recovering = false;
       if (location == '/verify-email') {
         return onboarded ? '/dashboard' : '/onboarding';
+      }
+      if (location == '/auth' && onboarded && recovered) {
+        return '/dashboard';
       }
       final inOnboarding =
           location.startsWith('/onboarding') ||
