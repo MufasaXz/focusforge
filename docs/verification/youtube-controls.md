@@ -1,6 +1,6 @@
 # YouTube controls and leaderboard corners
 
-This follow-up supersedes the educational-creator filtering described in account-recovery.md. At the user's request, the YouTube tab keeps its logo/name and the Shorts, home/search and conditional focus-only switches. It has no study-channel control, manual creator manager, whole-app shortcut or detection explanation card. Whole-app rules remain available through Apps.
+This follow-up supersedes the educational-creator filtering described in account-recovery.md. At the user's request, the YouTube tab keeps its logo/name and the Shorts, home/search and conditional focus-only switches. It has no study-channel control, manual creator manager or whole-app shortcut. The subsequent screenshot request restores the former outlined Shorts recognition note beneath the switches, using the existing translations. Whole-app rules remain available through Apps.
 
 The retired study filter is removed from Dart/native rules, status counts and enforcement. Both parsers ignore its legacy cached fields, so an existing installation or native service restart cannot keep an invisible filter active. Accessibility scans read resource identifiers and visibility without creator text. Native settings and in-app consent describe the remaining Shorts/feed checks.
 
