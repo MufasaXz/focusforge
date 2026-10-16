@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="ff_copy_662abe203e24" formatted="false">Fokus-Timer</string>
+  <string name="ff_copy_69a90c89d741" formatted="false">Ihr Lauffokus oder Pausen-Countdown</string>
+  <string name="ff_copy_59a006c126ce" formatted="false">Kurze Pause</string>
+  <string name="ff_copy_2e404536a97f" formatted="false">Lange Pause</string>
+  <string name="ff_copy_9d3cab2b5efe" formatted="false">Fokus</string>
+  <string name="ff_copy_a4ade89a878b" formatted="false">Zeit für sich selbst</string>
+  <string name="ff_copy_2acc91c6d64d" formatted="false">FocusForge-Timer</string>
+  <string name="ff_copy_8a1715ff1221" formatted="false">Entsperren, um Ihre Timer-Details anzuzeigen</string>
+  <string name="ff_copy_5c2f75a5e092" formatted="false">Tippen Sie hier, um Ihren Timer zu öffnen</string>
+  <string name="ff_copy_bc85d3b68467" formatted="false">Wählen Sie ein Thema</string>
+  <string name="ff_copy_af2b2ab96f47" formatted="false">Setzen Sie sich in FocusForge ein Ziel</string>
+  <string name="ff_copy_db73b5af1d5e" formatted="false">Ruhewoche · Kein Ziel</string>
+  <string name="ff_copy_e158f8595efd" formatted="false">Ruhetag · Kein Ziel</string>
+  <string name="ff_copy_7d76655e727c" formatted="false">diese Woche</string>
+  <string name="ff_copy_e0f4f767ac88" formatted="false">heute</string>
+  <string name="ff_copy_cbde8d2eab34" formatted="false">WÖCHENTLICHES ZIEL</string>
+  <string name="ff_copy_952a80b39aae" formatted="false">HEUTE ZIEL</string>
+  <string name="ff_copy_eb69bb1c4acb" formatted="false">IHRE NÄCHSTE SITZUNG</string>
+  <string name="ff_copy_74088f496014" formatted="false">Tippen Sie hier, um Ihre Motive zu planen</string>
+  <string name="ff_copy_7f53b61b0e4a" formatted="false">Nehmen Sie sich Zeit · Zum Ansehen antippen</string>
+  <string name="ff_copy_085941b4e4b0" formatted="false">Ziel erreicht · Weiter wachsen</string>
+  <string name="ff_copy_1fdd668027e9" formatted="false">Block beendet · Offen zum Fortfahren</string>
+  <string name="ff_copy_39dfdb4e10a4" formatted="false">Bereit, wenn Sie es sind · Zum Fokussieren tippen</string>
+  <string name="ff_copy_a9ee6e15ea2b" formatted="false">Kein Studienziel</string>
+  <string name="ff_copy_d0f80a75cd2b" formatted="false">Ihr erster Block beginnt die Woche</string>
+  <string name="ff_copy_85277319d88a" formatted="false">Mo – So · Zum Ansehen antippen</string>
+  <string name="ff_copy_ef961edeef38" formatted="false">Fokussierung · {0}</string>
+  <string name="ff_copy_ca1fc1e14b7a" formatted="false">{0} · Aufladen</string>
+  <string name="ff_copy_6a00dfc1dc86" formatted="false">Montag</string>
+  <string name="ff_copy_7d8af1de1262" formatted="false">Dienstag</string>
+  <string name="ff_copy_c0a6cc829cd0" formatted="false">Mittwoch</string>
+  <string name="ff_copy_fc2662062ffd" formatted="false">Donnerstag</string>
+  <string name="ff_copy_e21f3f372a46" formatted="false">Freitag</string>
+  <string name="ff_copy_dbe35c7363c2" formatted="false">Samstag</string>
+  <string name="ff_copy_873fef760e5d" formatted="false">Sonntag</string>
+  <string name="ff_copy_f40d7f51f69e" formatted="false">Mo</string>
+  <string name="ff_copy_d1eb39b09bf5" formatted="false">Di</string>
+  <string name="ff_copy_58339f45df96" formatted="false">Mi</string>
+  <string name="ff_copy_7da11212ed34" formatted="false">Do</string>
+  <string name="ff_copy_66dab40cea1d" formatted="false">Fr</string>
+  <string name="ff_copy_fdeb71b569e0" formatted="false">Sa</string>
+  <string name="ff_copy_db18f17fe532" formatted="false">So</string>
+  <string name="ff_copy_09f661ddb4a9" formatted="false">{0} / {1} min {2}</string>
+  <string name="ff_copy_9177524bf42c" formatted="false">{0} / {1} min</string>
+  <string name="ff_copy_cc627ad2ab67" formatted="false">{0} abgeschlossene Sitzungen</string>
+  <string name="ff_copy_d1d4a90d7332" formatted="false">{0} konzentrierte sich heute</string>
+  <string name="ff_copy_fb129873e871" formatted="false">{0} Min. zum Wachsen · Zum Anzeigen antippen</string>
+  <string name="ff_copy_3e51dc8cd5da" formatted="false">{0} in Bearbeitung · Zum Öffnen antippen</string>
+  <string name="ff_copy_37a095ea9890" formatted="false">{0} Prozent Ihres Ziels {1} abgeschlossen</string>
+  <string name="ff_copy_ceab99c54acc" formatted="false">{0} / 7 Tage</string>
+  <string name="ff_copy_be94370016a8" formatted="false">{0} {1} Minuten</string>
+  <string name="ff_copy_6e0a11779f21" formatted="false">Diese Woche, {0} des abgeschlossenen Fokus, {1} aktive Tage. Heute ist {2}. {3}. Tippen Sie hier, um Ihr Dashboard zu öffnen.</string>
+  <string name="ff_copy_02d6a83a357c" formatted="false">{0} IN BEARBEITUNG</string>
+  <string name="ff_copy_16d30c8585e0" formatted="false">{0} aktive Tage</string>
+  <string name="ff_copy_7192a603df72" formatted="false">DIESE WOCHE</string>
+  <string name="ff_copy_52ae6350b671" formatted="false">Bleiben Sie bei Ihrem Fokus</string>
+  <string name="ff_copy_b9d8f4dfd461" formatted="false">Benötigen Sie Zugriff\? Halten Sie inne und atmen Sie zuerst.</string>
+  <string name="ff_copy_70e87c490114" formatted="false">Angehalten, bis der strenge Modus endet.</string>
+  <string name="ff_copy_e23c9c6c45ab" formatted="false">Sie haben sich entschieden, diese App anzuhalten.</string>
+  <string name="ff_copy_22f28ebe11d4" formatted="false">Während Ihrer Fokussitzung angehalten.</string>
+  <string name="ff_copy_2f1be85c9e0c" formatted="false">Sie haben Ihre {0}-Minuten für heute aufgebraucht.</string>
+  <string name="ff_copy_a0f82cce66c4" formatted="false">Shorts sind pausiert. Behalten Sie Ihren Fokus.</string>
+  <string name="ff_copy_88ccdcfb48eb" formatted="false">Der YouTube-Feed ist pausiert.</string>
+  <string name="ff_copy_b46fd04e8e05" formatted="false">Wählen Sie ein Video aus Ihren Lernkanälen.</string>
+  <string name="ff_copy_d966b84456c7" formatted="false">App-Grenzen</string>
+  <string name="ff_copy_a4faac0f2298" formatted="false">Sichtbar, während Ihre ausgewählten Apps angehalten werden. Stopp pausiert App-Grenzen.</string>
+  <string name="ff_copy_ca8c9b42a375" formatted="false">FocusForge-App-Grenzen sind aktiv</string>
+  <string name="ff_copy_f6463dc9b220" formatted="false">Ihre ausgewählten Apps werden auf diesem Gerät angehalten. Tippen Sie auf Stopp, um Grenzen anzuhalten.</string>
+  <string name="ff_copy_cae7d57bc067" formatted="false">Stopp</string>
+  <string name="ff_copy_59779ce0db49" formatted="false">VERBLEIBEND</string>
+  <string name="ff_copy_360a8af5a7d2" formatted="false">{0}h</string>
+  <string name="ff_copy_7f5ea983858e" formatted="false">{0}m</string>
+  <string name="ff_copy_d426ce3b6441" formatted="false">{0}h {1}m</string>
+  <string name="ff_copy_7a73eaec12da" formatted="false">Zurück zum Wesentlichen</string>
+  <string name="ff_copy_8cdd22e2e381" formatted="false">Halten Sie inne und atmen Sie durch</string>
+  <string name="ff_copy_5b992ee5fc37" formatted="false">Optionale Filter für YouTube-Shorts, Feeds und Studienkanäle.</string>
+  <string name="ff_copy_da8322cb20a3" formatted="false">FocusForge überprüft YouTube-Bildschirmkennungen nur, wenn Sie Shorts oder Feedfilter aktivieren, um diese Bildschirme von gewöhnlichen Videos zu unterscheiden. Wenn „Nur Studienkanäle“ aktiviert ist, werden sichtbare Namen oder Benutzernamen der Ersteller auf unterstützten Videoseiten mit den von Ihnen ausgewählten Kanälen verglichen. Bildschirmprüfungen bleiben auf Ihrem Gerät und sichtbare Etiketten werden nicht beibehalten oder hochgeladen. Während eine YouTube-Pause sichtbar ist, werden die Paketnamen des Anwendungsfensters nur überprüft, um die Pause zu schließen, wenn Sie das Gerät verlassen. Die Inhalte anderer Apps werden nicht überprüft. Es liest keine Nachrichten, Passwörter oder Texte, die Sie eingeben. Pausenentscheidungen und ihre Zeiten werden nur auf diesem Gerät für Shield-Einblicke gespeichert. Der Zugriff ist optional und kann in den Android-Einstellungen deaktiviert werden. Normale App-Grenzen nutzen Nutzungszugriff und Draw über andere Apps; Der Fokus-Timer funktioniert ohne all dies.</string>
+  <string name="ff_copy_83547161198a" formatted="false">Ein Retro-Countdown und die heutige abgeschlossene Fokuszeit. Tippen Sie, um den Fokus zu öffnen.</string>
+  <string name="ff_copy_0a2b0fed0257" formatted="false">Ihr tägliches Fokusziel, Abschlussring und verbleibende Minuten.</string>
+  <string name="ff_copy_0f37116ca951" formatted="false">Aktuelles Studienthema, Live-Countdown und täglicher Fortschritt.</string>
+  <string name="ff_copy_7c71b77df96c" formatted="false">Abgeschlossene Fokuszeit von Montag bis Sonntag, wöchentliche Gesamt- und Aktivtage. Tippen Sie hier, um Ihr Dashboard zu öffnen.</string>
+  <string name="ff_block_back" formatted="false">Zurück zum Wesentlichen</string>
+  <string name="ff_block_anyway" formatted="false">Halten Sie inne und atmen Sie durch</string>
+  <string name="accessibility_service_summary" formatted="false">Optionale Filter für YouTube-Shorts, Feeds und Studienkanäle.</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge überprüft YouTube-Bildschirmkennungen nur, wenn Sie Shorts oder Feedfilter aktivieren, um diese Bildschirme von gewöhnlichen Videos zu unterscheiden. Wenn „Nur Studienkanäle“ aktiviert ist, werden sichtbare Namen oder Benutzernamen der Ersteller auf unterstützten Videoseiten mit den von Ihnen ausgewählten Kanälen verglichen. Bildschirmprüfungen bleiben auf Ihrem Gerät und sichtbare Etiketten werden nicht beibehalten oder hochgeladen. Während eine YouTube-Pause sichtbar ist, werden die Paketnamen des Anwendungsfensters nur überprüft, um die Pause zu schließen, wenn Sie das Gerät verlassen. Die Inhalte anderer Apps werden nicht überprüft. Es liest keine Nachrichten, Passwörter oder Texte, die Sie eingeben. Pausenentscheidungen und ihre Zeiten werden nur auf diesem Gerät für Shield-Einblicke gespeichert. Der Zugriff ist optional und kann in den Android-Einstellungen deaktiviert werden. Normale App-Grenzen nutzen Nutzungszugriff und Draw über andere Apps; Der Fokus-Timer funktioniert ohne all dies.</string>
+  <string name="ff_widget_description" formatted="false">Ein Retro-Countdown und die heutige abgeschlossene Fokuszeit. Tippen Sie, um den Fokus zu öffnen.</string>
+  <string name="ff_goal_widget_description" formatted="false">Ihr tägliches Fokusziel, Abschlussring und verbleibende Minuten.</string>
+  <string name="ff_study_widget_description" formatted="false">Aktuelles Studienthema, Live-Countdown und täglicher Fortschritt.</string>
+  <string name="ff_weekly_widget_description" formatted="false">Abgeschlossene Fokuszeit von Montag bis Sonntag, wöchentliche Gesamt- und Aktivtage. Tippen Sie hier, um Ihr Dashboard zu öffnen.</string>
+</resources>

@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="ff_copy_662abe203e24" formatted="false">Таймер фокусування</string>
+  <string name="ff_copy_69a90c89d741" formatted="false">Ваш фокус на бігу або зворотний відлік</string>
+  <string name="ff_copy_59a006c126ce" formatted="false">Коротка перерва</string>
+  <string name="ff_copy_2e404536a97f" formatted="false">Тривала перерва</string>
+  <string name="ff_copy_9d3cab2b5efe" formatted="false">Зосередження</string>
+  <string name="ff_copy_a4ade89a878b" formatted="false">Час для себе</string>
+  <string name="ff_copy_2acc91c6d64d" formatted="false">Таймер FocusForge</string>
+  <string name="ff_copy_8a1715ff1221" formatted="false">Розблокуйте, щоб переглянути деталі таймера</string>
+  <string name="ff_copy_5c2f75a5e092" formatted="false">Натисніть, щоб відкрити таймер</string>
+  <string name="ff_copy_bc85d3b68467" formatted="false">Виберіть тему</string>
+  <string name="ff_copy_af2b2ab96f47" formatted="false">Поставте ціль у FocusForge</string>
+  <string name="ff_copy_db73b5af1d5e" formatted="false">Тиждень відпочинку · Без цілі</string>
+  <string name="ff_copy_e158f8595efd" formatted="false">День відпочинку · Без мети</string>
+  <string name="ff_copy_7d76655e727c" formatted="false">цього тижня</string>
+  <string name="ff_copy_e0f4f767ac88" formatted="false">сьогодні</string>
+  <string name="ff_copy_cbde8d2eab34" formatted="false">ТИЖНЕВА ЦІЛЬ</string>
+  <string name="ff_copy_952a80b39aae" formatted="false">СЬОГОДНІШНЯ МЕТА</string>
+  <string name="ff_copy_eb69bb1c4acb" formatted="false">ВАШ НАСТУПНИЙ СЕСІЙ</string>
+  <string name="ff_copy_74088f496014" formatted="false">Торкніться, щоб спланувати об’єкти</string>
+  <string name="ff_copy_7f53b61b0e4a" formatted="false">Не поспішайте · Натисніть, щоб переглянути</string>
+  <string name="ff_copy_085941b4e4b0" formatted="false">Ціль досягнута · Продовжуйте розвиватися</string>
+  <string name="ff_copy_1fdd668027e9" formatted="false">Блокування завершено · Відкрийте, щоб продовжити</string>
+  <string name="ff_copy_39dfdb4e10a4" formatted="false">Готовий, коли ви готові · Торкніться, щоб сфокусуватися</string>
+  <string name="ff_copy_a9ee6e15ea2b" formatted="false">Немає цілі дослідження</string>
+  <string name="ff_copy_d0f80a75cd2b" formatted="false">Ваш перший блок починає тиждень</string>
+  <string name="ff_copy_85277319d88a" formatted="false">Пн – Нд · Торкніться, щоб переглянути</string>
+  <string name="ff_copy_ef961edeef38" formatted="false">Фокусування · {0}</string>
+  <string name="ff_copy_ca1fc1e14b7a" formatted="false">{0} · Поповнити</string>
+  <string name="ff_copy_6a00dfc1dc86" formatted="false">Понеділок</string>
+  <string name="ff_copy_7d8af1de1262" formatted="false">вівторок</string>
+  <string name="ff_copy_c0a6cc829cd0" formatted="false">Середа</string>
+  <string name="ff_copy_fc2662062ffd" formatted="false">Четвер</string>
+  <string name="ff_copy_e21f3f372a46" formatted="false">П\'ятниця</string>
+  <string name="ff_copy_dbe35c7363c2" formatted="false">субота</string>
+  <string name="ff_copy_873fef760e5d" formatted="false">Неділя</string>
+  <string name="ff_copy_f40d7f51f69e" formatted="false">Пн</string>
+  <string name="ff_copy_d1eb39b09bf5" formatted="false">Вт</string>
+  <string name="ff_copy_58339f45df96" formatted="false">ср</string>
+  <string name="ff_copy_7da11212ed34" formatted="false">Чт</string>
+  <string name="ff_copy_66dab40cea1d" formatted="false">Пт</string>
+  <string name="ff_copy_fdeb71b569e0" formatted="false">Сб</string>
+  <string name="ff_copy_db18f17fe532" formatted="false">Нд</string>
+  <string name="ff_copy_09f661ddb4a9" formatted="false">{0} / {1} хв. {2}</string>
+  <string name="ff_copy_9177524bf42c" formatted="false">{0} / {1} мін</string>
+  <string name="ff_copy_cc627ad2ab67" formatted="false">{0} завершених сеансів</string>
+  <string name="ff_copy_d1d4a90d7332" formatted="false">{0} зосередився сьогодні</string>
+  <string name="ff_copy_fb129873e871" formatted="false">{0} хв для зростання · Натисніть, щоб переглянути</string>
+  <string name="ff_copy_3e51dc8cd5da" formatted="false">{0} у процесі · Торкніться, щоб відкрити</string>
+  <string name="ff_copy_37a095ea9890" formatted="false">{0} відсоток вашої цілі {1} виконано</string>
+  <string name="ff_copy_ceab99c54acc" formatted="false">{0} / 7 днів</string>
+  <string name="ff_copy_be94370016a8" formatted="false">{0} {1} хвилин</string>
+  <string name="ff_copy_6e0a11779f21" formatted="false">Цього тижня {0} завершеного фокусу, {1} активних днів. Сьогодні {2}. {3}. Торкніться, щоб відкрити інформаційну панель.</string>
+  <string name="ff_copy_02d6a83a357c" formatted="false">{0} В ПРОГРЕСІ</string>
+  <string name="ff_copy_16d30c8585e0" formatted="false">{0} активні дні</string>
+  <string name="ff_copy_7192a603df72" formatted="false">ЦЬОГО ТИЖНЯ</string>
+  <string name="ff_copy_52ae6350b671" formatted="false">Залишайтеся зосередженими</string>
+  <string name="ff_copy_b9d8f4dfd461" formatted="false">Потрібен доступ\? Зробіть паузу і спочатку подихайте.</string>
+  <string name="ff_copy_70e87c490114" formatted="false">Призупинено до завершення строгого режиму.</string>
+  <string name="ff_copy_e23c9c6c45ab" formatted="false">Ви вирішили призупинити цю програму.</string>
+  <string name="ff_copy_22f28ebe11d4" formatted="false">Призупинено під час вашого фокус-сеансу.</string>
+  <string name="ff_copy_2f1be85c9e0c" formatted="false">Ви використали хвилини {0} на сьогодні.</string>
+  <string name="ff_copy_a0f82cce66c4" formatted="false">Shorts призупинено. Тримайте свою увагу.</string>
+  <string name="ff_copy_88ccdcfb48eb" formatted="false">Канал YouTube призупинено.</string>
+  <string name="ff_copy_b46fd04e8e05" formatted="false">Виберіть відео зі своїх навчальних каналів.</string>
+  <string name="ff_copy_d966b84456c7" formatted="false">Межі програми</string>
+  <string name="ff_copy_a4faac0f2298" formatted="false">Відображається під час призупинення вибраних програм. Зупинка призупиняє межі програми.</string>
+  <string name="ff_copy_ca8c9b42a375" formatted="false">Межі програми FocusForge активні</string>
+  <string name="ff_copy_f6463dc9b220" formatted="false">Вибрані вами програми призупинено на цьому пристрої. Натисніть Зупинити, щоб призупинити межі.</string>
+  <string name="ff_copy_cae7d57bc067" formatted="false">Стоп</string>
+  <string name="ff_copy_59779ce0db49" formatted="false">ЗАЛИШИЛОСЯ</string>
+  <string name="ff_copy_360a8af5a7d2" formatted="false">{0}h</string>
+  <string name="ff_copy_7f5ea983858e" formatted="false">{0}m</string>
+  <string name="ff_copy_d426ce3b6441" formatted="false">{0}h {1}m</string>
+  <string name="ff_copy_7a73eaec12da" formatted="false">Повернення до важливого</string>
+  <string name="ff_copy_8cdd22e2e381" formatted="false">Зупиніться і подихайте</string>
+  <string name="ff_copy_5b992ee5fc37" formatted="false">Додаткові YouTube Shorts, фільтри стрічки та навчальних каналів.</string>
+  <string name="ff_copy_da8322cb20a3" formatted="false">FocusForge перевіряє ідентифікатори екранів YouTube лише тоді, коли ви ввімкнули Shorts або фільтри каналу, щоб відрізнити ці екрани від звичайних відео. Якщо ввімкнено параметр «Лише вивчення каналів», видимі імена творців або описи на підтримуваних сторінках відео порівнюються з вибраними вами каналами. Перевірки екрана залишаються на вашому пристрої, а видимі мітки не зберігаються та не завантажуються. Коли пауза YouTube відображається, назви пакетів вікон програми перевіряються лише для того, щоб закрити паузу, коли ви залишаєте; вміст інших програм не перевіряється. Він не читає повідомлення, паролі чи текст, який ви вводите. Рішення про призупинення та їх час зберігаються лише на цьому пристрої для статистичних даних Shield. Доступ необов’язковий і його можна вимкнути в налаштуваннях Android. Звичайні межі програм використовують доступ до використання та малювання над іншими програмами; таймер фокусування працює без жодного з них.</string>
+  <string name="ff_copy_83547161198a" formatted="false">Ретро зворотний відлік і сьогоднішній завершений час фокусування. Торкніться, щоб відкрити фокус.</string>
+  <string name="ff_copy_0a2b0fed0257" formatted="false">Ваша щоденна мета концентрації, кільце завершення та хвилини, що залишилися.</string>
+  <string name="ff_copy_0f37116ca951" formatted="false">Поточний предмет навчання, зворотний відлік у реальному часі та щоденний прогрес.</string>
+  <string name="ff_copy_7c71b77df96c" formatted="false">Завершений час концентрації з понеділка по неділю, загальний тижневий та активні дні. Торкніться, щоб відкрити інформаційну панель.</string>
+  <string name="ff_block_back" formatted="false">Повернення до важливого</string>
+  <string name="ff_block_anyway" formatted="false">Зупиніться і подихайте</string>
+  <string name="accessibility_service_summary" formatted="false">Додаткові YouTube Shorts, фільтри стрічки та навчальних каналів.</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge перевіряє ідентифікатори екранів YouTube лише тоді, коли ви ввімкнули Shorts або фільтри каналу, щоб відрізнити ці екрани від звичайних відео. Якщо ввімкнено параметр «Лише вивчення каналів», видимі імена творців або описи на підтримуваних сторінках відео порівнюються з вибраними вами каналами. Перевірки екрана залишаються на вашому пристрої, а видимі мітки не зберігаються та не завантажуються. Коли пауза YouTube відображається, назви пакетів вікон програми перевіряються лише для того, щоб закрити паузу, коли ви залишаєте; вміст інших програм не перевіряється. Він не читає повідомлення, паролі чи текст, який ви вводите. Рішення про призупинення та їх час зберігаються лише на цьому пристрої для статистичних даних Shield. Доступ необов’язковий і його можна вимкнути в налаштуваннях Android. Звичайні межі програм використовують доступ до використання та малювання над іншими програмами; таймер фокусування працює без жодного з них.</string>
+  <string name="ff_widget_description" formatted="false">Ретро зворотний відлік і сьогоднішній завершений час фокусування. Торкніться, щоб відкрити фокус.</string>
+  <string name="ff_goal_widget_description" formatted="false">Ваша щоденна мета концентрації, кільце завершення та хвилини, що залишилися.</string>
+  <string name="ff_study_widget_description" formatted="false">Поточний предмет навчання, зворотний відлік у реальному часі та щоденний прогрес.</string>
+  <string name="ff_weekly_widget_description" formatted="false">Завершений час концентрації з понеділка по неділю, загальний тижневий та активні дні. Торкніться, щоб відкрити інформаційну панель.</string>
+</resources>

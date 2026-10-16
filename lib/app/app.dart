@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/app_providers.dart';
 import 'router.dart';
+import '../core/localization/app_strings.dart';
 import 'theme/app_theme.dart';
 
 /// The application root.
@@ -20,6 +21,10 @@ class FocusForgeApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'FocusForge',
+      supportedLocales: AppStrings.supportedLocales,
+      localizationsDelegates: AppStrings.localizationsDelegates,
+      localeListResolutionCallback: (locales, _) =>
+          AppStrings.resolve(locales ?? const []),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(palette: settings.palette),
       darkTheme: AppTheme.dark(
@@ -44,6 +49,5 @@ class _NoGlowScrollBehavior extends MaterialScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) =>
-      child;
+  ) => child;
 }

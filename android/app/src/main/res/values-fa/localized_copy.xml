@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="ff_copy_662abe203e24" formatted="false">تایمر فوکوس</string>
+  <string name="ff_copy_69a90c89d741" formatted="false">تمرکز دویدن شما یا شمارش معکوس</string>
+  <string name="ff_copy_59a006c126ce" formatted="false">استراحت کوتاه</string>
+  <string name="ff_copy_2e404536a97f" formatted="false">استراحت طولانی</string>
+  <string name="ff_copy_9d3cab2b5efe" formatted="false">فوکوس</string>
+  <string name="ff_copy_a4ade89a878b" formatted="false">زمان برای خودتان است</string>
+  <string name="ff_copy_2acc91c6d64d" formatted="false">تایمر FocusForge</string>
+  <string name="ff_copy_8a1715ff1221" formatted="false">قفل را باز کنید تا جزئیات تایمر خود را ببینید</string>
+  <string name="ff_copy_5c2f75a5e092" formatted="false">برای باز کردن تایمر خود ضربه بزنید</string>
+  <string name="ff_copy_bc85d3b68467" formatted="false">موضوعی را انتخاب کنید</string>
+  <string name="ff_copy_af2b2ab96f47" formatted="false">در FocusForge یک هدف تعیین کنید</string>
+  <string name="ff_copy_db73b5af1d5e" formatted="false">هفته استراحت · بدون هدف</string>
+  <string name="ff_copy_e158f8595efd" formatted="false">روز استراحت · بدون هدف</string>
+  <string name="ff_copy_7d76655e727c" formatted="false">این هفته</string>
+  <string name="ff_copy_e0f4f767ac88" formatted="false">امروز</string>
+  <string name="ff_copy_cbde8d2eab34" formatted="false">هدف هفتگی</string>
+  <string name="ff_copy_952a80b39aae" formatted="false">هدف امروز</string>
+  <string name="ff_copy_eb69bb1c4acb" formatted="false">جلسه بعدی شما</string>
+  <string name="ff_copy_74088f496014" formatted="false">برای برنامه ریزی سوژه های خود ضربه بزنید</string>
+  <string name="ff_copy_7f53b61b0e4a" formatted="false">وقت خود را صرف کنید · برای مشاهده ضربه بزنید</string>
+  <string name="ff_copy_085941b4e4b0" formatted="false">هدف تکمیل شد · به رشد خود ادامه دهید</string>
+  <string name="ff_copy_1fdd668027e9" formatted="false">بلوک به پایان رسید · برای ادامه باز است</string>
+  <string name="ff_copy_39dfdb4e10a4" formatted="false">آماده زمانی که هستید · برای تمرکز ضربه بزنید</string>
+  <string name="ff_copy_a9ee6e15ea2b" formatted="false">بدون هدف مطالعه</string>
+  <string name="ff_copy_d0f80a75cd2b" formatted="false">اولین بلوک شما در هفته شروع می شود</string>
+  <string name="ff_copy_85277319d88a" formatted="false">دوشنبه – یکشنبه · برای مشاهده ضربه بزنید</string>
+  <string name="ff_copy_ef961edeef38" formatted="false">فوکوس · {0}</string>
+  <string name="ff_copy_ca1fc1e14b7a" formatted="false">{0} · شارژ مجدد</string>
+  <string name="ff_copy_6a00dfc1dc86" formatted="false">دوشنبه</string>
+  <string name="ff_copy_7d8af1de1262" formatted="false">سه شنبه</string>
+  <string name="ff_copy_c0a6cc829cd0" formatted="false">چهارشنبه</string>
+  <string name="ff_copy_fc2662062ffd" formatted="false">پنجشنبه</string>
+  <string name="ff_copy_e21f3f372a46" formatted="false">جمعه</string>
+  <string name="ff_copy_dbe35c7363c2" formatted="false">شنبه</string>
+  <string name="ff_copy_873fef760e5d" formatted="false">یکشنبه</string>
+  <string name="ff_copy_f40d7f51f69e" formatted="false">دوشنبه</string>
+  <string name="ff_copy_d1eb39b09bf5" formatted="false">سه شنبه</string>
+  <string name="ff_copy_58339f45df96" formatted="false">چهارشنبه</string>
+  <string name="ff_copy_7da11212ed34" formatted="false">پنجشنبه</string>
+  <string name="ff_copy_66dab40cea1d" formatted="false">جمعه</string>
+  <string name="ff_copy_fdeb71b569e0" formatted="false">شنبه</string>
+  <string name="ff_copy_db18f17fe532" formatted="false">خورشید</string>
+  <string name="ff_copy_09f661ddb4a9" formatted="false">{0} / {1} دقیقه {2}</string>
+  <string name="ff_copy_9177524bf42c" formatted="false">{0} / {1} دقیقه</string>
+  <string name="ff_copy_cc627ad2ab67" formatted="false">{0} جلسات تکمیل شد</string>
+  <string name="ff_copy_d1d4a90d7332" formatted="false">{0} امروز متمرکز شد</string>
+  <string name="ff_copy_fb129873e871" formatted="false">{0} دقیقه برای رشد · برای مشاهده ضربه بزنید</string>
+  <string name="ff_copy_3e51dc8cd5da" formatted="false">{0} در حال انجام است · برای باز کردن ضربه بزنید</string>
+  <string name="ff_copy_37a095ea9890" formatted="false">{0} درصد از هدف شما {1} کامل شد</string>
+  <string name="ff_copy_ceab99c54acc" formatted="false">{0} / 7 روز</string>
+  <string name="ff_copy_be94370016a8" formatted="false">دقیقه {0} {1}</string>
+  <string name="ff_copy_6e0a11779f21" formatted="false">این هفته، {0} تکمیل تمرکز، {1} روزهای فعال. امروز {2} است. {3}. برای باز کردن داشبورد خود ضربه بزنید.</string>
+  <string name="ff_copy_02d6a83a357c" formatted="false">{0} در حال پیشرفت است</string>
+  <string name="ff_copy_16d30c8585e0" formatted="false">روزهای فعال {0}</string>
+  <string name="ff_copy_7192a603df72" formatted="false">این هفته</string>
+  <string name="ff_copy_52ae6350b671" formatted="false">روی تمرکز خود بمانید</string>
+  <string name="ff_copy_b9d8f4dfd461" formatted="false">به دسترسی نیاز دارید؟ ابتدا مکث کنید و نفس بکشید.</string>
+  <string name="ff_copy_70e87c490114" formatted="false">تا پایان حالت سختگیرانه متوقف شد.</string>
+  <string name="ff_copy_e23c9c6c45ab" formatted="false">شما تصمیم به توقف موقت این برنامه کردید.</string>
+  <string name="ff_copy_22f28ebe11d4" formatted="false">در طول جلسه تمرکز شما متوقف شد.</string>
+  <string name="ff_copy_2f1be85c9e0c" formatted="false">شما برای امروز از دقیقه های {0} خود استفاده کرده اید.</string>
+  <string name="ff_copy_a0f82cce66c4" formatted="false">شورت متوقف شده است. تمرکز خود را حفظ کنید.</string>
+  <string name="ff_copy_88ccdcfb48eb" formatted="false">فید YouTube متوقف شده است.</string>
+  <string name="ff_copy_b46fd04e8e05" formatted="false">یک ویدیو از کانال های مطالعه خود انتخاب کنید.</string>
+  <string name="ff_copy_d966b84456c7" formatted="false">مرزهای برنامه</string>
+  <string name="ff_copy_a4faac0f2298" formatted="false">هنگامی که برنامه های انتخابی شما متوقف می شوند قابل مشاهده است. توقف، مرزهای برنامه را متوقف می کند.</string>
+  <string name="ff_copy_ca8c9b42a375" formatted="false">مرزهای برنامه FocusForge فعال هستند</string>
+  <string name="ff_copy_f6463dc9b220" formatted="false">برنامه های انتخابی شما در این دستگاه متوقف شده است. برای توقف موقت مرزها، روی Stop ضربه بزنید.</string>
+  <string name="ff_copy_cae7d57bc067" formatted="false">توقف</string>
+  <string name="ff_copy_59779ce0db49" formatted="false">باقی مانده است</string>
+  <string name="ff_copy_360a8af5a7d2" formatted="false">{0}h</string>
+  <string name="ff_copy_7f5ea983858e" formatted="false">{0}m</string>
+  <string name="ff_copy_d426ce3b6441" formatted="false">{0}h {1}m</string>
+  <string name="ff_copy_7a73eaec12da" formatted="false">بازگشت به آنچه مهم است</string>
+  <string name="ff_copy_8cdd22e2e381" formatted="false">مکث کنید و نفس بکشید</string>
+  <string name="ff_copy_5b992ee5fc37" formatted="false">انتخابی YouTube Shorts، فید و فیلترهای کانال مطالعه.</string>
+  <string name="ff_copy_da8322cb20a3" formatted="false">FocusForge شناسه‌های صفحه YouTube را فقط زمانی بررسی می‌کند که Shorts یا فیلترهای فید را فعال کنید تا این صفحه‌ها را از ویدیوهای معمولی متمایز کند. وقتی فقط کانال‌های مطالعه فعال باشد، نام‌ها یا دسته‌های پدیدآورندگان قابل مشاهده در صفحات ویدیوی پشتیبانی شده با کانال‌هایی که انتخاب کرده‌اید مقایسه می‌شوند. بررسی‌های صفحه روی دستگاه شما باقی می‌ماند و برچسب‌های قابل مشاهده حفظ یا آپلود نمی‌شوند. در حالی که یک مکث YouTube قابل مشاهده است، نام بسته پنجره برنامه فقط برای بستن مکث هنگام خروج علامت زده می شود. محتوای سایر برنامه ها بررسی نمی شود. پیام‌ها، گذرواژه‌ها یا متنی که تایپ می‌کنید را نمی‌خواند. تصمیمات مکث و زمان آنها فقط در این دستگاه برای اطلاعات آماری Shield ذخیره می شود. دسترسی اختیاری است و می‌توان آن را در تنظیمات Android خاموش کرد. مرزهای نرمال برنامه از دسترسی استفاده و ترسیم بر روی سایر برنامه ها استفاده می کنند. تایمر فوکوس بدون هیچ کدام از اینها کار می کند.</string>
+  <string name="ff_copy_83547161198a" formatted="false">یک شمارش معکوس یکپارچهسازی با سیستمعامل و زمان تمرکز کامل امروز. برای باز کردن Focus ضربه بزنید.</string>
+  <string name="ff_copy_0a2b0fed0257" formatted="false">هدف تمرکز روزانه، حلقه تکمیل و دقیقه های باقیمانده شما.</string>
+  <string name="ff_copy_0f37116ca951" formatted="false">موضوع مطالعه فعلی، شمارش معکوس زنده و پیشرفت روزانه.</string>
+  <string name="ff_copy_7c71b77df96c" formatted="false">زمان تمرکز کامل از دوشنبه تا یکشنبه، کل هفتگی و روزهای فعال. برای باز کردن داشبورد خود ضربه بزنید.</string>
+  <string name="ff_block_back" formatted="false">بازگشت به آنچه مهم است</string>
+  <string name="ff_block_anyway" formatted="false">مکث کنید و نفس بکشید</string>
+  <string name="accessibility_service_summary" formatted="false">انتخابی YouTube Shorts، فید و فیلترهای کانال مطالعه.</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge شناسه‌های صفحه YouTube را فقط زمانی بررسی می‌کند که Shorts یا فیلترهای فید را فعال کنید تا این صفحه‌ها را از ویدیوهای معمولی متمایز کند. وقتی فقط کانال‌های مطالعه فعال باشد، نام‌ها یا دسته‌های پدیدآورندگان قابل مشاهده در صفحات ویدیوی پشتیبانی شده با کانال‌هایی که انتخاب کرده‌اید مقایسه می‌شوند. بررسی‌های صفحه روی دستگاه شما باقی می‌ماند و برچسب‌های قابل مشاهده حفظ یا آپلود نمی‌شوند. در حالی که یک مکث YouTube قابل مشاهده است، نام بسته پنجره برنامه فقط برای بستن مکث هنگام خروج علامت زده می شود. محتوای سایر برنامه ها بررسی نمی شود. پیام‌ها، گذرواژه‌ها یا متنی که تایپ می‌کنید را نمی‌خواند. تصمیمات مکث و زمان آنها فقط در این دستگاه برای اطلاعات آماری Shield ذخیره می شود. دسترسی اختیاری است و می‌توان آن را در تنظیمات Android خاموش کرد. مرزهای نرمال برنامه از دسترسی استفاده و ترسیم بر روی سایر برنامه ها استفاده می کنند. تایمر فوکوس بدون هیچ کدام از اینها کار می کند.</string>
+  <string name="ff_widget_description" formatted="false">یک شمارش معکوس یکپارچهسازی با سیستمعامل و زمان تمرکز کامل امروز. برای باز کردن Focus ضربه بزنید.</string>
+  <string name="ff_goal_widget_description" formatted="false">هدف تمرکز روزانه، حلقه تکمیل و دقیقه های باقیمانده شما.</string>
+  <string name="ff_study_widget_description" formatted="false">موضوع مطالعه فعلی، شمارش معکوس زنده و پیشرفت روزانه.</string>
+  <string name="ff_weekly_widget_description" formatted="false">زمان تمرکز کامل از دوشنبه تا یکشنبه، کل هفتگی و روزهای فعال. برای باز کردن داشبورد خود ضربه بزنید.</string>
+</resources>

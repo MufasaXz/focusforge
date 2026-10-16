@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   cupertino_icons: ^1.0.8
   # Optional account, private group aggregates and the opt-in weekly board.
   firebase_core: ^3.8.0
@@ -42,6 +45,7 @@ dependencies:
   material_color_utilities: ^0.13.0
   url_launcher: ^6.3.2
 dev_dependencies:
+  shared_preferences_platform_interface: ^2.4.1
   cloud_firestore_platform_interface: ^6.6.12
   firebase_core_platform_interface: ^6.0.2
   flutter_test:

@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:maxWidth="320dp"
                 android:gravity="center"
-                android:text="Stay with your focus"
+                android:text="@string/ff_copy_52ae6350b671"
                 android:textColor="@color/ff_block_on_surface"
                 android:textSize="30sp"
                 android:textStyle="bold" />

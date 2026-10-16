@@ -1,10 +1,32 @@
-/// Duration formatting helpers shared across screens.
-String formatMinutes(int minutes) {
+import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
+
+import '../localization/app_strings.dart';
+
+AppStrings _strings(ui.Locale? locale) => AppStrings(
+  locale ?? AppStrings.resolve(ui.PlatformDispatcher.instance.locales),
+);
+
+String _number(num value, {int decimals = 0, ui.Locale? locale}) =>
+    NumberFormat.decimalPattern(_strings(locale).locale.languageCode).format(
+      decimals == 0 ? value : double.parse(value.toStringAsFixed(decimals)),
+    );
+
+/// Duration formatting helpers shared across screens. Stored durations stay
+/// numeric; visible units and numbers follow the phone or supplied locale.
+String formatMinutes(int minutes, {ui.Locale? locale}) {
+  final strings = _strings(locale);
   final h = minutes ~/ 60;
   final m = minutes % 60;
-  if (h == 0) return '${m}m';
-  if (m == 0) return '${h}h';
-  return '${h}h ${m}m';
+  if (h == 0) return strings.text('{0}m', [_number(m, locale: locale)]);
+  if (m == 0) return strings.text('{0}h', [_number(h, locale: locale)]);
+  return strings.text('{0}h {1}m', [
+    _number(h, locale: locale),
+    _number(m, locale: locale),
+  ]);
 }
 
 /// `24:59` style clock for the focus timer.
@@ -12,88 +34,72 @@ String formatClock(Duration d) {
   final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   final hours = d.inHours;
-  if (hours > 0) {
-    return '$hours:${minutes.padLeft(2, '0')}:$seconds';
-  }
+  if (hours > 0) return '$hours:$minutes:$seconds';
   return '$minutes:$seconds';
 }
 
-String formatHours(double hours) {
-  final h = hours.floor();
-  final m = ((hours - h) * 60).round();
-  if (h == 0) return '${m}m';
-  if (m == 0) return '${h}h';
-  return '${h}h ${m}m';
-}
+String formatHours(double hours, {ui.Locale? locale}) =>
+    formatMinutes((hours * 60).round(), locale: locale);
 
-/// "48h", "12.5h", "0.4h" — hours to one decimal, without a pointless trailing
-/// zero.
-///
-/// Every hour value that reaches the screen goes through here, because
-/// interpolating a `double` straight into a string is how a chart label ends up
-/// reading "0.4166666666666667h" and wrapping out of its bubble.
-String formatHoursShort(double hours) => hours == hours.roundToDouble()
-    ? '${hours.toInt()}h'
-    : '${hours.toStringAsFixed(1)}h';
+/// Hours to one decimal, without a trailing zero.
+String formatHoursShort(double hours, {ui.Locale? locale}) =>
+    _strings(locale)
+        .text('{0}h', [_number(hours, decimals: 1, locale: locale)]);
 
-/// "just now", "12 min ago", "3 h ago", "Yesterday", "4 days ago".
-///
-/// Coarse on purpose: the impulse log answers "how recently", and a timestamp
-/// to the second reads as precision the user has no use for. A future
-/// timestamp — the device clock moved, or a row was written while it was
-/// wrong — reads as "just now" rather than a negative age.
-String formatRelativeTime(DateTime at, {DateTime? now}) {
+/// A coarse age for activity history. A future timestamp reads as just now.
+String formatRelativeTime(DateTime at, {DateTime? now, ui.Locale? locale}) {
+  final strings = _strings(locale);
   final delta = (now ?? DateTime.now()).difference(at);
-  if (delta.inMinutes < 1) return 'just now';
-  if (delta.inMinutes < 60) return '${delta.inMinutes} min ago';
-  if (delta.inHours < 24) return '${delta.inHours} h ago';
-  if (delta.inDays == 1) return 'Yesterday';
-  return '${delta.inDays} days ago';
-}
-
-/// The spoken form of [formatHoursShort], for semantics labels and tooltips:
-/// "2 hours", "1 hour", "0.4 hours".
-String spokenHours(double hours) {
-  if (hours == hours.roundToDouble()) {
-    final n = hours.toInt();
-    return '$n ${n == 1 ? 'hour' : 'hours'}';
+  if (delta.inMinutes < 1) return strings.text('just now');
+  if (delta.inMinutes < 60) {
+    return strings.text('{0} min ago', [
+      _number(delta.inMinutes, locale: locale),
+    ]);
   }
-  return '${hours.toStringAsFixed(1)} hours';
+  if (delta.inHours < 24) {
+    return strings.text('{0} h ago', [_number(delta.inHours, locale: locale)]);
+  }
+  if (delta.inDays == 1) return strings.text('Yesterday');
+  return strings.text('{0} days ago', [_number(delta.inDays, locale: locale)]);
 }
 
-const _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+/// Spoken duration for semantics labels and tooltips.
+String spokenHours(double hours, {ui.Locale? locale}) => hours == 1
+    ? _strings(locale).text('{0} hour', [_number(1, locale: locale)])
+    : _strings(locale)
+          .text('{0} hours', [_number(hours, decimals: 1, locale: locale)]);
 
-const _weekdays = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+bool _dateDataReady = false;
 
-String formatDate(DateTime d) =>
-    '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';
+void _ensureDateData() {
+  if (!_dateDataReady) {
+    // Registration is synchronous; the future only reports completion.
+    unawaited(initializeDateFormatting());
+    _dateDataReady = true;
+  }
+}
 
-/// Persona greeting that tracks the clock.
-String greetingFor(DateTime d) {
-  final h = d.hour;
-  if (h < 5) return 'Still up';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+String formatDate(DateTime date, {ui.Locale? locale}) {
+  _ensureDateData();
+  return DateFormat.MMMMEEEEd(_strings(locale).locale.languageCode)
+      .format(date);
+}
+
+String formatWeekday(DateTime date, {ui.Locale? locale}) {
+  _ensureDateData();
+  return DateFormat.EEEE(_strings(locale).locale.languageCode).format(date);
+}
+
+String formatShortDate(DateTime date, {ui.Locale? locale}) {
+  _ensureDateData();
+  return DateFormat.yMMMd(_strings(locale).locale.languageCode).format(date);
+}
+
+/// Greeting that tracks the local clock and the phone language.
+String greetingFor(DateTime date, {ui.Locale? locale}) {
+  final strings = _strings(locale);
+  if (date.hour < 5) return strings.text('Still up');
+  if (date.hour < 12) return strings.text('Good morning');
+  if (date.hour < 17) return strings.text('Good afternoon');
+  return strings.text('Good evening');
 }

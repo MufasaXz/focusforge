@@ -33,6 +33,7 @@
         tools:node="remove"/>
 
     <application
+        android:supportsRtl="true"
         android:label="FocusForge"
         android:name="${applicationName}"
         android:allowBackup="false"

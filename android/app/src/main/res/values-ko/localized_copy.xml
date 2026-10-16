@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="ff_copy_662abe203e24" formatted="false">포커스 타이머</string>
+  <string name="ff_copy_69a90c89d741" formatted="false">달리기에 집중하거나 휴식 시간을 카운트다운하세요</string>
+  <string name="ff_copy_59a006c126ce" formatted="false">짧은 휴식</string>
+  <string name="ff_copy_2e404536a97f" formatted="false">긴 휴식</string>
+  <string name="ff_copy_9d3cab2b5efe" formatted="false">집중</string>
+  <string name="ff_copy_a4ade89a878b" formatted="false">자신을 위한 시간</string>
+  <string name="ff_copy_2acc91c6d64d" formatted="false">FocusForge 타이머</string>
+  <string name="ff_copy_8a1715ff1221" formatted="false">잠금을 해제하여 타이머 세부정보를 확인하세요.</string>
+  <string name="ff_copy_5c2f75a5e092" formatted="false">타이머를 열려면 탭하세요.</string>
+  <string name="ff_copy_bc85d3b68467" formatted="false">주제를 선택하세요</string>
+  <string name="ff_copy_af2b2ab96f47" formatted="false">FocusForge에서 목표 설정</string>
+  <string name="ff_copy_db73b5af1d5e" formatted="false">휴식 주간 · 목표 없음</string>
+  <string name="ff_copy_e158f8595efd" formatted="false">휴식일 · 대상 없음</string>
+  <string name="ff_copy_7d76655e727c" formatted="false">이번 주</string>
+  <string name="ff_copy_e0f4f767ac88" formatted="false">오늘</string>
+  <string name="ff_copy_cbde8d2eab34" formatted="false">주간 목표</string>
+  <string name="ff_copy_952a80b39aae" formatted="false">오늘의 목표</string>
+  <string name="ff_copy_eb69bb1c4acb" formatted="false">다음 세션</string>
+  <string name="ff_copy_74088f496014" formatted="false">탭하여 피사체를 계획하세요</string>
+  <string name="ff_copy_7f53b61b0e4a" formatted="false">여유를 가지세요 · 보려면 탭하세요</string>
+  <string name="ff_copy_085941b4e4b0" formatted="false">목표 완료 · 계속 성장</string>
+  <string name="ff_copy_1fdd668027e9" formatted="false">차단 종료 · 계속하려면 열기</string>
+  <string name="ff_copy_39dfdb4e10a4" formatted="false">준비 완료 · 탭하여 초점 맞추기</string>
+  <string name="ff_copy_a9ee6e15ea2b" formatted="false">연구 대상 없음</string>
+  <string name="ff_copy_d0f80a75cd2b" formatted="false">첫 번째 블록이 이번 주에 시작됩니다</string>
+  <string name="ff_copy_85277319d88a" formatted="false">월 – 일 · 보려면 탭하세요</string>
+  <string name="ff_copy_ef961edeef38" formatted="false">포커싱 · {0}</string>
+  <string name="ff_copy_ca1fc1e14b7a" formatted="false">{0} · 재충전</string>
+  <string name="ff_copy_6a00dfc1dc86" formatted="false">월요일</string>
+  <string name="ff_copy_7d8af1de1262" formatted="false">화요일</string>
+  <string name="ff_copy_c0a6cc829cd0" formatted="false">수요일</string>
+  <string name="ff_copy_fc2662062ffd" formatted="false">목요일</string>
+  <string name="ff_copy_e21f3f372a46" formatted="false">금요일</string>
+  <string name="ff_copy_dbe35c7363c2" formatted="false">토요일</string>
+  <string name="ff_copy_873fef760e5d" formatted="false">일요일</string>
+  <string name="ff_copy_f40d7f51f69e" formatted="false">월</string>
+  <string name="ff_copy_d1eb39b09bf5" formatted="false">화</string>
+  <string name="ff_copy_58339f45df96" formatted="false">수요일</string>
+  <string name="ff_copy_7da11212ed34" formatted="false">목</string>
+  <string name="ff_copy_66dab40cea1d" formatted="false">금요일</string>
+  <string name="ff_copy_fdeb71b569e0" formatted="false">토</string>
+  <string name="ff_copy_db18f17fe532" formatted="false">썬</string>
+  <string name="ff_copy_09f661ddb4a9" formatted="false">{0} / {1} 최소 {2}</string>
+  <string name="ff_copy_9177524bf42c" formatted="false">{0} / {1} 최소</string>
+  <string name="ff_copy_cc627ad2ab67" formatted="false">{0} 완료된 세션</string>
+  <string name="ff_copy_d1d4a90d7332" formatted="false">{0} 오늘 집중</string>
+  <string name="ff_copy_fb129873e871" formatted="false">{0} 분 성장 예정 · 보려면 탭하세요</string>
+  <string name="ff_copy_3e51dc8cd5da" formatted="false">{0} 진행 중 · 탭하여 열기</string>
+  <string name="ff_copy_37a095ea9890" formatted="false">{0} 목표 {1} 완료율</string>
+  <string name="ff_copy_ceab99c54acc" formatted="false">{0} / 7일</string>
+  <string name="ff_copy_be94370016a8" formatted="false">{0} {1} 분</string>
+  <string name="ff_copy_6e0a11779f21" formatted="false">이번 주 집중 완료 {0}, 활동일 {1}. 오늘은 {2}입니다. {3}. 탭하여 대시보드를 엽니다.</string>
+  <string name="ff_copy_02d6a83a357c" formatted="false">{0} 진행 중</string>
+  <string name="ff_copy_16d30c8585e0" formatted="false">{0} 활동일</string>
+  <string name="ff_copy_7192a603df72" formatted="false">이번 주</string>
+  <string name="ff_copy_52ae6350b671" formatted="false">집중력을 유지하세요</string>
+  <string name="ff_copy_b9d8f4dfd461" formatted="false">접속이 필요하신가요\? 먼저 멈추고 숨을 쉬십시오.</string>
+  <string name="ff_copy_70e87c490114" formatted="false">엄격 모드가 종료될 때까지 일시 중지됩니다.</string>
+  <string name="ff_copy_e23c9c6c45ab" formatted="false">이 앱을 일시중지하도록 선택했습니다.</string>
+  <string name="ff_copy_22f28ebe11d4" formatted="false">집중 세션 중에 일시중지되었습니다.</string>
+  <string name="ff_copy_2f1be85c9e0c" formatted="false">오늘 {0}분을 사용하셨습니다.</string>
+  <string name="ff_copy_a0f82cce66c4" formatted="false">반바지가 일시중지되었습니다. 계속 집중하세요.</string>
+  <string name="ff_copy_88ccdcfb48eb" formatted="false">YouTube 피드가 일시중지되었습니다.</string>
+  <string name="ff_copy_b46fd04e8e05" formatted="false">학습 채널에서 비디오를 선택하세요.</string>
+  <string name="ff_copy_d966b84456c7" formatted="false">앱 경계</string>
+  <string name="ff_copy_a4faac0f2298" formatted="false">선택한 앱이 일시 중지되는 동안 표시됩니다. 중지는 앱 경계를 일시 중지합니다.</string>
+  <string name="ff_copy_ca8c9b42a375" formatted="false">FocusForge 앱 경계가 활성화되었습니다.</string>
+  <string name="ff_copy_f6463dc9b220" formatted="false">선택한 앱이 이 기기에서 일시중지되었습니다. 경계를 일시 중지하려면 중지를 탭하세요.</string>
+  <string name="ff_copy_cae7d57bc067" formatted="false">중지</string>
+  <string name="ff_copy_59779ce0db49" formatted="false">남음</string>
+  <string name="ff_copy_360a8af5a7d2" formatted="false">{0}h</string>
+  <string name="ff_copy_7f5ea983858e" formatted="false">{0}m</string>
+  <string name="ff_copy_d426ce3b6441" formatted="false">{0}h {1}m</string>
+  <string name="ff_copy_7a73eaec12da" formatted="false">중요한 내용으로 돌아가기</string>
+  <string name="ff_copy_8cdd22e2e381" formatted="false">일시 정지 및 호흡</string>
+  <string name="ff_copy_5b992ee5fc37" formatted="false">선택적인 YouTube Shorts, 피드 및 연구 채널 필터.</string>
+  <string name="ff_copy_da8322cb20a3" formatted="false">FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인하여 이러한 화면을 일반 동영상과 구별합니다. 학습 채널만 활성화되면 지원되는 비디오 페이지에 표시되는 작성자 이름이나 핸들이 선택한 채널과 비교됩니다. 화면 확인은 장치에 유지되며 눈에 보이는 라벨은 유지되거나 업로드되지 않습니다. YouTube 일시 정지가 표시되는 동안에는 나갈 때 일시 정지를 닫기 위해 애플리케이션 창 패키지 이름만 확인됩니다. 다른 앱의 콘텐츠는 검사되지 않습니다. 귀하가 입력하는 메시지, 비밀번호 또는 텍스트는 읽지 않습니다. 일시 중지 결정과 해당 시간은 Shield 통찰력을 위해 이 장치에만 저장됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이들 중 어느 것도 없이 작동합니다.</string>
+  <string name="ff_copy_83547161198a" formatted="false">레트로 카운트다운과 오늘의 완성된 집중시간. 탭하여 포커스를 엽니다.</string>
+  <string name="ff_copy_0a2b0fed0257" formatted="false">일일 집중 목표, 완료 링 및 남은 시간(분)입니다.</string>
+  <string name="ff_copy_0f37116ca951" formatted="false">현재 연구 주제, 라이브 카운트다운 및 일일 진행 상황.</string>
+  <string name="ff_copy_7c71b77df96c" formatted="false">월요일부터 일요일까지 완료된 집중 시간, 주간 총계 및 활성 일수입니다. 탭하여 대시보드를 엽니다.</string>
+  <string name="ff_block_back" formatted="false">중요한 내용으로 돌아가기</string>
+  <string name="ff_block_anyway" formatted="false">일시 정지 및 호흡</string>
+  <string name="accessibility_service_summary" formatted="false">선택적인 YouTube Shorts, 피드 및 연구 채널 필터.</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인하여 이러한 화면을 일반 동영상과 구별합니다. 학습 채널만 활성화되면 지원되는 비디오 페이지에 표시되는 작성자 이름이나 핸들이 선택한 채널과 비교됩니다. 화면 확인은 장치에 유지되며 눈에 보이는 라벨은 유지되거나 업로드되지 않습니다. YouTube 일시 정지가 표시되는 동안에는 나갈 때 일시 정지를 닫기 위해 애플리케이션 창 패키지 이름만 확인됩니다. 다른 앱의 콘텐츠는 검사되지 않습니다. 귀하가 입력하는 메시지, 비밀번호 또는 텍스트는 읽지 않습니다. 일시 중지 결정과 해당 시간은 Shield 통찰력을 위해 이 장치에만 저장됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이들 중 어느 것도 없이 작동합니다.</string>
+  <string name="ff_widget_description" formatted="false">레트로 카운트다운과 오늘의 완성된 집중시간. 탭하여 포커스를 엽니다.</string>
+  <string name="ff_goal_widget_description" formatted="false">일일 집중 목표, 완료 링 및 남은 시간(분)입니다.</string>
+  <string name="ff_study_widget_description" formatted="false">현재 연구 주제, 라이브 카운트다운 및 일일 진행 상황.</string>
+  <string name="ff_weekly_widget_description" formatted="false">월요일부터 일요일까지 완료된 집중 시간, 주간 총계 및 활성 일수입니다. 탭하여 대시보드를 엽니다.</string>
+</resources>

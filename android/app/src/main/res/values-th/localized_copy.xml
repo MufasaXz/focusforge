@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="ff_copy_662abe203e24" formatted="false">ตัวจับเวลาโฟกัส</string>
+  <string name="ff_copy_69a90c89d741" formatted="false">โฟกัสการวิ่งของคุณหรือการนับถอยหลัง</string>
+  <string name="ff_copy_59a006c126ce" formatted="false">พักสั้น</string>
+  <string name="ff_copy_2e404536a97f" formatted="false">พักยาว</string>
+  <string name="ff_copy_9d3cab2b5efe" formatted="false">โฟกัส</string>
+  <string name="ff_copy_a4ade89a878b" formatted="false">เวลาสำหรับตัวคุณเอง</string>
+  <string name="ff_copy_2acc91c6d64d" formatted="false">ตัวจับเวลา FocusForge</string>
+  <string name="ff_copy_8a1715ff1221" formatted="false">ปลดล็อค เพื่อดูรายละเอียดตัวจับเวลาของคุณ</string>
+  <string name="ff_copy_5c2f75a5e092" formatted="false">แตะเพื่อเปิดตัวจับเวลาของคุณ</string>
+  <string name="ff_copy_bc85d3b68467" formatted="false">เลือกหัวข้อ</string>
+  <string name="ff_copy_af2b2ab96f47" formatted="false">ตั้งเป้าหมายใน FocusForge</string>
+  <string name="ff_copy_db73b5af1d5e" formatted="false">สัปดาห์พัก · ไม่มีเป้าหมาย</string>
+  <string name="ff_copy_e158f8595efd" formatted="false">วันหยุด · ไม่มีเป้าหมาย</string>
+  <string name="ff_copy_7d76655e727c" formatted="false">สัปดาห์นี้</string>
+  <string name="ff_copy_e0f4f767ac88" formatted="false">วันนี้</string>
+  <string name="ff_copy_cbde8d2eab34" formatted="false">เป้าหมายประจำสัปดาห์</string>
+  <string name="ff_copy_952a80b39aae" formatted="false">เป้าหมายของวันนี้</string>
+  <string name="ff_copy_eb69bb1c4acb" formatted="false">เซสชั่นถัดไปของคุณ</string>
+  <string name="ff_copy_74088f496014" formatted="false">แตะเพื่อวางแผนหัวข้อของคุณ</string>
+  <string name="ff_copy_7f53b61b0e4a" formatted="false">ใช้เวลาของคุณ · แตะเพื่อดู</string>
+  <string name="ff_copy_085941b4e4b0" formatted="false">เป้าหมาย สำเร็จแล้ว · เติบโตต่อไป</string>
+  <string name="ff_copy_1fdd668027e9" formatted="false">บล็อกสิ้นสุดแล้ว · เปิดเพื่อดำเนินการต่อ</string>
+  <string name="ff_copy_39dfdb4e10a4" formatted="false">พร้อมทุกเมื่อ · แตะเพื่อโฟกัส</string>
+  <string name="ff_copy_a9ee6e15ea2b" formatted="false">ไม่มีเป้าหมายการศึกษา</string>
+  <string name="ff_copy_d0f80a75cd2b" formatted="false">บล็อกแรกของคุณเริ่มต้นสัปดาห์</string>
+  <string name="ff_copy_85277319d88a" formatted="false">จันทร์ – อาทิตย์ · แตะเพื่อดู</string>
+  <string name="ff_copy_ef961edeef38" formatted="false">โฟกัส · {0}</string>
+  <string name="ff_copy_ca1fc1e14b7a" formatted="false">{0} · เติมเงิน</string>
+  <string name="ff_copy_6a00dfc1dc86" formatted="false">วันจันทร์</string>
+  <string name="ff_copy_7d8af1de1262" formatted="false">วันอังคาร</string>
+  <string name="ff_copy_c0a6cc829cd0" formatted="false">วันพุธ</string>
+  <string name="ff_copy_fc2662062ffd" formatted="false">วันพฤหัสบดี</string>
+  <string name="ff_copy_e21f3f372a46" formatted="false">วันศุกร์</string>
+  <string name="ff_copy_dbe35c7363c2" formatted="false">วันเสาร์</string>
+  <string name="ff_copy_873fef760e5d" formatted="false">วันอาทิตย์</string>
+  <string name="ff_copy_f40d7f51f69e" formatted="false">จันทร์</string>
+  <string name="ff_copy_d1eb39b09bf5" formatted="false">อ</string>
+  <string name="ff_copy_58339f45df96" formatted="false">พ</string>
+  <string name="ff_copy_7da11212ed34" formatted="false">พฤ</string>
+  <string name="ff_copy_66dab40cea1d" formatted="false">ศ</string>
+  <string name="ff_copy_fdeb71b569e0" formatted="false">ส</string>
+  <string name="ff_copy_db18f17fe532" formatted="false">อาทิตย์</string>
+  <string name="ff_copy_09f661ddb4a9" formatted="false">{0} / {1} ขั้นต่ำ {2}</string>
+  <string name="ff_copy_9177524bf42c" formatted="false">{0} / {1} ขั้นต่ำ</string>
+  <string name="ff_copy_cc627ad2ab67" formatted="false">{0} เสร็จสิ้นเซสชันแล้ว</string>
+  <string name="ff_copy_d1d4a90d7332" formatted="false">{0} เน้นวันนี้</string>
+  <string name="ff_copy_fb129873e871" formatted="false">{0} นาทีที่จะเติบโต · แตะเพื่อดู</string>
+  <string name="ff_copy_3e51dc8cd5da" formatted="false">{0} กำลังดำเนินการ · แตะเพื่อเปิด</string>
+  <string name="ff_copy_37a095ea9890" formatted="false">{0} เปอร์เซ็นต์ของเป้าหมายของคุณ {1} เสร็จสมบูรณ์</string>
+  <string name="ff_copy_ceab99c54acc" formatted="false">{0} / 7 วัน</string>
+  <string name="ff_copy_be94370016a8" formatted="false">{0} {1} นาที</string>
+  <string name="ff_copy_6e0a11779f21" formatted="false">สัปดาห์นี้ {0} ของโฟกัสที่สมบูรณ์ {1} วันใช้งาน วันนี้เป็น {2} {3}. แตะเพื่อเปิดแดชบอร์ดของคุณ</string>
+  <string name="ff_copy_02d6a83a357c" formatted="false">{0} อยู่ระหว่างดำเนินการ</string>
+  <string name="ff_copy_16d30c8585e0" formatted="false">{0} จำนวนวันที่แอคทีฟ</string>
+  <string name="ff_copy_7192a603df72" formatted="false">สัปดาห์นี้</string>
+  <string name="ff_copy_52ae6350b671" formatted="false">ให้ความสำคัญกับคุณอยู่เสมอ</string>
+  <string name="ff_copy_b9d8f4dfd461" formatted="false">ต้องการเข้าถึงหรือไม่\? หยุดและหายใจก่อน</string>
+  <string name="ff_copy_70e87c490114" formatted="false">หยุดชั่วคราวจนกว่าโหมดเข้มงวดจะสิ้นสุดลง</string>
+  <string name="ff_copy_e23c9c6c45ab" formatted="false">คุณเลือกที่จะหยุดแอปนี้ชั่วคราว</string>
+  <string name="ff_copy_22f28ebe11d4" formatted="false">หยุดชั่วคราวระหว่างเซสชันโฟกัสของคุณ</string>
+  <string name="ff_copy_2f1be85c9e0c" formatted="false">คุณใช้เวลา {0} นาทีไปแล้วสำหรับวันนี้</string>
+  <string name="ff_copy_a0f82cce66c4" formatted="false">กางเกงขาสั้น ถูกหยุดชั่วคราว รักษาสมาธิของคุณไว้</string>
+  <string name="ff_copy_88ccdcfb48eb" formatted="false">ฟีด YouTube ถูกหยุดชั่วคราว</string>
+  <string name="ff_copy_b46fd04e8e05" formatted="false">เลือกวิดีโอจากช่องการศึกษาของคุณ</string>
+  <string name="ff_copy_d966b84456c7" formatted="false">ขอบเขตแอป</string>
+  <string name="ff_copy_a4faac0f2298" formatted="false">มองเห็นได้ในขณะที่แอปที่คุณเลือกถูกหยุดชั่วคราว หยุดขอบเขตแอปชั่วคราว</string>
+  <string name="ff_copy_ca8c9b42a375" formatted="false">ขอบเขตแอป FocusForge ทำงานอยู่</string>
+  <string name="ff_copy_f6463dc9b220" formatted="false">แอปที่คุณเลือกถูกหยุดชั่วคราวบนอุปกรณ์นี้ แตะหยุดเพื่อหยุดขอบเขตชั่วคราว</string>
+  <string name="ff_copy_cae7d57bc067" formatted="false">หยุด</string>
+  <string name="ff_copy_59779ce0db49" formatted="false">เหลืออยู่</string>
+  <string name="ff_copy_360a8af5a7d2" formatted="false">{0}h</string>
+  <string name="ff_copy_7f5ea983858e" formatted="false">{0}m</string>
+  <string name="ff_copy_d426ce3b6441" formatted="false">{0}h {1}m</string>
+  <string name="ff_copy_7a73eaec12da" formatted="false">กลับไปสู่สิ่งสำคัญ</string>
+  <string name="ff_copy_8cdd22e2e381" formatted="false">หยุดและหายใจ</string>
+  <string name="ff_copy_5b992ee5fc37" formatted="false">ตัวเลือก YouTube Shorts, ฟีดและตัวกรองช่องการศึกษา</string>
+  <string name="ff_copy_da8322cb20a3" formatted="false">FocusForge จะตรวจสอบตัวระบุหน้าจอ YouTube เมื่อคุณเปิดใช้งานวิดีโอสั้นหรือตัวกรองฟีดเท่านั้น เพื่อแยกหน้าจอเหล่านี้จากวิดีโอทั่วไป เมื่อเปิดใช้ช่อง Study เท่านั้น ชื่อผู้สร้างหรือที่จับที่มองเห็นได้บนหน้าวิดีโอที่รองรับจะถูกเปรียบเทียบกับช่องที่คุณเลือก การตรวจสอบหน้าจอจะยังคงอยู่ในอุปกรณ์ของคุณ และป้ายกำกับที่มองเห็นจะไม่ถูกเก็บไว้หรืออัปโหลด ในขณะที่มองเห็นการหยุดชั่วคราวของ YouTube ชื่อแพ็คเกจหน้าต่างแอปพลิเคชันจะถูกตรวจสอบเพื่อปิดการหยุดชั่วคราวเมื่อคุณออกไปเท่านั้น เนื้อหาของแอปอื่นจะไม่ได้รับการตรวจสอบ จะไม่อ่านข้อความ รหัสผ่าน หรือข้อความที่คุณพิมพ์ การตัดสินใจหยุดชั่วคราวและเวลาจะถูกบันทึกไว้ในอุปกรณ์นี้สำหรับข้อมูลเชิงลึกของ Shield เท่านั้น การเข้าถึงเป็นทางเลือกและสามารถปิดได้ในการตั้งค่า Android ขอบเขตแอพปกติใช้การเข้าถึงการใช้งานและวาดทับแอพอื่น ตัวจับเวลาโฟกัสทำงานโดยไม่มีสิ่งเหล่านี้</string>
+  <string name="ff_copy_83547161198a" formatted="false">การนับถอยหลังย้อนยุคและเวลาโฟกัสที่เสร็จสิ้นของวันนี้ แตะเพื่อเปิดโฟกัส</string>
+  <string name="ff_copy_0a2b0fed0257" formatted="false">เป้าหมายการโฟกัสรายวัน วงแหวนความสำเร็จ และนาทีที่เหลือ</string>
+  <string name="ff_copy_0f37116ca951" formatted="false">วิชาเรียนปัจจุบัน การนับถอยหลังสด และความคืบหน้ารายวัน</string>
+  <string name="ff_copy_7c71b77df96c" formatted="false">ใช้เวลาโฟกัสเสร็จสมบูรณ์ตั้งแต่วันจันทร์ถึงวันอาทิตย์ ยอดรวมรายสัปดาห์และวันที่ใช้งานอยู่ แตะเพื่อเปิดแดชบอร์ดของคุณ</string>
+  <string name="ff_block_back" formatted="false">กลับไปสู่สิ่งสำคัญ</string>
+  <string name="ff_block_anyway" formatted="false">หยุดและหายใจ</string>
+  <string name="accessibility_service_summary" formatted="false">ตัวเลือก YouTube Shorts, ฟีดและตัวกรองช่องการศึกษา</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge จะตรวจสอบตัวระบุหน้าจอ YouTube เมื่อคุณเปิดใช้งานวิดีโอสั้นหรือตัวกรองฟีดเท่านั้น เพื่อแยกหน้าจอเหล่านี้จากวิดีโอทั่วไป เมื่อเปิดใช้ช่อง Study เท่านั้น ชื่อผู้สร้างหรือที่จับที่มองเห็นได้บนหน้าวิดีโอที่รองรับจะถูกเปรียบเทียบกับช่องที่คุณเลือก การตรวจสอบหน้าจอจะยังคงอยู่ในอุปกรณ์ของคุณ และป้ายกำกับที่มองเห็นจะไม่ถูกเก็บไว้หรืออัปโหลด ในขณะที่มองเห็นการหยุดชั่วคราวของ YouTube ชื่อแพ็คเกจหน้าต่างแอปพลิเคชันจะถูกตรวจสอบเพื่อปิดการหยุดชั่วคราวเมื่อคุณออกไปเท่านั้น เนื้อหาของแอปอื่นจะไม่ได้รับการตรวจสอบ จะไม่อ่านข้อความ รหัสผ่าน หรือข้อความที่คุณพิมพ์ การตัดสินใจหยุดชั่วคราวและเวลาจะถูกบันทึกไว้ในอุปกรณ์นี้สำหรับข้อมูลเชิงลึกของ Shield เท่านั้น การเข้าถึงเป็นทางเลือกและสามารถปิดได้ในการตั้งค่า Android ขอบเขตแอพปกติใช้การเข้าถึงการใช้งานและวาดทับแอพอื่น ตัวจับเวลาโฟกัสทำงานโดยไม่มีสิ่งเหล่านี้</string>
+  <string name="ff_widget_description" formatted="false">การนับถอยหลังย้อนยุคและเวลาโฟกัสที่เสร็จสิ้นของวันนี้ แตะเพื่อเปิดโฟกัส</string>
+  <string name="ff_goal_widget_description" formatted="false">เป้าหมายการโฟกัสรายวัน วงแหวนความสำเร็จ และนาทีที่เหลือ</string>
+  <string name="ff_study_widget_description" formatted="false">วิชาเรียนปัจจุบัน การนับถอยหลังสด และความคืบหน้ารายวัน</string>
+  <string name="ff_weekly_widget_description" formatted="false">ใช้เวลาโฟกัสเสร็จสมบูรณ์ตั้งแต่วันจันทร์ถึงวันอาทิตย์ ยอดรวมรายสัปดาห์และวันที่ใช้งานอยู่ แตะเพื่อเปิดแดชบอร์ดของคุณ</string>
+</resources>
