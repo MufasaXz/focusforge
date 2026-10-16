@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m довга перерва кожні блоки {1}",
   "{0}–{1}m focus blocks": "Блоки фокусування {0}–{1}m",
   "“Instagram Reels blocked”": "«Instagram Reels заблоковано»",
-  "“Time to study Physics!”": "«Час вивчати фізику!»"
+  "“Time to study Physics!”": "«Час вивчати фізику!»",
+  "Restoring your account": "Відновлення облікового запису",
+  "Reconnecting to your saved data…": "Повторне підключення до збережених даних…",
+  "Recovering your goals, subjects and focus history…": "Відновлення ваших цілей, предметів і історії фокусів…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "Дані вашого облікового запису ще не вдалося відновити. Ваші збережені дані зберігаються. Повторіть спробу відновлення облікового запису.",
+  "Choose photo": "Виберіть фото",
+  "Remove photo": "Видалити фото",
+  "Could not open this photo. Try another image.": "Не вдалося відкрити це фото. Спробуйте інше зображення.",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "Ваша фотографія створюється резервна копія у вашому обліковому записі та публікується, коли ввімкнено спільний доступ до таблиці лідерів.",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "Розпізнає підтримуваних освітніх авторів на цьому пристрої. Нерозпізнані канали призупинено.",
+  "Choose a recognized study channel.": "Виберіть визнаний навчальний канал.",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "Дозволено лише відео від визнаних авторів дослідження. Розпізнавання відбувається на цьому пристрої; деякі освітні канали можуть не розпізнаватися.",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "FocusForge перевіряє ідентифікатори екрана YouTube, лише якщо ви ввімкнули короткі відео або фільтри каналу. Study channels лише порівнює видимі імена творців або описи з каталогом освітніх творців, що входить у комплект на цьому пристрої. Деякі освітні канали можуть не розпізнаватися. Мітки творців не зберігаються та не завантажуються. Вміст інших програм, повідомлення, паролі та введений текст не читаються. Призупинити рішення та час залишатися на цьому пристрої. Доступ необов’язковий і його можна вимкнути в налаштуваннях Android. Звичайні межі програм використовують доступ до використання та малювання над іншими програмами; таймер фокусування працює без цих дозволів.",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "Study channels лише порівнює видимі імена або імена творців YouTube із освітнім каталогом творців на цьому пристрої. Мітки творців не зберігаються та не завантажуються. Деякі освітні канали можуть не розпізнаватися."
 }

@@ -87,6 +87,8 @@ object DeviceStrings {
         "Your daily focus goal, completion ring and remaining minutes." to R.string.ff_copy_0a2b0fed0257,
         "Current study subject, live countdown and daily progress." to R.string.ff_copy_0f37116ca951,
         "Completed focus time from Monday to Sunday, weekly total and active days. Tap to open your dashboard." to R.string.ff_copy_7c71b77df96c,
+        "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions." to R.string.ff_copy_cdd9d2e0a56e,
+        "Choose a recognized study channel." to R.string.ff_copy_ada49350069b,
     )
     private val slot = Regex("\\{(\\d+)\\}")
     fun text(context: Context, source: String, vararg values: Any?): String {

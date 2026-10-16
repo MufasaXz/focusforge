@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m ngắt dài mọi khối {1}",
   "{0}–{1}m focus blocks": "Khối lấy nét {0}–{1}m",
   "“Instagram Reels blocked”": "“Câu chuyện trên Instagram bị chặn”",
-  "“Time to study Physics!”": "“Đã đến giờ học Vật lý!”"
+  "“Time to study Physics!”": "“Đã đến giờ học Vật lý!”",
+  "Restoring your account": "Khôi phục tài khoản của bạn",
+  "Reconnecting to your saved data…": "Đang kết nối lại với dữ liệu đã lưu của bạn…",
+  "Recovering your goals, subjects and focus history…": "Đang khôi phục mục tiêu, chủ đề và lịch sử lấy nét của bạn…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "Dữ liệu tài khoản của bạn chưa thể được khôi phục. Dữ liệu đã lưu của bạn được lưu giữ. Thử lại việc khôi phục tài khoản.",
+  "Choose photo": "Chọn ảnh",
+  "Remove photo": "Xóa ảnh",
+  "Could not open this photo. Try another image.": "Không thể mở ảnh này. Hãy thử một hình ảnh khác.",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "Ảnh của bạn được sao lưu bằng tài khoản của bạn và được chia sẻ khi tính năng chia sẻ bảng xếp hạng được bật.",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "Ghi nhận những người sáng tạo nội dung giáo dục được hỗ trợ trên thiết bị này. Các kênh không được nhận dạng sẽ bị tạm dừng.",
+  "Choose a recognized study channel.": "Chọn một kênh nghiên cứu được công nhận.",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "Chỉ cho phép video từ những người sáng tạo nghiên cứu được công nhận. Sự nhận dạng diễn ra trên thiết bị này; một số kênh giáo dục có thể không được công nhận.",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "FocusForge chỉ kiểm tra số nhận dạng màn hình YouTube khi bạn bật bộ lọc Video ngắn hoặc nguồn cấp dữ liệu. Các kênh nghiên cứu chỉ so sánh tên hoặc tên người sáng tạo hiển thị với danh mục người sáng tạo giáo dục đi kèm trên thiết bị này. Một số kênh giáo dục có thể không được công nhận. Nhãn của người tạo không được lưu hoặc tải lên. Nội dung, tin nhắn, mật khẩu và văn bản đã nhập của các ứng dụng khác không được đọc. Tạm dừng các quyết định và thời gian vẫn còn trên thiết bị này. Quyền truy cập là tùy chọn và có thể bị tắt trong Cài đặt Android. Ranh giới ứng dụng thông thường sử dụng quyền truy cập Sử dụng và Vẽ trên các ứng dụng khác; bộ hẹn giờ lấy nét hoạt động mà không có các quyền này.",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "Các kênh nghiên cứu chỉ so sánh tên hoặc tên người sáng tạo hiển thị trên YouTube với danh mục người sáng tạo giáo dục trên thiết bị này. Nhãn của người tạo không được lưu hoặc tải lên. Một số kênh giáo dục có thể không được công nhận."
 }

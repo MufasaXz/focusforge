@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m {1} ブロックごとの長い休憩",
   "{0}–{1}m focus blocks": "{0}–{1}m フォーカス ブロック",
   "“Instagram Reels blocked”": "「インスタグラムのリールがブロックされました」",
-  "“Time to study Physics!”": "「物理を勉強する時間です！」"
+  "“Time to study Physics!”": "「物理を勉強する時間です！」",
+  "Restoring your account": "アカウントを復元する",
+  "Reconnecting to your saved data…": "保存したデータに再接続しています…",
+  "Recovering your goals, subjects and focus history…": "目標、科目、フォーカス履歴を復元しています…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "アカウント データはまだ復元できませんでした。保存したデータは保持されます。アカウントの回復を再試行します。",
+  "Choose photo": "写真を選択してください",
+  "Remove photo": "写真を削除",
+  "Could not open this photo. Try another image.": "この写真を開けませんでした。別の画像を試してください。",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "写真はアカウントにバックアップされ、リーダーボードの共有がオンになっているときに共有されます。",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "このデバイスでサポートされている教育クリエイターを認識します。認識されないチャンネルは一時停止されます。",
+  "Choose a recognized study channel.": "認知された学習チャンネルを選択してください。",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "認められた研究作成者によるビデオのみが許可されます。認識はこのデバイス上で行われます。一部の教育チャンネルは認識されない場合があります。",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "FocusForge は、ショートまたはフィード フィルタを有効にした場合にのみ YouTube 画面識別子をチェックします。学習チャンネルは、表示されているクリエイター名またはハンドルを、このデバイスにバンドルされている教育クリエイター カタログと比較するだけです。一部の教育チャンネルは認識されない場合があります。クリエイター ラベルは保存またはアップロードされません。他のアプリのコンテンツ、メッセージ、パスワード、入力されたテキストは読み取られません。一時停止の決定と時間がこのデバイスに残ります。アクセスはオプションであり、Android の設定でオフにすることができます。通常のアプリの境界は、使用状況アクセスを使用し、他のアプリの上に描画します。フォーカス タイマーは、これらの権限がなくても機能します。",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "学習チャンネルは、表示されている YouTube クリエイター名またはハンドル名と、このデバイス上の教育クリエイター カタログのみを比較します。クリエイター ラベルは保存またはアップロードされません。一部の教育チャンネルは認識されない場合があります。"
 }

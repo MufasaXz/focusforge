@@ -81,10 +81,12 @@
   <string name="ff_copy_0a2b0fed0257" formatted="false">毎日の集中目標、完了リング、残り時間。</string>
   <string name="ff_copy_0f37116ca951" formatted="false">現在の研究テーマ、ライブカウントダウン、毎日の進捗状況。</string>
   <string name="ff_copy_7c71b77df96c" formatted="false">月曜日から日曜日までの完了した集中時間、週の合計およびアクティブな日。タップしてダッシュボードを開きます。</string>
+  <string name="ff_copy_cdd9d2e0a56e" formatted="false">FocusForge は、ショートまたはフィード フィルタを有効にした場合にのみ YouTube 画面識別子をチェックします。学習チャンネルは、表示されているクリエイター名またはハンドルを、このデバイスにバンドルされている教育クリエイター カタログと比較するだけです。一部の教育チャンネルは認識されない場合があります。クリエイター ラベルは保存またはアップロードされません。他のアプリのコンテンツ、メッセージ、パスワード、入力されたテキストは読み取られません。一時停止の決定と時間がこのデバイスに残ります。アクセスはオプションであり、Android の設定でオフにすることができます。通常のアプリの境界は、使用状況アクセスを使用し、他のアプリの上に描画します。フォーカス タイマーは、これらの権限がなくても機能します。</string>
+  <string name="ff_copy_ada49350069b" formatted="false">認知された学習チャンネルを選択してください。</string>
   <string name="ff_block_back" formatted="false">重要なことに戻る</string>
   <string name="ff_block_anyway" formatted="false">立ち止まって深呼吸してください</string>
   <string name="accessibility_service_summary" formatted="false">オプションの YouTube ショート、フィード、スタディ チャンネル フィルター。</string>
-  <string name="accessibility_service_description" formatted="false">FocusForge は、ショート動画またはフィード フィルターを有効にした場合にのみ YouTube 画面識別子をチェックして、これらの画面を通常の動画と区別します。スタディ チャンネルのみが有効になっている場合、サポートされているビデオ ページに表示されるクリエイター名またはハンドルが、選択したチャンネルと比較されます。画面チェックはデバイス上に残り、表示されるラベルは保持またはアップロードされません。 YouTube の一時停止が表示されている間、アプリケーション ウィンドウのパッケージ名は、終了時に一時停止を閉じるためにのみチェックされます。他のアプリのコンテンツは検査されません。メッセージ、パスワード、または入力したテキストは読み取られません。一時停止の決定とその時間は、Shield の洞察のためにこのデバイスにのみ保存されます。アクセスはオプションであり、Android の設定でオフにすることができます。通常のアプリの境界は、使用状況アクセスを使用し、他のアプリの上に描画します。フォーカス タイマーはこれらが何もなくても機能します。</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge は、ショートまたはフィード フィルタを有効にした場合にのみ YouTube 画面識別子をチェックします。学習チャンネルは、表示されているクリエイター名またはハンドルを、このデバイスにバンドルされている教育クリエイター カタログと比較するだけです。一部の教育チャンネルは認識されない場合があります。クリエイター ラベルは保存またはアップロードされません。他のアプリのコンテンツ、メッセージ、パスワード、入力されたテキストは読み取られません。一時停止の決定と時間がこのデバイスに残ります。アクセスはオプションであり、Android の設定でオフにすることができます。通常のアプリの境界は、使用状況アクセスを使用し、他のアプリの上に描画します。フォーカス タイマーは、これらの権限がなくても機能します。</string>
   <string name="ff_widget_description" formatted="false">レトロなカウントダウンと今日の完了したフォーカスタイム。タップしてフォーカスを開きます。</string>
   <string name="ff_goal_widget_description" formatted="false">毎日の集中目標、完了リング、残り時間。</string>
   <string name="ff_study_widget_description" formatted="false">現在の研究テーマ、ライブカウントダウン、毎日の進捗状況。</string>

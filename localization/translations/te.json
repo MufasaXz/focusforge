@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m దీర్ఘ విరామం ప్రతి {1} బ్లాక్‌లు",
   "{0}–{1}m focus blocks": "{0}–{1}m ఫోకస్ బ్లాక్‌లు",
   "“Instagram Reels blocked”": "“ఇన్‌స్టాగ్రామ్ రీల్స్ బ్లాక్ చేయబడ్డాయి”",
-  "“Time to study Physics!”": "\"భౌతిక శాస్త్రాన్ని అభ్యసించే సమయం!\""
+  "“Time to study Physics!”": "\"భౌతిక శాస్త్రాన్ని అభ్యసించే సమయం!\"",
+  "Restoring your account": "మీ ఖాతాను పునరుద్ధరిస్తోంది",
+  "Reconnecting to your saved data…": "మీ సేవ్ చేసిన డేటాకు మళ్లీ కనెక్ట్ చేస్తోంది...",
+  "Recovering your goals, subjects and focus history…": "మీ లక్ష్యాలు, సబ్జెక్ట్‌లు మరియు ఫోకస్ హిస్టరీని తిరిగి పొందడం...",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "మీ ఖాతా డేటా ఇంకా పునరుద్ధరించబడలేదు. మీరు సేవ్ చేసిన డేటా ఉంచబడుతుంది. ఖాతా పునరుద్ధరణను మళ్లీ ప్రయత్నించండి.",
+  "Choose photo": "ఫోటోను ఎంచుకోండి",
+  "Remove photo": "ఫోటోను తీసివేయండి",
+  "Could not open this photo. Try another image.": "ఈ ఫోటోను తెరవడం సాధ్యపడలేదు. మరొక చిత్రాన్ని ప్రయత్నించండి.",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "మీ ఫోటో మీ ఖాతాతో బ్యాకప్ చేయబడుతుంది మరియు లీడర్‌బోర్డ్ షేరింగ్ ఆన్‌లో ఉన్నప్పుడు షేర్ చేయబడుతుంది.",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "ఈ పరికరంలో మద్దతు ఉన్న విద్యా సృష్టికర్తలను గుర్తిస్తుంది. గుర్తించబడని ఛానెల్‌లు పాజ్ చేయబడ్డాయి.",
+  "Choose a recognized study channel.": "గుర్తింపు పొందిన అధ్యయన ఛానెల్‌ని ఎంచుకోండి.",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "గుర్తింపు పొందిన అధ్యయన సృష్టికర్తల నుండి మాత్రమే వీడియోలు అనుమతించబడతాయి. ఈ పరికరంలో గుర్తింపు జరుగుతుంది; కొన్ని విద్యా ఛానెల్‌లు గుర్తించబడకపోవచ్చు.",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "మీరు Shorts లేదా ఫీడ్ ఫిల్టర్‌లను ప్రారంభించినప్పుడు మాత్రమే FocusForge YouTube స్క్రీన్ ఐడెంటిఫైయర్‌లను తనిఖీ చేస్తుంది. అధ్యయన ఛానెల్‌లు ఈ పరికరంలో బండిల్ చేయబడిన విద్యా-సృష్టికర్త కేటలాగ్‌తో కనిపించే సృష్టికర్త పేర్లు లేదా హ్యాండిల్‌లను మాత్రమే సరిపోల్చుతాయి. కొన్ని విద్యా ఛానెల్‌లు గుర్తించబడకపోవచ్చు. సృష్టికర్త లేబుల్‌లు సేవ్ చేయబడవు లేదా అప్‌లోడ్ చేయబడవు. ఇతర యాప్‌ల కంటెంట్‌లు, సందేశాలు, పాస్‌వర్డ్‌లు మరియు టైప్ చేసిన వచనం చదవబడవు. నిర్ణయాలను పాజ్ చేయండి మరియు ఈ పరికరంలో సమయాలు అలాగే ఉంటాయి. యాక్సెస్ ఐచ్ఛికం మరియు Android సెట్టింగ్‌లలో ఆఫ్ చేయవచ్చు. సాధారణ యాప్ సరిహద్దులు వినియోగ యాక్సెస్‌ని ఉపయోగిస్తాయి మరియు ఇతర యాప్‌లపై డ్రా; ఫోకస్ టైమర్ ఈ అనుమతులు లేకుండా పని చేస్తుంది.",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "స్టడీ ఛానెల్‌లు ఈ పరికరంలోని ఎడ్యుకేషనల్ క్రియేటర్ కేటలాగ్‌తో కనిపించే YouTube సృష్టికర్త పేర్లు లేదా హ్యాండిల్‌లను మాత్రమే సరిపోల్చుతాయి. సృష్టికర్త లేబుల్‌లు సేవ్ చేయబడవు లేదా అప్‌లోడ్ చేయబడవు. కొన్ని విద్యా ఛానెల్‌లు గుర్తించబడకపోవచ్చు."
 }

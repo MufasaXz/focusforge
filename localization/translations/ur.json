@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m طویل وقفے ہر {1} بلاکس",
   "{0}–{1}m focus blocks": "{0}–{1}m فوکس بلاکس",
   "“Instagram Reels blocked”": "\"انسٹاگرام ریلیز بلاک کر دی گئی\"",
-  "“Time to study Physics!”": "\"فزکس کا مطالعہ کرنے کا وقت!\""
+  "“Time to study Physics!”": "\"فزکس کا مطالعہ کرنے کا وقت!\"",
+  "Restoring your account": "آپ کا اکاؤنٹ بحال ہو رہا ہے۔",
+  "Reconnecting to your saved data…": "آپ کے محفوظ کردہ ڈیٹا سے دوبارہ منسلک ہو رہا ہے…",
+  "Recovering your goals, subjects and focus history…": "اپنے اہداف، مضامین اور فوکس ہسٹری کو بازیافت کرنا…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "آپ کے اکاؤنٹ کا ڈیٹا ابھی تک بحال نہیں ہو سکا۔ آپ کا محفوظ کردہ ڈیٹا محفوظ ہے۔ اکاؤنٹ کی بازیابی کی دوبارہ کوشش کریں۔",
+  "Choose photo": "تصویر کا انتخاب کریں۔",
+  "Remove photo": "تصویر ہٹا دیں۔",
+  "Could not open this photo. Try another image.": "اس تصویر کو نہیں کھول سکا۔ دوسری تصویر آزمائیں۔",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "آپ کی تصویر کا آپ کے اکاؤنٹ کے ساتھ بیک اپ لیا جاتا ہے اور لیڈر بورڈ شیئرنگ آن ہونے پر اس کا اشتراک کیا جاتا ہے۔",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "اس آلہ پر تعاون یافتہ تعلیمی تخلیق کاروں کو پہچانتا ہے۔ غیر تسلیم شدہ چینلز کو روک دیا گیا ہے۔",
+  "Choose a recognized study channel.": "ایک تسلیم شدہ اسٹڈی چینل کا انتخاب کریں۔",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "صرف تسلیم شدہ مطالعہ تخلیق کاروں کی ویڈیوز کی اجازت ہے۔ شناخت اس ڈیوائس پر ہوتی ہے۔ کچھ تعلیمی چینلز کو تسلیم نہیں کیا جا سکتا ہے۔",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "FocusForge YouTube اسکرین شناخت کنندگان کو صرف اس وقت چیک کرتا ہے جب آپ شارٹس یا فیڈ فلٹرز کو فعال کرتے ہیں۔ اسٹڈی چینلز اس ڈیوائس پر بنڈل تعلیمی تخلیق کار کیٹلاگ کے ساتھ صرف مرئی تخلیق کار کے ناموں یا ہینڈلز کا موازنہ کرتے ہیں۔ ہو سکتا ہے کچھ تعلیمی چینلز کی پہچان نہ ہو۔ تخلیق کار کے لیبلز محفوظ یا اپ لوڈ نہیں ہوتے ہیں۔ دیگر ایپس کے مواد، پیغامات، پاس ورڈز اور ٹائپ شدہ ٹیکسٹ پڑھے نہیں جاتے۔ موقوف فیصلے اور اوقات اس ڈیوائس پر رہتے ہیں۔ رسائی اختیاری ہے اور اسے Android کی ترتیبات میں بند کیا جا سکتا ہے۔ عام ایپ کی حدود استعمال تک رسائی کا استعمال کرتی ہیں اور دیگر ایپس پر ڈرا کرتی ہیں۔ فوکس ٹائمر ان اجازتوں کے بغیر کام کرتا ہے۔",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "اسٹڈی چینلز اس ڈیوائس پر صرف نظر آنے والے YouTube تخلیق کار کے ناموں یا ہینڈلز کا تعلیمی-تخلیق کار کیٹلاگ سے موازنہ کرتے ہیں۔ تخلیق کار کے لیبلز محفوظ یا اپ لوڈ نہیں ہوتے ہیں۔ ہو سکتا ہے کچھ تعلیمی چینلز کی پہچان نہ ہو۔"
 }

@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{1} 블록마다 {0}m 긴 휴식",
   "{0}–{1}m focus blocks": "{0}–{1}m 초점 블록",
   "“Instagram Reels blocked”": "“인스타그램 릴이 차단되었습니다”",
-  "“Time to study Physics!”": "“물리학을 공부할 시간입니다!”"
+  "“Time to study Physics!”": "“물리학을 공부할 시간입니다!”",
+  "Restoring your account": "계정 복원",
+  "Reconnecting to your saved data…": "저장된 데이터에 다시 연결하는 중…",
+  "Recovering your goals, subjects and focus history…": "목표, 과목, 집중 기록을 복구하는 중…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "아직 계정 데이터를 복원할 수 없습니다. 저장된 데이터는 보관됩니다. 계정 복구를 다시 시도하세요.",
+  "Choose photo": "사진 선택",
+  "Remove photo": "사진 삭제",
+  "Could not open this photo. Try another image.": "이 사진을 열 수 없습니다. 다른 이미지를 시도해 보세요.",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "사진은 계정에 백업되고 리더보드 공유가 활성화되면 공유됩니다.",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "이 기기에서 지원되는 교육 제작자를 인식합니다. 인식할 수 없는 채널은 일시중지됩니다.",
+  "Choose a recognized study channel.": "인정받는 학습 채널을 선택하세요.",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "인정받은 연구 제작자의 동영상만 허용됩니다. 이 장치에서 인식이 이루어집니다. 일부 교육 채널은 인식되지 않을 수 있습니다.",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인합니다. 연구 채널은 표시되는 제작자 이름이나 핸들을 이 기기에 번들로 제공되는 교육 제작자 카탈로그와만 비교합니다. 일부 교육 채널은 인식되지 않을 수 있습니다. 제작자 라벨은 저장되거나 업로드되지 않습니다. 다른 앱의 콘텐츠, 메시지, 비밀번호, 입력된 텍스트는 읽혀지지 않습니다. 일시중지 결정 및 시간은 이 기기에 유지됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이러한 권한 없이 작동합니다.",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "연구 채널은 표시되는 YouTube 크리에이터 이름만 비교하거나 이 기기의 교육 크리에이터 카탈로그를 처리합니다. 제작자 라벨은 저장되거나 업로드되지 않습니다. 일부 교육 채널은 인식되지 않을 수 있습니다."
 }

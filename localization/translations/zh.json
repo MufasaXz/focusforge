@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m 长断每 {1} 块",
   "{0}–{1}m focus blocks": "{0}–{1}m 聚焦块",
   "“Instagram Reels blocked”": "“Instagram 卷轴被阻止”",
-  "“Time to study Physics!”": "“是时候学习物理了！”"
+  "“Time to study Physics!”": "“是时候学习物理了！”",
+  "Restoring your account": "恢复您的帐户",
+  "Reconnecting to your saved data…": "正在重新连接到您保存的数据...",
+  "Recovering your goals, subjects and focus history…": "恢复您的目标、科目和焦点历史记录……",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "您的帐户数据尚无法恢复。您保存的数据将被保留。重试帐户恢复。",
+  "Choose photo": "选择照片",
+  "Remove photo": "删除照片",
+  "Could not open this photo. Try another image.": "无法打开这张照片。尝试另一个图像。",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "您的照片会通过您的帐户进行备份，并在排行榜共享开启时进行共享。",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "识别此设备上受支持的教育创作者。无法识别的频道将暂停。",
+  "Choose a recognized study channel.": "选择公认的学习渠道。",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "仅允许来自知名研究创作者的视频。识别发生在此设备上；某些教育渠道可能无法被识别。",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符。学习频道仅将可见的创作者姓名或句柄与该设备上捆绑的教育创作者目录进行比较。某些教育频道可能无法被识别。不会保存或上传创建者标签。其他应用程序的内容、消息、密码和键入的文本不会被读取。暂停决定和时间保留在此设备上。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些权限即可工作。",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "研究频道仅将可见的 YouTube 创作者姓名或句柄与此设备上的教育创作者目录进行比较。不会保存或上传创建者标签。某些教育频道可能无法被识别。"
 }

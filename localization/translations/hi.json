@@ -1167,5 +1167,18 @@
   "{0}m long break every {1} blocks": "{0}m प्रत्येक {1} ब्लॉक पर लंबा ब्रेक",
   "{0}–{1}m focus blocks": "{0}-{1}m फोकस ब्लॉक",
   "“Instagram Reels blocked”": "\"इंस्टाग्राम रील्स ब्लॉक कर दी गई\"",
-  "“Time to study Physics!”": "\"भौतिकी का अध्ययन करने का समय!\""
+  "“Time to study Physics!”": "\"भौतिकी का अध्ययन करने का समय!\"",
+  "Restoring your account": "आपका खाता पुनर्स्थापित किया जा रहा है",
+  "Reconnecting to your saved data…": "आपके सहेजे गए डेटा से पुनः कनेक्ट किया जा रहा है...",
+  "Recovering your goals, subjects and focus history…": "अपने लक्ष्यों, विषयों और फोकस इतिहास को पुनर्प्राप्त करना…",
+  "Your account data could not be restored yet. Your saved data is kept. Retry account recovery.": "आपका खाता डेटा अभी तक पुनर्स्थापित नहीं किया जा सका. आपका सहेजा गया डेटा रखा जाता है. खाता पुनर्प्राप्ति का पुनः प्रयास करें.",
+  "Choose photo": "तस्विर का चयन करो",
+  "Remove photo": "फ़ोटो हटाएँ",
+  "Could not open this photo. Try another image.": "इस फ़ोटो को खोला नहीं जा सका. कोई अन्य छवि आज़माएँ.",
+  "Your photo is backed up with your account and shared when leaderboard sharing is on.": "आपकी फ़ोटो का बैकअप आपके खाते से लिया जाता है और लीडरबोर्ड साझाकरण चालू होने पर साझा किया जाता है।",
+  "Recognizes supported educational creators on this device. Unrecognized channels are paused.": "इस डिवाइस पर समर्थित शैक्षिक रचनाकारों को पहचानता है। गैर-मान्यता प्राप्त चैनल रोक दिए गए हैं.",
+  "Choose a recognized study channel.": "एक मान्यता प्राप्त अध्ययन चैनल चुनें.",
+  "Only videos from recognized study creators are allowed. Recognition happens on this device; some educational channels may not be recognized.": "केवल मान्यता प्राप्त अध्ययन रचनाकारों के वीडियो की अनुमति है। इस उपकरण पर पहचान होती है; कुछ शैक्षणिक चैनलों को मान्यता नहीं दी जा सकती.",
+  "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters. Study channels only compares visible creator names or handles with a bundled educational-creator catalog on this device. Some educational channels may not be recognized. Creator labels are not saved or uploaded. Other apps’ contents, messages, passwords and typed text are not read. Pause decisions and times stay on this device. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without these permissions.": "फ़ोकसफ़ॉर्ज YouTube स्क्रीन पहचानकर्ताओं की जाँच तभी करता है जब आप शॉर्ट्स या फ़ीड फ़िल्टर सक्षम करते हैं। अध्ययन चैनल केवल इस डिवाइस पर बंडल किए गए शैक्षिक-निर्माता कैटलॉग के साथ दृश्यमान निर्माता नामों या हैंडल की तुलना करते हैं। कुछ शैक्षणिक चैनल मान्यता प्राप्त नहीं हो सकते हैं। निर्माता लेबल सहेजे या अपलोड नहीं किए जाते हैं. अन्य ऐप्स की सामग्री, संदेश, पासवर्ड और टाइप किया गया टेक्स्ट पढ़ा नहीं जाता है। रोके गए निर्णय और समय इस उपकरण पर बने रहते हैं। एक्सेस वैकल्पिक है और इसे एंड्रॉइड सेटिंग्स में बंद किया जा सकता है। सामान्य ऐप सीमाएं उपयोग पहुंच का उपयोग करती हैं और अन्य ऐप्स पर ड्रा करती हैं; फ़ोकस टाइमर इन अनुमतियों के बिना काम करता है।",
+  "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.": "अध्ययन चैनल केवल इस डिवाइस पर दृश्यमान YouTube निर्माता नामों या हैंडल की तुलना शैक्षिक-निर्माता कैटलॉग से करते हैं। निर्माता लेबल सहेजे या अपलोड नहीं किए जाते हैं. कुछ शैक्षणिक चैनल मान्यता प्राप्त नहीं हो सकते हैं।"
 }

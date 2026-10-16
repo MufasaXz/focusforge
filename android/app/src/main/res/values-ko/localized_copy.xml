@@ -81,10 +81,12 @@
   <string name="ff_copy_0a2b0fed0257" formatted="false">일일 집중 목표, 완료 링 및 남은 시간(분)입니다.</string>
   <string name="ff_copy_0f37116ca951" formatted="false">현재 연구 주제, 라이브 카운트다운 및 일일 진행 상황.</string>
   <string name="ff_copy_7c71b77df96c" formatted="false">월요일부터 일요일까지 완료된 집중 시간, 주간 총계 및 활성 일수입니다. 탭하여 대시보드를 엽니다.</string>
+  <string name="ff_copy_cdd9d2e0a56e" formatted="false">FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인합니다. 연구 채널은 표시되는 제작자 이름이나 핸들을 이 기기에 번들로 제공되는 교육 제작자 카탈로그와만 비교합니다. 일부 교육 채널은 인식되지 않을 수 있습니다. 제작자 라벨은 저장되거나 업로드되지 않습니다. 다른 앱의 콘텐츠, 메시지, 비밀번호, 입력된 텍스트는 읽혀지지 않습니다. 일시중지 결정 및 시간은 이 기기에 유지됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이러한 권한 없이 작동합니다.</string>
+  <string name="ff_copy_ada49350069b" formatted="false">인정받는 학습 채널을 선택하세요.</string>
   <string name="ff_block_back" formatted="false">중요한 내용으로 돌아가기</string>
   <string name="ff_block_anyway" formatted="false">일시 정지 및 호흡</string>
   <string name="accessibility_service_summary" formatted="false">선택적인 YouTube Shorts, 피드 및 연구 채널 필터.</string>
-  <string name="accessibility_service_description" formatted="false">FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인하여 이러한 화면을 일반 동영상과 구별합니다. 학습 채널만 활성화되면 지원되는 비디오 페이지에 표시되는 작성자 이름이나 핸들이 선택한 채널과 비교됩니다. 화면 확인은 장치에 유지되며 눈에 보이는 라벨은 유지되거나 업로드되지 않습니다. YouTube 일시 정지가 표시되는 동안에는 나갈 때 일시 정지를 닫기 위해 애플리케이션 창 패키지 이름만 확인됩니다. 다른 앱의 콘텐츠는 검사되지 않습니다. 귀하가 입력하는 메시지, 비밀번호 또는 텍스트는 읽지 않습니다. 일시 중지 결정과 해당 시간은 Shield 통찰력을 위해 이 장치에만 저장됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이들 중 어느 것도 없이 작동합니다.</string>
+  <string name="accessibility_service_description" formatted="false">FocusForge는 Shorts 또는 피드 필터를 활성화한 경우에만 YouTube 화면 식별자를 확인합니다. 연구 채널은 표시되는 제작자 이름이나 핸들을 이 기기에 번들로 제공되는 교육 제작자 카탈로그와만 비교합니다. 일부 교육 채널은 인식되지 않을 수 있습니다. 제작자 라벨은 저장되거나 업로드되지 않습니다. 다른 앱의 콘텐츠, 메시지, 비밀번호, 입력된 텍스트는 읽혀지지 않습니다. 일시중지 결정 및 시간은 이 기기에 유지됩니다. 액세스는 선택 사항이며 Android 설정에서 끌 수 있습니다. 일반적인 앱 경계는 사용 액세스 및 다른 앱 위에 그리기를 사용합니다. 포커스 타이머는 이러한 권한 없이 작동합니다.</string>
   <string name="ff_widget_description" formatted="false">레트로 카운트다운과 오늘의 완성된 집중시간. 탭하여 포커스를 엽니다.</string>
   <string name="ff_goal_widget_description" formatted="false">일일 집중 목표, 완료 링 및 남은 시간(분)입니다.</string>
   <string name="ff_study_widget_description" formatted="false">현재 연구 주제, 라이브 카운트다운 및 일일 진행 상황.</string>
