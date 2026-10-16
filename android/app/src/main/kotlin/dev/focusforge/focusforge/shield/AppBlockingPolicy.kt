@@ -15,12 +15,12 @@ object AppBlockingPolicy {
         if (packageName in protected || now < graceUntil) return null
         val rule = rules.ruleFor(packageName) ?: return null
         if (rules.strictModeActive(now)) {
-            return "Strict Mode is on. This stays closed until the window ends."
+            return "Paused until Strict Mode ends."
         }
         return when (rule.mode) {
-            RuleMode.BLOCK -> "You asked FocusForge to keep this closed."
+            RuleMode.BLOCK -> "You chose to pause this app."
             RuleMode.FOCUS -> if (rules.focusActive(now)) {
-                "This stays closed while you are focusing."
+                "Paused during your focus session."
             } else null
             RuleMode.BUDGET -> if (rule.budgetMinutes > 0 && usedMillis != null &&
                 usedMillis >= rule.budgetMinutes * 60_000L) {
@@ -61,6 +61,9 @@ class ForegroundAppTracker {
     private var lastResumeAt = Long.MIN_VALUE
     private var screenBoundaryAt = Long.MIN_VALUE
     private val stoppedAt = HashMap<Pair<String, String?>, Long>()
+    // Multi-resume and transient Overview can leave the underlying activity
+    // resumed. Retain only activities with no matching pause, in a bounded set.
+    private val resumed = LinkedHashMap<Pair<String, String?>, Long>()
     private var activity: String? = null
     private var suspendedPackage: String? = null
     private var suspendedActivity: String? = null
@@ -76,14 +79,22 @@ class ForegroundAppTracker {
         stoppedAt.entries.removeAll { it.value < at }
         suspendedPackage = null
         suspendedActivity = null
+        resumed[packageName to activity] = at
+        while (resumed.size > 32) {
+            resumed.remove(resumed.minByOrNull { it.value }!!.key)
+        }
         this.packageName = packageName
         this.activity = activity
     }
 
     fun pause(packageName: String, at: Long, activity: String? = null) {
-        if (at < lastResumeAt || at < screenBoundaryAt) return
+        if (at < screenBoundaryAt) return
         val key = packageName to activity
         stoppedAt[key] = maxOf(stoppedAt[key] ?: Long.MIN_VALUE, at)
+        resumed.entries.removeAll { (candidate, resumedAt) ->
+            candidate.first == packageName && resumedAt <= at &&
+                (candidate.second == null || activity == null || candidate.second == activity)
+        }
         lastEventAt = maxOf(lastEventAt, at)
         if (suspendedPackage == packageName &&
             (suspendedActivity == null || activity == null || suspendedActivity == activity)) {
@@ -91,9 +102,11 @@ class ForegroundAppTracker {
             suspendedActivity = null
         }
         if (this.packageName == packageName &&
+            at >= lastResumeAt &&
             (this.activity == null || activity == null || this.activity == activity)) {
-            this.packageName = null
-            this.activity = null
+            val underlying = resumed.maxByOrNull { it.value }?.key
+            this.packageName = underlying?.first
+            this.activity = underlying?.second
         }
     }
 
@@ -106,6 +119,7 @@ class ForegroundAppTracker {
         lastResumeAt = at
         screenBoundaryAt = at
         stoppedAt.clear()
+        resumed.clear()
     }
 
     fun screenOff(at: Long) {
@@ -117,6 +131,7 @@ class ForegroundAppTracker {
         }
         packageName = null
         activity = null
+        resumed.clear()
         lastEventAt = at
     }
 
@@ -126,6 +141,7 @@ class ForegroundAppTracker {
         if (packageName == null) {
             packageName = suspendedPackage
             activity = suspendedActivity
+            packageName?.let { resumed[it to activity] = at }
         }
         suspendedPackage = null
         suspendedActivity = null

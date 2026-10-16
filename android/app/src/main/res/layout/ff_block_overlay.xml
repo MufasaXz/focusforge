@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:maxWidth="320dp"
                 android:gravity="center"
-                android:text="A moment for your focus"
+                android:text="Stay with your focus"
                 android:textColor="@color/ff_block_on_surface"
                 android:textSize="30sp"
                 android:textStyle="bold" />
@@ -58,8 +58,7 @@
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:layout_marginTop="28dp"
-                android:padding="10dp"
-                android:background="@drawable/ff_block_icon_surface"
+                android:scaleType="fitCenter"
                 android:contentDescription="@null" />
 
             <TextView

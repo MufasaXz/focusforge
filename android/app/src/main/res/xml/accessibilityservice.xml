@@ -2,7 +2,7 @@
 <!-- YouTube-only screen identifiers, never messages/text, gestures or key events.
      Whole-app boundaries use UsageEvents and draw-over-apps without Accessibility. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged"
     android:packageNames="com.google.android.youtube"
     android:accessibilityFeedbackType="feedbackVisual"
     android:notificationTimeout="100"

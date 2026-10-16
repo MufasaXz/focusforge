@@ -314,7 +314,7 @@ class AppBlockingService : Service() {
         view.findViewById<TextView>(R.id.ff_block_app).text = label
         view.findViewById<TextView>(R.id.ff_block_reason).text = reason
         view.findViewById<TextView>(R.id.ff_block_note).text =
-            "Leave this app closed, or take three slow breaths before deciding to open it."
+            "Need access? Pause and breathe first."
         view.findViewById<Button>(R.id.ff_block_back).setOnClickListener {
             leaveBlockedApp(pkg, label)
         }

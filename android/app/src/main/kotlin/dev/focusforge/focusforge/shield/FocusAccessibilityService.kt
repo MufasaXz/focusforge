@@ -70,52 +70,7 @@ class FocusAccessibilityService : AccessibilityService() {
         /** The status bar, the shade and the volume panel. */
         private const val SYSTEM_UI = "com.android.systemui"
 
-        /**
-         * View ids that only exist while the Shorts player is on screen.
-         *
-         * Deliberately not "reel_" or "shorts": the home feed's Shorts carousel
-         * carries those too, and matching them closed all of YouTube the moment
-         * it launched.
-         */
-        private val SHORTS_PLAYER_IDS = listOf(
-            "reel_recycler",
-            "reel_pager",
-            "reel_watch",
-            "reel_player",
-            "shorts_player",
-        )
-
-        /**
-         * View ids that only exist on a browse surface — the home feed and the
-         * search results list.
-         *
-         * The home page does not advertise itself with a single id, and the
-         * list has changed names across YouTube releases, so several are
-         * matched and any one of them is enough. None of them appears on the
-         * watch page, which is what keeps a lecture opened from a direct link
-         * playing.
-         */
-        private val FEED_IDS = listOf(
-            "results",
-            "feed_recycler_view",
-            "home_feed",
-            "rich_grid",
-        )
-
-        /**
-         * View ids that mean a video is actually being watched.
-         *
-         * Deliberately not `player_view`: the home page inflates a player
-         * container for the miniplayer, so matching it read the feed as "a
-         * video is playing" and the home block never fired — which is the bug
-         * this list exists to close. The watch page's own player and its
-         * controls are not present anywhere else.
-         */
-        private val WATCH_IDS = listOf(
-            "watch_player",
-            "player_controller",
-            "fullscreen_player",
-        )
+        // Exact visible surface identities live in YouTubeSurfaceSignals.
 
         /** Extras the service puts on the intent it sends to [MainActivity]. */
         const val EXTRA_BLOCKED_PACKAGE = "ff.blocked.package"
@@ -426,9 +381,7 @@ class FocusAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val type = event.eventType
-        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            type != AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        ) {
+        if (!YouTubeEventPolicy.accepts(type, event.contentChangeTypes)) {
             return
         }
 
@@ -524,15 +477,24 @@ class FocusAccessibilityService : AccessibilityService() {
             // it set for the life of the service, and with it set every later
             // YouTube decision returned early — which is how the rules
             // appeared to switch themselves off until a restart.
-            val reason = try {
-                youtubeReason(current, root)
+            val signals = try {
+                youtubeSignals(current, root)
             } finally {
                 handler.post { inspecting = false }
             }
             handler.post {
+                val live = currentRules()
+                if (!youtubeArmed(live)) return@post
+                val reason = signals?.reason(
+                    live,
+                    System.currentTimeMillis(),
+                    SystemClock.uptimeMillis(),
+                    graceUntil[packageName] ?: 0L,
+                )
                 when {
-                    !youtubeArmed(currentRules()) -> Unit
-                    reason != null -> showOverlay(packageName, reason)
+                    reason != null && foregroundPackage() == packageName -> {
+                        showOverlay(packageName, reason)
+                    }
                     retry -> handler.postDelayed({
                         if (blockedPackage == null && foregroundPackage() == packageName) {
                             decide(packageName)
@@ -609,20 +571,17 @@ class FocusAccessibilityService : AccessibilityService() {
                     current.focusActive(System.currentTimeMillis())
                 )
 
-    private fun youtubeReason(
+    private fun youtubeSignals(
         current: ShieldRules,
         root: AccessibilityNodeInfo?,
-    ): String? {
+    ): YouTubeSurfaceSignals? {
         if (root == null) return null
         if (!youtubeArmed(current)) return null
         // Window events and the active window can change between capture and
         // inspection. Never walk another app's content after a YouTube event.
         if (root.packageName?.toString() != YOUTUBE) return null
 
-        val youtube = current.youtube
-        var shorts = false
-        var watching = false
-        var feed = false
+        val signals = YouTubeSurfaceSignals()
 
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
@@ -630,25 +589,13 @@ class FocusAccessibilityService : AccessibilityService() {
         while (queue.isNotEmpty() && visited < MAX_NODES) {
             val node = queue.removeFirst()
             visited++
-            val id = node.viewIdResourceName
-            if (id != null) {
-                if (SHORTS_PLAYER_IDS.any { id.contains(it) }) shorts = true
-                if (WATCH_IDS.any { id.contains(it) }) watching = true
-                if (FEED_IDS.any { id.contains(it) }) feed = true
-            }
+            signals.observe(node.viewIdResourceName, node.isVisibleToUser)
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { queue.add(it) }
             }
         }
 
-        return when {
-            // Shorts first: the vertical player can sit over the feed, and
-            // there the more specific reason is the one worth showing.
-            shorts && youtube.shorts -> "You asked FocusForge to keep Shorts closed."
-            feed && !watching && youtube.feed ->
-                "You asked FocusForge to keep the YouTube feed closed."
-            else -> null
-        }
+        return signals
     }
 
     // -- The block screen ----------------------------------------------------
@@ -676,7 +623,7 @@ class FocusAccessibilityService : AccessibilityService() {
         view.findViewById<TextView>(R.id.ff_block_app)?.text = label
         view.findViewById<TextView>(R.id.ff_block_reason)?.text = reason
         view.findViewById<TextView>(R.id.ff_block_note)?.text =
-            "Leave this app closed, or take three slow breaths before deciding to open it."
+            "Need access? Pause and breathe first."
 
         view.findViewById<Button>(R.id.ff_block_back)?.apply {
             setOnClickListener { leave(packageName, label) }
