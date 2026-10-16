@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../core/services/widget_service.dart';
 
@@ -166,10 +167,10 @@ class _AppShellState extends ConsumerState<AppShell>
     // Keyed by branch index, so the bar's order and the router's branches stay
     // one list rather than two that have to agree.
     final all = [
-      const NavigationDestination(
+      NavigationDestination(
         icon: Icon(Icons.dashboard_outlined),
         selectedIcon: Icon(Icons.dashboard),
-        label: 'Home',
+        label: context.tr("Home"),
       ),
       NavigationDestination(
         icon: _CoachAnchor(
@@ -177,7 +178,7 @@ class _AppShellState extends ConsumerState<AppShell>
           child: _ShieldIcon(shielded: shielded, icon: Icons.shield_outlined),
         ),
         selectedIcon: _ShieldIcon(shielded: shielded, icon: Icons.shield),
-        label: 'Shield',
+        label: context.tr("Shield"),
       ),
       NavigationDestination(
         // The first-run tips point at this icon from the root overlay, so the
@@ -188,12 +189,12 @@ class _AppShellState extends ConsumerState<AppShell>
           child: const Icon(Icons.timer_outlined),
         ),
         selectedIcon: const Icon(Icons.timer),
-        label: 'Focus',
+        label: context.tr("Focus"),
       ),
-      const NavigationDestination(
+      NavigationDestination(
         icon: Icon(Icons.person_outline),
         selectedIcon: Icon(Icons.person),
-        label: 'You',
+        label: context.tr("You"),
       ),
     ];
 

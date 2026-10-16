@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -94,12 +96,12 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
 
   String? get _emailError {
     if (!_emailTouched || _emailValue.isEmpty) return null;
-    return _emailValid ? null : 'Enter a full email address';
+    return _emailValid ? null : tr("Enter a full email address");
   }
 
   String? get _passwordError {
     if (!_passwordTouched || _password.text.isEmpty) return null;
-    if (!_passwordValid) return 'Use at least 8 characters';
+    if (!_passwordValid) return tr("Use at least 8 characters");
     return null;
   }
 
@@ -166,7 +168,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
       _shakeIt();
       showAppSnack(
         context,
-        'Could not sign in. Please try again.',
+        tr("Could not sign in. Please try again."),
         danger: true,
       );
     }
@@ -184,7 +186,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
       if (!mounted) return;
       showAppSnack(
         context,
-        'If an account exists for $email, a reset link is on its way.',
+        tr("If an account exists for {0}, a reset link is on its way.", [
+          email,
+        ]),
         icon: Icons.mark_email_read_outlined,
       );
     } on AuthException catch (e) {
@@ -242,8 +246,8 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Eyebrow(
-                'YOUR FOCUSFORGE ACCOUNT',
+              Eyebrow(
+                context.tr("YOUR FOCUSFORGE ACCOUNT"),
                 icon: Icons.lock_outline_rounded,
               ),
               const SizedBox(height: Gap.lg),
@@ -251,7 +255,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                 children: [
                   Expanded(
                     child: Text(
-                      _signUp ? 'Create your account' : 'Sign in with email',
+                      _signUp
+                          ? context.tr("Create your account")
+                          : context.tr("Sign in with email"),
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -266,8 +272,12 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               const SizedBox(height: Gap.xs),
               Text(
                 widget.service.usesRemoteCredentials
-                    ? 'Use an email you can open. New accounts need email verification. Your detailed study log stays on this device.'
-                    : 'Account sign-in is unavailable. You can study on this device without an account.',
+                    ? context.tr(
+                        "Linked account · private study backup",
+                      )
+                    : context.tr(
+                        "Account sign-in is unavailable. You can study on this device without an account.",
+                      ),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -292,18 +302,20 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               const SizedBox(height: Gap.md),
               AppTextField(
                 controller: _password,
-                hint: 'Password',
+                hint: context.tr("Password"),
                 icon: Icons.lock_outline_rounded,
                 obscure: !_reveal,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => unawaited(_submit()),
                 errorText: _passwordError,
                 helperText: _signUp && _passwordError == null
-                    ? 'At least 8 characters'
+                    ? context.tr("At least 8 characters")
                     : null,
                 suffix: IconButton(
                   onPressed: () => setState(() => _reveal = !_reveal),
-                  tooltip: _reveal ? 'Hide password' : 'Show password',
+                  tooltip: _reveal
+                      ? context.tr("Hide password")
+                      : context.tr("Show password"),
                   iconSize: 18,
                   color: cs.onSurfaceVariant,
                   icon: Icon(
@@ -324,7 +336,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               ],
               const SizedBox(height: Gap.xl),
               PrimaryAction(
-                label: _signUp ? 'Create account' : 'Sign in',
+                label: _signUp
+                    ? context.tr("Create account")
+                    : context.tr("Sign in"),
                 busy: _busy,
                 enabled: _canSubmit,
                 onTap: _submit,
@@ -333,12 +347,12 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               const SizedBox(height: Gap.xs),
               GhostAction(
                 label: _signUp
-                    ? 'I already have an account'
-                    : 'Create an account instead',
+                    ? context.tr("I already have an account")
+                    : context.tr("Create an account instead"),
                 onTap: _busy ? null : _toggleMode,
               ),
               GhostAction(
-                label: 'Forgot password?',
+                label: context.tr("Forgot password?"),
                 onTap: _busy ? null : () => unawaited(_reset()),
               ),
               const PrivacyPolicyLink(),
@@ -361,9 +375,9 @@ class _StrengthBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final (label, color) = switch (value) {
-      < 0.34 => ('Weak', cs.error),
-      < 0.67 => ('Fair', cs.tertiary),
-      _ => ('Strong', cs.primary),
+      < 0.34 => (context.tr("Weak"), cs.error),
+      < 0.67 => (context.tr("Fair"), cs.tertiary),
+      _ => (context.tr("Strong"), cs.primary),
     };
 
     return Row(

@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -76,8 +78,8 @@ Future<bool> showAppConfirmDialog({
   required BuildContext context,
   required String title,
   required String message,
-  String confirmLabel = 'Confirm',
-  String cancelLabel = 'Cancel',
+  String? confirmLabel,
+  String? cancelLabel,
   String? requirePhrase,
   String? fieldHint,
   String? footnote,
@@ -91,8 +93,8 @@ Future<bool> showAppConfirmDialog({
     builder: (context) => _ConfirmBody(
       title: title,
       message: message,
-      confirmLabel: confirmLabel,
-      cancelLabel: cancelLabel,
+      confirmLabel: confirmLabel ?? context.tr("Confirm"),
+      cancelLabel: cancelLabel ?? context.tr("Cancel"),
       requirePhrase: requirePhrase,
       fieldHint: fieldHint,
       footnote: footnote,
@@ -270,7 +272,7 @@ class _ConfirmBodyState extends State<_ConfirmBody> {
         if (widget.requirePhrase != null) ...[
           const SizedBox(height: Gap.lg),
           Text(
-            'Type “${widget.requirePhrase}” to continue.',
+            context.tr("Type “{0}” to continue.", [widget.requirePhrase]),
             style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: cs.onSurfaceVariant),
           ),
@@ -397,7 +399,7 @@ class _InputBodyState extends State<_InputBody> {
           children: [
             Expanded(
               child: _DialogButton(
-                label: 'Cancel',
+                label: context.tr("Cancel"),
                 onTap: () => Navigator.of(context).pop(),
               ),
             ),

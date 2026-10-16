@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -103,20 +105,20 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
             const SheetHandle(),
             const SizedBox(height: Gap.lg),
             Text(
-              'Link an account',
+              context.tr("Link an account"),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: Gap.xs),
             Text(
-              'Signing in puts a credential behind everything you have logged '
-              'here. Nothing on this device is reset, and study groups and the '
-              'leaderboard open up.',
+              context.tr(
+                "Signing in puts a credential behind everything you have logged here. Nothing on this device is reset, and study groups and the leaderboard open up.",
+              ),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
             ProviderRow(
-              label: 'Continue with Google',
+              label: context.tr("Continue with Google"),
               leading: const GoogleMark(),
               busy: _busy == 'google',
               onTap: googleLive
@@ -128,7 +130,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
             ),
             const SizedBox(height: Gap.md),
             ProviderRow(
-              label: 'Continue with Email',
+              label: context.tr("Continue with Email"),
               leading: const MailMark(),
               busy: _busy == 'email',
               onTap: providers.contains('email') ? _email : null,

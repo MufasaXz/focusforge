@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -36,7 +37,10 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
       if (mounted) showAppSnack(context, e.message);
     } catch (_) {
       if (mounted) {
-        showAppSnack(context, 'Could not change the group. Please try again.');
+        showAppSnack(
+          context,
+          tr("Could not change the group. Please try again."),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -47,22 +51,24 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
     if (!await confirmCommunityTerms(context) || !mounted) return;
     final name = await showAppInputDialog(
       context: context,
-      title: 'Start a study group',
-      message: 'Choose a name your friends will recognise.',
-      actionLabel: 'Next',
-      hintText: 'Sunday study club',
+      title: tr("Start a study group"),
+      message: tr("Choose a name your friends will recognise."),
+      actionLabel: tr("Next"),
+      hintText: tr("Sunday study club"),
       icon: Icons.groups_outlined,
     );
     if (name == null || !mounted) return;
     if (name.trim().isEmpty || name.trim().length > 60) {
-      showAppSnack(context, 'Use a name between 1 and 60 characters.');
+      showAppSnack(context, tr("Use a name between 1 and 60 characters."));
       return;
     }
     final target = await showAppInputDialog(
       context: context,
-      title: 'Your shared weekly goal',
-      message: 'Total hours for everyone together. Weeks run Monday to Sunday in UTC.',
-      actionLabel: 'Create group',
+      title: tr("Your shared weekly goal"),
+      message: tr(
+        "Total hours for everyone together. Weeks run Monday to Sunday in UTC.",
+      ),
+      actionLabel: tr("Create group"),
       hintText: '10',
       icon: Icons.flag_outlined,
       keyboardType: TextInputType.number,
@@ -70,7 +76,7 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
     if (target == null || !mounted) return;
     final hours = int.tryParse(target);
     if (hours == null || hours < 1 || hours > 1000) {
-      showAppSnack(context, 'Choose a goal from 1 to 1,000 hours.');
+      showAppSnack(context, tr("Choose a goal from 1 to 1,000 hours."));
       return;
     }
     await _change(
@@ -84,16 +90,18 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
     if (!await confirmCommunityTerms(context) || !mounted) return;
     final code = await showAppInputDialog(
       context: context,
-      title: 'Join a study group',
-      message: 'Joining shares your name, weekly focus minutes and active focus timer with members.',
-      actionLabel: 'Join group',
+      title: tr("Join a study group"),
+      message: tr(
+        "Joining shares your name, weekly focus minutes and active focus timer with members.",
+      ),
+      actionLabel: tr("Join group"),
       hintText: 'ABCD-EFGH-JK',
       icon: Icons.group_add_outlined,
     );
     if (code == null || !mounted) return;
     final clean = code.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
     if (ref.read(groupsProvider).any((g) => g.inviteCode == clean)) {
-      showAppSnack(context, 'You are already in that group.');
+      showAppSnack(context, tr("You are already in that group."));
       return;
     }
     await _change(
@@ -111,29 +119,31 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
     ref.watch(groupPublisherProvider);
     final syncError = ref.watch(groupSyncErrorProvider);
     return AppPage(
-      title: 'Study groups',
-      subtitle: 'Make room for focused company',
+      title: context.tr("Study groups"),
+      subtitle: context.tr("Make room for focused company"),
       child: !canUse
-          ? const AccountGate(
-              title: 'Study better, together',
-              subtitle: 'Link an account to create a private group or join friends with an invite code. Your existing sessions stay with you.',
-              unlocked: 'Study groups are unlocked.',
-              sectionTitle: 'A shared rhythm',
+          ? AccountGate(
+              title: context.tr("Study better, together"),
+              subtitle: context.tr(
+                "Link an account to create a private group or join friends with an invite code. Your existing sessions stay with you.",
+              ),
+              unlocked: context.tr("Study groups are unlocked."),
+              sectionTitle: context.tr("A shared rhythm"),
               items: [
                 GateItem(
                   Icons.flag_outlined,
-                  'One weekly goal',
-                  'Everyone’s completed focus minutes count',
+                  context.tr("One weekly goal"),
+                  context.tr("Everyone’s completed focus minutes count"),
                 ),
                 GateItem(
                   Icons.leaderboard_outlined,
-                  'Private standings',
-                  'Visible only to members of your group',
+                  context.tr("Private standings"),
+                  context.tr("Visible only to members of your group"),
                 ),
                 GateItem(
                   Icons.timer_outlined,
-                  'Focus alongside friends',
-                  'See who has a focus timer running',
+                  context.tr("Focus alongside friends"),
+                  context.tr("See who has a focus timer running"),
                 ),
               ],
             )
@@ -155,18 +165,20 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SectionHeader(
-                          title: 'A shared rhythm',
+                        SectionHeader(
+                          title: context.tr("A shared rhythm"),
                           icon: Icons.groups_outlined,
                         ),
                         const SizedBox(height: Gap.md),
                         Text(
-                          'A little company. A lot of focus.',
+                          context.tr("A little company. A lot of focus."),
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: Gap.sm),
-                        const Text(
-                          'Share a weekly goal, see real progress and find out who is studying. Your session log stays on your device.',
+                        Text(
+                          context.tr(
+                            "Everyone’s completed focus minutes count",
+                          ),
                         ),
                         const SizedBox(height: Gap.lg),
                         Wrap(
@@ -176,12 +188,12 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                             FilledButton.icon(
                               onPressed: available && !_busy ? _create : null,
                               icon: const Icon(Icons.add_rounded),
-                              label: const Text('Create group'),
+                              label: Text(context.tr("Create group")),
                             ),
                             OutlinedButton.icon(
                               onPressed: available && !_busy ? _join : null,
                               icon: const Icon(Icons.group_add_outlined),
-                              label: const Text('Join with code'),
+                              label: Text(context.tr("Join with code")),
                             ),
                           ],
                         ),
@@ -196,12 +208,14 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                 ),
                 const SizedBox(height: Gap.xl),
                 if (!available)
-                  const Text(
-                    'Study groups are unavailable in this build. Use the connected Android app.',
+                  Text(
+                    context.tr(
+                      "Study groups are unavailable in this build. Use the connected Android app.",
+                    ),
                   )
                 else ...[
-                  const SectionHeader(
-                    title: 'Your groups',
+                  SectionHeader(
+                    title: context.tr("Your groups"),
                     icon: Icons.groups_rounded,
                   ),
                   if (syncError != null)
@@ -212,11 +226,11 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                   groups.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, _) => AppSection(
-                      title: 'Groups could not load',
+                      title: context.tr("Groups could not load"),
                       children: [
                         ListTile(
-                          title: const Text(
-                            'Check your connection and try again',
+                          title: Text(
+                            context.tr("Check your connection and try again"),
                           ),
                           trailing: const Icon(Icons.refresh),
                           onTap: () => ref.invalidate(cloudGroupsProvider),
@@ -227,10 +241,12 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         if (list.isEmpty)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.all(Gap.lg),
                             child: Text(
-                              'Your next study circle starts here. Create a group, then share its code.',
+                              context.tr(
+                                "Your next study circle starts here. Create a group, then share its code.",
+                              ),
                             ),
                           ),
                         LayoutBuilder(
@@ -265,7 +281,9 @@ class _StudyGroupsScreenState extends ConsumerState<StudyGroupsScreen> {
                 ],
                 const SizedBox(height: Gap.lg),
                 Text(
-                  'Up to 32 members per group. Members see your name, weekly totals and focus status. Weeks reset on Monday at 00:00 UTC. Leaving removes your row.',
+                  context.tr(
+                    "Up to 32 members per group. Members see your name, weekly totals and focus status. Weeks reset on Monday at 00:00 UTC. Leaving removes your row.",
+                  ),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -325,7 +343,10 @@ class _GroupCard extends ConsumerWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      '${group.memberCount} members · $focusing focusing now',
+                      context.tr("{0} members · {1} focusing now", [
+                        group.memberCount,
+                        focusing,
+                      ]),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
@@ -335,10 +356,17 @@ class _GroupCard extends ConsumerWidget {
               if (members.isLoading)
                 const LinearProgressIndicator()
               else if (members.hasError)
-                const Text('Progress could not sync. Open the group to retry.')
+                Text(
+                  context.tr(
+                    "Progress could not sync. Open the group to retry.",
+                  ),
+                )
               else ...[
                 Text(
-                  '${formatHoursShort(hours)} of ${formatHoursShort(group.targetHours)}',
+                  context.tr("{0} of {1}", [
+                    formatHoursShort(hours),
+                    formatHoursShort(group.targetHours),
+                  ]),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: Gap.sm),
@@ -368,9 +396,11 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
   Future<void> _leave(StudyGroup group) async {
     final yes = await showAppConfirmDialog(
       context: context,
-      title: 'Leave ${group.name}?',
-      message: 'Your progress will be removed from this group. If you own it, ownership passes to another member. The last member closes the group.',
-      confirmLabel: 'Leave group',
+      title: tr("Leave {0}?", [group.name]),
+      message: tr(
+        "Your progress will be removed from this group. If you own it, ownership passes to another member. The last member closes the group.",
+      ),
+      confirmLabel: tr("Leave group"),
       destructive: true,
       icon: Icons.logout,
     );
@@ -384,7 +414,7 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
         setState(() => _busy = false);
         showAppSnack(
           context,
-          'Could not leave. Check your connection and try again.',
+          tr("Could not leave. Check your connection and try again."),
         );
       }
     }
@@ -405,12 +435,12 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
     return AppPage(
       title: group.name,
       onBack: () => Navigator.of(context).pop(),
-      subtitle: '${group.memberCount} members · This week',
+      subtitle: context.tr("{0} members · This week", [group.memberCount]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSection(
-            title: 'Invite your circle',
+            title: context.tr("Invite your circle"),
             children: [
               ListTile(
                 leading: const Icon(Icons.key_outlined),
@@ -420,8 +450,8 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
-                subtitle: const Text(
-                  'Tap to copy · Anyone with this code can join',
+                subtitle: Text(
+                  context.tr("Tap to copy · Anyone with this code can join"),
                 ),
                 trailing: const Icon(Icons.copy_rounded),
                 onTap: () async {
@@ -429,7 +459,7 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
                     ClipboardData(text: group.inviteCode),
                   );
                   if (context.mounted) {
-                    showAppSnack(context, 'Invite code copied.');
+                    showAppSnack(context, context.tr("Invite code copied."));
                   }
                 },
               ),
@@ -443,11 +473,11 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
               router.go('/focus');
             },
             icon: const Icon(Icons.timer_outlined),
-            label: const Text('Start your focus timer'),
+            label: Text(context.tr("Start your focus timer")),
           ),
           const SizedBox(height: Gap.xl),
-          const SectionHeader(
-            title: 'Weekly standings',
+          SectionHeader(
+            title: context.tr("Weekly standings"),
             icon: Icons.leaderboard_outlined,
           ),
           members.when(
@@ -455,7 +485,7 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
             error: (_, _) => TextButton.icon(
               onPressed: () => ref.invalidate(groupMembersProvider(group.id)),
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry member progress'),
+              label: Text(context.tr("Retry member progress")),
             ),
             data: (list) {
               final hidden = ref.watch(blockedCommunityUsersProvider);
@@ -469,7 +499,7 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
                     ),
                   );
               return AppSection(
-                title: 'Completed focus',
+                title: context.tr("Completed focus"),
                 children: [
                   for (final member in rows)
                     ListTile(
@@ -483,8 +513,8 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
                       ),
                       subtitle: Text(
                         member.focusingAt(now)
-                            ? 'Focusing now'
-                            : 'Ready for another session',
+                            ? context.tr("Focusing now")
+                            : context.tr("Ready for another session"),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -516,13 +546,15 @@ class _GroupDetailState extends ConsumerState<_GroupDetail> {
               groupId: group.id,
             ),
             icon: const Icon(Icons.flag_outlined),
-            label: const Text('Report group'),
+            label: Text(context.tr("Report group")),
           ),
           const SizedBox(height: Gap.xl),
           OutlinedButton.icon(
             onPressed: _busy ? null : () => _leave(group),
             icon: const Icon(Icons.logout_rounded),
-            label: Text(_busy ? 'Leaving…' : 'Leave group'),
+            label: Text(
+              _busy ? context.tr("Leaving…") : context.tr("Leave group"),
+            ),
           ),
         ],
       ),

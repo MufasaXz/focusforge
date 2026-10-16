@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -26,30 +28,36 @@ class NotificationsScreen extends ConsumerWidget {
     final prefs = ref.watch(notificationsProvider);
 
     return AppPage(
-      title: 'Notifications',
-      subtitle: '${_activeCount(prefs)} of 8 reminders on',
+      title: context.tr("Notifications"),
+      subtitle: context.tr("{0} of 8 reminders on", [_activeCount(prefs)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSection(
-            title: 'Your running timer',
-            footnote: 'Dynamic bars are provided by your device software. Availability and appearance vary by device.',
+            title: context.tr("Your running timer"),
+            footnote: context.tr(
+              "Dynamic bars are provided by your device software. Availability and appearance vary by device.",
+            ),
             children: [
               ListTile(
                 leading: const Icon(Icons.timer_outlined),
-                title: const Text('Countdown & dynamic bars'),
-                subtitle: const Text('Keep your subject and countdown in an ongoing notification. Allow notifications in App access.'),
+                title: Text(context.tr("Countdown & dynamic bars")),
+                subtitle: Text(
+                  context.tr(
+                    "Keep your subject and countdown in an ongoing notification. Allow notifications in App access.",
+                  ),
+                ),
                 trailing: const AppChevron(),
                 onTap: () => context.goNamed(AppRoutes.permissions),
               ),
             ],
           ),
           AppSection(
-            title: 'Focus reminders',
+            title: context.tr("Focus reminders"),
             children: [
               _SwitchRow(
-                title: 'Session reminders',
-                subtitle: '“Time to study Physics!”',
+                title: context.tr("Session reminders"),
+                subtitle: context.tr("“Time to study Physics!”"),
                 value: prefs.sessionReminders,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(sessionReminders: v)),
@@ -57,60 +65,62 @@ class NotificationsScreen extends ConsumerWidget {
             ],
           ),
           AppSection(
-            title: 'Progress',
+            title: context.tr("Progress"),
             children: [
               _SwitchRow(
-                title: 'Daily summary',
-                subtitle: 'Your focus total at the end of the day',
+                title: context.tr("Daily summary"),
+                subtitle: context.tr("Your focus total at the end of the day"),
                 value: prefs.dailySummary,
                 onChanged: (v) => _save(ref, prefs.copyWith(dailySummary: v)),
               ),
               _SwitchRow(
-                title: 'Weekly report',
-                subtitle: 'A Sunday recap of the week',
+                title: context.tr("Weekly report"),
+                subtitle: context.tr("A Sunday recap of the week"),
                 value: prefs.weeklyReport,
                 onChanged: (v) => _save(ref, prefs.copyWith(weeklyReport: v)),
               ),
               _SwitchRow(
-                title: 'Streak risk alerts',
-                subtitle: 'A nudge before a streak breaks',
+                title: context.tr("Streak risk alerts"),
+                subtitle: context.tr("A nudge before a streak breaks"),
                 value: prefs.streakAlerts,
                 onChanged: (v) => _save(ref, prefs.copyWith(streakAlerts: v)),
               ),
             ],
           ),
           AppSection(
-            title: 'Blocking',
-            footnote:
-                'These fire while a block is active, so they can be '
-                'frequent.',
+            title: context.tr("Blocking"),
+            footnote: context.tr(
+              "These fire while a block is active, so they can be frequent.",
+            ),
             children: [
               _SwitchRow(
-                title: 'Real-time block alerts',
-                subtitle: '“Instagram Reels blocked”',
+                title: context.tr("Real-time block alerts"),
+                subtitle: context.tr("“Instagram Reels blocked”"),
                 value: prefs.blockingAlerts,
                 onChanged: (v) => _save(ref, prefs.copyWith(blockingAlerts: v)),
               ),
             ],
           ),
           AppSection(
-            title: 'Social',
+            title: context.tr("Social"),
             children: [
               _SwitchRow(
-                title: 'Study buddy updates',
-                subtitle: 'When a buddy starts or finishes a session',
+                title: context.tr("Study buddy updates"),
+                subtitle: context.tr(
+                  "When a buddy starts or finishes a session",
+                ),
                 value: prefs.buddyUpdates,
                 onChanged: (v) => _save(ref, prefs.copyWith(buddyUpdates: v)),
               ),
               _SwitchRow(
-                title: 'Group activity',
-                subtitle: 'Targets met and new members',
+                title: context.tr("Group activity"),
+                subtitle: context.tr("Targets met and new members"),
                 value: prefs.groupActivity,
                 onChanged: (v) => _save(ref, prefs.copyWith(groupActivity: v)),
               ),
               _SwitchRow(
-                title: 'Challenge invitations',
-                subtitle: 'Weekly challenges from friends',
+                title: context.tr("Challenge invitations"),
+                subtitle: context.tr("Weekly challenges from friends"),
                 value: prefs.challengeInvites,
                 onChanged: (v) =>
                     _save(ref, prefs.copyWith(challengeInvites: v)),
@@ -118,16 +128,20 @@ class NotificationsScreen extends ConsumerWidget {
             ],
           ),
           AppSection(
-            title: 'Quiet hours',
-            footnote: 'Reminders pause during the window; focus timers do not.',
+            title: context.tr("Quiet hours"),
+            footnote: context.tr(
+              "Reminders pause during the window; focus timers do not.",
+            ),
             children: [
               ListTile(
-                title: const Text('Quiet hours'),
+                title: Text(context.tr("Quiet hours")),
                 subtitle: Text(
                   prefs.quietHoursEnabled
-                      ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
-                            '${_clock(context, prefs.quietEndHour)}'
-                      : 'Off — notifications arrive at any hour',
+                      ? context.tr("Muted {0} – {1}", [
+                          _clock(context, prefs.quietStartHour),
+                          _clock(context, prefs.quietEndHour),
+                        ])
+                      : context.tr("Off — notifications arrive at any hour"),
                 ),
                 leading: const Icon(Icons.bedtime_outlined),
                 trailing: const AppChevron(),
@@ -167,7 +181,9 @@ class NotificationsScreen extends ConsumerWidget {
                 hour: start ? prefs.quietStartHour : prefs.quietEndHour,
                 minute: 0,
               ),
-              helpText: start ? 'Quiet hours start' : 'Quiet hours end',
+              helpText: start
+                  ? context.tr("Quiet hours start")
+                  : context.tr("Quiet hours end"),
             );
             if (picked == null) return;
             await write(
@@ -212,28 +228,30 @@ class NotificationsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: Gap.xl),
                       Text(
-                        'Quiet hours',
+                        context.tr("Quiet hours"),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: Gap.xs),
                       Text(
-                        'Mute every reminder between these times.',
+                        context.tr("Mute every reminder between these times."),
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: Gap.lg),
                       _SwitchRow(
-                        title: 'Quiet hours',
+                        title: context.tr("Quiet hours"),
                         subtitle: prefs.quietHoursEnabled
-                            ? 'Muted ${_clock(context, prefs.quietStartHour)} – '
-                                  '${_clock(context, prefs.quietEndHour)}'
-                            : 'Off',
+                            ? context.tr("Muted {0} – {1}", [
+                                _clock(context, prefs.quietStartHour),
+                                _clock(context, prefs.quietEndHour),
+                              ])
+                            : context.tr("Off"),
                         value: prefs.quietHoursEnabled,
                         onChanged: (v) =>
                             write(prefs.copyWith(quietHoursEnabled: v)),
                       ),
                       ListTile(
-                        title: const Text('Starts'),
+                        title: Text(context.tr("Starts")),
                         leading: const Icon(Icons.schedule_outlined),
                         trailing: _TimeValue(
                           value: _clock(context, prefs.quietStartHour),
@@ -241,7 +259,7 @@ class NotificationsScreen extends ConsumerWidget {
                         onTap: () => pick(start: true),
                       ),
                       ListTile(
-                        title: const Text('Ends'),
+                        title: Text(context.tr("Ends")),
                         leading: const Icon(Icons.schedule_outlined),
                         trailing: _TimeValue(
                           value: _clock(context, prefs.quietEndHour),
@@ -250,7 +268,7 @@ class NotificationsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: Gap.xl),
                       AppActionButton(
-                        label: 'Done',
+                        label: context.tr("Done"),
                         icon: Icons.check_rounded,
                         onTap: () => Navigator.of(context).pop(),
                       ),

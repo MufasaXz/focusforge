@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -34,7 +36,10 @@ class FocusOverview extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Eyebrow('YOUR WEEK IN FOCUS', icon: Icons.insights_rounded),
+            Eyebrow(
+              context.tr("YOUR WEEK IN FOCUS"),
+              icon: Icons.insights_rounded,
+            ),
             const SizedBox(height: Gap.md),
             Text(
               formatMinutes((total * 60).round()),
@@ -45,7 +50,10 @@ class FocusOverview extends ConsumerWidget {
             ),
             const SizedBox(height: Gap.xs),
             Text(
-              '$active active ${active == 1 ? 'day' : 'days'} in the last 7 days',
+              context.tr("{0} active {1} in the last 7 days", [
+                active,
+                active == 1 ? 'day' : 'days',
+              ]),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: Gap.lg),
@@ -105,13 +113,16 @@ class FocusOverview extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  'Today: ${formatMinutes(today)} / ${formatMinutes(goal)}',
+                  context.tr("Today: {0} / {1}", [
+                    formatMinutes(today),
+                    formatMinutes(goal),
+                  ]),
                   style: tt.labelMedium,
                 ),
                 TextButton.icon(
                   onPressed: () => showDailyGoalSheet(context),
                   icon: const Icon(Icons.tune_rounded, size: 16),
-                  label: const Text('Adjust goal'),
+                  label: Text(context.tr("Adjust goal")),
                 ),
               ],
             ),

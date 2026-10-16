@@ -1,3 +1,5 @@
+import '../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -142,7 +144,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             // name with no package behind it.
             args: args is BreathGateArgs
                 ? args
-                : const BreathGateArgs(appName: 'That app'),
+                : BreathGateArgs(appName: context.tr("That app")),
           );
         },
       ),
@@ -220,7 +222,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'permissions',
                     name: AppRoutes.permissions,
                     builder: (context, state) => Scaffold(
-                      appBar: AppBar(title: const Text('App access')),
+                      appBar: AppBar(title: Text(context.tr("App access"))),
                       body: SafeArea(
                         child: Center(
                           child: ConstrainedBox(
@@ -290,7 +292,7 @@ class _RouteError extends StatelessWidget {
             children: [
               const Icon(Icons.explore_off_rounded, size: 40),
               const SizedBox(height: 16),
-              const Text('That screen moved.'),
+              Text(context.tr("That screen moved.")),
               const SizedBox(height: 8),
               Text(
                 '${error ?? 'Unknown route'}',
@@ -301,7 +303,7 @@ class _RouteError extends StatelessWidget {
               FilledButton(
                 onPressed: () =>
                     context.go(AppRoutes.paths[AppRoutes.dashboard]!),
-                child: const Text('Back to dashboard'),
+                child: Text(context.tr("Back to dashboard")),
               ),
             ],
           ),

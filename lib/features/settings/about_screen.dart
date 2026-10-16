@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class AboutScreen extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return AppPage(
-      title: 'About',
+      title: context.tr("About"),
       subtitle: 'FocusForge v$_version',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -62,13 +63,13 @@ class AboutScreen extends StatelessWidget {
                       size: 18,
                       color: cs.tertiary,
                     ),
-                    label: const Text('Free and open source'),
+                    label: Text(context.tr("Free and open source")),
                   ),
                   const SizedBox(height: Gap.md),
                   Text(
-                    'MIT licensed. The whole app lives on GitHub — the shield '
-                    'rules, the Pomodoro engine and the interface you are '
-                    'looking at.',
+                    context.tr(
+                      "MIT licensed. The whole app lives on GitHub — the shield rules, the Pomodoro engine and the interface you are looking at.",
+                    ),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
@@ -79,46 +80,48 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: Gap.xl),
           AppSection(
-            title: 'Links',
-            footnote:
-                'Links are copied to the clipboard — paste them into a '
-                'browser.',
+            title: context.tr("Links"),
+            footnote: context.tr(
+              "Links are copied to the clipboard — paste them into a browser.",
+            ),
             children: [
               ListTile(
-                title: const Text('Star on GitHub'),
-                subtitle: const Text('github.com/MufasaXz/focusforge'),
+                title: Text(context.tr("Star on GitHub")),
+                subtitle: Text(context.tr("github.com/MufasaXz/focusforge")),
                 leading: const Icon(Icons.code),
                 trailing: const _CopyGlyph(),
-                onTap: () => _copy(context, _repoUrl, 'Repository link'),
+                onTap: () =>
+                    _copy(context, _repoUrl, context.tr("Repository link")),
               ),
               ListTile(
-                title: const Text('Report a bug'),
-                subtitle: const Text('Open an issue on GitHub'),
+                title: Text(context.tr("Report a bug")),
+                subtitle: Text(context.tr("Open an issue on GitHub")),
                 leading: const Icon(Icons.bug_report_outlined),
                 trailing: const _CopyGlyph(),
-                onTap: () => _copy(context, _issuesUrl, 'Bug report link'),
+                onTap: () =>
+                    _copy(context, _issuesUrl, context.tr("Bug report link")),
               ),
             ],
           ),
           AppSection(
-            title: 'Credits',
+            title: context.tr("Credits"),
             children: [
-              const ListTile(
-                title: Text('Built with Flutter'),
+              ListTile(
+                title: Text(context.tr("Built with Flutter")),
                 subtitle: Text(
-                  'Interface, engine and Material 3 design system',
+                  context.tr("Interface, engine and Material 3 design system"),
                 ),
                 leading: Icon(Icons.flutter_dash),
               ),
               ListTile(
-                title: const Text('Ambient audio'),
-                subtitle: const Text('Six CC0 loops from freesound.org'),
+                title: Text(context.tr("Ambient audio")),
+                subtitle: Text(context.tr("Six CC0 loops from freesound.org")),
                 leading: const Icon(Icons.graphic_eq),
                 trailing: const AppChevron(),
                 onTap: () => _showAudioCredits(context),
               ),
-              const ListTile(
-                title: Text('Typeface'),
+              ListTile(
+                title: Text(context.tr("Typeface")),
                 subtitle: Text(
                   'Inter and Inter Display, SIL Open Font License',
                 ),
@@ -127,18 +130,20 @@ class AboutScreen extends StatelessWidget {
             ],
           ),
           AppSection(
-            title: 'Legal',
+            title: context.tr("Legal"),
             children: [
               ListTile(
-                title: const Text('MIT licence'),
-                subtitle: const Text('Use, modify and redistribute freely'),
+                title: Text(context.tr("MIT licence")),
+                subtitle: Text(
+                  context.tr("Use, modify and redistribute freely"),
+                ),
                 leading: const Icon(Icons.balance_outlined),
                 trailing: const AppChevron(),
                 onTap: () => _showMit(context),
               ),
               ListTile(
-                title: const Text('Open source licences'),
-                subtitle: const Text('Every bundled package and asset'),
+                title: Text(context.tr("Open source licences")),
+                subtitle: Text(context.tr("Every bundled package and asset")),
                 leading: const Icon(Icons.article_outlined),
                 trailing: const AppChevron(),
                 onTap: () => _showLicences(context),
@@ -150,7 +155,7 @@ class AboutScreen extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Made by the FocusForge community',
+                  context.tr("Made by the FocusForge community"),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const SizedBox(height: 4),
@@ -170,7 +175,7 @@ class AboutScreen extends StatelessWidget {
   Future<void> _copy(BuildContext context, String url, String label) async {
     await Clipboard.setData(ClipboardData(text: url));
     if (!context.mounted) return;
-    showAppSnack(context, '$label copied to the clipboard.');
+    showAppSnack(context, context.tr("{0} copied to the clipboard.", [label]));
   }
 
   void _showLicences(BuildContext context) {
@@ -178,15 +183,15 @@ class AboutScreen extends StatelessWidget {
       context: context,
       applicationName: 'FocusForge',
       applicationVersion: _version,
-      applicationLegalese: 'MIT licensed · built with Flutter',
+      applicationLegalese: context.tr("MIT licensed · built with Flutter"),
     );
   }
 
   void _showMit(BuildContext context) {
     showAppDialog<void>(
       context: context,
-      builder: (context) => const _TextBody(
-        title: 'MIT licence',
+      builder: (context) => _TextBody(
+        title: context.tr("MIT licence"),
         body: _mitText,
         scrollable: true,
       ),
@@ -242,7 +247,7 @@ class _AudioCreditsBody extends StatelessWidget {
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(
-                'Ambient audio',
+                context.tr("Ambient audio"),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -270,15 +275,15 @@ class _AudioCreditsBody extends StatelessWidget {
           ),
         const SizedBox(height: Gap.md),
         Text(
-          'All six loops are CC0 1.0 (public domain) and were sourced from '
-          'freesound.org. Credit is given here although the licence does not '
-          'require it.',
+          context.tr(
+            "All six loops are CC0 1.0 (public domain) and were sourced from freesound.org. Credit is given here although the licence does not require it.",
+          ),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.xl),
         AppActionButton(
-          label: 'Close',
+          label: context.tr("Close"),
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),
         ),
@@ -345,7 +350,7 @@ class _TextBody extends StatelessWidget {
           text,
         const SizedBox(height: Gap.xl),
         AppActionButton(
-          label: 'Close',
+          label: context.tr("Close"),
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),
         ),

@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import 'glass_surface.dart';
 
 import 'dart:math' as math;
@@ -64,7 +65,7 @@ class AppPage extends StatelessWidget {
               child: Builder(
                 builder: (context) => IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  tooltip: 'Back',
+                  tooltip: context.tr("Back"),
                   onPressed: () {
                     if (onBack != null) {
                       onBack!();

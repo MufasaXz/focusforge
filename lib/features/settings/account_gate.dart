@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -87,14 +89,16 @@ class _AccountGateState extends ConsumerState<AccountGate> {
           title: widget.title,
           subtitle: widget.subtitle,
           action: AppActionButton(
-            label: _linking ? 'Linking…' : 'Sign in or link an account',
+            label: _linking
+                ? context.tr("Linking…")
+                : context.tr("Sign in or link an account"),
             icon: Icons.link_rounded,
             onTap: _linking ? null : _link,
           ),
         ),
         if (widget.items.isNotEmpty)
           AppSection(
-            title: widget.sectionTitle ?? 'What it adds',
+            title: widget.sectionTitle ?? context.tr("What it adds"),
             children: [
               for (var i = 0; i < widget.items.length; i++) ...[
                 if (i > 0) const Divider(height: 1, indent: 56),
@@ -120,10 +124,10 @@ Future<bool> showAccountGateDialog(
 }) async {
   final link = await showAppConfirmDialog(
     context: context,
-    title: '$feature needs an account',
+    title: context.tr("{0} needs an account", [feature]),
     message: message,
-    confirmLabel: 'Sign in',
-    cancelLabel: 'Not now',
+    confirmLabel: context.tr("Sign in"),
+    cancelLabel: context.tr("Not now"),
     icon: Icons.person_outline_rounded,
   );
   return link;

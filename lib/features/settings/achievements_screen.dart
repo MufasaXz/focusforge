@@ -1,3 +1,5 @@
+import '../../core/utils/format.dart';
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:ui' show ImageFilter;
@@ -40,8 +42,8 @@ class AchievementsScreen extends ConsumerWidget {
     final locked = badges.where((b) => !b.unlocked).toList(growable: false);
 
     return AppPage(
-      title: 'Achievements',
-      subtitle: '$unlocked of ${badges.length} unlocked',
+      title: context.tr("Achievements"),
+      subtitle: context.tr("{0} of {1} unlocked", [unlocked, badges.length]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -61,38 +63,44 @@ class AchievementsScreen extends ConsumerWidget {
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: Text(switch (backup) {
-                    AchievementBackupStatus.localOnly => 'Saved on this device. Link an account for private backup.',
-                    AchievementBackupStatus.syncing =>
-                      'Saving your earned achievements…',
-                    AchievementBackupStatus.saved =>
-                      'Earned achievements saved to your account.',
-                    AchievementBackupStatus.pending => 'Saved on this device. Account backup is waiting to reconnect.',
+                    AchievementBackupStatus.localOnly => context.tr(
+                      "Saved on this device. Link an account for private backup.",
+                    ),
+                    AchievementBackupStatus.syncing => context.tr(
+                      "Saving your earned achievements…",
+                    ),
+                    AchievementBackupStatus.saved => context.tr(
+                      "Earned achievements saved to your account.",
+                    ),
+                    AchievementBackupStatus.pending => context.tr(
+                      "Saved on this device. Account backup is waiting to reconnect.",
+                    ),
                   }, style: Theme.of(context).textTheme.bodySmall),
                 ),
                 if (backup == AchievementBackupStatus.pending)
                   TextButton(
                     onPressed: () => ref.read(achievementSyncProvider)(),
-                    child: const Text('Retry'),
+                    child: Text(context.tr("Retry")),
                   ),
               ],
             ),
           ),
           _NextMilestone(locked: locked),
           const SizedBox(height: Gap.xl),
-          const SectionHeader(
-            title: 'Unlocked',
+          SectionHeader(
+            title: context.tr("Unlocked"),
             icon: Icons.workspace_premium_rounded,
           ),
           if (earned.isEmpty)
             Text(
-              'Your first earned badge will appear here.',
+              context.tr("Your first earned badge will appear here."),
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else
             _BadgeGrid(badges: earned),
           const SizedBox(height: Gap.xl),
           SectionHeader(
-            title: 'Locked',
+            title: context.tr("Locked"),
             icon: Icons.lock_outline_rounded,
             trailing: Text(
               '${locked.length}',
@@ -121,16 +129,19 @@ class _CollectionSummary extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Your collection', style: theme.textTheme.titleMedium),
+            Text(
+              context.tr("Your collection"),
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: Gap.sm),
             Text(
-              '$unlocked of $total earned',
+              context.tr("{0} of {1} earned", [unlocked, total]),
               style: theme.textTheme.headlineSmall,
             ),
             const SizedBox(height: Gap.md),
             Semantics(
-              label: 'Achievement collection',
-              value: '$unlocked of $total earned',
+              label: context.tr("Achievement collection"),
+              value: context.tr("{0} of {1} earned", [unlocked, total]),
               child: LinearProgressIndicator(
                 value: total == 0 ? 0 : unlocked / total,
                 minHeight: 6,
@@ -139,8 +150,10 @@ class _CollectionSummary extends StatelessWidget {
             const SizedBox(height: Gap.sm),
             Text(
               unlocked == total && total > 0
-                  ? 'Every milestone earned. Your collection is complete.'
-                  : 'Every completed session moves you forward.',
+                  ? context.tr(
+                      "Every milestone earned. Your collection is complete.",
+                    )
+                  : context.tr("Every completed session moves you forward."),
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -170,7 +183,7 @@ class _NextMilestone extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Next milestone',
+              context.tr("Next milestone"),
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: Gap.md),
@@ -185,7 +198,7 @@ class _NextMilestone extends StatelessWidget {
                 const SizedBox(width: Gap.md),
                 Expanded(
                   child: Text(
-                    closest.name,
+                    context.tr(closest.name),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -193,12 +206,12 @@ class _NextMilestone extends StatelessWidget {
             ),
             const SizedBox(height: Gap.md),
             Text(
-              closest.description,
+              context.tr(closest.description),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: Gap.md),
             Semantics(
-              label: '${closest.name} progress',
+              label: context.tr("{0} progress", [context.tr(closest.name)]),
               value: closest.progressLabel,
               child: LinearProgressIndicator(
                 value: closest.ratio,
@@ -216,7 +229,7 @@ class _NextMilestone extends StatelessWidget {
             TextButton.icon(
               onPressed: () => _openDetail(context, closest),
               icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('View milestone'),
+              label: Text(context.tr("View milestone")),
             ),
           ],
         ),
@@ -302,7 +315,7 @@ class _BadgeTile extends StatelessWidget {
               IconBadge(icon: badge.icon, color: color, size: 46, radius: 14),
               const SizedBox(height: Gap.sm),
               Text(
-                badge.name,
+                context.tr(badge.name),
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
@@ -321,7 +334,7 @@ class _BadgeTile extends StatelessWidget {
                 )
               else ...[
                 Semantics(
-                  label: '${badge.name} progress',
+                  label: context.tr("{0} progress", [context.tr(badge.name)]),
                   value: badge.progressLabel,
                   child: LinearProgressIndicator(
                     value: badge.ratio,
@@ -402,18 +415,18 @@ void _openDetail(BuildContext context, Achievement badge) {
                       color: color,
                       size: 64,
                       radius: 20,
-                      semanticLabel: badge.name,
+                      semanticLabel: context.tr(badge.name),
                     ),
                   ),
                   const SizedBox(height: Gap.lg),
                   Text(
-                    badge.name,
+                    context.tr(badge.name),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: Gap.sm),
                   Text(
-                    badge.description,
+                    context.tr(badge.description),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -431,8 +444,10 @@ void _openDetail(BuildContext context, Achievement badge) {
                         ),
                         Text(
                           isUnknownUnlockTime(badge.unlockedAt)
-                              ? 'Earned earlier'
-                              : 'Earned on ${_formatDate(badge.unlockedAt!)}',
+                              ? context.tr("Earned earlier")
+                              : context.tr("Earned on {0}", [
+                                  formatShortDate(badge.unlockedAt!),
+                                ]),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(color: cs.tertiary),
@@ -441,7 +456,9 @@ void _openDetail(BuildContext context, Achievement badge) {
                     )
                   else ...[
                     Semantics(
-                      label: '${badge.name} progress',
+                      label: context.tr("{0} progress", [
+                        context.tr(badge.name),
+                      ]),
                       value: badge.progressLabel,
                       child: LinearProgressIndicator(
                         value: badge.ratio,
@@ -469,7 +486,7 @@ void _openDetail(BuildContext context, Achievement badge) {
                   ],
                   const SizedBox(height: Gap.xl),
                   AppActionButton(
-                    label: 'Close',
+                    label: context.tr("Close"),
                     icon: Icons.close_rounded,
                     onTap: () => Navigator.of(context).pop(),
                   ),
@@ -483,26 +500,9 @@ void _openDetail(BuildContext context, Achievement badge) {
   );
 }
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-String _formatDate(DateTime date) =>
-    '${date.day} ${_months[date.month - 1]} ${date.year}';
-
 /// Unlocks restored from a store that predates timestamp tracking have no real
 /// date; say so rather than printing the epoch as if it were the day it was
 /// earned.
-String _earnedOn(DateTime? at) =>
-    at == null || isUnknownUnlockTime(at) ? 'Earned earlier' : _formatDate(at);
+String _earnedOn(DateTime? at) => at == null || isUnknownUnlockTime(at)
+    ? tr("Earned earlier")
+    : formatShortDate(at);

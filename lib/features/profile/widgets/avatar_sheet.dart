@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -71,10 +73,12 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Your avatar', style: tt.titleMedium),
+                        Text(context.tr("Your avatar"), style: tt.titleMedium),
                         const SizedBox(height: 2),
                         Text(
-                          'A mark and a colour. Nothing leaves the device.',
+                          context.tr(
+                            "A mark and a colour. Nothing leaves the device.",
+                          ),
                           style: tt.labelSmall?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -83,7 +87,7 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                     ),
                   ),
                   SheetCloseButton(
-                    label: 'Done',
+                    label: context.tr("Done"),
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -91,7 +95,7 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
               const SizedBox(height: Gap.lg),
               Center(child: AvatarDisc(user: user, size: 96)),
               const SizedBox(height: Gap.xl),
-              _FieldLabel(text: 'Mark'),
+              _FieldLabel(text: context.tr("Mark")),
               const SizedBox(height: Gap.sm),
               Wrap(
                 spacing: Gap.sm,
@@ -129,7 +133,7 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                 ],
               ),
               const SizedBox(height: Gap.xl),
-              _FieldLabel(text: 'Colour'),
+              _FieldLabel(text: context.tr("Colour")),
               const SizedBox(height: Gap.sm),
               Wrap(
                 spacing: Gap.sm,
@@ -186,12 +190,12 @@ class AvatarDisc extends StatelessWidget {
     final icon = user.avatarIcon;
 
     final label = user.displayName.trim().isEmpty
-        ? 'Profile avatar'
-        : 'Avatar for ${user.displayName}';
+        ? context.tr("Profile avatar")
+        : context.tr("Avatar for {0}", [user.displayName]);
 
     return Semantics(
       image: true,
-      label: editable ? '$label. Tap to change it' : label,
+      label: editable ? context.tr("{0}. Tap to change it", [label]) : label,
       excludeSemantics: true,
       child: SizedBox(
         width: size,

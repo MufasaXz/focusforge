@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -35,23 +36,25 @@ class LeaderboardScreen extends ConsumerWidget {
     // behind a real account — the same gate study groups use.
     if (!signedIn) {
       return AppPage(
-        title: 'Leaderboard',
-        subtitle: 'A week of focus, together',
-        child: const AccountGate(
-          title: 'Sign in to see the board',
-          subtitle: 'Sign in to compare weekly focus time. Sharing your score is optional.',
-          unlocked: 'The weekly board is unlocked.',
-          sectionTitle: 'What the board adds',
+        title: context.tr("Leaderboard"),
+        subtitle: context.tr("A week of focus, together"),
+        child: AccountGate(
+          title: context.tr("Sign in to see the board"),
+          subtitle: context.tr(
+            "Sign in to compare weekly focus time. Sharing your score is optional.",
+          ),
+          unlocked: context.tr("The weekly board is unlocked."),
+          sectionTitle: context.tr("What the board adds"),
           items: [
             GateItem(
               Icons.leaderboard_rounded,
-              'This week\'s standings',
-              'Everyone who opted in, best first',
+              context.tr("This week's standings"),
+              context.tr("Everyone who opted in, best first"),
             ),
             GateItem(
               Icons.public_rounded,
-              'Your row, your name',
-              'Share your name, level and this week\'s hours',
+              context.tr("Your row, your name"),
+              context.tr("Share your name, level and this week's hours"),
             ),
           ],
         ),
@@ -71,12 +74,12 @@ class LeaderboardScreen extends ConsumerWidget {
     final dates = MaterialLocalizations.of(context);
 
     return AppPage(
-      title: 'Leaderboard',
+      title: context.tr("Leaderboard"),
       subtitle:
           '${dates.formatShortDate(monday)} – ${dates.formatShortDate(sunday)}',
       trailing: optedIn
           ? PopupMenuButton<String>(
-              tooltip: 'Sharing options',
+              tooltip: context.tr("Sharing options"),
               onSelected: (_) async {
                 try {
                   await ref.read(boardOptInProvider.notifier).set(false);
@@ -84,14 +87,19 @@ class LeaderboardScreen extends ConsumerWidget {
                   if (context.mounted) {
                     showAppSnack(
                       context,
-                      'Could not turn off sharing. Check your connection and retry.',
+                      context.tr(
+                        "Could not turn off sharing. Check your connection and retry.",
+                      ),
                       danger: true,
                     );
                   }
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'off', child: Text('Turn off sharing')),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'off',
+                  child: Text(context.tr("Turn off sharing")),
+                ),
               ],
             )
           : null,
@@ -112,12 +120,12 @@ class LeaderboardScreen extends ConsumerWidget {
             alignment: WrapAlignment.spaceBetween,
             children: [
               Text(
-                'Weekly standings',
+                context.tr("Weekly standings"),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               if (board.isNotEmpty)
                 Text(
-                  '${board.length} focusing',
+                  context.tr("{0} focusing", [board.length]),
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -139,11 +147,13 @@ class LeaderboardScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(Gap.lg),
                       child: Column(
                         children: [
-                          const Text('Could not load this week’s standings.'),
+                          Text(
+                            context.tr("Could not load this week’s standings."),
+                          ),
                           TextButton.icon(
                             onPressed: () => ref.invalidate(weekBoardProvider),
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Try again'),
+                            label: Text(context.tr("Try again")),
                           ),
                         ],
                       ),
@@ -197,8 +207,8 @@ class _BoardRowTile extends StatelessWidget {
     final foreground = entry.isMe ? cs.onPrimaryContainer : cs.onSurface;
     final muted = entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant;
     final level = entry.level == null
-        ? 'Level unavailable'
-        : 'Level ${entry.level}';
+        ? context.tr("Level unavailable")
+        : context.tr("Level {0}", [entry.level]);
     final medal = switch (rank) {
       1 => harmonize(const Color(0xFFB8860B), cs.primary),
       2 => cs.secondary,
@@ -223,7 +233,7 @@ class _BoardRowTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Semantics(
-            label: 'Rank $rank',
+            label: context.tr("Rank {0}", [rank]),
             excludeSemantics: true,
             child: Container(
               width: compact ? 32 : 38,
@@ -303,7 +313,7 @@ class _BoardRowTile extends StatelessWidget {
                     vertical: 2,
                   ),
                   child: Text(
-                    'You',
+                    context.tr("You"),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: cs.onPrimary,
                     ),
@@ -375,15 +385,19 @@ class _BoardSwitch extends ConsumerWidget {
         children: [
           SwitchListTile.adaptive(
             value: optedIn,
-            title: const Text('Share my weekly score'),
+            title: Text(context.tr("Share my weekly score")),
             subtitle: Text(
               optedIn
                   ? minutes <= 0
-                        ? 'On — your row appears after your first session'
+                        ? context.tr(
+                            "On — your row appears after your first session",
+                          )
                         : myRow == null
-                        ? 'On — publishing this week\'s hours'
-                        : 'On — ${formatHoursShort(minutes / 60)} published'
-                  : 'Off — no score is published to this board',
+                        ? context.tr("On — publishing this week's hours")
+                        : context.tr("On — {0} published", [
+                            formatHoursShort(minutes / 60),
+                          ])
+                  : context.tr("Off — no score is published to this board"),
             ),
             onChanged: (value) async {
               if (value && !await confirmCommunityTerms(context)) return;
@@ -403,8 +417,9 @@ class _BoardSwitch extends ConsumerWidget {
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: Text(
-                    'Your display name, account ID, level and weekly focus time '
-                    'are visible to signed-in users when you opt in.',
+                    context.tr(
+                      "Your display name, account ID, level and weekly focus time are visible to signed-in users when you opt in.",
+                    ),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
@@ -441,10 +456,12 @@ class _EmptyBoard extends StatelessWidget {
           Expanded(
             child: Text(
               optedIn
-                  ? 'Nobody else is on the board this week yet. Yours '
-                        'appears as soon as you log a session.'
-                  : 'Nobody is on the board this week yet. Turn the switch '
-                        'on and yours is the first row.',
+                  ? context.tr(
+                      "Nobody else is on the board this week yet. Yours appears as soon as you log a session.",
+                    )
+                  : context.tr(
+                      "Nobody is on the board this week yet. Turn the switch on and yours is the first row.",
+                    ),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
@@ -491,8 +508,9 @@ class _NoBackendCard extends StatelessWidget {
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(
-                'This build has no backend, so there is no board to read. '
-                'Your own week above is measured here, on this device.',
+                context.tr(
+                  "This build has no backend, so there is no board to read. Your own week above is measured here, on this device.",
+                ),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
               ),
@@ -545,7 +563,7 @@ class _WeekCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'YOUR WEEK',
+              context.tr("YOUR WEEK"),
               style: Theme.of(context).textTheme.labelMedium
                   ?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 1.2),
             ),
@@ -566,7 +584,7 @@ class _WeekCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'focused this week',
+                      context.tr("focused this week"),
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -582,7 +600,7 @@ class _WeekCard extends StatelessWidget {
                           ?.copyWith(color: cs.primary),
                     ),
                     Text(
-                      'your standing',
+                      context.tr("your standing"),
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -611,8 +629,8 @@ class _WeekCard extends StatelessWidget {
             ],
             const SizedBox(height: Gap.md),
             Semantics(
-              label: 'This week against last week',
-              value: '${(progress * 100).round()} percent',
+              label: context.tr("This week against last week"),
+              value: context.tr("{0} percent", [(progress * 100).round()]),
               child: LinearProgressIndicator(
                 value: progress,
                 color: cs.primary,
@@ -627,13 +645,17 @@ class _WeekCard extends StatelessWidget {
               alignment: WrapAlignment.spaceBetween,
               children: [
                 Text(
-                  sessions == 1 ? '1 session' : '$sessions sessions',
+                  sessions == 1
+                      ? context.tr("1 session")
+                      : context.tr("{0} sessions", [sessions]),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
                 Text(
                   lastWeek > 0
-                      ? 'Last week ${formatHoursShort(lastWeek)}'
-                      : 'A fresh start this week',
+                      ? context.tr("Last week {0}", [
+                          formatHoursShort(lastWeek),
+                        ])
+                      : context.tr("A fresh start this week"),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: cs.onSurfaceVariant),
                 ),

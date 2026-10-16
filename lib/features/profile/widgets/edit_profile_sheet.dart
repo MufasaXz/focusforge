@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,11 +82,11 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               const SheetHandle(),
               const SizedBox(height: Gap.lg),
               Text(
-                'Edit profile',
+                context.tr("Edit profile"),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: Gap.lg),
-              _FieldLabel(text: 'Display name'),
+              _FieldLabel(text: context.tr("Display name")),
               const SizedBox(height: Gap.sm),
               TextField(
                 controller: _name,
@@ -97,7 +99,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                   if (_valid) _save();
                 },
                 decoration: InputDecoration(
-                  hintText: 'Your name',
+                  hintText: context.tr("Your name"),
                   hintStyle: Theme.of(context).textTheme.bodyLarge
                       ?.copyWith(color: cs.onSurfaceVariant),
                   filled: true,
@@ -117,7 +119,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                 ),
               ),
               const SizedBox(height: Gap.lg),
-              _FieldLabel(text: 'Persona'),
+              _FieldLabel(text: context.tr("Persona")),
               const SizedBox(height: Gap.sm),
               Wrap(
                 spacing: Gap.sm,
@@ -135,7 +137,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                         size: 15,
                         color: p == _persona ? p.color : cs.onSurfaceVariant,
                       ),
-                      label: Text(p.label),
+                      label: Text(context.tr(p.label)),
                     ),
                 ],
               ),
@@ -143,7 +145,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               FilledButton.icon(
                 onPressed: _valid ? _save : null,
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('Save changes'),
+                label: Text(context.tr("Save changes")),
               ),
             ],
           ),

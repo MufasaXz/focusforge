@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,9 +21,11 @@ Future<void> openPrivacyResource(BuildContext context, String url) async {
   await Clipboard.setData(ClipboardData(text: url));
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
+    SnackBar(
       content: Text(
-        'Could not open a browser. Link copied; paste it into your browser.',
+        context.tr(
+          "Could not open a browser. Link copied; paste it into your browser.",
+        ),
       ),
     ),
   );
@@ -34,6 +38,6 @@ class PrivacyPolicyLink extends StatelessWidget {
   Widget build(BuildContext context) => TextButton.icon(
     onPressed: () => openPrivacyResource(context, privacyPolicyUrl),
     icon: const Icon(Icons.privacy_tip_outlined, size: 18),
-    label: const Text('Privacy policy'),
+    label: Text(context.tr("Privacy policy")),
   );
 }

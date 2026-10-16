@@ -53,13 +53,8 @@ class AppTheme {
 
       // Flat, hairline-ruled cards.
       //
-      // Three of the reference apps arrived at the same treatment from
-      // different directions — zero elevation, no tonal fill, and a 1dp
-      // `outlineVariant` border at roughly 40% — and it is the better answer
-      // here than a tonal surface. A container fill has to be re-tuned for
-      // every surface it sits on, and this app nests cards inside sheets inside
-      // pages; a border says "this is a group" once and stays legible on all of
-      // them. It also survives the light/dark switch without a second guess.
+      // A zero-elevation card and a quiet outline remain legible when cards
+      // nest inside sheets and pages in either brightness.
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,

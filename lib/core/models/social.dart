@@ -1,3 +1,5 @@
+import '../localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 
 enum AchievementUnit { sessions, days, hours, walkAways, weeklyTargets }
@@ -35,12 +37,12 @@ class Achievement {
   double get remaining => (target - cappedProgress).clamp(0.0, target);
 
   String get progressLabel => unit == AchievementUnit.weeklyTargets
-      ? '${(ratio * 100).round()}% of weekly targets'
+      ? tr('{0}% of weekly targets', [(ratio * 100).round()])
       : '${_amount(cappedProgress)} / ${_amount(target)}';
 
   String get remainingLabel => unlocked || remaining <= 0
-      ? 'Target reached'
-      : '${_amount(remaining, roundUp: true)} remaining';
+      ? tr('Target reached')
+      : tr('{0} remaining', [_amount(remaining, roundUp: true)]);
 
   String _amount(double value, {bool roundUp = false}) {
     if (unit == AchievementUnit.hours) {
@@ -50,12 +52,14 @@ class Achievement {
       final minutes = roundUp ? (raw - 0.0000001).ceil() : raw.round();
       final hours = minutes ~/ 60;
       final rest = minutes % 60;
-      if (hours == 0) return '$rest ${rest == 1 ? 'minute' : 'minutes'}';
-      final hourLabel = '$hours ${hours == 1 ? 'hour' : 'hours'}';
-      return rest == 0 ? hourLabel : '$hourLabel $rest min';
+      if (hours == 0) {
+        return tr(rest == 1 ? '{0} minute' : '{0} minutes', [rest]);
+      }
+      final hourLabel = tr(hours == 1 ? '{0} hour' : '{0} hours', [hours]);
+      return rest == 0 ? hourLabel : tr('{0} {1} min', [hourLabel, rest]);
     }
     if (unit == AchievementUnit.weeklyTargets) {
-      return '${(value * 100).ceil()}% of weekly targets';
+      return tr('{0}% of weekly targets', [(value * 100).ceil()]);
     }
     final count = value.ceil();
     final noun = switch (unit) {
@@ -64,7 +68,7 @@ class Achievement {
       AchievementUnit.walkAways => count == 1 ? 'walk-away' : 'walk-aways',
       _ => '',
     };
-    return '$count $noun';
+    return tr('{0} {1}', [count, tr(noun)]);
   }
 
   Achievement copyWith({double? progress, DateTime? unlockedAt}) => Achievement(

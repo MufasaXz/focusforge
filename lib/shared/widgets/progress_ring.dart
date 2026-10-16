@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -84,7 +86,9 @@ class _ProgressRingState extends State<ProgressRing> {
     final value = widget.value.clamp(0.0, 1.0);
 
     return Semantics(
-      label: widget.semanticLabel ?? '${(value * 100).round()} percent',
+      label:
+          widget.semanticLabel ??
+          context.tr("{0} percent", [(value * 100).round()]),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: value),
         duration: reduce ? Duration.zero : _duration,

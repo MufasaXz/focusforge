@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -61,25 +63,21 @@ class SheetHandle extends StatelessWidget {
 
 /// The circular close affordance a sheet header carries.
 class SheetCloseButton extends StatelessWidget {
-  const SheetCloseButton({
-    super.key,
-    required this.onTap,
-    this.label = 'Close',
-  });
+  const SheetCloseButton({super.key, required this.onTap, this.label});
 
   final VoidCallback onTap;
 
   /// What a screen reader announces. The icon is the same everywhere; the
   /// label is not, because "close" is only right when the sheet is the thing
   /// being dismissed.
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      label: label,
+      label: label ?? context.tr("Close"),
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(

@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../app/theme/app_theme.dart';
 
 import 'dart:async';
@@ -36,10 +37,12 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
     final hours = _draggingHours ?? config.durationMinutes / 60;
 
     return AppPage(
-      title: 'Strict Mode',
-      subtitle: config.enabled ? 'Locked in' : 'Not active',
+      title: context.tr("Strict Mode"),
+      subtitle: config.enabled
+          ? context.tr("Locked in")
+          : context.tr("Not active"),
       trailing: Chip(
-        label: Text(config.enabled ? 'Active' : 'Off'),
+        label: Text(config.enabled ? context.tr("Active") : context.tr("Off")),
         backgroundColor: config.enabled ? cs.errorContainer : null,
         labelStyle: TextStyle(
           fontSize: 12,
@@ -52,8 +55,10 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
           const _WarningPanel(),
           const SizedBox(height: Gap.xl),
           AppSection(
-            title: 'Duration',
-            footnote: 'Selected app rules stay active for this window while access and the service are enabled.',
+            title: context.tr("Duration"),
+            footnote: context.tr(
+              "Selected app rules stay active for this window while access and the service are enabled.",
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -67,7 +72,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                     Row(
                       children: [
                         Text(
-                          'Lock length',
+                          context.tr("Lock length"),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const Spacer(),
@@ -102,12 +107,12 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                     Row(
                       children: [
                         Text(
-                          '15 min',
+                          context.tr("15 min"),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                         const Spacer(),
                         Text(
-                          '8 h',
+                          context.tr("8 h"),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
@@ -118,8 +123,10 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
             ],
           ),
           AppSection(
-            title: 'Emergency unlock',
-            footnote: 'The window is the commitment; this is the way out.',
+            title: context.tr("Emergency unlock"),
+            footnote: context.tr(
+              "The window is the commitment; this is the way out.",
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -132,20 +139,22 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                   children: [
                     _Step(
                       number: 1,
-                      text:
-                          'Type “${config.commitmentPhrase}” to unlock the '
-                          'next step.',
+                      text: context.tr("Type “{0}” to unlock the next step.", [
+                        config.commitmentPhrase,
+                      ]),
                     ),
                     _Step(
                       number: 2,
-                      text:
-                          'Wait ${config.cooldownSeconds} seconds without '
-                          'touching the screen.',
+                      text: context.tr(
+                        "Wait {0} seconds without touching the screen.",
+                        [config.cooldownSeconds],
+                      ),
                     ),
-                    const _Step(
+                    _Step(
                       number: 3,
-                      text:
-                          'Confirm a second time to end your commitment early.',
+                      text: context.tr(
+                        "Confirm a second time to end your commitment early.",
+                      ),
                     ),
                   ],
                 ),
@@ -153,24 +162,32 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
             ],
           ),
           AppSection(
-            title: 'Your controls stay available',
-            footnote: 'Android Settings, the launcher, keyboard, calls and emergency access are protected. Use Stop in the app-boundaries notification to pause enforcement. You can revoke access or uninstall at any time.',
+            title: context.tr("Your controls stay available"),
+            footnote: context.tr(
+              "Android Settings, the launcher, keyboard, calls and emergency access are protected. Use Stop in the app-boundaries notification to pause enforcement. You can revoke access or uninstall at any time.",
+            ),
             children: [
-              const ListTile(
-                title: Text('Phone calls'),
-                subtitle: Text('Incoming and outgoing calls stay reachable.'),
+              ListTile(
+                title: Text(context.tr("Phone calls")),
+                subtitle: Text(
+                  context.tr("Incoming and outgoing calls stay reachable."),
+                ),
                 leading: Icon(Icons.call_outlined),
               ),
-              const ListTile(
-                title: Text('Emergency services'),
-                subtitle: Text('Protected even during Strict Mode.'),
+              ListTile(
+                title: Text(context.tr("Emergency services")),
+                subtitle: Text(
+                  context.tr("Protected even during Strict Mode."),
+                ),
                 leading: Icon(Icons.health_and_safety_outlined),
               ),
             ],
           ),
           const SizedBox(height: Gap.sm),
           AppActionButton(
-            label: config.enabled ? 'End Strict Mode' : 'Activate Strict Mode',
+            label: config.enabled
+                ? context.tr("End Strict Mode")
+                : context.tr("Activate Strict Mode"),
             icon: config.enabled ? Icons.lock_open_rounded : Icons.lock_rounded,
             destructive: config.enabled,
             onTap: () => _confirmToggle(config),
@@ -210,7 +227,9 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
     if (!mounted) return;
     showAppSnack(
       context,
-      activating ? 'Strict Mode is on for $window.' : 'Strict Mode ended.',
+      activating
+          ? tr("Strict Mode is on for {0}.", [window])
+          : tr("Strict Mode ended."),
     );
   }
 }
@@ -299,9 +318,10 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
   int get _secondsLeft => (_remaining.inMilliseconds / 1000).ceil();
 
   String get _confirmLabel => switch (_stage) {
-    _CommitmentStage.phrase => 'Continue',
-    _CommitmentStage.cooldown => 'Wait ${_secondsLeft}s',
-    _CommitmentStage.ready => widget.activating ? 'Lock it in' : 'End the lock',
+    _CommitmentStage.phrase => tr("Continue"),
+    _CommitmentStage.cooldown => tr("Wait {0}s", [_secondsLeft]),
+    _CommitmentStage.ready =>
+      widget.activating ? tr("Lock it in") : tr("End the lock"),
   };
 
   @override
@@ -328,7 +348,9 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(
-                widget.activating ? 'Start Strict Mode?' : 'End Strict Mode?',
+                widget.activating
+                    ? context.tr("Start Strict Mode?")
+                    : context.tr("End Strict Mode?"),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -337,8 +359,13 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
         const SizedBox(height: Gap.md),
         Text(
           widget.activating
-              ? 'Your selected app rules use a full block for ${widget.window} while access and the service are enabled. You can change rules, stop the service, revoke access or uninstall at any time.'
-              : 'Complete these steps to end your commitment early. Android settings and the notification Stop action remain available.',
+              ? context.tr(
+                  "Your selected app rules use a full block for {0} while access and the service are enabled. You can change rules, stop the service, revoke access or uninstall at any time.",
+                  [widget.window],
+                )
+              : context.tr(
+                  "Complete these steps to end your commitment early. Android settings and the notification Stop action remain available.",
+                ),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: Gap.lg),
@@ -372,7 +399,7 @@ class _StrictCommitmentSheetState extends State<_StrictCommitmentSheet> {
           children: [
             Expanded(
               child: _SheetButton(
-                label: 'Cancel',
+                label: context.tr("Cancel"),
                 accent: cs.onSurfaceVariant,
                 onTap: _dismiss,
               ),
@@ -425,7 +452,7 @@ class _PhraseStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Step 1 of 3 — type “$phrase” to continue.',
+          context.tr("Step 1 of 3 — type “{0}” to continue.", [phrase]),
           style: Theme.of(context).textTheme.labelSmall
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
@@ -447,7 +474,7 @@ class _PhraseStep extends StatelessWidget {
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
-              hintText: 'Type the phrase',
+              hintText: context.tr("Type the phrase"),
               hintStyle: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: cs.onSurfaceVariant),
               contentPadding: const EdgeInsets.symmetric(
@@ -481,7 +508,7 @@ class _CooldownStep extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Step 2 of 3 — wait without touching the screen.',
+          context.tr("Step 2 of 3 — wait without touching the screen."),
           style: Theme.of(context).textTheme.labelSmall
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
@@ -489,8 +516,9 @@ class _CooldownStep extends StatelessWidget {
         _CooldownRing(remaining: remaining, total: total, color: accent),
         const SizedBox(height: Gap.lg),
         Text(
-          'The confirm unlocks when the ring empties. Dismissing this sheet '
-          'cancels it.',
+          context.tr(
+            "The confirm unlocks when the ring empties. Dismissing this sheet cancels it.",
+          ),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
@@ -519,8 +547,9 @@ class _ReadyStep extends StatelessWidget {
         ),
         const SizedBox(height: Gap.md),
         Text(
-          'Step 3 of 3 — the wait is done. Confirm to '
-          '${activating ? 'start the lock' : 'release the lock'}.',
+          context.tr("Step 3 of 3 — the wait is done. Confirm to {0}.", [
+            activating ? 'start the lock' : 'release the lock',
+          ]),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
@@ -550,8 +579,8 @@ class _CooldownRing extends StatelessWidget {
     final seconds = (remaining.inMilliseconds / 1000).ceil();
 
     return Semantics(
-      label: 'Cooldown',
-      value: '$seconds seconds remaining',
+      label: context.tr("Cooldown"),
+      value: context.tr("{0} seconds remaining", [seconds]),
       child: ExcludeSemantics(
         child: SizedBox(
           width: 128,
@@ -715,12 +744,14 @@ class _WarningPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Commit to your selected app boundaries.',
+                    context.tr("Commit to your selected app boundaries."),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Selected app rules use full blocking for your chosen window. Android Settings, emergency access, notification Stop and uninstall stay available.',
+                    context.tr(
+                      "Selected app rules use full blocking for your chosen window. Android Settings, emergency access, notification Stop and uninstall stay available.",
+                    ),
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -778,7 +809,7 @@ String _formatWindow(double hours) {
   final total = (hours * 60).round();
   final h = total ~/ 60;
   final m = total % 60;
-  if (h == 0) return '$m min';
-  if (m == 0) return '$h h';
-  return '$h h $m min';
+  if (h == 0) return tr("{0} min", [m]);
+  if (m == 0) return tr("{0} h", [h]);
+  return tr("{0} h {1} min", [h, m]);
 }

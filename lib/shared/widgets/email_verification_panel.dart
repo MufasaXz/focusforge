@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -78,7 +80,9 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         widget.onVerified(profile);
       } else if (!silent) {
         setState(() {
-          _message = 'Your email is not verified yet. Open the link in your inbox, check spam, then try again.';
+          _message = tr(
+            "Your email is not verified yet. Open the link in your inbox, check spam, then try again.",
+          );
           _error = true;
         });
       }
@@ -92,7 +96,9 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
     } catch (_) {
       if (mounted) {
         setState(() {
-          _message = 'Could not check verification. Connect to the internet and try again.';
+          _message = tr(
+            "Could not check verification. Connect to the internet and try again.",
+          );
           _error = true;
         });
       }
@@ -108,7 +114,9 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
       await widget.service.sendEmailVerification();
       if (!mounted) return;
       setState(() {
-        _message = 'Verification email sent. Check your inbox and spam folder.';
+        _message = tr(
+          "Verification email sent. Check your inbox and spam folder.",
+        );
         _error = false;
       });
       _startCooldown();
@@ -122,7 +130,7 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
     } catch (_) {
       if (mounted) {
         setState(() {
-          _message = 'Could not send the email. Please try again.';
+          _message = tr("Could not send the email. Please try again.");
           _error = true;
         });
       }
@@ -147,7 +155,7 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
     } catch (_) {
       if (mounted) {
         setState(() {
-          _message = 'Could not sign out. Please try again.';
+          _message = tr("Could not sign out. Please try again.");
           _error = true;
         });
       }
@@ -160,7 +168,8 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final email = widget.service.verificationEmail ?? 'your email address';
+    final email =
+        widget.service.verificationEmail ?? context.tr("your email address");
     final seconds = _secondsLeft;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -169,7 +178,7 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         Icon(Icons.mark_email_unread_outlined, size: 44, color: cs.primary),
         const SizedBox(height: Gap.lg),
         Text(
-          'Verify your email',
+          context.tr("Verify your email"),
           style: theme.textTheme.headlineMedium,
           textAlign: TextAlign.center,
         ),
@@ -181,13 +190,17 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         ),
         const SizedBox(height: Gap.md),
         Text(
-          'Open the verification link in your inbox, then return to FocusForge. Need a link? Send a verification email below. Your account stays locked until you verify it.',
+          context.tr(
+            "Open the verification link in your inbox, then return to FocusForge. Need a link? Send a verification email below. Your account stays locked until you verify it.",
+          ),
           style: theme.textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.sm),
         Text(
-          'Wrong address? Use a different account below. Your setup on this device is kept.',
+          context.tr(
+            "Wrong address? Use a different account below. Your setup on this device is kept.",
+          ),
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
@@ -208,19 +221,19 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         ],
         const SizedBox(height: Gap.xl),
         PrimaryAction(
-          label: 'I’ve verified my email',
+          label: context.tr("I’ve verified my email"),
           busy: _busy,
           onTap: _busy ? null : () => _refresh(),
         ),
         const SizedBox(height: Gap.sm),
         GhostAction(
           label: seconds > 0
-              ? 'Resend in ${seconds}s'
-              : 'Send verification email',
+              ? context.tr("Resend in {0}s", [seconds])
+              : context.tr("Send verification email"),
           onTap: _busy || seconds > 0 ? null : _send,
         ),
         GhostAction(
-          label: 'Use a different account',
+          label: context.tr("Use a different account"),
           onTap: _busy ? null : _signOut,
         ),
         const PrivacyPolicyLink(),

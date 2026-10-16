@@ -32,8 +32,7 @@ enum ThemePreference {
 /// brightnesses. A colour that reads as a confident brand hue on white turns
 /// muddy on a near-black surface, because M3 has to desaturate it to keep
 /// contrast; a second, brighter seed for dark is the fix, rather than a second
-/// hand-tuned palette. The reference apps that ship theme pickers all landed
-/// on a per-theme light/dark pair.
+/// hand-tuned palette. Each theme therefore uses its own seed in the pair.
 ///
 /// The values live here rather than in the theme file because a palette is a
 /// *preference* — it is stored by name and rebuilt on launch — and the theme

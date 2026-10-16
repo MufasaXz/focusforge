@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:async';
@@ -48,10 +49,10 @@ Future<void> _openSetting(
     final wants = await showAccountGateDialog(
       context,
       feature: spec.label,
-      message:
-          '${spec.label} compares you with other people, so it needs a real '
-          'account. Linking one is instant and keeps everything you have '
-          'already logged on this device.',
+      message: context.tr(
+        "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.",
+        [spec.label],
+      ),
     );
     if (!wants || !context.mounted) return;
 
@@ -69,8 +70,9 @@ Future<void> _openSetting(
 }
 
 /// `5h` for whole hours, `5.5h` otherwise — a raw double would render `5.0h`.
-String _hours(double h) =>
-    h == h.roundToDouble() ? '${h.round()}h' : '${h.toStringAsFixed(1)}h';
+String _hours(double h) => h == h.roundToDouble()
+    ? tr("{0}h", [h.round()])
+    : tr("{0}h", [h.toStringAsFixed(1)]);
 
 /// Tab 4 — identity, progression and settings.
 class ProfileScreen extends ConsumerWidget {
@@ -101,51 +103,53 @@ class ProfileScreen extends ConsumerWidget {
     final settings = <_SettingSpec>[
       _SettingSpec(
         icon: Icons.groups_outlined,
-        label: 'Study Groups',
+        label: context.tr("Study Groups"),
         routeName: AppRoutes.groups,
-        trailing: '${groups.length} active',
+        trailing: context.tr("{0} active", [groups.length]),
         locked: user.isAnonymous,
       ),
       _SettingSpec(
         icon: Icons.emoji_events_outlined,
-        label: 'Achievements',
+        label: context.tr("Achievements"),
         routeName: AppRoutes.achievements,
         trailing: '$unlocked / ${achievements.length}',
       ),
       _SettingSpec(
         icon: Icons.leaderboard_outlined,
-        label: 'Leaderboard',
+        label: context.tr("Leaderboard"),
         routeName: AppRoutes.leaderboard,
         trailing: rank == null ? null : '#$rank',
         locked: user.isAnonymous,
       ),
       _SettingSpec(
         icon: Icons.lock_outlined,
-        label: 'Strict Mode',
+        label: context.tr("Strict Mode"),
         routeName: AppRoutes.strictMode,
-        trailing: strict.enabled ? 'On' : 'Off',
+        trailing: strict.enabled ? 'On' : context.tr("Off"),
         trailingColor: strict.enabled ? t.error : null,
       ),
       _SettingSpec(
         icon: Icons.notifications_active_outlined,
-        label: 'Notifications',
+        label: context.tr("Notifications"),
         routeName: AppRoutes.notifications,
       ),
       _SettingSpec(
         icon: Icons.key_outlined,
-        label: 'App access',
+        label: context.tr("App access"),
         routeName: AppRoutes.permissions,
-        trailing: 'Manage',
+        trailing: context.tr("Manage"),
       ),
       _SettingSpec(
         icon: Icons.manage_accounts_outlined,
-        label: 'Account',
+        label: context.tr("Account"),
         routeName: AppRoutes.privacy,
-        trailing: user.isAnonymous ? 'On this device' : 'Linked',
+        trailing: user.isAnonymous
+            ? context.tr("On this device")
+            : context.tr("Linked"),
       ),
       _SettingSpec(
         icon: Icons.info_outlined,
-        label: 'About FocusForge',
+        label: context.tr("About FocusForge"),
         routeName: AppRoutes.about,
         trailing: 'v$_appVersion',
       ),
@@ -189,14 +193,17 @@ class ProfileScreen extends ConsumerWidget {
 
     final prefs = <Widget>[
       prefStagger(
-        const SectionHeader(title: 'Appearance', icon: Icons.palette_outlined),
+        SectionHeader(
+          title: context.tr("Appearance"),
+          icon: Icons.palette_outlined,
+        ),
       ),
       prefStagger(const _AppearanceCard()),
       const SizedBox(height: Gap.xl),
       for (final group in [
-        ('Progress & community', settings.take(3)),
-        ('Preferences', settings.skip(3).take(2)),
-        ('App & privacy', settings.skip(5)),
+        (context.tr("Progress & community"), settings.take(3)),
+        (context.tr("Preferences"), settings.skip(3).take(2)),
+        (context.tr("App & privacy"), settings.skip(5)),
       ])
         prefStagger(
           _ProfileSection(
@@ -303,17 +310,12 @@ class _HeroCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.alphaBlend(
-              t.primary.withValues(alpha: 0.10),
-              t.surface,
-            ),
+            Color.alphaBlend(t.primary.withValues(alpha: 0.10), t.surface),
             t.surface,
           ],
         ),
         borderRadius: BorderRadius.circular(Radii.hero),
-        border: Border.all(
-          color: t.primary.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: t.primary.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
             color: t.primary.withValues(alpha: 0.10),
@@ -326,9 +328,12 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.all(Gap.xl),
         child: Column(
           children: [
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Eyebrow('YOUR SPACE', icon: Icons.person_outline_rounded),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Eyebrow(
+                context.tr("YOUR SPACE"),
+                icon: Icons.person_outline_rounded,
+              ),
             ),
             const SizedBox(height: Gap.xl),
             if (compact) ...[
@@ -368,14 +373,14 @@ class _HeroCard extends StatelessWidget {
                     Expanded(
                       child: _HeroStat(
                         value: _hours(stats.totalFocusHours),
-                        label: 'Total focus',
+                        label: context.tr("Total focus"),
                       ),
                     ),
                     _Divider(t: t),
                     Expanded(
                       child: _HeroStat(
                         value: '$streak',
-                        label: 'Day streak',
+                        label: context.tr("Day streak"),
                         accent: t.tertiary,
                       ),
                     ),
@@ -383,7 +388,7 @@ class _HeroCard extends StatelessWidget {
                     Expanded(
                       child: _HeroStat(
                         value: '$unlocked/$totalBadges',
-                        label: 'Badges',
+                        label: context.tr("Badges"),
                       ),
                     ),
                   ],
@@ -397,20 +402,25 @@ class _HeroCard extends StatelessWidget {
               runSpacing: Gap.xs,
               children: [
                 Text(
-                  'Level ${stats.level}',
+                  context.tr("Level {0}", [stats.level]),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 Text(
-                  '${stats.xp} / ${stats.xpForNext} XP',
+                  context.tr("{0} / {1} XP", [stats.xp, stats.xpForNext]),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
             ),
             const SizedBox(height: Gap.sm),
             Semantics(
-              label:
-                  'Level ${stats.level}, ${stats.xp} of ${stats.xpForNext} XP',
-              value: '${(stats.levelProgress * 100).round()} percent',
+              label: context.tr("Level {0}, {1} of {2} XP", [
+                stats.level,
+                stats.xp,
+                stats.xpForNext,
+              ]),
+              value: context.tr("{0} percent", [
+                (stats.levelProgress * 100).round(),
+              ]),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(Radii.pill),
                 child: LinearProgressIndicator(
@@ -442,7 +452,9 @@ class _ProfileIdentity extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          user.displayName.trim().isEmpty ? 'Your profile' : user.displayName,
+          user.displayName.trim().isEmpty
+              ? context.tr("Your profile")
+              : user.displayName,
           style: tt.headlineSmall?.copyWith(
             letterSpacing: -.8,
             fontWeight: FontWeight.w700,
@@ -465,7 +477,10 @@ class _ProfileIdentity extends StatelessWidget {
                 Icon(user.persona.icon, size: 16, color: tint),
                 const SizedBox(width: Gap.sm),
                 Flexible(
-                  child: Text(user.persona.label, style: tt.labelMedium),
+                  child: Text(
+                    context.tr(user.persona.label),
+                    style: tt.labelMedium,
+                  ),
                 ),
               ],
             ),
@@ -489,7 +504,7 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'Change your avatar',
+    label: context.tr("Change your avatar"),
     child: ExcludeSemantics(
       child: Pressable(
         onTap: () => showAvatarSheet(context),
@@ -510,7 +525,7 @@ class _EditProfileButton extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Edit profile',
+      label: context.tr("Edit profile"),
       excludeSemantics: true,
       onTap: open,
       child: Pressable(
@@ -546,14 +561,17 @@ class _AnonymousCard extends ConsumerWidget {
     // Captured before the await: linking replaces this card, so by the time
     // the sheet returns the context below it is gone.
     final messenger = ScaffoldMessenger.of(context);
+    final strings = AppStrings.of(context);
     final profile = await showLinkAccountSheet(context);
     if (profile == null || !context.mounted) return;
     await ref.read(userProvider.notifier).save(profile);
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          '${ref.read(authServiceProvider).welcomeMessage(profile)} '
-          'Your focus history is ready. Study groups are now available.',
+          strings.text(
+            "{0} Your focus history is ready. Study groups are now available.",
+            [ref.read(authServiceProvider).welcomeMessage(profile)],
+          ),
         ),
       ),
     );
@@ -587,13 +605,14 @@ class _AnonymousCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Local account',
+                        context.tr("Local account"),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'You are using a local account. Everything you log '
-                        'stays on this device and is never uploaded.',
+                        context.tr(
+                          "You are using a local account. Everything you log stays on this device and is never uploaded.",
+                        ),
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: t.onSurfaceVariant),
                       ),
@@ -610,7 +629,9 @@ class _AnonymousCard extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Study groups and the leaderboard need a linked account.',
+                    context.tr(
+                      "Study groups and the leaderboard need a linked account.",
+                    ),
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: t.onSurfaceVariant),
                   ),
@@ -626,12 +647,12 @@ class _AnonymousCard extends ConsumerWidget {
             // button whose name was every word on it.
             FilledButton(
               onPressed: () => unawaited(_link(context, ref)),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.link_rounded, size: 18),
                   SizedBox(width: Gap.sm),
-                  Flexible(child: Text('Link an account')),
+                  Flexible(child: Text(context.tr("Link an account"))),
                 ],
               ),
             ),
@@ -668,10 +689,15 @@ class _AppearanceCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Theme', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              context.tr("Theme"),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: Gap.md),
             AppSegmentedControl<ThemePreference>(
-              options: {for (final p in ThemePreference.values) p: p.label},
+              options: {
+                for (final p in ThemePreference.values) p: context.tr(p.label),
+              },
               selected: settings.mode,
               onChanged: notifier.setMode,
             ),
@@ -680,12 +706,12 @@ class _AppearanceCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Accent color',
+                    context.tr("Accent color"),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
                 Text(
-                  settings.palette.label,
+                  context.tr(settings.palette.label),
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: t.onSurfaceVariant),
                 ),
@@ -714,8 +740,8 @@ class _AppearanceCard extends ConsumerWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.timer_outlined, color: t.onSurfaceVariant),
-              title: const Text('Clock face'),
-              subtitle: Text(ref.watch(clockFaceProvider).label),
+              title: Text(context.tr("Clock face")),
+              subtitle: Text(context.tr(ref.watch(clockFaceProvider).label)),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.goNamed(AppRoutes.clockFace),
             ),
@@ -728,11 +754,11 @@ class _AppearanceCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'True black',
+                          context.tr("True black"),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         Text(
-                          'Use a black background in dark mode.',
+                          context.tr("Use a black background in dark mode."),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: t.onSurfaceVariant),
                         ),
@@ -743,7 +769,7 @@ class _AppearanceCard extends ConsumerWidget {
                   // The row's heading is the switch's name; without this it
                   // is announced as an unlabelled switch next to some text.
                   Semantics(
-                    label: 'True black',
+                    label: context.tr("True black"),
                     child: Switch(
                       value: settings.amoled,
                       onChanged: notifier.setAmoled,
@@ -784,7 +810,7 @@ class _PaletteSwatch extends StatelessWidget {
         ? Duration.zero
         : Motion.base;
     return Semantics(
-      label: palette.label,
+      label: context.tr(palette.label),
       button: true,
       selected: selected,
       inMutuallyExclusiveGroup: true,
@@ -833,7 +859,7 @@ class _PaletteSwatch extends StatelessWidget {
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                palette.label,
+                context.tr(palette.label),
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             ],

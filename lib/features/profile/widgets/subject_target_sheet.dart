@@ -1,3 +1,5 @@
+import '../../../core/localization/app_strings.dart';
+
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -22,8 +24,9 @@ Future<void> showSubjectTargetSheet(BuildContext context, Subject subject) {
 }
 
 /// `5h` for whole hours, `5.5h` otherwise — a raw double would render `5.0h`.
-String _hours(double h) =>
-    h == h.roundToDouble() ? '${h.round()}h' : '${h.toStringAsFixed(1)}h';
+String _hours(double h) => h == h.roundToDouble()
+    ? tr("{0}h", [h.round()])
+    : tr("{0}h", [h.toStringAsFixed(1)]);
 
 class _SubjectTargetSheet extends ConsumerStatefulWidget {
   const _SubjectTargetSheet({required this.subject});
@@ -116,7 +119,10 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              '${_hours(s.weekDone)} done · $percent% of target',
+                              context.tr("{0} done · {1}% of target", [
+                                _hours(s.weekDone),
+                                percent,
+                              ]),
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ],
@@ -128,7 +134,7 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                   Row(
                     children: [
                       Text(
-                        'Weekly target',
+                        context.tr("Weekly target"),
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const Spacer(),
@@ -175,9 +181,12 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                   const SizedBox(height: Gap.lg),
                   Text(
                     met
-                        ? 'You are already past this target for the week.'
-                        : 'A target is a floor, not a ceiling — it only drives the '
-                              'progress ring.',
+                        ? context.tr(
+                            "You are already past this target for the week.",
+                          )
+                        : context.tr(
+                            "A target is a floor, not a ceiling — it only drives the progress ring.",
+                          ),
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -185,7 +194,7 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                   FilledButton.icon(
                     onPressed: _save,
                     icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Save target'),
+                    label: Text(context.tr("Save target")),
                   ),
                 ],
               ),

@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -54,26 +56,26 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     return PopScope(
       canPop: !_busy,
       child: AppPage(
-        title: 'Account & privacy',
-        subtitle: 'Your account. Your choices.',
+        title: context.tr("Account & privacy"),
+        subtitle: context.tr("Your account. Your choices."),
         onBack: _busy ? () {} : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppSection(
-              title: 'Account',
+              title: context.tr("Account"),
               children: [
                 ListTile(
                   leading: const Icon(Icons.person_outline_rounded),
                   title: Text(
                     user.displayName.isEmpty
-                        ? 'Your FocusForge account'
+                        ? context.tr("Your FocusForge account")
                         : user.displayName,
                   ),
                   subtitle: Text(
                     user.isAnonymous
-                        ? 'On this device · no account required'
-                        : 'Linked account · private study backup',
+                        ? context.tr("On this device · no account required")
+                        : context.tr("Linked account · private study backup"),
                   ),
                 ),
                 ListTile(
@@ -84,11 +86,11 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   ),
                   title: Text(
                     user.isAnonymous
-                        ? 'Sign in or create an account'
-                        : 'Sign out',
+                        ? context.tr("Sign in or create an account")
+                        : context.tr("Sign out"),
                   ),
-                  subtitle: const Text(
-                    'Your setup and local focus history are kept',
+                  subtitle: Text(
+                    context.tr("Your setup and local focus history are kept"),
                   ),
                   trailing: const AppChevron(),
                   onTap: _busy
@@ -100,14 +102,18 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ListTile(
                   leading: Icon(Icons.person_remove_outlined, color: cs.error),
                   title: Text(
-                    'Delete account',
+                    context.tr("Delete account"),
                     style: TextStyle(color: cs.error),
                   ),
                   subtitle: Text(
                     ref.read(authServiceProvider).usesRemoteCredentials &&
                             !user.isAnonymous
-                        ? 'Permanently remove your account, achievements and progress'
-                        : 'Permanently erase your profile and data from this device',
+                        ? context.tr(
+                            "Permanently remove your account, achievements and progress",
+                          )
+                        : context.tr(
+                            "Permanently erase your profile and data from this device",
+                          ),
                   ),
                   trailing: const AppChevron(),
                   onTap: _busy ? null : () => _deleteAccount(context, ref),
@@ -115,7 +121,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               ],
             ),
             AppSection(
-              title: 'Your data',
+              title: context.tr("Your data"),
               children: [
                 ListTile(
                   leading: IconBadge(
@@ -124,70 +130,79 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     size: 42,
                     radius: 12,
                   ),
-                  title: const Text('Your study history, kept private'),
-                  subtitle: const Text(
-                    'Guest study and Shield events '
-                    'stay on this device. Linked accounts privately back up study sessions, subjects, plans and goals. They belong '
-                    'to your account, so signing in restores your study setup. '
-                    'Leaderboard sharing is optional. Clear local '
-                    'analytics before handing your phone to someone else.',
+                  title: Text(context.tr("Your study history, kept private")),
+                  subtitle: Text(
+                    context.tr(
+                      "Guest study and Shield events stay on this device. Linked accounts privately back up study sessions, subjects, plans and goals. They belong to your account, so signing in restores your study setup. Leaderboard sharing is optional. Clear local analytics before handing your phone to someone else.",
+                    ),
                   ),
                 ),
               ],
             ),
             AppSection(
-              title: 'What’s in the cloud',
-              footnote: 'Study and badge backups are private. Public sharing starts only when you opt in.',
-              children: const [
+              title: context.tr("What’s in the cloud"),
+              footnote: context.tr(
+                "Study and badge backups are private. Public sharing starts only when you opt in.",
+              ),
+              children: [
                 ListTile(
-                  title: Text('Your account'),
+                  title: Text(context.tr("Your account")),
                   subtitle: Text(
-                    'Sign-in credentials are handled by Firebase. Your profile, subjects, custom plans, goals and focus sessions are backed up privately for linked accounts.',
+                    context.tr(
+                      "Sign-in credentials are handled by Firebase. Your profile, subjects, custom plans, goals and focus sessions are backed up privately for linked accounts.",
+                    ),
                   ),
                   leading: Icon(Icons.person_outline),
                 ),
                 ListTile(
-                  title: Text('Earned achievements'),
+                  title: Text(context.tr("Earned achievements")),
                   subtitle: Text(
-                    'Badge IDs and earned dates are backed up privately for linked accounts. '
-                    'Sign in to the same account to recover your badges and study history.',
+                    context.tr(
+                      "Badge IDs and earned dates are backed up privately for linked accounts. Sign in to the same account to recover your badges and study history.",
+                    ),
                   ),
                   leading: Icon(Icons.workspace_premium_outlined),
                 ),
                 ListTile(
-                  title: Text('Study group membership'),
+                  title: Text(context.tr("Study group membership")),
                   subtitle: Text(
-                    'Membership, name, weekly minutes and active focus status · Members only',
+                    context.tr(
+                      "Membership, name, weekly minutes and active focus status · Members only",
+                    ),
                   ),
                   leading: Icon(Icons.groups_outlined),
                 ),
                 ListTile(
-                  title: Text('Leaderboard scores'),
+                  title: Text(context.tr("Leaderboard scores")),
                   subtitle: Text(
-                    'Display name, account ID, level and weekly minutes · Shared when you opt in, including after sign-out, until you turn sharing off or delete your account',
+                    context.tr(
+                      "Display name, account ID, level and weekly minutes · Shared when you opt in, including after sign-out, until you turn sharing off or delete your account",
+                    ),
                   ),
                   leading: Icon(Icons.leaderboard_outlined),
                 ),
               ],
             ),
             AppSection(
-              title: 'Actions',
+              title: context.tr("Actions"),
               children: [
                 ListTile(
-                  title: const Text('Export all data (JSON)'),
+                  title: Text(context.tr("Export all data (JSON)")),
                   subtitle: Text(
                     kIsWeb
-                        ? 'Copies every stored key to the clipboard'
-                        : 'Preview and copy every stored key',
+                        ? context.tr("Copies every stored key to the clipboard")
+                        : context.tr("Preview and copy every stored key"),
                   ),
                   leading: const Icon(Icons.ios_share),
                   trailing: const AppChevron(),
                   onTap: _busy ? null : () => _export(context, ref),
                 ),
                 ListTile(
-                  title: const Text('Clear local analytics'),
-                  subtitle: const Text(
-                    'Removes focus history, totals and subject progress',
+                  title: Text(context.tr("Clear local analytics")),
+                  subtitle: Text(
+                    context.tr(
+                      "Removes focus history, totals and subject progress",
+                    ),
                   ),
                   leading: Icon(
                     Icons.cleaning_services_outlined,
@@ -199,11 +214,13 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               ],
             ),
             AppSection(
-              title: 'Legal',
+              title: context.tr("Legal"),
               children: [
                 ListTile(
-                  title: const Text('Privacy policy'),
-                  subtitle: const Text('Read the full policy on our website'),
+                  title: Text(context.tr("Privacy policy")),
+                  subtitle: Text(
+                    context.tr("Read the full policy on our website"),
+                  ),
                   leading: const Icon(Icons.privacy_tip_outlined),
                   trailing: const AppChevron(),
                   onTap: _busy
@@ -211,9 +228,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       : () => openPrivacyResource(context, privacyPolicyUrl),
                 ),
                 ListTile(
-                  title: const Text('Request deletion on the web'),
-                  subtitle: const Text(
-                    'For account help or remaining cloud records',
+                  title: Text(context.tr("Request deletion on the web")),
+                  subtitle: Text(
+                    context.tr("For account help or remaining cloud records"),
                   ),
                   leading: const Icon(Icons.person_remove_outlined),
                   trailing: const AppChevron(),
@@ -222,25 +239,24 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       : () => openPrivacyResource(context, accountDeletionUrl),
                 ),
                 ListTile(
-                  title: const Text('Terms of service'),
+                  title: Text(context.tr("Terms of service")),
                   leading: const Icon(Icons.gavel_outlined),
                   trailing: const AppChevron(),
                   onTap: _busy
                       ? null
                       : () => _showInfo(
                           context,
-                          title: 'Terms of service',
-                          body:
-                              'FocusForge is provided as-is, without warranty. Strict '
-                              'Mode is a commitment device you choose to enable — it '
-                              'does not replace emergency services, and the always '
-                              'allowed list is there so that it never can. You own '
-                              'your data; the app claims no licence over it.',
+                          title: context.tr("Terms of service"),
+                          body: context.tr(
+                            "FocusForge is provided as-is, without warranty. Strict Mode is a commitment device you choose to enable — it does not replace emergency services, and the always allowed list is there so that it never can. You own your data; the app claims no licence over it.",
+                          ),
                         ),
                 ),
                 ListTile(
-                  title: const Text('Open source licences'),
-                  subtitle: const Text('Flutter, Riverpod and bundled assets'),
+                  title: Text(context.tr("Open source licences")),
+                  subtitle: Text(
+                    context.tr("Flutter, Riverpod and bundled assets"),
+                  ),
                   leading: const Icon(Icons.article_outlined),
                   trailing: const AppChevron(),
                   onTap: _busy ? null : () => _showLicences(context),
@@ -264,7 +280,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       if (!context.mounted) return;
       showAppSnack(
         context,
-        'Copied ${data.length} stored keys to the clipboard as JSON.',
+        context.tr("Copied {0} stored keys to the clipboard as JSON.", [
+          data.length,
+        ]),
       );
       return;
     }
@@ -275,7 +293,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       builder: (context) => _ExportBody(json: json, keyCount: data.length),
     );
     if (copied == true && context.mounted) {
-      showAppSnack(context, 'JSON copied to the clipboard.');
+      showAppSnack(context, context.tr("JSON copied to the clipboard."));
     }
   }
 
@@ -284,13 +302,11 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   Future<void> _clearAnalytics(BuildContext context, WidgetRef ref) async {
     final confirmed = await showAppConfirmDialog(
       context: context,
-      title: 'Clear local analytics?',
-      message:
-          'This removes your focus history, streak totals, subject '
-          'progress and shield statistics from this device. Badges and '
-          'weekly targets are kept. Saved cloud study history can return '
-          'when you recover your account.',
-      confirmLabel: 'Clear analytics',
+      title: context.tr("Clear local analytics?"),
+      message: context.tr(
+        "This removes your focus history, streak totals, subject progress and shield statistics from this device. Badges and weekly targets are kept. Saved cloud study history can return when you recover your account.",
+      ),
+      confirmLabel: context.tr("Clear analytics"),
       icon: Icons.cleaning_services_rounded,
       destructive: true,
     );
@@ -320,7 +336,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     ref.read(subjectsProvider.notifier).hydrate(subjects);
 
     if (!context.mounted) return;
-    showAppSnack(context, 'Local analytics cleared.');
+    showAppSnack(context, context.tr("Local analytics cleared."));
   }
 
   // -- Account session -------------------------------------------------------
@@ -348,8 +364,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ),
               ),
               const SizedBox(height: Gap.md),
-              const Text(
-                'Keep the app open until this finishes.',
+              Text(
+                context.tr("Keep the app open until this finishes."),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -393,7 +409,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     if (!context.mounted) return false;
     _showDeletionProgress(
       context,
-      retrying ? 'Re-verifying your account…' : 'Verifying your account…',
+      retrying
+          ? context.tr("Re-verifying your account…")
+          : context.tr("Verifying your account…"),
     );
     await auth.reauthenticate(password: password);
     return true;
@@ -403,10 +421,14 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     if (_busy) return;
     final confirmed = await showAppConfirmDialog(
       context: context,
-      title: 'Delete your account?',
-      message: 'This action is irreversible and will delete your profile, achievements, and all progress.',
-      footnote: 'Shared scores and group membership are removed too. A linked account requires a fresh sign-in check. Keep the app open until deletion finishes.',
-      confirmLabel: 'Delete account',
+      title: context.tr("Delete your account?"),
+      message: context.tr(
+        "This action is irreversible and will delete your profile, achievements, and all progress.",
+      ),
+      footnote: context.tr(
+        "Shared scores and group membership are removed too. A linked account requires a fresh sign-in check. Keep the app open until deletion finishes.",
+      ),
+      confirmLabel: context.tr("Delete account"),
       icon: Icons.person_remove_outlined,
       destructive: true,
     );
@@ -433,7 +455,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
           if (attempt > 0 && context.mounted) {
             showAppSnack(
               context,
-              'Deletion paused. Some cloud records may already be removed. Your account and local history are kept; retry to finish.',
+              context.tr(
+                "Deletion paused. Some cloud records may already be removed. Your account and local history are kept; retry to finish.",
+              ),
             );
           }
           return;
@@ -447,7 +471,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               .suspendForDeletion();
         }
         if (!context.mounted) return;
-        _showDeletionProgress(context, 'Deleting your account…');
+        _showDeletionProgress(context, context.tr("Deleting your account…"));
         try {
           await auth.deleteAccount();
           deleted = true;
@@ -467,8 +491,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
           context,
           error.failure == AuthFailure.cancelled
               ? suspended
-                    ? 'Deletion paused. Some cloud records may already be removed. Your account and local history are kept; retry to finish.'
-                    : 'Verification cancelled. Your account has not been deleted.'
+                    ? context.tr(
+                        "Deletion paused. Some cloud records may already be removed. Your account and local history are kept; retry to finish.",
+                      )
+                    : context.tr(
+                        "Verification cancelled. Your account has not been deleted.",
+                      )
               : error.friendly,
         );
       }
@@ -476,7 +504,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       if (context.mounted) {
         showAppSnack(
           context,
-          'Deletion could not finish. Your local history is kept. Please retry or use the account-deletion page for help.',
+          context.tr(
+            "Deletion could not finish. Your local history is kept. Please retry or use the account-deletion page for help.",
+          ),
         );
       }
     } finally {
@@ -496,9 +526,11 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     final confirmed = await showAppConfirmDialog(
       context: context,
-      title: 'Sign out?',
-      message: 'Your study data stays on this device. Online changes are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.',
-      confirmLabel: 'Sign out',
+      title: context.tr("Sign out?"),
+      message: context.tr(
+        "Your study data stays on this device. Online changes are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.",
+      ),
+      confirmLabel: context.tr("Sign out"),
       icon: Icons.logout_rounded,
     );
     if (!confirmed || !context.mounted) return;
@@ -516,12 +548,15 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
         context.goNamed(AppRoutes.auth);
         showAppSnack(
           context,
-          'Signed out. Your focus history is safe on this device.',
+          context.tr("Signed out. Your focus history is safe on this device."),
         );
       }
     } catch (_) {
       if (context.mounted) {
-        showAppSnack(context, 'Could not sign out. Please try again.');
+        showAppSnack(
+          context,
+          context.tr("Could not sign out. Please try again."),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -535,7 +570,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       context: context,
       applicationName: 'FocusForge',
       applicationVersion: '1.0.0',
-      applicationLegalese: 'MIT licensed · built with Flutter',
+      applicationLegalese: context.tr("MIT licensed · built with Flutter"),
     );
   }
 
@@ -584,12 +619,19 @@ class _DeleteAccountPasswordBodyState
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Verify it’s you', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          context.tr("Verify it’s you"),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: Gap.md),
         Text(
           widget.retrying
-              ? 'Verification expired. Enter your password again to finish deletion; some cloud records may already be removed.'
-              : 'Enter your account password to confirm deletion. Nothing is removed until verification succeeds.',
+              ? context.tr(
+                  "Verification expired. Enter your password again to finish deletion; some cloud records may already be removed.",
+                )
+              : context.tr(
+                  "Enter your account password to confirm deletion. Nothing is removed until verification succeeds.",
+                ),
         ),
         const SizedBox(height: Gap.lg),
         TextField(
@@ -601,20 +643,23 @@ class _DeleteAccountPasswordBodyState
           textInputAction: TextInputAction.done,
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _submit(),
-          decoration: const InputDecoration(labelText: 'Password'),
+          decoration: InputDecoration(labelText: context.tr("Password")),
         ),
         const SizedBox(height: Gap.xl),
         FilledButton(
           onPressed: _password.text.isEmpty ? null : _submit,
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.symmetric(vertical: Gap.sm),
-            child: Text('Verify and delete', textAlign: TextAlign.center),
+            child: Text(
+              context.tr("Verify and delete"),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         const SizedBox(height: Gap.sm),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.tr("Cancel")),
         ),
       ],
     );
@@ -645,7 +690,7 @@ class _ExportBody extends StatelessWidget {
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(
-                'Exported JSON',
+                context.tr("Exported JSON"),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -653,7 +698,9 @@ class _ExportBody extends StatelessWidget {
         ),
         const SizedBox(height: Gap.md),
         Text(
-          '$keyCount stored keys. Nothing has left this device.',
+          context.tr("{0} stored keys. Nothing has left this device.", [
+            keyCount,
+          ]),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
@@ -683,7 +730,7 @@ class _ExportBody extends StatelessWidget {
           children: [
             Expanded(
               child: AppActionButton(
-                label: 'Close',
+                label: context.tr("Close"),
                 icon: Icons.close_rounded,
                 accent: cs.onSurfaceVariant,
                 onTap: () => Navigator.of(context).pop(false),
@@ -692,7 +739,7 @@ class _ExportBody extends StatelessWidget {
             const SizedBox(width: Gap.md),
             Expanded(
               child: AppActionButton(
-                label: 'Copy JSON',
+                label: context.tr("Copy JSON"),
                 icon: Icons.copy_rounded,
                 onTap: () async {
                   await Clipboard.setData(ClipboardData(text: json));
@@ -742,7 +789,7 @@ class _InfoBody extends StatelessWidget {
         Text(body, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: Gap.xl),
         AppActionButton(
-          label: 'Close',
+          label: context.tr("Close"),
           icon: Icons.close_rounded,
           onTap: () => Navigator.of(context).pop(),
         ),

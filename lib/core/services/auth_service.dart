@@ -1,3 +1,5 @@
+import '../localization/app_strings.dart';
+
 import 'dart:async';
 
 import '../models/user.dart';
@@ -31,7 +33,7 @@ class AuthException implements Exception {
   /// renders it, because plugin copy is not app copy.
   final String? message;
 
-  String get friendly => switch (failure) {
+  String get friendly => tr(switch (failure) {
     AuthFailure.invalidEmail => 'That email address does not look right.',
     AuthFailure.weakPassword => 'Use at least 8 characters.',
     AuthFailure.emailInUse => 'An account already exists for that email.',
@@ -49,7 +51,7 @@ class AuthException implements Exception {
     AuthFailure.cleanupFailed => 'Deletion could not be confirmed. Your local history is kept; some cloud records may already be removed. Retry or contact support through the account-deletion page.',
     AuthFailure.emailVerificationRequired => 'Verify your email address before signing in. Open the link in your inbox, then return here.',
     AuthFailure.unknown => 'Something went wrong.',
-  };
+  });
 
   @override
   String toString() => 'AuthException($failure): $message';
@@ -85,8 +87,12 @@ abstract class AuthService {
 
   String welcomeMessage(UserProfile profile) {
     final name = profile.firstName;
-    final greeting = isReturningUser ? 'Welcome back' : 'Welcome';
-    return name.isEmpty ? '$greeting.' : '$greeting, $name.';
+    if (isReturningUser) {
+      return name.isEmpty
+          ? tr('Welcome back.')
+          : tr('Welcome back, {0}.', [name]);
+    }
+    return name.isEmpty ? tr('Welcome.') : tr('Welcome, {0}.', [name]);
   }
 
   /// The password re-authentication form is offered only for this provider.
