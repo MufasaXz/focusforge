@@ -5,8 +5,7 @@ class YouTubeSurfaceSignals {
     private var shorts = false
     private var watching = false
     private var feed = false
-    private val creators = mutableSetOf<String>()
-    fun observe(resourceId: String?, visible: Boolean, creatorText: String? = null, currentVideoCreator: Boolean = false) {
+    fun observe(resourceId: String?, visible: Boolean) {
         if (!visible || resourceId == null ||
             !resourceId.startsWith("com.google.android.youtube:id/")) return
         when (resourceId.substringAfter(":id/")) {
@@ -14,8 +13,6 @@ class YouTubeSurfaceSignals {
             "reel_progress_bar", "shorts_player" -> shorts = true
             "watch_player", "player_controller", "fullscreen_player" -> watching = true
             "results", "feed_recycler_view", "home_feed", "rich_grid" -> feed = true
-            "channel_name", "channel_handle", "owner_name", "channel_title" ->
-                if (currentVideoCreator) creatorText?.takeIf { it.length <= 100 }?.let(creators::add)
         }
     }
     fun reason(blockShorts: Boolean, blockFeed: Boolean): String? = when {
@@ -28,12 +25,6 @@ class YouTubeSurfaceSignals {
     fun reason(rules: ShieldRules, wallTime: Long, uptime: Long, graceUntil: Long): String? {
         if (uptime < graceUntil || !rules.youtube.any ||
             (rules.youtube.focusOnly && !rules.focusActive(wallTime))) return null
-        val surfaceReason = reason(rules.youtube.shorts, rules.youtube.feed)
-        if (surfaceReason != null) return surfaceReason
-        if (rules.youtube.studyOnly && (watching || shorts) &&
-            !StudyChannelPolicy(rules.youtube.studyChannels).allows(creators)) {
-            return "Choose a recognized study channel."
-        }
-        return null
+        return reason(rules.youtube.shorts, rules.youtube.feed)
     }
 }

@@ -27,12 +27,6 @@ Future<bool> confirmShieldAccess(
                 const [''],
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              context.tr(
-                "Study channels only compares visible YouTube creator names or handles with an educational-creator catalog on this device. Creator labels are not saved or uploaded. Some educational channels may not be recognized.",
-              ),
-            ),
           ],
         ),
         actions: [

@@ -350,13 +350,6 @@ class YoutubeRulesNotifier extends Notifier<YoutubeRules> {
 
   Future<void> setFeed(bool value) => set(state.copyWith(feed: value));
 
-  Future<void> setStudyOnly(bool value) =>
-      set(state.copyWith(studyOnly: value));
-
-  Future<void> setStudyChannels(List<String> values) => set(
-    state.copyWith(studyChannels: YoutubeRules.normalizeStudyChannels(values)),
-  );
-
   Future<void> setFocusOnly(bool value) =>
       set(state.copyWith(focusOnly: value));
 }

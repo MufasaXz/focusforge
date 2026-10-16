@@ -429,7 +429,7 @@ void main() {
     });
 
     testWidgets(
-      'the YouTube tab has concise controls and states recognition limits',
+      'the YouTube tab keeps Shorts and feed controls without study-only',
       (tester) async {
         useTallPhone(tester);
         await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
@@ -439,13 +439,8 @@ void main() {
 
         expect(find.text('Block Shorts'), findsOneWidget);
         expect(find.text('Block home & search'), findsOneWidget);
-        expect(
-          find.textContaining(
-            'Unrecognized channels are paused.',
-          ),
-          findsOneWidget,
-          reason: 'the screen must explain the limits of creator matching',
-        );
+        expect(find.text('Study channels only'), findsNothing);
+        expect(find.text('Block all of YouTube'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );

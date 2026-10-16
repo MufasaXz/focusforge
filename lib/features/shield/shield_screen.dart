@@ -421,8 +421,6 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 label: context.tr("YouTube"),
                 value: youtube.any && !youtubeAccess
                     ? context.tr("Accessibility access is off")
-                    : youtube.studyOnly
-                    ? context.tr("Study channels only")
                     : switch ((youtube.shorts, youtube.feed)) {
                         (true, true) => context.tr("Shorts and feeds closed"),
                         (true, false) => context.tr("Shorts closed"),
@@ -1819,27 +1817,6 @@ class _YoutubeView extends ConsumerWidget {
                     () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
                     feature: context.tr("YouTube filtering"),
                   ),
-                ),
-                Divider(color: cs.outlineVariant, height: 1),
-                _SurfaceSwitch(
-                  icon: Icons.school_outlined,
-                  title: context.tr("Study channels only"),
-                  body: context.tr(
-                    "Recognizes supported educational creators on this device. Unrecognized channels are paused.",
-                  ),
-                  value: rules.studyOnly,
-                  onChanged: (v) async {
-                    if (!context.mounted) return;
-                    await _changeSurface(
-                      context,
-                      ref,
-                      v,
-                      () => ref
-                          .read(youtubeRulesProvider.notifier)
-                          .setStudyOnly(v),
-                      feature: context.tr("Study channel filtering"),
-                    );
-                  },
                 ),
                 // Only meaningful once something is being closed, and a
                 // switch that arms nothing is the inert control this screen

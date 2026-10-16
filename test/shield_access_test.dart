@@ -389,26 +389,30 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets('study recognition enables without manual channel setup', (
-    tester,
-  ) async {
-    final container = containerFor(accessible: true);
-    await mount(tester, container, const ShieldScreen());
-    await tester.tap(find.text('YouTube'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Study channels only'));
-    await tester.tap(
-      find.widgetWithText(SwitchListTile, 'Study channels only'),
-    );
-    await tester.pumpAndSettle();
-    expect(container.read(youtubeRulesProvider).studyOnly, isTrue);
-    expect(find.text('Manage study channels'), findsNothing);
-    expect(find.text('Block all of YouTube'), findsNothing);
-    expect(find.text('Everything still works'), findsNothing);
-    expect(find.byType(TextField), findsNothing);
-    expect(tester.takeException(), isNull);
-    debugDefaultTargetPlatformOverride = null;
-  });
+  testWidgets(
+    'YouTube keeps surface controls without retired study filtering',
+    (tester) async {
+      final container = containerFor(accessible: true);
+      container.read(youtubeRulesProvider.notifier).hydrate({
+        'studyOnly': true,
+      });
+      await mount(tester, container, const ShieldScreen());
+      await tester.tap(find.text('YouTube'));
+      await tester.pumpAndSettle();
+      expect(find.text('Study channels only'), findsNothing);
+      expect(container.read(youtubeRulesProvider).any, isFalse);
+      expect(find.text('Manage study channels'), findsNothing);
+      expect(find.text('Block all of YouTube'), findsNothing);
+      expect(find.text('Everything still works'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Block Shorts'));
+      await tester.pumpAndSettle();
+      expect(container.read(youtubeRulesProvider).shorts, isTrue);
+      expect(find.text('Only while focusing'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 
   testWidgets(
     'Shorts consent opens settings once and waits for a verified retry',

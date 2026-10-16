@@ -28,10 +28,7 @@ class ShieldOverview extends ConsumerWidget {
     final supported = NativeShieldService.isSupported;
     final enabled = supported && usage && overlay && access.valueOrNull == true;
     final count =
-        rules.length +
-        (youtube.shorts ? 1 : 0) +
-        (youtube.feed ? 1 : 0) +
-        (youtube.studyOnly ? 1 : 0);
+        rules.length + (youtube.shorts ? 1 : 0) + (youtube.feed ? 1 : 0);
     final title = !supported
         ? context.tr("Your rules, ready for Android")
         : access.isLoading && !access.hasValue && rules.isNotEmpty
@@ -143,10 +140,7 @@ class ShieldOverview extends ConsumerWidget {
               if (youtube.any)
                 _Count(
                   label: context.tr("YouTube filters"),
-                  count:
-                      (youtube.shorts ? 1 : 0) +
-                      (youtube.feed ? 1 : 0) +
-                      (youtube.studyOnly ? 1 : 0),
+                  count: (youtube.shorts ? 1 : 0) + (youtube.feed ? 1 : 0),
                 ),
             ],
           ),

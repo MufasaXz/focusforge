@@ -4,6 +4,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class YouTubeSurfaceSignalsTest {
+    @Test fun retiredStudyFilterCannotBlockAfterUpgradeOrNativeRestart() {
+        val legacy = ShieldRules.parse("""{"version":2,"youtube":{"studyOnly":true,"studyChannels":["@teacher"]}}""")
+        assertFalse(legacy.youtube.any)
+        assertFalse(ShieldStore.encode(legacy).contains("studyOnly"))
+        val playback = YouTubeSurfaceSignals()
+        playback.observe("com.google.android.youtube:id/watch_player", true)
+        assertNull(playback.reason(legacy, 100L, 100L, 0L))
+        val shortsRule = legacy.copy(youtube = legacy.youtube.copy(shorts = true))
+        assertNull(playback.reason(shortsRule, 100L, 100L, 0L))
+        playback.observe("com.google.android.youtube:id/reel_player", true)
+        assertNotNull(playback.reason(shortsRule, 100L, 100L, 0L))
+    }
     @Test fun completedScanUsesLiveFiltersRatherThanCapturedShortsRule() {
         val signals = YouTubeSurfaceSignals()
         signals.observe("com.google.android.youtube:id/reel_progress_bar", true)

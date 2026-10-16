@@ -61,10 +61,8 @@ data class YoutubeRules(
      * surfaces are picked rather than the whole package.
      */
     val focusOnly: Boolean,
-    val studyOnly: Boolean = false,
-    val studyChannels: List<String> = emptyList(),
 ) {
-    val any: Boolean get() = shorts || feed || studyOnly
+    val any: Boolean get() = shorts || feed
 
     companion object {
         val OFF = YoutubeRules(shorts = false, feed = false, focusOnly = false)
@@ -163,12 +161,6 @@ data class ShieldRules(
                     shorts = yt?.optBoolean("shorts", false) ?: false,
                     feed = yt?.optBoolean("feed", false) ?: false,
                     focusOnly = yt?.optBoolean("focusOnly", false) ?: false,
-                    studyOnly = yt?.optBoolean("studyOnly", false) ?: false,
-                    studyChannels = yt?.optJSONArray("studyChannels")?.let { array ->
-                        (0 until minOf(array.length(), 100)).mapNotNull { index ->
-                            (array.opt(index) as? String)?.takeIf { it.isNotBlank() && it.length <= 100 }
-                        }
-                    } ?: emptyList(),
                 )
 
                 // `optLong` returns 0 for an absent key, which would read as a
@@ -257,9 +249,7 @@ object ShieldStore {
                 JSONObject()
                     .put("shorts", rules.youtube.shorts)
                     .put("feed", rules.youtube.feed)
-                    .put("focusOnly", rules.youtube.focusOnly)
-                    .put("studyOnly", rules.youtube.studyOnly)
-                    .put("studyChannels", JSONArray(rules.youtube.studyChannels)),
+                    .put("focusOnly", rules.youtube.focusOnly),
             )
             .put("strictUntil", rules.strictUntilMillis ?: JSONObject.NULL)
             .put("focusUntil", rules.focusUntilMillis ?: JSONObject.NULL)
