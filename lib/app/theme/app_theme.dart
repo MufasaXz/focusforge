@@ -117,6 +117,74 @@ class AppTheme {
         elevation: 1,
       ),
 
+      // Premium controls: a confident filled action, a hairline outline and a
+      // quiet text action. One radius family, one height, every screen.
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.item),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.item),
+          ),
+          side: BorderSide(color: cs.outlineVariant),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.tile),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cs.surfaceContainerHighest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.lg,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.item),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.item),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.item),
+          borderSide: BorderSide(color: cs.primary, width: 1.5),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        linearTrackColor: cs.surfaceContainerHighest,
+        circularTrackColor: cs.surfaceContainerHighest,
+      ),
+
       sliderTheme: SliderThemeData(
         trackHeight: 4,
         activeTrackColor: cs.primary,
