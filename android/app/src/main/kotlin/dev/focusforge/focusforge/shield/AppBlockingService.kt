@@ -17,6 +17,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
+import dev.focusforge.focusforge.localization.DeviceStrings
 import java.util.Calendar
 import java.io.FileDescriptor
 import java.io.PrintWriter
@@ -148,8 +149,8 @@ class AppBlockingService : Service() {
     private fun notification(): Notification {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "App boundaries", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Visible while your selected apps are being paused. Stop pauses app boundaries."
+            NotificationChannel(CHANNEL, DeviceStrings.text(this, "App boundaries"), NotificationManager.IMPORTANCE_LOW).apply {
+                description = DeviceStrings.text(this@AppBlockingService, "Visible while your selected apps are being paused. Stop pauses app boundaries.")
                 setShowBadge(false)
             },
         )
@@ -160,10 +161,10 @@ class AppBlockingService : Service() {
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL)
             else Notification.Builder(this)
         return builder.setSmallIcon(R.drawable.ic_focus_live)
-            .setContentTitle("FocusForge app boundaries are active")
-            .setContentText("Your chosen apps are paused on this device. Tap Stop to pause boundaries.")
+            .setContentTitle(DeviceStrings.text(this, "FocusForge app boundaries are active"))
+            .setContentText(DeviceStrings.text(this, "Your chosen apps are paused on this device. Tap Stop to pause boundaries."))
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
-            .addAction(Notification.Action.Builder(null, "Stop", stop).build()).build()
+            .addAction(Notification.Action.Builder(null, DeviceStrings.text(this, "Stop"), stop).build()).build()
     }
 
     private val poll = object : Runnable {
@@ -312,9 +313,9 @@ class AppBlockingService : Service() {
         try { view.findViewById<ImageView>(R.id.ff_block_icon).setImageDrawable(packageManager.getApplicationIcon(pkg)) }
         catch (_: Exception) { }
         view.findViewById<TextView>(R.id.ff_block_app).text = label
-        view.findViewById<TextView>(R.id.ff_block_reason).text = reason
+        view.findViewById<TextView>(R.id.ff_block_reason).text = DeviceStrings.reason(this, reason)
         view.findViewById<TextView>(R.id.ff_block_note).text =
-            "Need access? Pause and breathe first."
+            DeviceStrings.text(this, "Need access? Pause and breathe first.")
         view.findViewById<Button>(R.id.ff_block_back).setOnClickListener {
             leaveBlockedApp(pkg, label)
         }

@@ -28,6 +28,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import dev.focusforge.focusforge.R
+import dev.focusforge.focusforge.localization.DeviceStrings
 
 /** Optional YouTube surface filters. Normal app boundaries use UsageEvents + draw-over-apps. */
 class FocusAccessibilityService : AccessibilityService() {
@@ -66,6 +67,15 @@ class FocusAccessibilityService : AccessibilityService() {
         private const val YOUTUBE_RECHECK_MS = 900L
 
         private const val YOUTUBE = "com.google.android.youtube"
+        private val STUDY_CREATOR_IDS = setOf(
+            "$YOUTUBE:id/channel_name", "$YOUTUBE:id/channel_handle",
+            "$YOUTUBE:id/owner_name", "$YOUTUBE:id/channel_title",
+        )
+        private val STUDY_OWNER_REGIONS = setOf(
+            "$YOUTUBE:id/video_owner", "$YOUTUBE:id/video_owner_renderer",
+            "$YOUTUBE:id/watch_owner", "$YOUTUBE:id/watch_owner_container",
+            "$YOUTUBE:id/channel_bar", "$YOUTUBE:id/owner_container",
+        )
 
         /** The status bar, the shade and the volume panel. */
         private const val SYSTEM_UI = "com.android.systemui"
@@ -583,15 +593,20 @@ class FocusAccessibilityService : AccessibilityService() {
 
         val signals = YouTubeSurfaceSignals()
 
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
+        val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Boolean>>()
+        queue.add(root to false)
         var visited = 0
         while (queue.isNotEmpty() && visited < MAX_NODES) {
-            val node = queue.removeFirst()
+            val (node, insideOwner) = queue.removeFirst()
             visited++
-            signals.observe(node.viewIdResourceName, node.isVisibleToUser)
+            val resourceId = node.viewIdResourceName
+            val visible = node.isVisibleToUser
+            val ownerRegion = insideOwner || (visible && resourceId in STUDY_OWNER_REGIONS)
+            val creatorText = if (current.youtube.studyOnly && ownerRegion && visible &&
+                resourceId in STUDY_CREATOR_IDS) node.text?.toString() else null
+            signals.observe(resourceId, visible, creatorText, ownerRegion)
             for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.add(it) }
+                node.getChild(i)?.let { queue.add(it to ownerRegion) }
             }
         }
 
@@ -621,9 +636,9 @@ class FocusAccessibilityService : AccessibilityService() {
             setImageDrawable(iconFor(packageName))
         }
         view.findViewById<TextView>(R.id.ff_block_app)?.text = label
-        view.findViewById<TextView>(R.id.ff_block_reason)?.text = reason
+        view.findViewById<TextView>(R.id.ff_block_reason)?.text = DeviceStrings.reason(this, reason)
         view.findViewById<TextView>(R.id.ff_block_note)?.text =
-            "Need access? Pause and breathe first."
+            DeviceStrings.text(this, "Need access? Pause and breathe first.")
 
         view.findViewById<Button>(R.id.ff_block_back)?.apply {
             setOnClickListener { leave(packageName, label) }

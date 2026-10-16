@@ -428,22 +428,27 @@ void main() {
       });
     });
 
-    testWidgets('the YouTube tab names both surfaces', (tester) async {
-      useTallPhone(tester);
-      await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
-      await settle(tester);
-      await tester.tap(find.text('YouTube'));
-      await settle(tester);
+    testWidgets(
+      'the YouTube tab explains surface and study-channel detection',
+      (tester) async {
+        useTallPhone(tester);
+        await tester.pumpWidget(wrap(freshContainer(), const ShieldScreen()));
+        await settle(tester);
+        await tester.tap(find.text('YouTube'));
+        await settle(tester);
 
-      expect(find.text('Block Shorts'), findsOneWidget);
-      expect(find.text('Block home & search'), findsOneWidget);
-      expect(
-        find.textContaining('not by reading what is on them'),
-        findsOneWidget,
-        reason: 'the detection is a heuristic and the screen must say so',
-      );
-      expect(tester.takeException(), isNull);
-    });
+        expect(find.text('Block Shorts'), findsOneWidget);
+        expect(find.text('Block home & search'), findsOneWidget);
+        expect(
+          find.textContaining(
+            'It does not classify every video as educational.',
+          ),
+          findsOneWidget,
+          reason: 'the screen must explain the limits of creator matching',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('the Activity tab renders its empty log', (tester) async {
       useTallPhone(tester);

@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -68,7 +70,9 @@ Future<bool> ensureShieldAccess(
   if (!started) {
     showAppSnack(
       context,
-      'App boundaries could not start. Check Usage access and Draw over other apps, then try again.',
+      context.tr(
+        "App boundaries could not start. Check Usage access and Draw over other apps, then try again.",
+      ),
     );
     return false;
   }
@@ -94,26 +98,30 @@ Future<void> _offerAccess(
       icon: const Icon(Icons.timelapse_rounded),
       title: Text(
         permission == AppPermission.overlay
-            ? 'Allow draw over other apps'
-            : 'Allow usage access first',
+            ? context.tr("Allow draw over other apps")
+            : context.tr("Allow usage access first"),
       ),
       scrollable: true,
       content: Text(
         permission == AppPermission.overlay
-            ? 'Draw over other apps is off, so FocusForge cannot show the pause screen over your chosen apps. This rule will stay off.\n\nAllow FocusForge in Android Draw over other apps settings, then return and enable the rule again.'
-            : 'Usage access is off, so FocusForge cannot detect when your chosen apps are open or measure their daily budgets. This rule will stay off.\n\nAllow FocusForge in Android Usage access settings, then return and enable the rule again. Usage history stays on this device.',
+            ? context.tr(
+                "Draw over other apps is off, so FocusForge cannot show the pause screen over your chosen apps. This rule will stay off.\n\nAllow FocusForge in Android Draw over other apps settings, then return and enable the rule again.",
+              )
+            : context.tr(
+                "Usage access is off, so FocusForge cannot detect when your chosen apps are open or measure their daily budgets. This rule will stay off.\n\nAllow FocusForge in Android Usage access settings, then return and enable the rule again. Usage history stays on this device.",
+              ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Later'),
+          child: Text(context.tr("Later")),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           child: Text(
             permission == AppPermission.overlay
-                ? 'Open overlay settings'
-                : 'Open usage settings',
+                ? context.tr("Open overlay settings")
+                : context.tr("Open usage settings"),
           ),
         ),
       ],
@@ -157,10 +165,14 @@ Future<void> requestShieldPermission(
     showAppSnack(
       context,
       permission == AppPermission.accessibility
-          ? 'Open Android Settings → Accessibility → FocusForge to allow blocking.'
+          ? context.tr(
+              "Open Android Settings → Accessibility → FocusForge to allow blocking.",
+            )
           : permission == AppPermission.overlay
-          ? 'Open Android Settings → Draw over other apps → FocusForge.'
-          : 'Open Android Settings → Usage access → FocusForge.',
+          ? context.tr(
+              "Open Android Settings → Draw over other apps → FocusForge.",
+            )
+          : context.tr("Open Android Settings → Usage access → FocusForge."),
     );
   }
 }
@@ -170,19 +182,21 @@ Future<void> showUsageHomeGuidance(BuildContext context) async {
   final home = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('App usage is off'),
+      title: Text(context.tr("App usage is off")),
       scrollable: true,
-      content: const Text(
-        'Draw over other apps can show a pause screen, but cannot detect which app is open. Usage Access supplies that detection, so this saved rule stays inactive without it. Open Home and use Allow app usage to read the explanation and choose access. Accessibility is only needed for the YouTube filters.',
+      content: Text(
+        context.tr(
+          "Draw over other apps can show a pause screen, but cannot detect which app is open. Usage Access supplies that detection, so this saved rule stays inactive without it. Open Home and use Allow app usage to read the explanation and choose access. Accessibility is only needed for the YouTube filters.",
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Later'),
+          child: Text(context.tr("Later")),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Go to Home'),
+          child: Text(context.tr("Go to Home")),
         ),
       ],
     ),

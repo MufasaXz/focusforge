@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -242,7 +244,7 @@ class _BreathGateScreenState extends ConsumerState<BreathGateScreen>
       if (mounted) {
         setState(() {
           _leaving = false;
-          _error = 'Could not finish that action. Try again, or go back.';
+          _error = tr("Could not finish that action. Try again, or go back.");
         });
       }
       return;
@@ -440,7 +442,7 @@ class _GateHeader extends StatelessWidget {
               const SizedBox(width: Gap.sm),
               Flexible(
                 child: Text(
-                  'A moment to reset',
+                  context.tr("A moment to reset"),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelMedium
                       ?.copyWith(color: cs.onSurfaceVariant),
@@ -451,13 +453,13 @@ class _GateHeader extends StatelessWidget {
         ),
         const SizedBox(height: Gap.lg),
         Text(
-          'You reached for $appName',
+          context.tr("You reached for {0}", [appName]),
           style: Theme.of(context).textTheme.titleLarge,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xs),
         Text(
-          'Follow the circle. Breathe gently, at your own pace.',
+          context.tr("Follow the circle. Breathe gently, at your own pace."),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
@@ -538,9 +540,12 @@ class _BreathOrb extends StatelessWidget {
           Semantics(
             liveRegion: true,
             label: frame.phase == _Phase.complete
-                ? 'Session complete.'
-                : '${frame.phase.instruction}. '
-                      'Cycle ${frame.cycle} of ${_Protocol.cycles}.',
+                ? context.tr("Session complete.")
+                : context.tr("{0}. Cycle {1} of {2}.", [
+                    frame.phase.instruction,
+                    frame.cycle,
+                    _Protocol.cycles,
+                  ]),
             child: ExcludeSemantics(
               child: Padding(
                 padding: const EdgeInsets.all(Gap.lg),
@@ -567,7 +572,10 @@ class _BreathOrb extends StatelessWidget {
                         ),
                       const SizedBox(height: Gap.xs),
                       Text(
-                        'Breath ${frame.cycle} / ${_Protocol.cycles}',
+                        context.tr("Breath {0} / {1}", [
+                          frame.cycle,
+                          _Protocol.cycles,
+                        ]),
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],
@@ -637,7 +645,7 @@ class _Countdown extends StatelessWidget {
     return Column(
       children: [
         Semantics(
-          label: '${remaining.inSeconds} seconds left',
+          label: context.tr("{0} seconds left", [remaining.inSeconds]),
           child: ExcludeSemantics(
             child: Text(
               label,
@@ -650,17 +658,19 @@ class _Countdown extends StatelessWidget {
         ),
         const SizedBox(height: Gap.xs),
         Text(
-          'left in this session',
+          context.tr("left in this session"),
           style: Theme.of(context).textTheme.labelSmall,
         ),
         const SizedBox(height: Gap.lg),
         Text(
-          'In 4 · Hold 7 · Out 8',
+          context.tr("In 4 · Hold 7 · Out 8"),
           style: Theme.of(context).textTheme.labelMedium,
         ),
         const SizedBox(height: Gap.sm),
         Text(
-          'Stay comfortable. Let your breath return to normal if you feel lightheaded.',
+          context.tr(
+            "Stay comfortable. Let your breath return to normal if you feel lightheaded.",
+          ),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
@@ -669,7 +679,7 @@ class _Countdown extends StatelessWidget {
         TextButton.icon(
           onPressed: onWalkAway,
           icon: const Icon(Icons.arrow_back_rounded),
-          label: const Text('Keep the app closed'),
+          label: Text(context.tr("Keep the app closed")),
         ),
       ],
     );
@@ -695,27 +705,29 @@ class _CompletionPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Nicely done.',
+          context.tr("Nicely done."),
           style: Theme.of(context).textTheme.titleMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xs),
         Text(
-          'You made room for a choice. What would you like to do next?',
+          context.tr(
+            "You made room for a choice. What would you like to do next?",
+          ),
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: cs.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.xl),
         _GateButton(
-          label: 'Go back',
+          label: context.tr("Go back"),
           icon: Icons.arrow_back_rounded,
           primary: true,
           onTap: busy ? null : onWalkAway,
         ),
         const SizedBox(height: Gap.md),
         _GateButton(
-          label: 'Continue anyway',
+          label: context.tr("Continue anyway"),
           icon: Icons.arrow_forward_rounded,
           primary: false,
           onTap: busy ? null : onContinue,

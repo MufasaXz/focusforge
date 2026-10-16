@@ -1,3 +1,5 @@
+import '../../core/localization/app_strings.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,18 +28,21 @@ class ShieldOverview extends ConsumerWidget {
     final supported = NativeShieldService.isSupported;
     final enabled = supported && usage && overlay && access.valueOrNull == true;
     final count =
-        rules.length + (youtube.shorts ? 1 : 0) + (youtube.feed ? 1 : 0);
+        rules.length +
+        (youtube.shorts ? 1 : 0) +
+        (youtube.feed ? 1 : 0) +
+        (youtube.studyOnly ? 1 : 0);
     final title = !supported
-        ? 'Your rules, ready for Android'
+        ? context.tr("Your rules, ready for Android")
         : access.isLoading && !access.hasValue && rules.isNotEmpty
-        ? 'Checking your Shield'
+        ? context.tr("Checking your Shield")
         : paused && rules.isNotEmpty
-        ? 'App boundaries are paused'
+        ? context.tr("App boundaries are paused")
         : rules.isNotEmpty && !enabled
-        ? 'Your app rules need attention'
+        ? context.tr("Your app rules need attention")
         : count == 0
-        ? 'Choose what stays out'
-        : 'A quieter phone starts here';
+        ? context.tr("Choose what stays out")
+        : context.tr("A quieter phone starts here");
 
     return TonalPanel(
       accent: true,
@@ -45,8 +50,8 @@ class ShieldOverview extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Eyebrow(
-            'YOUR ATTENTION, PROTECTED',
+          Eyebrow(
+            context.tr("YOUR ATTENTION, PROTECTED"),
             icon: Icons.shield_outlined,
           ),
           const SizedBox(height: Gap.md),
@@ -54,16 +59,26 @@ class ShieldOverview extends ConsumerWidget {
           const SizedBox(height: Gap.sm),
           Text(
             !supported
-                ? 'App blocking runs on your Android device.'
+                ? context.tr("App blocking runs on your Android device.")
                 : paused && rules.isNotEmpty
-                ? 'Your saved app rules are inactive. Enable an app rule when you want boundaries active again.'
+                ? context.tr(
+                    "Your saved app rules are inactive. Enable an app rule when you want boundaries active again.",
+                  )
                 : rules.isNotEmpty && !enabled
                 ? !usage
-                      ? 'Allow app usage · Your app rules are saved. Enable access on Home to detect and pause these apps.'
+                      ? context.tr(
+                          "Allow app usage · Your app rules are saved. Enable access on Home to detect and pause these apps.",
+                        )
                       : !overlay
-                      ? 'Inactive · Allow Draw over other apps to show the pause screen. Your app rules stay saved.'
-                      : 'Inactive · Your saved app rules are not currently running. Enable an app rule to start boundaries again.'
-                : 'Set boundaries for apps and feeds. You stay in control.',
+                      ? context.tr(
+                          "Inactive · Allow Draw over other apps to show the pause screen. Your app rules stay saved.",
+                        )
+                      : context.tr(
+                          "Inactive · Your saved app rules are not currently running. Enable an app rule to start boundaries again.",
+                        )
+                : context.tr(
+                    "Set boundaries for apps and feeds. You stay in control.",
+                  ),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           if (supported && rules.isNotEmpty && !usage) ...[
@@ -73,7 +88,7 @@ class ShieldOverview extends ConsumerWidget {
               child: TextButton.icon(
                 onPressed: () => showUsageHomeGuidance(context),
                 icon: const Icon(Icons.home_outlined),
-                label: const Text('Allow app usage on Home'),
+                label: Text(context.tr("Allow app usage on Home")),
               ),
             ),
           ],
@@ -89,14 +104,16 @@ class ShieldOverview extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.settings_outlined),
-                label: const Text('Check overlay access'),
+                label: Text(context.tr("Check overlay access")),
               ),
             ),
           ],
           if (supported && youtube.any && !youtubeAccess) ...[
             const SizedBox(height: Gap.sm),
             Text(
-              'YouTube filters are inactive until Accessibility access is restored.',
+              context.tr(
+                "YouTube filters are inactive until Accessibility access is restored.",
+              ),
               style: tt.bodySmall?.copyWith(color: cs.error),
             ),
           ],
@@ -106,27 +123,30 @@ class ShieldOverview extends ConsumerWidget {
             runSpacing: Gap.sm,
             children: [
               _Count(
-                label: 'Blocked',
+                label: context.tr("Blocked"),
                 count: rules
                     .where((r) => r.tier == WhitelistTier.blocked)
                     .length,
               ),
               _Count(
-                label: 'Focus only',
+                label: context.tr("Focus only"),
                 count: rules
                     .where((r) => r.tier == WhitelistTier.focusOnly)
                     .length,
               ),
               _Count(
-                label: 'Budgets',
+                label: context.tr("Budgets"),
                 count: rules
                     .where((r) => r.tier == WhitelistTier.budgeted)
                     .length,
               ),
               if (youtube.any)
                 _Count(
-                  label: 'YouTube filters',
-                  count: (youtube.shorts ? 1 : 0) + (youtube.feed ? 1 : 0),
+                  label: context.tr("YouTube filters"),
+                  count:
+                      (youtube.shorts ? 1 : 0) +
+                      (youtube.feed ? 1 : 0) +
+                      (youtube.studyOnly ? 1 : 0),
                 ),
             ],
           ),

@@ -1,3 +1,4 @@
+import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'dart:async';
@@ -127,7 +128,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Shield',
+                            context.tr("Shield"),
                             style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(
                                   letterSpacing: -1,
@@ -136,7 +137,7 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                           ),
                           const SizedBox(height: Gap.xs),
                           Text(
-                            'Make distraction a little harder.',
+                            context.tr("Make distraction a little harder."),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -251,14 +252,17 @@ class _ShieldStatusPill extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final on = armed > 0;
     final color = on ? cs.tertiary : cs.onSurfaceVariant;
-    final text = on ? '$armed rules' : 'View status';
+    final text = on
+        ? context.tr("{0} rules", [armed])
+        : context.tr("View status");
 
     return Semantics(
       button: onTap != null,
       container: true,
-      label:
-          'Shield status. $text.'
-          '${onTap == null ? '' : ' Double tap for details.'}',
+      label: context.tr("Shield status. {0}.{1}", [
+        text,
+        onTap == null ? '' : ' Double tap for details.',
+      ]),
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(
@@ -362,12 +366,12 @@ class _ShieldStatusSheet extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'What is being enforced',
+                          context.tr("What is being enforced"),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Live state of the shield engine',
+                          context.tr("Live state of the shield engine"),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: cs.onSurfaceVariant),
                         ),
@@ -375,7 +379,7 @@ class _ShieldStatusSheet extends ConsumerWidget {
                     ),
                   ),
                   SheetCloseButton(
-                    label: 'Close status',
+                    label: context.tr("Close status"),
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -387,15 +391,15 @@ class _ShieldStatusSheet extends ConsumerWidget {
                       ? Icons.verified_user_rounded
                       : Icons.gpp_bad_rounded,
                   color: enabled ? cs.tertiary : cs.error,
-                  label: 'App blocking',
-                  value: enabled ? 'On' : 'Off',
+                  label: context.tr("App blocking"),
+                  value: enabled ? 'On' : context.tr("Off"),
                 ),
               _StatusLine(
                 icon: Icons.block_rounded,
                 color: blocked > 0 ? cs.tertiary : cs.onSurfaceVariant,
-                label: 'Apps blocked',
+                label: context.tr("Apps blocked"),
                 value: blocked > 0 && native && !enabled
-                    ? '$blocked inactive'
+                    ? context.tr("{0} inactive", [blocked])
                     : '$blocked',
               ),
               _StatusLine(
@@ -403,35 +407,37 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 color: budgeted > 0
                     ? harmonize(WhitelistTier.budgeted.color, cs.primary)
                     : cs.onSurfaceVariant,
-                label: 'Time budgets',
+                label: context.tr("Time budgets"),
                 value: budgeted == 0
-                    ? 'None'
+                    ? context.tr("None")
                     : !enabled
-                    ? '$budgeted inactive'
+                    ? context.tr("{0} inactive", [budgeted])
                     : usageAccess
-                    ? '$budgeted running'
-                    : '$budgeted, not reading usage',
+                    ? context.tr("{0} running", [budgeted])
+                    : context.tr("{0}, not reading usage", [budgeted]),
               ),
               _StatusLine(
                 icon: Icons.smart_display_rounded,
                 color: youtube.any ? cs.tertiary : cs.onSurfaceVariant,
-                label: 'YouTube',
+                label: context.tr("YouTube"),
                 value: youtube.any && !youtubeAccess
-                    ? 'Accessibility access is off'
+                    ? context.tr("Accessibility access is off")
+                    : youtube.studyOnly
+                    ? context.tr("Study channels only")
                     : switch ((youtube.shorts, youtube.feed)) {
-                        (true, true) => 'Shorts and feeds closed',
-                        (true, false) => 'Shorts closed',
-                        (false, true) => 'Feeds closed',
-                        _ => 'Untouched',
+                        (true, true) => context.tr("Shorts and feeds closed"),
+                        (true, false) => context.tr("Shorts closed"),
+                        (false, true) => context.tr("Feeds closed"),
+                        _ => context.tr("Untouched"),
                       },
               ),
               _StatusLine(
                 icon: Icons.lock_rounded,
                 color: strict.enabled ? cs.tertiary : cs.onSurfaceVariant,
-                label: 'Strict mode',
+                label: context.tr("Strict mode"),
                 value: strict.enabled
-                    ? '${strict.durationMinutes} min session'
-                    : 'Off',
+                    ? context.tr("{0} min session", [strict.durationMinutes])
+                    : context.tr("Off"),
               ),
               if (!native || !enabled || inert) ...[
                 const SizedBox(height: Gap.md),
@@ -456,16 +462,16 @@ class _ShieldStatusSheet extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             !native
-                                ? 'App blocking runs on Android. On this '
-                                      'build the rules are saved and shown, '
-                                      'and nothing is closed.'
+                                ? context.tr(
+                                    "App blocking runs on Android. On this build the rules are saved and shown, and nothing is closed.",
+                                  )
                                 : !enabled
-                                ? 'App boundaries are off. Check Usage access and '
-                                      'Draw over other apps, then enable an app rule. '
-                                      'Review app usage on Home.'
-                                : 'Time budgets need usage access before they '
-                                      'can count anything. Review app usage on '
-                                      'Home.',
+                                ? context.tr(
+                                    "App boundaries are off. Check Usage access and Draw over other apps, then enable an app rule. Review app usage on Home.",
+                                  )
+                                : context.tr(
+                                    "Time budgets need usage access before they can count anything. Review app usage on Home.",
+                                  ),
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(height: 1.4),
                           ),
@@ -482,9 +488,11 @@ class _ShieldStatusSheet extends ConsumerWidget {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.air_outlined, color: cs.primary),
-                  title: const Text('Preview the pause screen'),
-                  subtitle: const Text(
-                    'The 4-7-8 breath exercise shown before a blocked app opens',
+                  title: Text(context.tr("Preview the pause screen")),
+                  subtitle: Text(
+                    context.tr(
+                      "The 4-7-8 breath exercise shown before a blocked app opens",
+                    ),
                   ),
                   onTap: onPreviewGate,
                 ),
@@ -632,13 +640,13 @@ class _AppsViewState extends ConsumerState<_AppsView> {
               const ShieldOverview(),
               const SizedBox(height: Gap.lg),
               if (native && enabled && budgeted > 0 && !usageAccess)
-                const _PermissionGate(
+                _PermissionGate(
                   icon: Icons.timelapse_rounded,
-                  title: 'Time budgets are not counting',
-                  body:
-                      'A budget needs to read how long an app has been open. '
-                      'Use Allow app usage on Home before enabling this rule.',
-                  action: 'Review app usage on Home',
+                  title: context.tr("Time budgets are not counting"),
+                  body: context.tr(
+                    "A budget needs to read how long an app has been open. Use Allow app usage on Home before enabling this rule.",
+                  ),
+                  action: context.tr("Review app usage on Home"),
                   permission: AppPermission.usageAccess,
                 ),
               _SearchField(
@@ -651,10 +659,10 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                 runSpacing: Gap.xs,
                 children: [
                   for (final (index, label) in [
-                    'All',
-                    'Blocked',
-                    'Focus only',
-                    'Budgets',
+                    context.tr("All"),
+                    context.tr("Blocked"),
+                    context.tr("Focus only"),
+                    context.tr("Budgets"),
                   ].indexed)
                     ChoiceChip(
                       label: Text(label),
@@ -665,8 +673,10 @@ class _AppsViewState extends ConsumerState<_AppsView> {
               ),
               const SizedBox(height: Gap.xl),
               _ListHeading(
-                title: query.isEmpty && _filter == 0 ? 'All apps' : 'Results',
-                note: loading ? 'Reading the device…' : null,
+                title: query.isEmpty && _filter == 0
+                    ? context.tr("All apps")
+                    : context.tr("Results"),
+                note: loading ? context.tr("Reading the device…") : null,
                 icon: Icons.apps_rounded,
               ),
               const SizedBox(height: Gap.sm),
@@ -688,7 +698,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                       children: [
                         _NoMatches(
                           query: query.isEmpty
-                              ? 'this filter'
+                              ? context.tr("this filter")
                               : _search.text.trim(),
                         ),
                         TextButton.icon(
@@ -697,7 +707,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                             _filter = 0;
                           }),
                           icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: const Text('Show all apps'),
+                          label: Text(context.tr("Show all apps")),
                         ),
                       ],
                     ),
@@ -727,8 +737,9 @@ class _AppsViewState extends ConsumerState<_AppsView> {
           ),
           sliver: SliverToBoxAdapter(
             child: Text(
-              'Rules apply after Android access is allowed. You can change '
-              'or remove a rule at any time.',
+              context.tr(
+                "Rules apply after Android access is allowed. You can change or remove a rule at any time.",
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: cs.onSurfaceVariant),
@@ -900,7 +911,7 @@ class _SearchField extends StatelessWidget {
         isDense: true,
         filled: true,
         fillColor: cs.surfaceContainerHigh,
-        hintText: 'Search every app…',
+        hintText: context.tr("Search every app…"),
         hintStyle: Theme.of(context).textTheme.bodyMedium
             ?.copyWith(color: cs.onSurfaceVariant),
         prefixIcon: Icon(
@@ -911,7 +922,7 @@ class _SearchField extends StatelessWidget {
         suffixIcon: !hasText
             ? null
             : SheetCloseButton(
-                label: 'Clear search',
+                label: context.tr("Clear search"),
                 onTap: () {
                   controller.clear();
                   onChanged();
@@ -959,14 +970,14 @@ class _NoApps extends StatelessWidget {
             ),
             const SizedBox(height: Gap.lg),
             Text(
-              'No apps to list',
+              context.tr("No apps to list"),
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              'Android did not hand over the installed app list. That is a '
-              'platform problem rather than a settings one — nothing here can '
-              'be switched on until it answers.',
+              context.tr(
+                "Android did not hand over the installed app list. That is a platform problem rather than a settings one — nothing here can be switched on until it answers.",
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
@@ -1000,7 +1011,7 @@ class _NoMatches extends StatelessWidget {
               ),
               const SizedBox(height: Gap.md),
               Text(
-                'No app matches “$query”',
+                context.tr("No app matches “{0}”", [query]),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant),
                 textAlign: TextAlign.center,
@@ -1038,14 +1049,16 @@ class _AppRuleRow extends ConsumerWidget {
         (!usage || !overlay || !running);
     final needsUsage = inactive && overlay && !usage;
     final meta = needsUsage
-        ? 'Allow app usage'
+        ? context.tr("Allow app usage")
         : inactive
-        ? 'Inactive · Rule saved'
+        ? context.tr("Inactive · Rule saved")
         : _meta;
 
     return Semantics(
       button: true,
-      label: inactive ? '${row.name}, saved rule, $meta' : _semanticLabel,
+      label: inactive
+          ? context.tr("{0}, saved rule, {1}", [row.name, meta])
+          : _semanticLabel,
       child: InkWell(
         onTap: onOpen,
         child: Padding(
@@ -1076,7 +1089,7 @@ class _AppRuleRow extends ConsumerWidget {
                         ),
                         if (row.isSystem) ...[
                           const SizedBox(width: Gap.sm),
-                          _Tag(label: 'System'),
+                          _Tag(label: context.tr("System")),
                         ],
                       ],
                     ),
@@ -1100,8 +1113,8 @@ class _AppRuleRow extends ConsumerWidget {
                 // change itself may still be behind a parent's code.
                 onChanged: (on) => _setRestricted(context, ref, on),
                 semanticLabel: row.isRestricted
-                    ? 'Stop closing ${row.name}'
-                    : 'Close ${row.name}',
+                    ? context.tr("Stop closing {0}", [row.name])
+                    : context.tr("Close {0}", [row.name]),
               ),
             ],
           ),
@@ -1140,27 +1153,31 @@ class _AppRuleRow extends ConsumerWidget {
 
   String get _meta {
     return switch (row.rule?.tier) {
-      WhitelistTier.blocked => 'Closes when opened',
-      WhitelistTier.focusOnly => 'Closes while you focus',
-      WhitelistTier.budgeted =>
-        '${formatMinutes(row.usedMinutes)} of '
-            '${formatMinutes(row.rule?.budgetMinutes ?? 0)} used today',
-      WhitelistTier.alwaysAllowed => 'Never closed',
-      null when row.usedMinutes > 0 =>
-        '${formatMinutes(row.usedMinutes)} today',
-      null => row.isSystem ? 'System app' : 'Open — not restricted',
+      WhitelistTier.blocked => tr("Closes when opened"),
+      WhitelistTier.focusOnly => tr("Closes while you focus"),
+      WhitelistTier.budgeted => tr("{0} of {1} used today", [
+        formatMinutes(row.usedMinutes),
+        formatMinutes(row.rule?.budgetMinutes ?? 0),
+      ]),
+      WhitelistTier.alwaysAllowed => tr("Never closed"),
+      null when row.usedMinutes > 0 => tr("{0} today", [
+        formatMinutes(row.usedMinutes),
+      ]),
+      null => row.isSystem ? tr("System app") : tr("Open — not restricted"),
     };
   }
 
   String get _semanticLabel {
     return switch (row.rule?.tier) {
-      WhitelistTier.blocked => '${row.name}, closes when opened',
-      WhitelistTier.focusOnly => '${row.name}, closes while focusing',
-      WhitelistTier.budgeted =>
-        '${row.name}, ${formatMinutes(row.rule?.budgetMinutes ?? 0)} a day, '
-            '${formatMinutes(row.usedMinutes)} used today',
-      WhitelistTier.alwaysAllowed => '${row.name}, never closed',
-      null => '${row.name}, not restricted',
+      WhitelistTier.blocked => tr("{0}, closes when opened", [row.name]),
+      WhitelistTier.focusOnly => tr("{0}, closes while focusing", [row.name]),
+      WhitelistTier.budgeted => tr("{0}, {1} a day, {2} used today", [
+        row.name,
+        formatMinutes(row.rule?.budgetMinutes ?? 0),
+        formatMinutes(row.usedMinutes),
+      ]),
+      WhitelistTier.alwaysAllowed => tr("{0}, never closed", [row.name]),
+      null => tr("{0}, not restricted", [row.name]),
     };
   }
 }
@@ -1436,7 +1453,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                     ),
                   ),
                   SheetCloseButton(
-                    label: 'Close',
+                    label: context.tr("Close"),
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -1469,13 +1486,13 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                           children: [
                             Expanded(
                               child: Text(
-                                'Daily allowance',
+                                context.tr("Daily allowance"),
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
                             _StepButton(
                               icon: Icons.remove_rounded,
-                              label: 'Less time',
+                              label: context.tr("Less time"),
                               enabled: _budget > _min,
                               onTap: () => setState(
                                 () => _budget = (_budget - _step).clamp(
@@ -1485,7 +1502,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                               ),
                             ),
                             Semantics(
-                              label: 'Daily allowance',
+                              label: context.tr("Daily allowance"),
                               value: formatMinutes(_budget),
                               child: SizedBox(
                                 width: 68,
@@ -1498,7 +1515,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                             ),
                             _StepButton(
                               icon: Icons.add_rounded,
-                              label: 'More time',
+                              label: context.tr("More time"),
                               enabled: _budget < _max,
                               onTap: () => setState(
                                 () => _budget = (_budget + _step).clamp(
@@ -1512,7 +1529,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                         if (used > 0) ...[
                           const SizedBox(height: Gap.sm),
                           Semantics(
-                            label: 'Used today',
+                            label: context.tr("Used today"),
                             value: formatMinutes(used),
                             child: LinearProgressIndicator(
                               value: _budget == 0
@@ -1532,7 +1549,9 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '${formatMinutes(used)} used today',
+                              context.tr("{0} used today", [
+                                formatMinutes(used),
+                              ]),
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
@@ -1561,7 +1580,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                           Icons.delete_outline_rounded,
                           size: 18,
                         ),
-                        label: const Text('Remove'),
+                        label: Text(context.tr("Remove")),
                       ),
                     ),
                     const SizedBox(width: Gap.md),
@@ -1573,7 +1592,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                       ),
-                      child: const Text('Save rule'),
+                      child: Text(context.tr("Save rule")),
                     ),
                   ),
                 ],
@@ -1604,26 +1623,28 @@ class _TierOption extends StatelessWidget {
     final (icon, body) = switch (tier) {
       WhitelistTier.blocked => (
         Icons.block_rounded,
-        'Closes as soon as it opens.',
+        context.tr("Closes as soon as it opens."),
       ),
       WhitelistTier.focusOnly => (
         Icons.center_focus_strong_rounded,
-        'Closed while a focus block runs, and open the rest of the day.',
+        context.tr(
+          "Closed while a focus block runs, and open the rest of the day.",
+        ),
       ),
       WhitelistTier.budgeted => (
         Icons.hourglass_bottom_rounded,
-        'Open until the day\'s allowance is spent, then it closes.',
+        context.tr("Open until the day's allowance is spent, then it closes."),
       ),
       WhitelistTier.alwaysAllowed => (
         Icons.check_circle_outline_rounded,
-        'Never closed. Useful for the apps your work runs through.',
+        context.tr("Never closed. Useful for the apps your work runs through."),
       ),
     };
 
     return Semantics(
       button: true,
       selected: selected,
-      label: '${tier.label}. $body',
+      label: '${context.tr(tier.label)}. $body',
       onTap: onTap,
       child: ExcludeSemantics(
         child: Pressable(
@@ -1653,7 +1674,7 @@ class _TierOption extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tier.label,
+                        context.tr(tier.label),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 1),
@@ -1764,14 +1785,16 @@ class _YoutubeView extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'YouTube',
+                          context.tr("YouTube"),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           rules.any
-                              ? 'Partly closed — the rest still works'
-                              : 'Everything still works',
+                              ? context.tr(
+                                  "Partly closed — the rest still works",
+                                )
+                              : context.tr("Everything still works"),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: cs.onSurfaceVariant),
                         ),
@@ -1786,7 +1809,10 @@ class _YoutubeView extends ConsumerWidget {
         const SizedBox(height: Gap.xl),
         Stagger(
           index: 1,
-          child: SectionHeader(title: 'Surfaces', icon: Icons.tune_rounded),
+          child: SectionHeader(
+            title: context.tr("Surfaces"),
+            icon: Icons.tune_rounded,
+          ),
         ),
         Stagger(
           index: 2,
@@ -1796,33 +1822,81 @@ class _YoutubeView extends ConsumerWidget {
               children: [
                 _SurfaceSwitch(
                   icon: Icons.slow_motion_video_rounded,
-                  title: 'Block Shorts',
-                  body:
-                      'The Shorts player closes. Ordinary videos keep playing, '
-                      'so a lecture link still works.',
+                  title: context.tr("Block Shorts"),
+                  body: context.tr(
+                    "The Shorts player closes. Ordinary videos keep playing, so a lecture link still works.",
+                  ),
                   value: rules.shorts,
                   onChanged: (v) => _changeSurface(
                     context,
                     ref,
                     v,
                     () => ref.read(youtubeRulesProvider.notifier).setShorts(v),
-                    feature: 'Shorts blocking',
+                    feature: context.tr("Shorts blocking"),
                   ),
                 ),
                 Divider(color: cs.outlineVariant, height: 1),
                 _SurfaceSwitch(
                   icon: Icons.dynamic_feed_rounded,
-                  title: 'Block home & search',
-                  body:
-                      'Removes the recommendation feed and search results. A '
-                      'video has to be opened from a direct link.',
+                  title: context.tr("Block home & search"),
+                  body: context.tr(
+                    "Removes the recommendation feed and search results. A video has to be opened from a direct link.",
+                  ),
                   value: rules.feed,
                   onChanged: (v) => _changeSurface(
                     context,
                     ref,
                     v,
                     () => ref.read(youtubeRulesProvider.notifier).setFeed(v),
-                    feature: 'YouTube filtering',
+                    feature: context.tr("YouTube filtering"),
+                  ),
+                ),
+                Divider(color: cs.outlineVariant, height: 1),
+                _SurfaceSwitch(
+                  icon: Icons.school_outlined,
+                  title: context.tr("Study channels only"),
+                  body: context.tr(
+                    "Pause supported video pages unless the visible creator matches a channel you selected. Add channels first.",
+                  ),
+                  value: rules.studyOnly,
+                  onChanged: (v) async {
+                    if (v && rules.studyChannels.isEmpty) {
+                      await showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => const _StudyChannelsSheet(),
+                      );
+                      return;
+                    }
+                    if (!context.mounted) return;
+                    await _changeSurface(
+                      context,
+                      ref,
+                      v,
+                      () => ref
+                          .read(youtubeRulesProvider.notifier)
+                          .setStudyOnly(v),
+                      feature: context.tr("Study channel filtering"),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.playlist_add_check_rounded),
+                  title: Text(context.tr("Manage study channels")),
+                  subtitle: Text(
+                    rules.studyChannels.isEmpty
+                        ? context.tr("No channels selected")
+                        : context.tr("{0} selected", [
+                            rules.studyChannels.length,
+                          ]),
+                  ),
+                  trailing: const AppChevron(),
+                  onTap: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => const _StudyChannelsSheet(),
                   ),
                 ),
                 // Only meaningful once something is being closed, and a
@@ -1832,10 +1906,10 @@ class _YoutubeView extends ConsumerWidget {
                   Divider(color: cs.outlineVariant, height: 1),
                   _SurfaceSwitch(
                     icon: Icons.center_focus_strong_rounded,
-                    title: 'Only while focusing',
-                    body:
-                        'Arms both switches while a focus block runs. '
-                        'YouTube is free the rest of the day.',
+                    title: context.tr("Only while focusing"),
+                    body: context.tr(
+                      "Arms your YouTube filters while a focus block runs. YouTube is free the rest of the day.",
+                    ),
                     value: rules.focusOnly,
                     onChanged: (v) => unawaited(
                       _applyLocalChange(
@@ -1873,10 +1947,9 @@ class _YoutubeView extends ConsumerWidget {
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
-                      'Shorts are recognised by the names YouTube gives its '
-                      'own screens, not by reading what is on them. A future '
-                      'YouTube update can rename them, and the block would '
-                      'stop firing until FocusForge is updated to match.',
+                      context.tr(
+                        "Shorts are recognised by the names YouTube gives its own screens. Study channel filtering reads only visible creator labels on supported video pages and compares them on this device. It does not classify every video as educational. A YouTube layout update can affect recognition; full-screen pages may hide the creator.",
+                      ),
                       style: Theme.of(context).textTheme.labelSmall
                           ?.copyWith(height: 1.4),
                     ),
@@ -1891,7 +1964,7 @@ class _YoutubeView extends ConsumerWidget {
           Stagger(
             index: 4,
             child: SectionHeader(
-              title: 'Or the whole app',
+              title: context.tr("Or the whole app"),
               icon: Icons.block_rounded,
             ),
           ),
@@ -1908,13 +1981,15 @@ class _YoutubeView extends ConsumerWidget {
                 ),
                 title: Text(
                   fullyBlocked
-                      ? 'Stop blocking YouTube'
-                      : 'Block all of YouTube',
+                      ? context.tr("Stop blocking YouTube")
+                      : context.tr("Block all of YouTube"),
                 ),
                 subtitle: Text(
                   fullyBlocked
-                      ? 'Removes it from the blocked list'
-                      : 'Closes the app entirely, Shorts and lectures alike',
+                      ? context.tr("Removes it from the blocked list")
+                      : context.tr(
+                          "Closes the app entirely, Shorts and lectures alike",
+                        ),
                 ),
                 onTap: () async {
                   if (!fullyBlocked &&
@@ -1967,6 +2042,133 @@ Future<void> _changeSurface(
   }
   if (!context.mounted) return;
   await _applyLocalChange(context, ref, apply);
+}
+
+class _StudyChannelsSheet extends ConsumerStatefulWidget {
+  const _StudyChannelsSheet();
+
+  @override
+  ConsumerState<_StudyChannelsSheet> createState() =>
+      _StudyChannelsSheetState();
+}
+
+class _StudyChannelsSheetState extends ConsumerState<_StudyChannelsSheet> {
+  final controller = TextEditingController();
+  String? error;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> addChannel() async {
+    final values = YoutubeRules.normalizeStudyChannels([controller.text]);
+    if (values.isEmpty) {
+      setState(
+        () => error = tr(
+          "Enter a channel name or @handle, up to 100 characters.",
+        ),
+      );
+      return;
+    }
+    final current = ref.read(youtubeRulesProvider).studyChannels;
+    await ref.read(youtubeRulesProvider.notifier).setStudyChannels([
+      ...current,
+      values.single,
+    ]);
+    controller.clear();
+    if (mounted) setState(() => error = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final channels = ref.watch(youtubeRulesProvider).studyChannels;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        Gap.xl,
+        Gap.lg,
+        Gap.xl,
+        Gap.xl + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr("Study channels"),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: context.tr("Close"),
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.sm),
+            Text(
+              context.tr(
+                "Add the exact creator name shown below a video, or its @handle when YouTube displays it. Only the current visible creator is compared; names and handles can differ.",
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+            TextField(
+              controller: controller,
+              maxLength: 100,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => addChannel(),
+              decoration: InputDecoration(
+                labelText: context.tr("Channel name or @handle"),
+                errorText: error,
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            FilledButton.icon(
+              onPressed: channels.length < 100 ? addChannel : null,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(context.tr("Add channel")),
+            ),
+            const SizedBox(height: Gap.md),
+            if (channels.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: Gap.md),
+                child: Text(context.tr("No channels selected")),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: channels.length,
+                  itemBuilder: (context, index) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(channels[index]),
+                    trailing: IconButton(
+                      tooltip: context.tr("Remove channel"),
+                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                      onPressed: () => ref
+                          .read(youtubeRulesProvider.notifier)
+                          .setStudyChannels([
+                            for (var i = 0; i < channels.length; i++)
+                              if (i != index) channels[i],
+                          ]),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SurfaceSwitch extends StatelessWidget {
@@ -2043,7 +2245,7 @@ class _ActivityView extends ConsumerWidget {
             children: [
               Expanded(
                 child: _StatTile(
-                  label: 'Walked away',
+                  label: context.tr("Walked away"),
                   value: '$walkedAway',
                   icon: Icons.air_rounded,
                   color: cs.tertiary,
@@ -2052,7 +2254,7 @@ class _ActivityView extends ConsumerWidget {
               const SizedBox(width: Gap.md),
               Expanded(
                 child: _StatTile(
-                  label: 'Went in anyway',
+                  label: context.tr("Went in anyway"),
                   value: '$openedAnyway',
                   icon: Icons.login_rounded,
                   color: cs.onSurfaceVariant,
@@ -2065,7 +2267,7 @@ class _ActivityView extends ConsumerWidget {
         Stagger(
           index: 1,
           child: SectionHeader(
-            title: 'Recent blocks',
+            title: context.tr("Recent blocks"),
             icon: Icons.history_rounded,
           ),
         ),
@@ -2089,26 +2291,25 @@ class _ActivityView extends ConsumerWidget {
         Stagger(
           index: 3,
           child: SectionHeader(
-            title: 'Today on your list',
+            title: context.tr("Today on your list"),
             icon: Icons.schedule_rounded,
           ),
         ),
         Stagger(
           index: 4,
           child: !usageAccess
-              ? const _UsageNotice(
+              ? _UsageNotice(
                   icon: Icons.timelapse_rounded,
-                  body:
-                      'Usage access is off, so today\'s screen time cannot be '
-                      'read. Grant it from the Apps tab to see real numbers '
-                      'here.',
+                  body: context.tr(
+                    "Usage access is off, so today's screen time cannot be read. Grant it from the Apps tab to see real numbers here.",
+                  ),
                 )
               : measured.isEmpty
-              ? const _UsageNotice(
+              ? _UsageNotice(
                   icon: Icons.hourglass_empty_rounded,
-                  body:
-                      'Nothing on your list has been opened yet today. The '
-                      'numbers appear here as soon as something is.',
+                  body: context.tr(
+                    "Nothing on your list has been opened yet today. The numbers appear here as soon as something is.",
+                  ),
                 )
               : ContentCard(
                   child: Padding(
@@ -2211,7 +2412,9 @@ class _EventRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    event.appName.isEmpty ? 'An app' : event.appName,
+                    event.appName.isEmpty
+                        ? context.tr("An app")
+                        : event.appName,
                     style: Theme.of(context).textTheme.bodyLarge,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2227,7 +2430,9 @@ class _EventRow extends StatelessWidget {
             ),
             const SizedBox(width: Gap.sm),
             _OutcomePill(
-              label: walked ? 'Walked away' : 'Opened anyway',
+              label: walked
+                  ? context.tr("Walked away")
+                  : context.tr("Opened anyway"),
               color: color,
             ),
           ],
@@ -2283,7 +2488,10 @@ class _UsageRow extends StatelessWidget {
     final share = maxMinutes == 0 ? 0.0 : entry.usedMinutes / maxMinutes;
 
     return Semantics(
-      label: '${entry.name}, ${formatMinutes(entry.usedMinutes)} today',
+      label: context.tr("{0}, {1} today", [
+        entry.name,
+        formatMinutes(entry.usedMinutes),
+      ]),
       child: ExcludeSemantics(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: Gap.md),
@@ -2394,13 +2602,14 @@ class _EmptyLog extends StatelessWidget {
             ),
             const SizedBox(height: Gap.md),
             Text(
-              'Nothing blocked yet',
+              context.tr("Nothing blocked yet"),
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: Gap.xs),
             Text(
-              'Every time a rule fires it is logged here — and whether you '
-              'went in anyway or walked away.',
+              context.tr(
+                "Every time a rule fires it is logged here — and whether you went in anyway or walked away.",
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),

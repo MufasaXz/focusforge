@@ -150,7 +150,10 @@ void main() {
       expect(container.read(whitelistProvider), hasLength(1));
       expect(manager.requests, isEmpty);
       expect(find.byType(AlertDialog), findsNothing);
-      expect(find.descendant(of: row, matching: find.text('Allow app usage')), findsOneWidget);
+      expect(
+        find.descendant(of: row, matching: find.text('Allow app usage')),
+        findsOneWidget,
+      );
       expect(find.text('A quieter phone starts here'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
@@ -382,6 +385,35 @@ void main() {
 
     expect(container.read(whitelistProvider), isEmpty);
     expect(find.byType(AlertDialog), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('study channels can be added, persisted and removed locally', (
+    tester,
+  ) async {
+    final container = containerFor(accessible: true);
+    await mount(tester, container, const ShieldScreen());
+    await tester.tap(find.text('YouTube'));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Study channels only'));
+    await tester.tap(
+      find.widgetWithText(SwitchListTile, 'Study channels only'),
+    );
+    await tester.pumpAndSettle();
+    expect(container.read(youtubeRulesProvider).studyOnly, isFalse);
+    await tester.enterText(find.byType(TextField), ' @teacher ');
+    await tester.tap(find.text('Add channel'));
+    await tester.pumpAndSettle();
+    expect(container.read(youtubeRulesProvider).studyChannels, ['@teacher']);
+    expect(store.getMap(StoreKeys.youtubeRules)?['studyChannels'], [
+      '@teacher',
+    ]);
+    await tester.tap(find.byTooltip('Remove channel'));
+    await tester.pumpAndSettle();
+    expect(container.read(youtubeRulesProvider).studyChannels, isEmpty);
+    expect(find.text('No channels selected'), findsWidgets);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });

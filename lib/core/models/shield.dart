@@ -106,6 +106,8 @@ class YoutubeRules {
     this.shorts = false,
     this.feed = false,
     this.focusOnly = false,
+    this.studyOnly = false,
+    this.studyChannels = const [],
   });
 
   /// Close the Shorts player.
@@ -122,21 +124,35 @@ class YoutubeRules {
   /// rest of the day, and shut while the user is working.
   final bool focusOnly;
 
-  bool get any => shorts || feed;
+  /// Permit supported video pages only when a visible creator matches a
+  /// channel the user selected. This is a local allowlist, not a classifier.
+  final bool studyOnly;
+  final List<String> studyChannels;
+
+  bool get any => shorts || feed || studyOnly;
 
   static const off = YoutubeRules();
 
-  YoutubeRules copyWith({bool? shorts, bool? feed, bool? focusOnly}) =>
-      YoutubeRules(
-        shorts: shorts ?? this.shorts,
-        feed: feed ?? this.feed,
-        focusOnly: focusOnly ?? this.focusOnly,
-      );
+  YoutubeRules copyWith({
+    bool? shorts,
+    bool? feed,
+    bool? focusOnly,
+    bool? studyOnly,
+    List<String>? studyChannels,
+  }) => YoutubeRules(
+    shorts: shorts ?? this.shorts,
+    feed: feed ?? this.feed,
+    focusOnly: focusOnly ?? this.focusOnly,
+    studyOnly: studyOnly ?? this.studyOnly,
+    studyChannels: studyChannels ?? this.studyChannels,
+  );
 
   Map<String, dynamic> toJson() => {
     'shorts': shorts,
     'feed': feed,
     'focusOnly': focusOnly,
+    'studyOnly': studyOnly,
+    'studyChannels': studyChannels,
   };
 
   /// Type-tested rather than cast: this is read during bootstrap, where a
@@ -145,7 +161,24 @@ class YoutubeRules {
     shorts: j['shorts'] is bool ? j['shorts'] as bool : false,
     feed: j['feed'] is bool ? j['feed'] as bool : false,
     focusOnly: j['focusOnly'] is bool ? j['focusOnly'] as bool : false,
+    studyOnly: j['studyOnly'] is bool ? j['studyOnly'] as bool : false,
+    studyChannels: normalizeStudyChannels(j['studyChannels']),
   );
+
+  static List<String> normalizeStudyChannels(Object? raw) {
+    if (raw is! Iterable) return const [];
+    final seen = <String>{};
+    return List.unmodifiable([
+      for (final value in raw.take(100))
+        if (value is String)
+          if (value.trim().replaceAll(RegExp(r'\s+'), ' ') case final name
+              when name.isNotEmpty &&
+                  name.length <= 100 &&
+                  !name.contains(RegExp(r'[\x00-\x1f]')) &&
+                  seen.add(name.toLowerCase()))
+            name,
+    ]);
+  }
 }
 
 /// A named bundle of blocks — "Exam Week", "Weekend Relax".
