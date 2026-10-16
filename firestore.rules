@@ -115,7 +115,10 @@ service cloud.firestore {
     match /leaderboard/{week}/entries/{uid} {
       allow read: if signedIn();
       allow create, update: if self(uid) && dayKey(week) &&
-        request.resource.data.keys().hasOnly(['ownerUid','name','minutes','level','updatedAt']) &&
+        request.resource.data.keys().hasOnly(['ownerUid','name','minutes','level','updatedAt','avatarPhoto']) &&
+        (!request.resource.data.keys().hasAny(['avatarPhoto']) ||
+          (request.resource.data.avatarPhoto is string && request.resource.data.avatarPhoto.size() <= 24000 &&
+            request.resource.data.avatarPhoto.matches('^[A-Za-z0-9+/]+={0,2}$'))) &&
         request.resource.data.ownerUid == uid &&
         boundedInt(request.resource.data.minutes, 10080) &&
         (!request.resource.data.keys().hasAny(['level']) ||

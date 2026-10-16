@@ -145,12 +145,14 @@ class LeaderboardEntry {
     this.isMe = false,
     this.group,
     this.level,
+    this.avatarPhoto,
   });
 
   final String uid;
   final String name;
   final double hours;
   final int? level;
+  final String? avatarPhoto;
   final bool isMe;
   final String? group;
 

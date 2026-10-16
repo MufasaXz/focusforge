@@ -20,6 +20,10 @@ import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/profile/widgets/avatar_sheet.dart';
+import 'package:focusforge/core/services/profile_photo.dart';
+import 'package:image/image.dart' as img;
+
+import 'dart:typed_data';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -151,4 +155,32 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'changing colour preserves a chosen photo until explicit removal',
+    (tester) async {
+      final container = freshContainer();
+      final photo = ProfilePhoto.encode(
+        Uint8List.fromList(img.encodePng(img.Image(width: 128, height: 128))),
+      );
+      await container
+          .read(userProvider.notifier)
+          .save(UserProfile(displayName: 'Sam Rivera', avatarPhoto: photo));
+      await tester.pumpWidget(host(container));
+      await openSheet(tester);
+      final dot = find.byType(AnimatedContainer).last;
+      await tester.ensureVisible(dot);
+      await tester.tap(dot);
+      await tester.pumpAndSettle();
+      expect(container.read(userProvider).avatarColor, isNotNull);
+      expect(container.read(userProvider).avatarPhoto, photo);
+      expect(store.getMap(StoreKeys.user)?['avatarPhoto'], photo);
+      final remove = find.text('Remove photo');
+      await tester.ensureVisible(remove);
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(container.read(userProvider).avatarPhoto, isNull);
+      expect(store.getMap(StoreKeys.user)?['avatarPhoto'], isNull);
+    },
+  );
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/profile_photo.dart';
+
 /// How the app decides between the light and dark glass themes.
 ///
 /// `system` follows the platform; the other two pin it. Stored by name so the
@@ -222,6 +224,7 @@ class UserProfile {
     this.isAnonymous = true,
     this.avatarIcon,
     this.avatarColor,
+    this.avatarPhoto,
     this.dailyGoalMinutes = 180,
     this.createdAt,
   });
@@ -239,11 +242,8 @@ class UserProfile {
 
   /// The glyph on the avatar, as an `AppIcons` name, or null for initials.
   ///
-  /// A glyph rather than a photo: the app has no image picker, no upload path
-  /// and no permission it would have to ask for, and a stored picture would
-  /// have to survive all three. It is also the honest shape for an account
-  /// that is anonymous by default.
   final String? avatarIcon;
+  final String? avatarPhoto;
 
   /// The avatar's colour as ARGB, or null to follow the theme's primary
   /// container. Stored as an int rather than a palette name so a colour the
@@ -285,6 +285,8 @@ class UserProfile {
     bool? isAnonymous,
     String? avatarIcon,
     int? avatarColor,
+    String? avatarPhoto,
+    bool clearPhoto = false,
     int? dailyGoalMinutes,
     bool clearAvatar = false,
     DateTime? createdAt,
@@ -301,6 +303,7 @@ class UserProfile {
     // explicitly, or `copyWith` could never take the glyph away.
     avatarIcon: clearAvatar ? null : (avatarIcon ?? this.avatarIcon),
     avatarColor: avatarColor ?? this.avatarColor,
+    avatarPhoto: clearPhoto ? null : avatarPhoto ?? this.avatarPhoto,
     dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -315,6 +318,7 @@ class UserProfile {
     'isAnonymous': isAnonymous,
     'avatarIcon': avatarIcon,
     'avatarColor': avatarColor,
+    if (avatarPhoto != null) 'avatarPhoto': avatarPhoto,
     'dailyGoalMinutes': dailyGoalMinutes,
     'createdAt': createdAt?.millisecondsSinceEpoch,
   };
@@ -331,6 +335,7 @@ class UserProfile {
     // malformed entry must not abort the launch.
     avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
     avatarColor: j['avatarColor'] is int ? j['avatarColor'] as int : null,
+    avatarPhoto: ProfilePhoto.valid(j['avatarPhoto']),
     dailyGoalMinutes: j['dailyGoalMinutes'] as int? ?? 180,
     createdAt: j['createdAt'] == null
         ? null

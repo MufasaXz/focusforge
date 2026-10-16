@@ -16,6 +16,10 @@ import 'package:focusforge/core/services/firebase_auth_service.dart';
 import 'package:focusforge/core/services/leaderboard_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/study_backup_service.dart';
+import 'package:focusforge/core/services/profile_photo.dart';
+import 'package:image/image.dart' as img;
+
+import 'dart:typed_data';
 
 class _RemoteUser implements User {
   @override
@@ -99,8 +103,17 @@ class _Board implements LeaderboardService {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   }) async {
-    current = [BoardRow(uid: uid, name: name, minutes: minutes, level: level)];
+    current = [
+      BoardRow(
+        uid: uid,
+        name: name,
+        minutes: minutes,
+        level: level,
+        avatarPhoto: avatarPhoto,
+      ),
+    ];
     rows.add(current);
   }
 
@@ -207,6 +220,16 @@ void main() {
     expect(container.read(myRankProvider)?.isMe, isTrue);
     expect(container.read(planLibraryProvider).plans.single.id, 'exam-plan');
 
+    final photo = ProfilePhoto.encode(
+      Uint8List.fromList(img.encodePng(img.Image(width: 32, height: 32))),
+    );
+    await container.read(userProvider.notifier).setDisplayName('Alex Updated');
+    await container.read(userProvider.notifier).setPhoto(photo);
+    await container.pump();
+    await container.read(boardPublishQueueProvider).run(() async {});
+    expect(board.current.single.name, 'Alex Updated');
+    expect(board.current.single.avatarPhoto, photo);
+
     await auth.signOut();
     await container
         .read(userProvider.notifier)
@@ -224,5 +247,9 @@ void main() {
     expect(container.read(boardOptInProvider), isTrue);
     expect(container.read(myRankProvider)?.isMe, isTrue);
     expect(container.read(planLibraryProvider).plans.single.id, 'exam-plan');
+    expect(container.read(userProvider).displayName, 'Alex Updated');
+    expect(container.read(userProvider).avatarPhoto, photo);
+    expect(board.current.single.name, 'Alex Updated');
+    expect(board.current.single.avatarPhoto, photo);
   });
 }

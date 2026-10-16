@@ -33,6 +33,7 @@ class _Board implements LeaderboardService {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   }) async {
     publishedLevels.add(level);
   }
@@ -67,6 +68,7 @@ class _RetryBoard extends _Board {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   }) async {
     attempts++;
     if (attempts <= 2) throw StateError('Offline');
@@ -439,8 +441,12 @@ void main() {
             .tileColor,
         (dark ? AppTheme.dark(amoled: true) : AppTheme.light())
             .colorScheme
-            .primaryContainer,
+            .surfaceContainerLow,
       );
+      final selfTile = tester.widget<ListTile>(
+        find.ancestor(of: find.text('Alex'), matching: find.byType(ListTile)),
+      );
+      expect((selfTile.shape! as RoundedRectangleBorder).side.width, 1.5);
       expect(tester.takeException(), isNull);
     });
   }

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'profile_photo.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:firebase_core/firebase_core.dart';
@@ -16,17 +18,20 @@ class BoardRow {
     required this.name,
     required this.minutes,
     this.level,
+    this.avatarPhoto,
   });
 
   final String uid;
   final String name;
   final int minutes;
   final int? level;
+  final String? avatarPhoto;
 
   Map<String, dynamic> toJson() => {
     'name': name,
     'minutes': minutes,
     if (level != null) 'level': level,
+    if (avatarPhoto != null) 'avatarPhoto': avatarPhoto,
   };
 
   static BoardRow? fromJson(String uid, Object? raw) {
@@ -42,6 +47,7 @@ class BoardRow {
           : 'A student',
       minutes: minutes.toInt(),
       level: level is int && level > 0 ? level : null,
+      avatarPhoto: ProfilePhoto.valid(raw['avatarPhoto']),
     );
   }
 }
@@ -72,6 +78,7 @@ abstract class LeaderboardService {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   });
 
   /// This week's rows, best first.
@@ -121,12 +128,14 @@ class FirebaseLeaderboardService implements LeaderboardService {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   }) async {
     await _entries(week)
         .doc(uid)
         .set({
           'ownerUid': uid,
           'name': name,
+          'avatarPhoto': ?avatarPhoto,
           'minutes': minutes,
           'level': level,
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -205,6 +214,7 @@ class UnavailableLeaderboardService implements LeaderboardService {
     required String name,
     required int minutes,
     required int level,
+    String? avatarPhoto,
   }) async {}
 
   @override

@@ -2,6 +2,10 @@ import '../../../core/localization/app_strings.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/services/profile_photo.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/models/icon_registry.dart';
@@ -35,6 +39,42 @@ class AvatarSheet extends ConsumerStatefulWidget {
 }
 
 class _AvatarSheetState extends ConsumerState<AvatarSheet> {
+  bool _picking = false;
+
+  Future<void> _choosePhoto() async {
+    if (_picking) return;
+    final uid = ref.read(userProvider).uid;
+    setState(() => _picking = true);
+    try {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
+      if (image == null) return;
+      final photo = await compute(
+        ProfilePhoto.encode,
+        await image.readAsBytes(),
+      );
+      if (!mounted || ref.read(userProvider).uid != uid) return;
+      await ref.read(userProvider.notifier).setPhoto(photo);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.tr('Could not open this photo. Try another image.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
   /// The colours on offer: the subject palette plus the scheme's own primary,
   /// so an avatar can match a subject or the app.
   List<Color> _colors(ColorScheme cs) => [
@@ -77,7 +117,7 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                         const SizedBox(height: 2),
                         Text(
                           context.tr(
-                            "A mark and a colour. Nothing leaves the device.",
+                            "Your photo is backed up with your account and shared when leaderboard sharing is on.",
                           ),
                           style: tt.labelSmall?.copyWith(
                             color: cs.onSurfaceVariant,
@@ -94,6 +134,22 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
               ),
               const SizedBox(height: Gap.lg),
               Center(child: AvatarDisc(user: user, size: 96)),
+              const SizedBox(height: Gap.md),
+              FilledButton.tonalIcon(
+                onPressed: _picking ? null : _choosePhoto,
+                icon: _picking
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(context.tr('Choose photo')),
+              ),
+              if (user.avatarPhoto != null)
+                TextButton(
+                  onPressed: _picking ? null : () => notifier.setPhoto(null),
+                  child: Text(context.tr('Remove photo')),
+                ),
               const SizedBox(height: Gap.xl),
               _FieldLabel(text: context.tr("Mark")),
               const SizedBox(height: Gap.sm),
@@ -143,10 +199,8 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                     _ColorChoice(
                       color: colors[i],
                       selected: selected == i,
-                      onTap: () => notifier.setAvatar(
-                        icon: mark,
-                        color: colors[i].toARGB32(),
-                      ),
+                      onTap: () =>
+                          notifier.setAvatarColor(colors[i].toARGB32()),
                     ),
                 ],
               ),
@@ -188,6 +242,7 @@ class AvatarDisc extends StatelessWidget {
         ? cs.onPrimaryContainer
         : _inkOn(color);
     final icon = user.avatarIcon;
+    final photo = ProfilePhoto.bytes(user.avatarPhoto);
 
     final label = user.displayName.trim().isEmpty
         ? context.tr("Profile avatar")
@@ -207,22 +262,34 @@ class AvatarDisc extends StatelessWidget {
               width: size,
               height: size,
               decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-              child: Center(
-                child: icon == null
-                    ? Text(
-                        user.initials,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: onColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: size * 0.34,
-                        ),
-                      )
-                    : Icon(
-                        AppIcons.resolve(icon),
-                        size: size * 0.46,
-                        color: onColor,
+              child: photo != null
+                  ? ClipOval(
+                      child: Image.memory(
+                        photo,
+                        width: size,
+                        height: size,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            Center(child: Text(user.initials)),
                       ),
-              ),
+                    )
+                  : Center(
+                      child: icon == null
+                          ? Text(
+                              user.initials,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: onColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: size * 0.34,
+                                  ),
+                            )
+                          : Icon(
+                              AppIcons.resolve(icon),
+                              size: size * 0.46,
+                              color: onColor,
+                            ),
+                    ),
             ),
             if (editable)
               Positioned(

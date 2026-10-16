@@ -1,4 +1,5 @@
 import '../../core/localization/app_strings.dart';
+import '../../core/services/profile_photo.dart';
 import '../../shared/widgets/glass_surface.dart';
 
 import 'package:flutter/material.dart';
@@ -204,8 +205,9 @@ class _BoardRowTile extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 360 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    final foreground = entry.isMe ? cs.onPrimaryContainer : cs.onSurface;
-    final muted = entry.isMe ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+    final foreground = cs.onSurface;
+    final muted = cs.onSurfaceVariant;
+    final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
     final level = entry.level == null
         ? context.tr("Level unavailable")
         : context.tr("Level {0}", [entry.level]);
@@ -217,12 +219,18 @@ class _BoardRowTile extends StatelessWidget {
     };
 
     return ListTile(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: entry.isMe
+            ? BorderSide(color: const Color(0xFFD6AD43), width: 1.5)
+            : BorderSide.none,
+      ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: Gap.md,
         vertical: Gap.sm,
       ),
       tileColor: entry.isMe
-          ? cs.primaryContainer
+          ? cs.surfaceContainerLow
           : rank == 1
           ? Color.alphaBlend(
               cs.primary.withValues(alpha: .04),
@@ -269,6 +277,10 @@ class _BoardRowTile extends StatelessWidget {
             ExcludeSemantics(
               child: CircleAvatar(
                 radius: 19,
+                foregroundImage: photoBytes == null
+                    ? null
+                    : MemoryImage(photoBytes),
+                onForegroundImageError: photoBytes == null ? null : (_, _) {},
                 backgroundColor: entry.isMe
                     ? cs.primary
                     : cs.surfaceContainerHighest,
@@ -417,9 +429,8 @@ class _BoardSwitch extends ConsumerWidget {
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: Text(
-                    context.tr(
-                      "Your display name, account ID, level and weekly focus time are visible to signed-in users when you opt in.",
-                    ),
+                    '${context.tr("Your display name, account ID, level and weekly focus time are visible to signed-in users when you opt in.")} '
+                    '${context.tr("Your photo is backed up with your account and shared when leaderboard sharing is on.")}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),

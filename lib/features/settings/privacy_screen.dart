@@ -164,6 +164,15 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   leading: Icon(Icons.workspace_premium_outlined),
                 ),
                 ListTile(
+                  title: Text(context.tr("Profile avatar")),
+                  subtitle: Text(
+                    context.tr(
+                      "Your photo is backed up with your account and shared when leaderboard sharing is on.",
+                    ),
+                  ),
+                  leading: const Icon(Icons.photo_outlined),
+                ),
+                ListTile(
                   title: Text(context.tr("Study group membership")),
                   subtitle: Text(
                     context.tr(

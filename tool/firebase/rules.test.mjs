@@ -113,6 +113,14 @@ test('leaderboard accepts optional positive integer levels and preserves row own
   }
   await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), {...summary, level:7}));
 });
+test('leaderboard photos stay bounded and belong to the row owner', async () => {
+  const ref = doc(db('student'), 'leaderboard/2026-10-12/entries/student');
+  const summary = {ownerUid:'student',name:'Alex',minutes:60,updatedAt:now(),avatarPhoto:'/9j/AA=='};
+  await assertSucceeds(setDoc(ref, summary));
+  await assertFails(setDoc(ref, {...summary, avatarPhoto:'A'.repeat(24001)}));
+  await assertFails(setDoc(ref, {...summary, avatarPhoto:'https://untrusted.invalid/photo'}));
+  await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), summary));
+});
 test('leaderboard accepts bounded weekly summary and rejects invalid timestamp or totals', async () => {
   const ref=doc(db('student'),'leaderboard/2026-10-12/entries/student');
   await assertSucceeds(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:10080,updatedAt:now()}));

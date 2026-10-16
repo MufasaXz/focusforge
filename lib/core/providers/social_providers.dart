@@ -773,6 +773,7 @@ final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
         name: row.name,
         hours: row.minutes / 60,
         level: row.level,
+        avatarPhoto: row.avatarPhoto,
         isMe: myUid != null && row.uid == myUid,
       ),
   ];
@@ -922,6 +923,7 @@ final leaderboardPublisherProvider = Provider<void>((ref) {
         name: name.isEmpty ? 'A student' : name,
         minutes: minutes,
         level: level,
+        avatarPhoto: ref.read(userProvider).avatarPhoto,
       );
     });
   }

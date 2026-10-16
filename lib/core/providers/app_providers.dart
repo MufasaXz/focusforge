@@ -82,8 +82,15 @@ class UserNotifier extends Notifier<UserProfile> {
       avatarIcon: icon,
       avatarColor: color,
       clearAvatar: icon == null,
+      clearPhoto: true,
     ),
   );
+
+  Future<void> setPhoto(String? photo) =>
+      save(state.copyWith(avatarPhoto: photo, clearPhoto: photo == null));
+
+  Future<void> setAvatarColor(int color) =>
+      save(state.copyWith(avatarColor: color));
 
   Future<void> completeOnboarding() =>
       save(state.copyWith(onboardingComplete: true));
