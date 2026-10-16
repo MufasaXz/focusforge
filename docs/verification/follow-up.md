@@ -12,7 +12,7 @@ The Home shortcut puts subject and focus/break details on the left and a gold St
 
 Issue #1 is addressed by Turkish localization and an optional bounded random focus plan. A focus duration is sampled once per block, retained across pause/background/restart and hidden while random focus runs. Breaks keep their normal countdown. The actual completed duration is credited. Issue #2 is addressed by keeping onboarding's input subtree stable when the keyboard changes available height.
 
-Timer completion snapshots keep a pending session journal until durable session storage succeeds. Stable segment IDs prevent duplicate recovery after millisecond timestamp serialization. Generation and account checks stop queued recovery from crediting a different account. Session minutes and gamification totals are still separate storage writes: an interrupted stats write can leave XP behind a durable session. This change does not claim transactional XP recovery.
+Timer completion snapshots keep a pending session journal until durable session storage succeeds. Stable segment IDs prevent duplicate recovery after millisecond timestamp serialization. Generation and account checks stop queued recovery from crediting a different account. The journal also retains pending aggregate credit. Totals, XP and the credited session ID are saved in one JSON write; replay after either a session or stats write failure completes the credit once. A completed block stays in the journal across identity changes until its owning account returns. Explicit account/history deletion discards pending completions. A remote backup with session batches but no valid settings document cannot replace valid local settings.
 
 ## Study channel filtering
 
@@ -26,10 +26,10 @@ Before releasing this feature, update the website's privacy Access section, perm
 
 ## Verification
 
-- Full Flutter suite: 447 tests passed. Includes returning credential restore, leaderboard row ownership, timer restart/retry boundaries, random focus, keyboard focus, narrow Home rows and RTL.
+- Full Flutter suite: 452 tests passed. Includes returning credential restore, leaderboard row ownership, timer restart/retry boundaries, random focus, keyboard focus, narrow Home rows and RTL.
 - Flutter analysis of lib and test: no issues.
 - Android debug unit suite: 69 tests passed in 13 suites, including 5 study-channel policy tests. Three pre-existing local foreground-tracker tests are preserved outside these commits; the committed suite contains 66 tests. Android resource processing and Kotlin compilation passed.
 - Offline generator check: 1,169 source keys in every translated catalog, valid placeholders and matching generated files. Direct literal localization audit found no missing source lookup keys.
-- No backend schema or rules changed. No production account deletion or new build upload was performed.
+- No backend rules changed. Aggregate JSON adds an optional credited-session receipt list; old saved aggregates remain readable. No production account deletion or new build upload was performed.
 
 Third-party Gradle deprecations remain in the build output; there are no Flutter analyzer warnings. No emulator or real YouTube playback validation is claimed for this follow-up.
