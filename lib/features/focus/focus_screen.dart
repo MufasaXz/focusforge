@@ -230,6 +230,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         final columnWidth = wide
             ? (constraints.maxWidth - Gap.xl) / 2
             : constraints.maxWidth;
+        // The clock must fit the pane, not the phone it was designed on. A
+        // 60-minute preset uses the same faces as a short session, but the
+        // fixed 252dp frame used to push the dial/caption into the dock on
+        // compact windows and large text. Keep a readable minimum while
+        // deriving the frame from the actual column width.
+        final clockSize = (columnWidth - (Gap.lg + 8))
+            .clamp(176.0, 252.0)
+            .toDouble();
         final compactDock = columnWidth < (wide ? 430 : 360);
         final labelledPlay =
             columnWidth >= (wide ? 440 : 390) &&
@@ -329,8 +337,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       child: ExcludeSemantics(
                         child: hiddenTime
                             ? Container(
-                                width: 252,
-                                height: 252,
+                                width: clockSize,
+                                height: clockSize,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
@@ -387,7 +395,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 ),
                                 _ => ProgressRing(
                                   value: timer.progressFor(preset),
-                                  size: 252,
+                                  size: clockSize,
                                   stroke: 12,
                                   ticks: 60,
                                   // The second horizon: how far through the set of
