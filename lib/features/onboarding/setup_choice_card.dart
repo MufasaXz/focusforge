@@ -51,13 +51,22 @@ class SetupChoiceCard extends StatelessWidget {
         curve: Motion.decelerate,
         decoration: BoxDecoration(
           color: selected
-              ? Color.alphaBlend(accent.withValues(alpha: .08), cs.surface)
+              ? Color.alphaBlend(accent.withValues(alpha: .11), cs.surface)
               : cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
             color: selected ? accent : cs.outlineVariant.withValues(alpha: .45),
-            width: selected ? 1.5 : 1,
+            width: selected ? 1.75 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: .10),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : const [],
         ),
         child: Material(
           type: MaterialType.transparency,

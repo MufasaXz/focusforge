@@ -103,14 +103,25 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
                   const SizedBox(height: Gap.md),
                   // The promise, arriving after the mark has settled — the last
                   // thing to fade in is the thing the next screen has to keep.
+                  const SizedBox(height: Gap.md),
+                  // A compact promise row gives the first frame a useful
+                  // answer to “why this app?” without delaying the handoff.
                   FadeTransition(
-                    opacity: _fade(0.35, 0.85),
-                    child: Text(
-                      context.tr("Less scrolling. More studying."),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    opacity: _fade(0.45, 0.95),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: Gap.sm,
+                      runSpacing: Gap.xs,
+                      children: [
+                        _PromiseChip(
+                          icon: Icons.timer_outlined,
+                          label: context.tr("Focus time"),
+                        ),
+                        _PromiseChip(
+                          icon: Icons.shield_outlined,
+                          label: context.tr("Fewer distractions"),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -119,6 +130,39 @@ class _SplashStepState extends State<SplashStep> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+}
+
+class _PromiseChip extends StatelessWidget {
+  const _PromiseChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(Radii.pill),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .6)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.md,
+          vertical: Gap.sm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: cs.primary),
+            const SizedBox(width: Gap.xs),
+            Text(label, style: Theme.of(context).textTheme.labelMedium),
+          ],
+        ),
+      ),
     );
   }
 }

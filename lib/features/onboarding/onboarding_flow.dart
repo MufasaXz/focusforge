@@ -313,12 +313,12 @@ class _FlowHeader extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(title, style: theme.textTheme.labelMedium),
+                      child: Text(title, style: theme.textTheme.labelLarge),
                     ),
-                    // Tabular so the count never shifts width as it advances.
                     Text(
-                      context.tr("{0} of {1}", [index, total]),
+                      context.tr("Step {0} of {1}", [index, total]),
                       style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -326,15 +326,20 @@ class _FlowHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.sm),
                 Semantics(
-                  label: context.tr("Setup progress, {0}", [title]),
+                  label: context.tr("Setup progress"),
                   value: context.tr("Step {0} of {1}", [index, total]),
                   child: ExcludeSemantics(
-                    child: LinearProgressIndicator(
-                      value: index / total,
-                      minHeight: 3,
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(Radii.pill),
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
+                      child: SizedBox(
+                        height: 6,
+                        child: LinearProgressIndicator(
+                          value: index / total,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
