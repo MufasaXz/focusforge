@@ -123,8 +123,7 @@ class _FlipBoard extends StatelessWidget {
     painter.dispose();
 
     final card = height * 0.98;
-
-    return Row(
+    final board = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < text.length; i++)
@@ -150,6 +149,38 @@ class _FlipBoard extends StatelessWidget {
           ),
       ],
     );
+
+    // An hour adds two characters to the board (`h:mm:ss`). Keep the cards at
+    // their natural size whenever possible, but scale the complete board down
+    // as one unit when the available pane is narrower than that longer value.
+    // FittedBox is intentional here: unlike a loose Transform it reports the
+    // scaled size to its parent, so the board cannot paint outside a compact
+    // phone layout.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : double.infinity;
+        if (!maxWidth.isFinite) return board;
+        return SizedBox(
+          width: math.min(maxWidth, _boardWidth(text, width, card, height)),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: board,
+          ),
+        );
+      },
+    );
+  }
+
+  double _boardWidth(String value, double width, double card, double height) {
+    final separators = value.length - 1;
+    var result = 0.0;
+    for (var i = 0; i < value.length; i++) {
+      result += value[i] == ':' ? height * 0.22 : width;
+    }
+    return result + separators * height * 0.05;
   }
 }
 

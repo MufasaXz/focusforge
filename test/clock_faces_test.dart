@@ -190,9 +190,8 @@ void main() {
         wrap(
           Builder(
             builder: (context) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(2)),
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(2)),
               child: const ClockDisplay(
                 remaining: remaining,
                 face: ClockFace.serif,
@@ -337,6 +336,30 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the flip board fits hour durations in a narrow slot', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(320, 240));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        wrap(
+          const ClockDisplay(
+            remaining: Duration(hours: 1, minutes: 5, seconds: 9),
+            face: ClockFace.flip,
+            accent: Colors.orange,
+            height: 72,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1'), findsWidgets);
+      expect(find.text('0'), findsWidgets);
+      expect(tester.takeException(), isNull);
+      final display = tester.getRect(find.byType(ClockDisplay));
+      expect(display.width, lessThanOrEqualTo(320));
+    });
     testWidgets('a figure that changes flips and lands on the new one', (
       tester,
     ) async {
@@ -523,9 +546,10 @@ void main() {
       // The values loop above proves every face is listed; this one proves
       // the new tile previews in the family it promises.
       final timer = scope.read(timerProvider);
-      final firstDigit = formatClock(
-        timer.remaining,
-      ).replaceAll(':', '').split('').first;
+      final firstDigit = formatClock(timer.remaining)
+          .replaceAll(':', '')
+          .split('')
+          .first;
       final families = tester
           .widgetList<Text>(find.text(firstDigit))
           .map((t) => t.style?.fontFamily)
