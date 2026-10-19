@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-19
+
+- Improved account recovery with automatic retries and clearer progress while saved study data returns.
+- Restored saved subjects, custom plans, goals, completed sessions and achievements after signing in again.
+- Kept existing logins and study setup across app updates, with background syncing.
+- Improved leaderboard refresh, personal ranking, level display and sharing controls.
+- Added profile photos and synced name and photo changes with the current weekly leaderboard.
+- Added automatic language detection with support for 25 languages.
+- Added responsive tablet layouts and floating side navigation.
+- Simplified setup with clearer steps, shorter instructions and better selection states.
+- Added subject management with matching icons, distinct colors and removal controls.
+- Improved the Home timer shortcut and subject-time breakdown.
+- Added random focus blocks and more reliable recovery of interrupted sessions.
+- Fixed long-duration and hour timers overflowing compact and flip-clock layouts.
+- Refined Shield pause screens and improved supported YouTube Shorts and feed detection.
+- Fixed Google sign-in configuration being removed from optimized releases.
+- Refreshed app screenshots and added Play Store testing and GitHub download links.
+
 ## 1.0.0 first Play release candidate — 2026-10-14
 
 Android build 2022 retains the existing signing identity and increasing version
