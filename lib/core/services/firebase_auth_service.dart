@@ -249,10 +249,9 @@ class FirebaseAuthService extends AuthService {
     return _persist(base);
   }
 
-  /// Signs in with an email credential, then applies the same merge as the
-  /// local implementation: the stored profile is the base, and only the uid
-  /// and `isAnonymous` change. A malformed address and an empty password fail
-  /// before the round-trip, exactly as they do offline.
+  /// Signs in with an email credential, preserving setup only when the stored
+  /// profile belongs to that account or a confirmed unlinked guest. A malformed
+  /// address and an empty password fail before the round-trip.
   @override
   Future<UserProfile> signInWithEmail(String email, String password) async {
     _validateEmail(email);
@@ -624,11 +623,9 @@ class FirebaseAuthService extends AuthService {
 
   /// Builds the device profile for [user].
   ///
-  /// The *stored* record is authoritative for everything the user has edited
-  /// — persona, name, daily goal, timezone, onboarding state — and Firebase
-  /// contributes only the identity. Starting from a fresh [UserProfile] would
-  /// silently reset the record the onboarding steps wrote, which is the exact
-  /// failure `LocalAuthService._baseProfile` exists to prevent.
+  /// The stored record preserves edits for the same UID or a confirmed
+  /// unlinked guest. A different linked or unknown identity starts from fresh
+  /// defaults so its private settings cannot carry into the current account.
   ///
   /// Credential state comes from Firebase. Keeping a previously linked flag
   /// after sign-out would misrepresent a device-only session as authenticated.
@@ -639,9 +636,17 @@ class FirebaseAuthService extends AuthService {
     String? providerName,
   }) {
     final stored = _store.getMap(StoreKeys.user);
-    final base = stored == null
-        ? UserProfile(createdAt: DateTime.now())
-        : UserProfile.fromJson(stored);
+    final previousUid = stored?['uid'];
+    // A provider credential proves only the new account's identity. Device
+    // state from a different linked account must not supply its name, photo
+    // or preferences, including a signed-out profile marked anonymous.
+    final ownProfile = previousUid == user.uid;
+    final unlinkedGuest =
+        stored?['isAnonymous'] == true &&
+        _store.getBool('achievements.linked.$previousUid') == false;
+    final base = stored != null && (ownProfile || unlinkedGuest)
+        ? UserProfile.fromJson(stored)
+        : UserProfile(createdAt: DateTime.now());
     return base.copyWith(
       uid: user.uid,
       isAnonymous: user.isAnonymous,
@@ -841,7 +846,10 @@ class FirebaseAuthService extends AuthService {
     await _store.prepareAchievementIdentity(profile.uid);
     checkCurrent();
     final key = 'achievements.linked.${profile.uid}';
-    if (!profile.isAnonymous || _store.getBool(key) == null) {
+    // Only a newly created local identity is proven never linked. An older
+    // stored identity with no marker may be a signed-out registered account.
+    final newGuest = _store.getMap(StoreKeys.user) == null;
+    if (!profile.isAnonymous || (newGuest && _store.getBool(key) == null)) {
       await _store.setBool(key, !profile.isAnonymous);
       checkCurrent();
     }

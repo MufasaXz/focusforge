@@ -611,6 +611,7 @@ final groupWeekMinutesProvider = Provider<int>((ref) {
       .where(
         (s) =>
             s.completed &&
+            _ownsBoardTime(ref, s.ownerUid) &&
             !s.startedAt.isBefore(start) &&
             !s.startedAt.isAfter(now),
       )

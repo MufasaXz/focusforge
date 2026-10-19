@@ -139,6 +139,8 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     store = await LocalStore.open();
+    await store.clearAll();
+    await store.setBool('achievements.linked.guest', false);
     await store.setMap(
       StoreKeys.user,
       const UserProfile(
@@ -359,6 +361,120 @@ void main() {
     expect(profile.displayName, 'Ari');
     expect(service.signedIn, isTrue);
   });
+  for (final accountState in [
+    'linked',
+    'signed-out',
+    'legacy-signed-out',
+    'session-only',
+  ]) {
+    test(
+      'a different account cannot inherit the previous profile ($accountState)',
+      () async {
+        service.dispose();
+        await store.clearAll();
+        await store.setMap(
+          StoreKeys.user,
+          UserProfile(
+            uid: 'previous-account',
+            displayName: 'Private previous name',
+            isAnonymous: accountState.endsWith('signed-out'),
+            dailyGoalMinutes: 555,
+          ).toJson(),
+        );
+        if (accountState != 'legacy-signed-out') {
+          await store.setBool('achievements.linked.previous-account', true);
+        }
+        auth.user.verified = true;
+        final backend = _Backup();
+        if (accountState == 'session-only') {
+          backend.saved = const StudyBackup(
+            settings: {},
+            sessions: [],
+            modifiedAt: 0,
+            hasSettings: false,
+          );
+        }
+        final backup = StudyBackupService(store, backend);
+        service = FirebaseAuthService(
+          store,
+          firebaseAuth: auth,
+          studyBackup: backup,
+        );
+        final profile = await service.restore();
+        expect(profile?.displayName, 'Person');
+        expect(profile?.dailyGoalMinutes, isNot(555));
+        await backup.flush();
+        final saved = jsonDecode(
+          backend.saved!.settings[StoreKeys.user] as String,
+        ) as Map<String, dynamic>;
+        expect(saved['displayName'], 'Person');
+      },
+    );
+  }
+  test(
+    'a confirmed unlinked guest still promotes its own setup and name',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      final backend = _Backup();
+      final backup = StudyBackupService(store, backend);
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: backup,
+      );
+      final profile = await service.restore();
+      expect(profile?.displayName, 'Ari');
+      expect(profile?.onboardingComplete, isTrue);
+      await backup.flush();
+      final saved =
+          jsonDecode(backend.saved!.settings[StoreKeys.user] as String) as Map;
+      expect(saved['displayName'], 'Ari');
+    },
+  );
+  for (final localFallback in [false, true]) {
+    test(
+      'Skip cannot turn an unknown previous account into a transferable guest (fallback: $localFallback)',
+      () async {
+        service.dispose();
+        await store.clearAll();
+        await store.setMap(
+          StoreKeys.user,
+          const UserProfile(
+            uid: 'old-linked-account',
+            displayName: 'Private previous name',
+            isAnonymous: true,
+          ).toJson(),
+        );
+        auth.closed = true;
+        auth.user.verified = true;
+        final backend = _Backup();
+        final backup = StudyBackupService(store, backend);
+        service = FirebaseAuthService(
+          store,
+          firebaseAuth: auth,
+          studyBackup: backup,
+        );
+        if (localFallback) {
+          final guestAuth = GuestOnlyAuthService(store);
+          await guestAuth.signInAnonymously();
+          guestAuth.dispose();
+        } else {
+          await service.signInAnonymously();
+        }
+        final profile = await service.signInWithEmail(
+          'person@example.com',
+          'password',
+        );
+        expect(profile.displayName, 'Person');
+        await backup.flush();
+        expect(
+          backend.saved!.settings[StoreKeys.user],
+          isNot(contains('Private previous name')),
+        );
+      },
+    );
+  }
   test('wrong password does not send mail or change local identity', () async {
     auth.loginFailure = FirebaseAuthException(code: 'invalid-credential');
     await expectLater(

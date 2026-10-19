@@ -158,6 +158,31 @@ void main() {
     expect(c.read(groupWeekMinutesProvider), 50);
   });
   test(
+    'group sharing excludes focus history owned by another account',
+    () async {
+      final c = container(FakeGroups());
+      await c.read(groupClockProvider.future);
+      await store.setString(StoreKeys.achievementHistoryOwner, 'me');
+      await store.setMap(StoreKeys.achievementAliases, {'my-guest': 'me'});
+      c.read(sessionsProvider.notifier).hydrate([
+        for (final (id, owner, minutes) in [
+          ('own', 'me', 25),
+          ('linked-guest', 'my-guest', 10),
+          ('legacy-own', '', 5),
+          ('previous-account', 'someone-else', 555),
+        ])
+          FocusSession(
+            id: id,
+            subjectId: 'math',
+            ownerUid: owner,
+            startedAt: time,
+            minutes: minutes,
+          ).toJson(),
+      ]);
+      expect(c.read(groupWeekMinutesProvider), 40);
+    },
+  );
+  test(
     'account switch clears private group members before membership arrives',
     () async {
       final service = PrivateGroups();

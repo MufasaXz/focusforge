@@ -3,11 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-focusforge --config ../../firebase.json 'node --test rules.test.mjs'"
+    "test": "firebase emulators:exec --only firestore --project demo-focusforge --config ../../firebase.json 'node --test *.test.mjs'"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
     "firebase": "13.0.0",
     "firebase-tools": "15.33.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6",
+    "basic-ftp": "^6.2.3",
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
   }
 }

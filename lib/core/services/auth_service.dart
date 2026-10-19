@@ -256,7 +256,10 @@ class LocalAuthService extends AuthService {
   Future<UserProfile> _persist(UserProfile profile) async {
     await _store.prepareAchievementIdentity(profile.uid);
     final key = 'achievements.linked.${profile.uid}';
-    if (!profile.isAnonymous || _store.getBool(key) == null) {
+    // A missing marker on an existing profile may come from an older linked
+    // installation. Only a newly created identity proves guest ownership.
+    final newGuest = _store.getMap(StoreKeys.user) == null;
+    if (!profile.isAnonymous || (newGuest && _store.getBool(key) == null)) {
       await _store.setBool(key, !profile.isAnonymous);
     }
     final oldUid = _store.getMap(StoreKeys.user)?['uid'];

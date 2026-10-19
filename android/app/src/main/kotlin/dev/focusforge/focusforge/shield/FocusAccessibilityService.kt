@@ -373,7 +373,8 @@ class FocusAccessibilityService : AccessibilityService() {
 
     /** Lets a package through for a while — the "open it anyway" path. */
     fun grantGrace(packageName: String, seconds: Int) {
-        graceUntil[packageName] = SystemClock.uptimeMillis() + seconds * 1000L
+        // MainActivity is exported: treat launch-supplied durations as untrusted.
+        graceUntil[packageName] = SystemClock.uptimeMillis() + seconds.coerceIn(5, 600) * 1000L
         if (blockedPackage == packageName) dismissOverlay()
     }
 

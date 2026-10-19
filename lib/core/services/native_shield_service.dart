@@ -53,7 +53,7 @@ class NativeShieldService implements ShieldPlatformService {
       // Zero would mean the pause buys nothing at all, which is the one answer
       // the user could not have intended by choosing to go in anyway.
       graceSeconds: grace is int && grace > 0
-          ? grace
+          ? grace.clamp(5, 600)
           : ShieldConfig.defaultGraceSeconds,
     );
   }
@@ -123,7 +123,7 @@ class NativeShieldService implements ShieldPlatformService {
     try {
       await _methods.invokeMethod<bool>('grantTemporaryAccess', {
         'package': packageId,
-        'seconds': seconds,
+        'seconds': seconds.clamp(5, 600),
       });
     } on PlatformException {
       // The grace is a convenience; failing to grant it must not throw into a
