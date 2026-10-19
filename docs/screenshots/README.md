@@ -2,8 +2,7 @@
 
 The Day and Dark galleries show the current FocusForge interface: Home, Shield,
 Focus and You. They were captured from the actual Flutter widgets at source
-commit `00a1cc820d0bf0523c18ecb50525c2752be4f513` on 13 October 2026. The app
-`lib/` tree was `4b0ed22ed7fddc9d2ef1e5f6c84be9f1ec96a485`.
+commit 20cbb1536e599f540e81914da1011aed98e40929 on 19 October 2026, with the updated capture fixture in this release. The captures explicitly seed the demo subject catalog and session ownership, and use a local fixture account so profile controls represent a signed-in demo. No production account or user data is read.
 
 These are reproducible widget-test renders with fictional local fixtures,
 composed inside neutral illustrative phone borders. They are not physical-device
@@ -62,5 +61,5 @@ image bridge did not provide direct visual inspection, so no subjective visual
 approval or native-device verification is claimed.
 
 The older `04-groups.webp` remains an unused local-fixture preview from a prior
-capture. It is not part of the refreshed four-screen README gallery. Separate
+capture. It is not part of the refreshed four-screen README gallery. The website uses matching updated dark Home, Shield and Focus images. Separate
 Play Store artwork and the design-review images are unchanged.

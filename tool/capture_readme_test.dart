@@ -15,12 +15,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/app.dart';
 import 'package:focusforge/app/router.dart';
 import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/models/focus_goal.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
@@ -52,10 +55,20 @@ void main() {
     final store = await LocalStore.open();
     await store.setBool(StoreKeys.coachSeen, true);
     final engine = RecordingShieldService();
+    final auth = LocalAuthService(store);
+    const demoProfile = UserProfile(
+      uid: 'alex',
+      isAnonymous: false,
+      displayName: 'Alex Morgan',
+      onboardingComplete: true,
+    );
+    await auth.updateProfile(demoProfile);
+    addTearDown(auth.dispose);
     final now = DateTime.now();
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
+        authServiceProvider.overrideWithValue(auth),
         shieldServiceProvider.overrideWithValue(engine),
         installedAppsProvider.overrideWith(
           (ref) async => const [
@@ -90,21 +103,33 @@ void main() {
     );
     addTearDown(container.dispose);
     addTearDown(engine.dispose);
-    container
-        .read(userProvider.notifier)
-        .hydrate(
-          const UserProfile(
-            uid: 'alex',
-            isAnonymous: false,
-            displayName: 'Alex Morgan',
-            onboardingComplete: true,
-          ),
-        );
+    container.read(userProvider.notifier).hydrate(demoProfile);
+    container.read(subjectsProvider.notifier).hydrate([
+      const Subject(
+        id: 'math',
+        name: 'Mathematics',
+        icon: Icons.calculate_outlined,
+        color: Colors.blue,
+      ).toJson(),
+      const Subject(
+        id: 'physics',
+        name: 'Physics',
+        icon: Icons.science_outlined,
+        color: Colors.teal,
+      ).toJson(),
+      const Subject(
+        id: 'literature',
+        name: 'Literature',
+        icon: Icons.auto_stories_outlined,
+        color: Colors.deepPurple,
+      ).toJson(),
+    ]);
     final sessions = [
       for (var day = 6; day >= 0; day--)
         for (var block = 0; block < (day % 3) + 2; block++)
           FocusSession(
             id: 'review-$day-$block',
+            ownerUid: 'alex',
             subjectId: block.isEven ? 'math' : 'physics',
             startedAt: DateTime(now.year, now.month, now.day - day, 9 + block),
             minutes: block.isEven ? 25 : 50,
@@ -127,6 +152,17 @@ void main() {
 
     container.read(timerProvider.notifier).setSubject('math');
     container.read(dailyGoalProvider.notifier).hydrate(120, null);
+    await container
+        .read(focusGoalPlannerProvider.notifier)
+        .save(
+          FocusGoalPlan(
+            scope: FocusGoalScope.day,
+            date: now,
+            totalMinutes: 120,
+            subjectMinutes: const {},
+            repeatThisWeek: true,
+          ),
+        );
     container.read(whitelistProvider.notifier).hydrate([
       {
         'id': 'instagram',
