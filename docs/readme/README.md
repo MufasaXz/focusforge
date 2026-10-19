@@ -12,9 +12,10 @@ The composition's frames at exactly 0 and 6 seconds have identical pixels, so
 the animation returns to its starting pose. GIF frame durations are quantized
 to hundredths of a second; decoded total duration is 5.99 seconds.
 
-The download, promo and theme selectors are self-contained SVG image buttons.
-Their lettering uses outlined Inter glyphs, preserving the intended font
-without external requests. GitHub Markdown supplies their destination links;
+The Play Store button uses Google’s official English Google Play badge.
+The GitHub button uses the official GitHub mark from Primer Octicons inside a
+black download badge. Its lettering and the theme selectors use outlined Inter
+glyphs, preserving the intended font without external requests. GitHub Markdown supplies their destination links;
 the SVGs contain no JavaScript or embedded interaction. The theme selectors
 link to dedicated Day and Dark galleries.
 
@@ -26,3 +27,5 @@ No physical-device screen or manufacturer render is used in the hero.
 
 The animation was created with the installed
 [HyperFrames skills](https://github.com/heygen-com/hyperframes/tree/main/skills).
+
+Badge sources: [Google Play](https://play.google.com/intl/en_us/badges/) and [GitHub Primer Octicons](https://github.com/primer/octicons/blob/main/icons/mark-github-16.svg).
