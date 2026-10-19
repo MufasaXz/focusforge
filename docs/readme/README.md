@@ -12,7 +12,7 @@ The composition's frames at exactly 0 and 6 seconds have identical pixels, so
 the animation returns to its starting pose. GIF frame durations are quantized
 to hundredths of a second; decoded total duration is 5.99 seconds.
 
-The download, promo and theme selectors are self-contained SVG image buttons.
+The Play Store, GitHub and theme selectors are self-contained SVG image buttons.
 Their lettering uses outlined Inter glyphs, preserving the intended font
 without external requests. GitHub Markdown supplies their destination links;
 the SVGs contain no JavaScript or embedded interaction. The theme selectors
