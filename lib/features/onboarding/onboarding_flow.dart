@@ -326,7 +326,7 @@ class _FlowHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.sm),
                 Semantics(
-                  label: context.tr("Setup progress"),
+                  label: context.tr("Setup progress, {0}", [title]),
                   value: context.tr("Step {0} of {1}", [index, total]),
                   child: ExcludeSemantics(
                     child: ClipRRect(
