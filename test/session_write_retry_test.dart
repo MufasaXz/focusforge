@@ -88,7 +88,8 @@ void main() {
       final saved =
           jsonDecode(durable['flutter.ff.${StoreKeys.stats}'] as String) as Map;
       expect(saved['totalSessions'], 1);
-      expect(saved['xp'], 25);
+      expect(saved['xp'], 0);
+      expect(saved['level'], 2);
       expect(store.getMap(StoreKeys.presets)!['pendingCompletions'], isEmpty);
     },
   );
@@ -119,7 +120,7 @@ void main() {
             .hydrate(store.getList(StoreKeys.sessions));
         final initial = credited
             ? const GamificationStats(
-                xp: 25,
+                level: 2,
                 totalSessions: 1,
                 totalFocusHours: 25 / 60,
                 creditedSessionIds: ['interrupted'],
@@ -135,14 +136,16 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
         expect(c.read(statsProvider).totalSessions, 1);
-        expect(c.read(statsProvider).xp, 25);
+        expect(c.read(statsProvider).xp, 0);
+        expect(c.read(statsProvider).level, 2);
         expect(store.getMap(StoreKeys.stats)!['creditedSessionIds'], [
           'interrupted',
         ]);
         timer.hydrate(snapshot);
         await Future<void>.delayed(Duration.zero);
         expect(c.read(statsProvider).totalSessions, 1);
-        expect(c.read(statsProvider).xp, 25);
+        expect(c.read(statsProvider).xp, 0);
+        expect(c.read(statsProvider).level, 2);
       },
     );
   }
@@ -241,7 +244,8 @@ void main() {
       );
       expect(c.read(statsProvider).totalSessions, 1);
       expect(c.read(statsProvider).totalFocusHours, closeTo(25 / 60, 0.0001));
-      expect(c.read(statsProvider).xp, 25);
+      expect(c.read(statsProvider).xp, 0);
+      expect(c.read(statsProvider).level, 2);
       t.sync();
       await Future<void>.delayed(Duration.zero);
       expect(c.read(statsProvider).totalSessions, 1);

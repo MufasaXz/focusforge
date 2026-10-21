@@ -89,10 +89,8 @@ class _AccountGateState extends ConsumerState<AccountGate> {
           title: widget.title,
           subtitle: widget.subtitle,
           action: AppActionButton(
-            label: _linking
-                ? context.tr("Linking…")
-                : context.tr("Sign in or link an account"),
-            icon: Icons.link_rounded,
+            label: _linking ? context.tr("Signing in…") : context.tr("Sign in"),
+            icon: Icons.person_outline_rounded,
             onTap: _linking ? null : _link,
           ),
         ),

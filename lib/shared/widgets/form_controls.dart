@@ -139,6 +139,7 @@ class AppTextField extends StatelessWidget {
     this.helperText,
     this.suffix,
     this.onChanged,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -161,6 +162,7 @@ class AppTextField extends StatelessWidget {
   final Widget? suffix;
 
   final ValueChanged<String>? onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +173,7 @@ class AppTextField extends StatelessWidget {
 
     return TextField(
       controller: controller,
+      enabled: enabled,
       obscureText: obscure,
       keyboardType: keyboardType,
       textInputAction: textInputAction,

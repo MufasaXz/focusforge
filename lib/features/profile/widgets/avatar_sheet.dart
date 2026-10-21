@@ -1,5 +1,7 @@
 import '../../../core/localization/app_strings.dart';
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
@@ -133,7 +135,13 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                 ],
               ),
               const SizedBox(height: Gap.lg),
-              Center(child: AvatarDisc(user: user, size: 96)),
+              Center(
+                child: AvatarDisc(
+                  user: user,
+                  size: 96,
+                  level: ref.watch(statsProvider).level,
+                ),
+              ),
               const SizedBox(height: Gap.md),
               FilledButton.tonalIcon(
                 onPressed: _picking ? null : _choosePhoto,
@@ -222,11 +230,18 @@ class AvatarDisc extends StatelessWidget {
     super.key,
     required this.user,
     required this.size,
+    this.level = 1,
     this.editable = false,
   });
 
   final UserProfile user;
   final double size;
+  final int level;
+
+  static const _frameNames = ['Bronze', 'Silver', 'Gold', 'Emerald', 'Diamond'];
+
+  static String frameNameForLevel(int level) =>
+      _frameNames[(level.clamp(1, GamificationStats.maxLevel) - 1) ~/ 10];
 
   /// Draws the small pencil badge, and says "tap to change" to a screen
   /// reader. The tap itself belongs to the caller.
@@ -243,6 +258,7 @@ class AvatarDisc extends StatelessWidget {
         : _inkOn(color);
     final icon = user.avatarIcon;
     final photo = ProfilePhoto.bytes(user.avatarPhoto);
+    final tier = (level.clamp(1, GamificationStats.maxLevel) - 1) ~/ 10;
 
     final label = user.displayName.trim().isEmpty
         ? context.tr("Profile avatar")
@@ -250,7 +266,12 @@ class AvatarDisc extends StatelessWidget {
 
     return Semantics(
       image: true,
-      label: editable ? context.tr("{0}. Tap to change it", [label]) : label,
+      label: context.tr("{0}. Level {1}, {2} frame{3}", [
+        label,
+        level,
+        context.tr(frameNameForLevel(level)),
+        editable ? context.tr(". Tap to change it") : '',
+      ]),
       excludeSemantics: true,
       child: SizedBox(
         width: size,
@@ -259,6 +280,7 @@ class AvatarDisc extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Container(
+              margin: EdgeInsets.all(size * .1),
               width: size,
               height: size,
               decoration: BoxDecoration(shape: BoxShape.circle, color: color),
@@ -290,6 +312,11 @@ class AvatarDisc extends StatelessWidget {
                               color: onColor,
                             ),
                     ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _AvatarFrame(tier: tier)),
+              ),
             ),
             if (editable)
               Positioned(
@@ -323,6 +350,60 @@ class AvatarDisc extends StatelessWidget {
   /// container colour's can.
   static Color _inkOn(Color background) =>
       background.computeLuminance() > 0.45 ? Colors.black87 : Colors.white;
+}
+
+class _AvatarFrame extends CustomPainter {
+  const _AvatarFrame({required this.tier});
+
+  final int tier;
+
+  static const _colors = [
+    Color(0xFFB77B51),
+    Color(0xFF91A6BB),
+    Color(0xFFD4A437),
+    Color(0xFF39A880),
+    Color(0xFF8C83E8),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 2;
+    final color = _colors[tier];
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = tier == 0 ? 2 : 2.5;
+    if (tier == 4) {
+      paint.shader = const SweepGradient(
+        colors: [Color(0xFF8C83E8), Color(0xFF6ED5E0), Color(0xFF8C83E8)],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    }
+    canvas.drawCircle(center, radius, paint);
+    if (tier > 0) {
+      paint.strokeWidth = 1;
+      canvas.drawCircle(center, radius - 4, paint);
+    }
+    if (tier > 1) {
+      paint
+        ..style = PaintingStyle.fill
+        ..shader = null;
+      final count = tier == 2
+          ? 4
+          : tier == 3
+          ? 8
+          : 12;
+      for (var i = 0; i < count; i++) {
+        final angle = i * math.pi * 2 / count - math.pi / 2;
+        final point =
+            center + Offset(math.cos(angle), math.sin(angle)) * radius;
+        canvas.drawCircle(point, tier == 4 ? 2.3 : 1.7, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_AvatarFrame oldDelegate) => oldDelegate.tier != tier;
 }
 
 class _FieldLabel extends StatelessWidget {

@@ -240,44 +240,52 @@ class ProfileScreen extends ConsumerWidget {
           }
         }
 
-        return _TabEntrance(
-          // The entrance waits for the branch to be on screen; see [_TabEntrance].
-          // Keyed so the motion-capture harness can grab this vertical list
-          // directly instead of the horizontal subject carousel inside it.
-          child: ListView(
-            key: const ValueKey('profile-scroll'),
-            padding: EdgeInsets.fromLTRB(
-              Gap.lg + 4,
-              MediaQuery.paddingOf(context).top + Gap.xl,
-              Gap.lg + 4,
-              kNavBarClearance,
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: wide ? Layout.readable * 2 + Gap.xl : Layout.readable,
             ),
-            children: [
-              if (wide)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: identity,
-                      ),
-                    ),
-                    const SizedBox(width: Gap.xl),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: prefs,
-                      ),
-                    ),
+            child: _TabEntrance(
+              // The entrance waits for the branch to be on screen; see [_TabEntrance].
+              // Keyed so the motion-capture harness can grab this vertical list
+              // directly instead of the horizontal subject carousel inside it.
+              child: ListView(
+                key: const ValueKey('profile-scroll'),
+                padding: EdgeInsets.fromLTRB(
+                  Gap.lg + 4,
+                  MediaQuery.paddingOf(context).top + Gap.xl,
+                  Gap.lg + 4,
+                  kNavBarClearance,
+                ),
+                children: [
+                  if (wide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: identity,
+                          ),
+                        ),
+                        const SizedBox(width: Gap.xl),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: prefs,
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    ...identity,
+                    const SizedBox(height: Gap.xl),
+                    ...prefs,
                   ],
-                )
-              else ...[
-                ...identity,
-                const SizedBox(height: Gap.xl),
-                ...prefs,
-              ],
-            ],
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -308,142 +316,156 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    final compact =
-        MediaQuery.sizeOf(context).width < 380 ||
-        MediaQuery.textScalerOf(context).scale(14) > 19;
-    // Premium hero: a soft primary wash with a quiet lift, so the identity
-    // card reads as the page's cover rather than another flat tile.
-    return Container(
-      key: const ValueKey('profile-hero'),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(t.primary.withValues(alpha: 0.10), t.surface),
-            t.surface,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(Radii.hero),
-        border: Border.all(color: t.primary.withValues(alpha: 0.22)),
-        boxShadow: [
-          BoxShadow(
-            color: t.primary.withValues(alpha: 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.xl),
-        child: Column(
-          children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Eyebrow(
-                context.tr("YOUR SPACE"),
-                icon: Icons.person_outline_rounded,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 420 ||
+            MediaQuery.textScalerOf(context).scale(14) > 19;
+        // Premium hero: a soft primary wash with a quiet lift, so the identity
+        // card reads as the page's cover rather than another flat tile.
+        return Container(
+          key: const ValueKey('profile-hero'),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.alphaBlend(t.primary.withValues(alpha: 0.10), t.surface),
+                t.surface,
+              ],
             ),
-            const SizedBox(height: Gap.xl),
-            if (compact) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _Avatar(user: user),
-                  const _EditProfileButton(),
-                ],
+            borderRadius: BorderRadius.circular(Radii.hero),
+            border: Border.all(color: t.primary.withValues(alpha: 0.22)),
+            boxShadow: [
+              BoxShadow(
+                color: t.primary.withValues(alpha: 0.10),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
               ),
-              const SizedBox(height: Gap.lg),
-              _ProfileIdentity(user: user),
-            ] else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Avatar(user: user),
-                  const SizedBox(width: Gap.lg),
-                  Expanded(child: _ProfileIdentity(user: user)),
-                  const SizedBox(width: Gap.sm),
-                  const _EditProfileButton(),
-                ],
-              ),
-            const SizedBox(height: Gap.xl),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: t.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(Radii.item),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: Gap.lg,
-                  horizontal: Gap.sm,
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(Gap.xl),
+            child: Column(
+              children: [
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Eyebrow(
+                    context.tr("YOUR SPACE"),
+                    icon: Icons.person_outline_rounded,
+                  ),
                 ),
-                child: Row(
+                const SizedBox(height: Gap.xl),
+                if (compact) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _Avatar(user: user, level: stats.level),
+                      const _EditProfileButton(),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.lg),
+                  _ProfileIdentity(user: user),
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Avatar(user: user, level: stats.level),
+                      const SizedBox(width: Gap.lg),
+                      Expanded(child: _ProfileIdentity(user: user)),
+                      const SizedBox(width: Gap.sm),
+                      const _EditProfileButton(),
+                    ],
+                  ),
+                const SizedBox(height: Gap.xl),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: t.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(Radii.item),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Gap.lg,
+                      horizontal: Gap.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _HeroStat(
+                            value: _hours(stats.totalFocusHours),
+                            label: context.tr("Total focus"),
+                          ),
+                        ),
+                        _Divider(t: t),
+                        Expanded(
+                          child: _HeroStat(
+                            value: '$streak',
+                            label: context.tr("Day streak"),
+                            accent: t.tertiary,
+                          ),
+                        ),
+                        _Divider(t: t),
+                        Expanded(
+                          child: _HeroStat(
+                            value: '$unlocked/$totalBadges',
+                            label: context.tr("Badges"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.lg),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: Gap.lg,
+                  runSpacing: Gap.xs,
                   children: [
-                    Expanded(
-                      child: _HeroStat(
-                        value: _hours(stats.totalFocusHours),
-                        label: context.tr("Total focus"),
-                      ),
+                    Text(
+                      context.tr("Level {0}", [stats.level]),
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    _Divider(t: t),
-                    Expanded(
-                      child: _HeroStat(
-                        value: '$streak',
-                        label: context.tr("Day streak"),
-                        accent: t.tertiary,
-                      ),
-                    ),
-                    _Divider(t: t),
-                    Expanded(
-                      child: _HeroStat(
-                        value: '$unlocked/$totalBadges',
-                        label: context.tr("Badges"),
-                      ),
+                    Text(
+                      stats.isMaxLevel
+                          ? context.tr("{0} XP · Max level", [stats.xp])
+                          : context.tr("{0} / {1} XP", [
+                              stats.xp,
+                              stats.xpForNext,
+                            ]),
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: Gap.lg),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: Gap.lg,
-              runSpacing: Gap.xs,
-              children: [
-                Text(
-                  context.tr("Level {0}", [stats.level]),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                Text(
-                  context.tr("{0} / {1} XP", [stats.xp, stats.xpForNext]),
-                  style: Theme.of(context).textTheme.labelSmall,
+                const SizedBox(height: Gap.sm),
+                Semantics(
+                  label: stats.isMaxLevel
+                      ? context.tr("Level {0}, maximum level. {1} XP", [
+                          stats.level,
+                          stats.xp,
+                        ])
+                      : context.tr("Level {0}, {1} of {2} XP", [
+                          stats.level,
+                          stats.xp,
+                          stats.xpForNext,
+                        ]),
+                  value: context.tr("{0} percent", [
+                    (stats.levelProgress * 100).round(),
+                  ]),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    child: LinearProgressIndicator(
+                      value: stats.levelProgress,
+                      color: t.secondary,
+                      backgroundColor: t.surfaceContainerHighest,
+                      minHeight: 7,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: Gap.sm),
-            Semantics(
-              label: context.tr("Level {0}, {1} of {2} XP", [
-                stats.level,
-                stats.xp,
-                stats.xpForNext,
-              ]),
-              value: context.tr("{0} percent", [
-                (stats.levelProgress * 100).round(),
-              ]),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(Radii.pill),
-                child: LinearProgressIndicator(
-                  value: stats.levelProgress,
-                  color: t.secondary,
-                  backgroundColor: t.surfaceContainerHighest,
-                  minHeight: 7,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -507,19 +529,23 @@ class _ProfileIdentity extends StatelessWidget {
 /// one thing on this page that is obviously about the user, and a pencil in
 /// its corner is the standard way of saying so.
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.user});
+  const _Avatar({required this.user, required this.level});
 
   final UserProfile user;
+  final int level;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: context.tr("Change your avatar"),
+    label: context.tr("Change your avatar. Level {0}, {1} frame", [
+      level,
+      context.tr(AvatarDisc.frameNameForLevel(level)),
+    ]),
     child: ExcludeSemantics(
       child: Pressable(
         onTap: () => showAvatarSheet(context),
         scale: 0.94,
-        child: AvatarDisc(user: user, size: 74, editable: true),
+        child: AvatarDisc(user: user, size: 74, level: level, editable: true),
       ),
     ),
   );

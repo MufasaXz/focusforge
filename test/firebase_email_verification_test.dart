@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/services/auth_service.dart';
@@ -100,6 +102,9 @@ class _Auth implements FirebaseAuth {
   final user = _User();
   bool closed = false;
   Object? loginFailure;
+  Object? resetFailure;
+  String? resetEmail;
+  Completer<void>? credentialDelay;
   final controller = StreamController<User?>.broadcast();
   @override
   User? get currentUser => closed ? null : user;
@@ -113,6 +118,7 @@ class _Auth implements FirebaseAuth {
     if (loginFailure case final failure?) throw failure;
     closed = false;
     controller.add(user);
+    await credentialDelay?.future;
     return _Credential(user);
   }
 
@@ -125,6 +131,15 @@ class _Auth implements FirebaseAuth {
   Future<void> signOut() async {
     closed = true;
     controller.add(null);
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({
+    required String email,
+    ActionCodeSettings? actionCodeSettings,
+  }) async {
+    resetEmail = email;
+    if (resetFailure case final failure?) throw failure;
   }
 
   @override
@@ -155,6 +170,28 @@ void main() {
   tearDown(() async {
     service.dispose();
     await auth.controller.close();
+  });
+  test(
+    'password reset trims email and keeps unknown accounts private',
+    () async {
+      await service.sendPasswordReset(' person@example.com ');
+      expect(auth.resetEmail, 'person@example.com');
+      auth.resetFailure = FirebaseAuthException(code: 'user-not-found');
+      await service.sendPasswordReset('unknown@example.com');
+    },
+  );
+  test('password reset surfaces delivery and connection errors', () async {
+    auth.resetFailure = FirebaseAuthException(code: 'network-request-failed');
+    await expectLater(
+      service.sendPasswordReset('person@example.com'),
+      throwsA(
+        isA<AuthException>().having(
+          (error) => error.failure,
+          'failure',
+          AuthFailure.network,
+        ),
+      ),
+    );
   });
   test(
     'unverified sign-in never adopts linked profile even through auth stream',
@@ -755,6 +792,75 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(service.current?.uid, guest.uid);
       expect(service.signedIn, isTrue);
+    },
+  );
+
+  test('successful recovery refreshes token before cloud access', () async {
+    service.dispose();
+    auth.user.verified = true;
+    final backend = _Backup();
+    service = FirebaseAuthService(
+      store,
+      firebaseAuth: auth,
+      studyBackup: StudyBackupService(store, backend),
+    );
+    await service.restore();
+    expect(auth.user.events, contains('refresh:true'));
+    expect(service.signedIn, isTrue);
+  });
+
+  test('stale anonymous edit cannot close a recovered account', () async {
+    service.dispose();
+    auth.user.verified = true;
+    service = FirebaseAuthService(store, firebaseAuth: auth);
+    final recovered = await service.restore();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        authServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(userProvider.notifier).hydrate(recovered);
+    await container
+        .read(userProvider.notifier)
+        .save(
+          recovered!.copyWith(isAnonymous: true, displayName: 'Updated name'),
+        );
+    expect(container.read(userProvider).isAnonymous, isFalse);
+    expect(container.read(accountUidProvider), 'email-account');
+    expect(store.getMap(StoreKeys.user)?['isAnonymous'], isFalse);
+    expect(container.read(userProvider).displayName, 'Updated name');
+  });
+
+  test(
+    'early SDK sign-in event waits for the credential owner to recover',
+    () async {
+      service.dispose();
+      auth.user.verified = true;
+      auth.closed = true;
+      auth.credentialDelay = Completer<void>();
+      final backend = _Backup();
+      service = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        studyBackup: StudyBackupService(store, backend),
+      );
+      final signingIn = service.signInWithEmail(
+        'person@example.com',
+        'password',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        backend.loads,
+        0,
+        reason: 'The SDK event must not start a competing recovery before credentials return',
+      );
+      auth.credentialDelay!.complete();
+      expect((await signingIn).isAnonymous, isFalse);
+      expect(backend.loads, 1);
+      expect(service.restorationPending, isFalse);
+      expect(service.recoveryState.value, isNull);
     },
   );
 }

@@ -191,16 +191,14 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         const SizedBox(height: Gap.md),
         Text(
           context.tr(
-            "Open the verification link in your inbox, then return to FocusForge. Need a link? Send a verification email below. Your account stays locked until you verify it.",
+            "Open the verification email and follow the link, then return here. Check your spam folder if it has not arrived.",
           ),
           style: theme.textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gap.sm),
         Text(
-          context.tr(
-            "Wrong address? Use a different account below. Your setup on this device is kept.",
-          ),
+          context.tr("Your study setup is kept while you verify your email."),
           style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),

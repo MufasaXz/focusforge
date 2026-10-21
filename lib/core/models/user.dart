@@ -367,10 +367,19 @@ class GamificationStats {
   final List<String> badges;
   final List<String> creditedSessionIds;
 
-  /// XP needed to clear the current level. Levels get progressively hungrier.
-  int get xpForNext => 1000 + (level - 1) * 250;
+  static const maxLevel = 50;
 
-  double get levelProgress => (xp / xpForNext).clamp(0.0, 1.0);
+  bool get isMaxLevel => level >= maxLevel;
+
+  /// One XP is one focused minute: quick starts, then a growing commitment.
+  int get xpForNext {
+    if (level <= 5) return 25 + (level - 1) * 15;
+    if (level <= 10) return 120 + (level - 6) * 30;
+    final step = level - 11;
+    return 300 + step * 50 + step * (step + 1) * 5;
+  }
+
+  double get levelProgress => isMaxLevel ? 1 : (xp / xpForNext).clamp(0.0, 1.0);
 
   GamificationStats copyWith({
     int? xp,
@@ -390,8 +399,11 @@ class GamificationStats {
 
   /// Adds XP and rolls the level over as many times as the total allows.
   GamificationStats withXp(int delta) {
-    var next = copyWith(xp: xp + delta);
-    while (next.xp >= next.xpForNext) {
+    var next = copyWith(
+      xp: xp + delta < 0 ? 0 : xp + delta,
+      level: level.clamp(1, maxLevel),
+    );
+    while (!next.isMaxLevel && next.xp >= next.xpForNext) {
       next = next.copyWith(xp: next.xp - next.xpForNext, level: next.level + 1);
     }
     return next;
@@ -418,5 +430,5 @@ class GamificationStats {
               growable: false,
             ) ??
             const [],
-      );
+      ).withXp(0);
 }

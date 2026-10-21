@@ -42,13 +42,17 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
     with SingleTickerProviderStateMixin {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirmation = TextEditingController();
 
   /// Which fields the user has left. A field is only ever marked wrong once it
   /// has been visited, so the sheet does not open covered in red.
   bool _emailTouched = false;
   bool _passwordTouched = false;
+  bool _confirmationTouched = false;
 
   bool _signUp = false;
+  bool _resetMode = false;
+  bool _resetSent = false;
   bool _busy = false;
   bool _reveal = false;
   bool _succeeded = false;
@@ -64,12 +68,14 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
     super.initState();
     _email.addListener(_onChanged);
     _password.addListener(_onChanged);
+    _confirmation.addListener(_onChanged);
   }
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _confirmation.dispose();
     _shake.dispose();
     super.dispose();
   }
@@ -92,7 +98,19 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
   bool get _passwordValid =>
       _signUp ? _password.text.length >= 8 : _password.text.isNotEmpty;
 
-  bool get _canSubmit => !_busy && !_succeeded && _emailValid && _passwordValid;
+  bool get _canSubmit =>
+      !_busy &&
+      !_succeeded &&
+      _emailValid &&
+      (_resetMode ||
+          _passwordValid && (!_signUp || _confirmation.text == _password.text));
+
+  String? get _confirmationError =>
+      _confirmationTouched &&
+          _confirmation.text.isNotEmpty &&
+          _confirmation.text != _password.text
+      ? tr('Passwords do not match')
+      : null;
 
   String? get _emailError {
     if (!_emailTouched || _emailValue.isEmpty) return null;
@@ -131,8 +149,13 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
       setState(() {
         _emailTouched = true;
         _passwordTouched = true;
+        _confirmationTouched = true;
       });
       _shakeIt();
+      return;
+    }
+    if (_resetMode) {
+      await _resetPassword();
       return;
     }
     FocusScope.of(context).unfocus();
@@ -174,33 +197,45 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
     }
   }
 
-  Future<void> _reset() async {
-    final email = _emailValue;
-    if (!_emailValid) {
-      setState(() => _emailTouched = true);
-      _shakeIt();
-      return;
-    }
+  Future<void> _resetPassword() async {
+    if (_busy || !_emailValid) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _busy = true);
     try {
-      await widget.service.sendPasswordReset(email);
+      await widget.service.sendPasswordReset(_emailValue);
       if (!mounted) return;
-      showAppSnack(
-        context,
-        tr("If an account exists for {0}, a reset link is on its way.", [
-          email,
-        ]),
-        icon: Icons.mark_email_read_outlined,
-      );
+      setState(() => _resetSent = true);
     } on AuthException catch (e) {
       if (!mounted) return;
       _shakeIt();
+      showAppSnack(context, e.friendly, danger: true);
+    } catch (_) {
+      if (!mounted) return;
       showAppSnack(
         context,
-        e.friendly,
-        icon: Icons.error_outline_rounded,
+        tr('Could not send the reset email. Please try again.'),
         danger: true,
       );
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _showSignIn() {
+    setState(() {
+      _resetMode = false;
+      _resetSent = false;
+      _signUp = false;
+      _passwordTouched = false;
+      _confirmationTouched = false;
+      _password.clear();
+      _confirmation.clear();
+    });
+  }
+
+  void _startReset() {
+    _showSignIn();
+    setState(() => _resetMode = true);
   }
 
   void _toggleMode() {
@@ -209,6 +244,8 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
       // The rule for the password changes with the mode, so the verdict on
       // what is already typed has to be re-earned rather than carried over.
       _passwordTouched = false;
+      _confirmationTouched = false;
+      _confirmation.clear();
     });
   }
 
@@ -225,6 +262,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
           onSignedOut: () => setState(() {
             _succeeded = false;
             _password.clear();
+            _confirmation.clear();
           }),
         ),
       );
@@ -255,7 +293,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                 children: [
                   Expanded(
                     child: Text(
-                      _signUp
+                      _resetMode
+                          ? context.tr('Reset your password')
+                          : _signUp
                           ? context.tr("Create your account")
                           : context.tr("Sign in with email"),
                       style: Theme.of(context).textTheme.titleLarge,
@@ -271,10 +311,12 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               ),
               const SizedBox(height: Gap.xs),
               Text(
-                widget.service.usesRemoteCredentials
+                _resetMode
                     ? context.tr(
-                        "Linked account · private study backup",
+                        'Enter your account email. We will send a link to reset your password securely with Firebase.',
                       )
+                    : widget.service.usesRemoteCredentials
+                    ? context.tr("Linked account · private study backup")
                     : context.tr(
                         "Account sign-in is unavailable. You can study on this device without an account.",
                       ),
@@ -284,10 +326,14 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               const SizedBox(height: Gap.xl),
               AppTextField(
                 controller: _email,
+                enabled: !_busy,
                 hint: 'you@example.com',
                 icon: Icons.alternate_email_rounded,
                 keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
+                textInputAction: _resetMode
+                    ? TextInputAction.done
+                    : TextInputAction.next,
+                onSubmitted: _resetMode ? (_) => unawaited(_submit()) : null,
                 autofocus: true,
                 errorText: _emailError,
                 // Only once the field is actually right — a tick on a
@@ -296,47 +342,85 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                     ? Icon(Icons.check_rounded, size: 18, color: cs.primary)
                     : null,
                 onChanged: (_) {
-                  if (!_emailTouched) setState(() => _emailTouched = true);
+                  setState(() {
+                    _emailTouched = true;
+                    _resetSent = false;
+                  });
                 },
               ),
-              const SizedBox(height: Gap.md),
-              AppTextField(
-                controller: _password,
-                hint: context.tr("Password"),
-                icon: Icons.lock_outline_rounded,
-                obscure: !_reveal,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => unawaited(_submit()),
-                errorText: _passwordError,
-                helperText: _signUp && _passwordError == null
-                    ? context.tr("At least 8 characters")
-                    : null,
-                suffix: IconButton(
-                  onPressed: () => setState(() => _reveal = !_reveal),
-                  tooltip: _reveal
-                      ? context.tr("Hide password")
-                      : context.tr("Show password"),
-                  iconSize: 18,
-                  color: cs.onSurfaceVariant,
-                  icon: Icon(
-                    _reveal
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
+              if (!_resetMode) ...[
+                const SizedBox(height: Gap.md),
+                AppTextField(
+                  controller: _password,
+                  enabled: !_busy,
+                  hint: context.tr("Password"),
+                  icon: Icons.lock_outline_rounded,
+                  obscure: !_reveal,
+                  textInputAction: _signUp
+                      ? TextInputAction.next
+                      : TextInputAction.done,
+                  onSubmitted: _signUp ? null : (_) => unawaited(_submit()),
+                  errorText: _passwordError,
+                  helperText: _signUp && _passwordError == null
+                      ? context.tr("At least 8 characters")
+                      : null,
+                  suffix: IconButton(
+                    onPressed: () => setState(() => _reveal = !_reveal),
+                    tooltip: _reveal
+                        ? context.tr("Hide password")
+                        : context.tr("Show password"),
+                    iconSize: 18,
+                    color: cs.onSurfaceVariant,
+                    icon: Icon(
+                      _reveal
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                  ),
+                  onChanged: (_) {
+                    if (!_passwordTouched) {
+                      setState(() => _passwordTouched = true);
+                    }
+                  },
+                ),
+                if (_signUp && _password.text.isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  _StrengthBar(value: _strength),
+                ],
+                if (_signUp) ...[
+                  const SizedBox(height: Gap.md),
+                  AppTextField(
+                    controller: _confirmation,
+                    enabled: !_busy,
+                    hint: context.tr('Confirm password'),
+                    icon: Icons.lock_outline_rounded,
+                    obscure: !_reveal,
+                    errorText: _confirmationError,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => unawaited(_submit()),
+                    onChanged: (_) =>
+                        setState(() => _confirmationTouched = true),
+                  ),
+                ],
+              ],
+              if (_resetSent) ...[
+                const SizedBox(height: Gap.lg),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    context.tr(
+                      'If an account exists for {0}, a reset link is on its way. Check your inbox and spam folder. Open the link to choose a new password on Firebase’s secure page, then return here to sign in.',
+                      [_emailValue],
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
-                onChanged: (_) {
-                  if (!_passwordTouched) {
-                    setState(() => _passwordTouched = true);
-                  }
-                },
-              ),
-              if (_signUp && _password.text.isNotEmpty) ...[
-                const SizedBox(height: Gap.sm),
-                _StrengthBar(value: _strength),
               ],
               const SizedBox(height: Gap.xl),
               PrimaryAction(
-                label: _signUp
+                label: _resetMode
+                    ? context.tr('Send reset link')
+                    : _signUp
                     ? context.tr("Create account")
                     : context.tr("Sign in"),
                 busy: _busy,
@@ -345,16 +429,24 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                 icon: _succeeded ? Icons.check_rounded : null,
               ),
               const SizedBox(height: Gap.xs),
-              GhostAction(
-                label: _signUp
-                    ? context.tr("I already have an account")
-                    : context.tr("Create an account instead"),
-                onTap: _busy ? null : _toggleMode,
-              ),
-              GhostAction(
-                label: context.tr("Forgot password?"),
-                onTap: _busy ? null : () => unawaited(_reset()),
-              ),
+              if (_resetMode) ...[
+                GhostAction(
+                  label: context.tr('Back to sign in'),
+                  onTap: _busy ? null : _showSignIn,
+                ),
+              ] else ...[
+                GhostAction(
+                  label: _signUp
+                      ? context.tr("I already have an account")
+                      : context.tr("Create an account instead"),
+                  onTap: _busy ? null : _toggleMode,
+                ),
+                if (!_signUp)
+                  GhostAction(
+                    label: context.tr("Forgot password?"),
+                    onTap: _busy ? null : _startReset,
+                  ),
+              ],
               const PrivacyPolicyLink(),
             ],
           ),
@@ -380,36 +472,39 @@ class _StrengthBar extends StatelessWidget {
       _ => (context.tr("Strong"), cs.primary),
     };
 
-    return Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(Radii.pill),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: value),
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeOutCubic,
-              builder: (context, v, _) => LinearProgressIndicator(
-                value: v,
-                minHeight: 4,
-                backgroundColor: cs.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation(color),
+    return Semantics(
+      label: context.tr('Password strength'),
+      value: label,
+      child: Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.pill),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: value),
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, _) => LinearProgressIndicator(
+                  value: v,
+                  minHeight: 4,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: Gap.md),
-        // Fixed width so the bar does not jump as the word changes length.
-        SizedBox(
-          width: 46,
-          child: Text(
-            label,
-            textAlign: TextAlign.end,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: color),
+          const SizedBox(width: Gap.md),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 46),
+            child: Text(
+              label,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: color),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/localization/app_strings.dart';
 import '../../core/services/auth_service.dart';
+import 'expressive_loading_indicator.dart';
 
 /// One app-level surface for email, Google and restored SDK sessions.
 class AccountRecoveryOverlay extends StatelessWidget {
@@ -31,7 +32,7 @@ class AccountRecoveryOverlay extends StatelessWidget {
                 scopesRoute: true,
                 explicitChildNodes: true,
                 namesRoute: true,
-                label: context.tr('Restoring your account'),
+                label: context.tr('Recovering your account'),
                 child: Material(
                   color: cs.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(28),
@@ -42,14 +43,10 @@ class AccountRecoveryOverlay extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: CircularProgressIndicator(strokeWidth: 2.5),
-                          ),
+                          const ExpressiveLoadingIndicator(),
                           const SizedBox(height: 22),
                           Text(
-                            context.tr('Restoring your account'),
+                            context.tr('Recovering your account'),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.titleLarge,
                           ),

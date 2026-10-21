@@ -500,7 +500,12 @@ void main() {
     ]);
     container
         .read(statsProvider.notifier)
-        .hydrate(const GamificationStats(level: 7, xp: 2490));
+        .hydrate(
+          GamificationStats(
+            level: 7,
+            xp: const GamificationStats(level: 7).xpForNext - 10,
+          ),
+        );
     container.read(leaderboardPublisherProvider);
     await container.pump();
     expect(service.publishedLevels, isEmpty);

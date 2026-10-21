@@ -40,6 +40,8 @@ class _RemoteUser implements User {
   @override
   List<UserInfo> get providerData => [];
   @override
+  Future<String?> getIdToken([bool forceRefresh = false]) async => 'test-token';
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

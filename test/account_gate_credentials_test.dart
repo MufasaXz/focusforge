@@ -50,7 +50,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Sign in or link an account'));
+      await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
       expect(find.text('Continue with Email'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);

@@ -93,6 +93,7 @@ class FirebaseAuthService extends AuthService {
   int _credentialGeneration = 0;
   bool _disposed = false;
   bool _restorationPending = false;
+  int _credentialFlows = 0;
   @override
   bool get restorationPending => _restorationPending;
 
@@ -258,14 +259,16 @@ class FirebaseAuthService extends AuthService {
     if (password.isEmpty) {
       throw const AuthException(AuthFailure.wrongPassword);
     }
-    final credential = await _guard(
-      () => _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      ),
-    );
-    _recognise(credential);
-    return _acceptEmailCredential(credential, newAccount: false);
+    return _credentialFlow(() async {
+      final credential = await _guard(
+        () => _auth.signInWithEmailAndPassword(
+          email: email.trim(),
+          password: password,
+        ),
+      );
+      _recognise(credential);
+      return _acceptEmailCredential(credential, newAccount: false);
+    });
   }
 
   /// Same base and same fill-only-what-is-missing rule as [signInWithEmail]:
@@ -276,14 +279,27 @@ class FirebaseAuthService extends AuthService {
     if (password.length < 8) {
       throw const AuthException(AuthFailure.weakPassword);
     }
-    final credential = await _guard(
-      () => _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      ),
-    );
-    _returning = false;
-    return _acceptEmailCredential(credential, newAccount: true);
+    return _credentialFlow(() async {
+      final credential = await _guard(
+        () => _auth.createUserWithEmailAndPassword(
+          email: email.trim(),
+          password: password,
+        ),
+      );
+      _returning = false;
+      return _acceptEmailCredential(credential, newAccount: true);
+    });
+  }
+
+  Future<UserProfile> _credentialFlow(
+    Future<UserProfile> Function() action,
+  ) async {
+    _credentialFlows++;
+    try {
+      return await action();
+    } finally {
+      _credentialFlows--;
+    }
   }
 
   /// Google is live on Android: `google-services.json` carries the Android
@@ -330,7 +346,7 @@ class FirebaseAuthService extends AuthService {
     if (provider != 'google' || !supportedProviders.contains(provider)) {
       throw const AuthException(AuthFailure.providerUnavailable);
     }
-    return _linkWithGoogle();
+    return _credentialFlow(_linkWithGoogle);
   }
 
   /// Runs the interactive Google round-trip and applies the credential it
@@ -418,7 +434,12 @@ class FirebaseAuthService extends AuthService {
   @override
   Future<void> sendPasswordReset(String email) async {
     _validateEmail(email);
-    await _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
+    try {
+      await _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
+    } on AuthException catch (error) {
+      // Keep reset responses identical for registered and unknown addresses.
+      if (error.failure != AuthFailure.userNotFound) rethrow;
+    }
   }
 
   @override
@@ -604,6 +625,9 @@ class FirebaseAuthService extends AuthService {
 
   Future<void> _onAuthStateChanged(User? user) async {
     if (_disposed || user?.uid != _auth.currentUser?.uid) return;
+    // Interactive sign-in owns recovery through completion. An early SDK
+    // event must not fail a separate recovery before credentials return.
+    if (user != null && _credentialFlows > 0) return;
     _observeCredential();
     // A device-only guest has no Firebase credential. The SDK's initial null
     // event must not undo a completed local Skip action.
@@ -696,6 +720,7 @@ class FirebaseAuthService extends AuthService {
         // SDK startup/restore is hydration. Do not save provider-filled names
         // or onboarding defaults as edits before background reconciliation.
         _current = UserProfile.fromJson(stored!);
+        _controller.add(_current);
         return Future.value(_current!);
       }
     }
@@ -786,6 +811,10 @@ class FirebaseAuthService extends AuthService {
         if (!_disposed) _controller.add(null);
       }
       try {
+        if (showRecovery) {
+          await credential!.getIdToken(true);
+          checkCurrent();
+        }
         for (var attempt = 0; ; attempt++) {
           try {
             if (showRecovery) {

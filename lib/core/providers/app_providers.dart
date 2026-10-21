@@ -57,6 +57,13 @@ class UserNotifier extends Notifier<UserProfile> {
   }
 
   Future<void> save(UserProfile profile) async {
+    final auth = ref.read(authServiceProvider);
+    if (auth.usesRemoteCredentials &&
+        auth.signedIn &&
+        auth.current?.uid == profile.uid) {
+      // Profile edits cannot replace the live credential with a stale guest flag.
+      profile = profile.copyWith(isAnonymous: auth.current!.isAnonymous);
+    }
     final identityChanged = state.uid.isNotEmpty && state.uid != profile.uid;
     _resetConsentFor(profile);
     state = profile;

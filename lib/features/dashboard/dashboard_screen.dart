@@ -253,7 +253,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ];
 
         final right = <Widget>[
-          if (sessions.isNotEmpty) ...[
+          if (sessions.any(
+            (session) =>
+                session.completed && session.subjectId.trim().isNotEmpty,
+          )) ...[
             SectionHeader(
               title: context.tr("Subject breakdown"),
               icon: Icons.donut_large_rounded,
@@ -273,7 +276,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: history.isEmpty ? Layout.readable : double.infinity,
+                maxWidth: wide && history.isNotEmpty
+                    ? Layout.readable * 2 + Gap.xl
+                    : Layout.readable,
               ),
               child: RefreshIndicator(
                 onRefresh: _refresh,

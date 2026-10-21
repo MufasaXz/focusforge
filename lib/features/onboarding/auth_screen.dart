@@ -184,7 +184,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final content = _content(context);
+    final content = ValueListenableBuilder<AccountRecoveryStage?>(
+      valueListenable: _auth.recoveryState,
+      builder: (context, _, _) => _content(context),
+    );
     if (widget.embedded) return content;
 
     return Scaffold(
@@ -221,7 +224,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_auth.restorationPending) ...[
+                if (_auth.restorationPending &&
+                    _auth.recoveryState.value == null) ...[
                   Text(
                     context.tr(
                       "Your saved study data could not be loaded. Connect to the internet and try again.",
