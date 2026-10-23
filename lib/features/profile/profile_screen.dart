@@ -357,15 +357,27 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.xl),
                 if (compact) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _Avatar(user: user, level: stats.level),
-                      const _EditProfileButton(),
-                    ],
+                  // Compact header: avatar centred, the pencil floating
+                  // top-right, and the name and persona below it — the
+                  // side-by-side row scattered the header across the card
+                  // and left a dead strip under the avatar.
+                  SizedBox(
+                    width: double.infinity,
+                    child: Stack(
+                      children: [
+                        Align(
+                          child: _Avatar(user: user, level: stats.level),
+                        ),
+                        const Positioned(
+                          top: 0,
+                          right: 0,
+                          child: _EditProfileButton(),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: Gap.lg),
-                  _ProfileIdentity(user: user),
+                  const SizedBox(height: Gap.md),
+                  _ProfileIdentity(user: user, centered: true),
                 ] else
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,9 +483,13 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _ProfileIdentity extends StatelessWidget {
-  const _ProfileIdentity({required this.user});
+  const _ProfileIdentity({required this.user, this.centered = false});
 
   final UserProfile user;
+
+  /// Centres the name and the persona pill instead of hugging the start
+  /// edge — the compact header places the identity under a centred avatar.
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -481,12 +497,15 @@ class _ProfileIdentity extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final tint = harmonize(user.persona.color, cs.primary);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         Text(
           user.displayName.trim().isEmpty
               ? context.tr("Your profile")
               : user.displayName,
+          textAlign: centered ? TextAlign.center : null,
           style: tt.headlineSmall?.copyWith(
             letterSpacing: -.8,
             fontWeight: FontWeight.w700,
