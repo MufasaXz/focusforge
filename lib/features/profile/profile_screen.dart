@@ -318,9 +318,6 @@ class _HeroCard extends StatelessWidget {
     final t = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact =
-            constraints.maxWidth < 420 ||
-            MediaQuery.textScalerOf(context).scale(14) > 19;
         // Premium hero: a soft primary wash with a quiet lift, so the identity
         // card reads as the page's cover rather than another flat tile.
         return HeroSurface(
@@ -336,33 +333,14 @@ class _HeroCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: Gap.xl),
-                if (compact) ...[
-                  // Compact header: avatar centred, the pencil floating
-                  // top-right, and the name and persona below it — the
-                  // side-by-side row scattered the header across the card
-                  // and left a dead strip under the avatar.
-                  SizedBox(
-                    width: double.infinity,
-                    child: Stack(
-                      children: [
-                        Align(
-                          child: _Avatar(user: user, level: stats.level),
-                        ),
-                        const Positioned(
-                          top: 0,
-                          right: 0,
-                          child: _EditProfileButton(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: Gap.md),
-                  _ProfileIdentity(user: user, centered: true),
-                ] else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Avatar(user: user, level: stats.level),
+                // Avatar left, identity beside it, edit affordance on the right —
+                // the arrangement the compact card reads best at. The only case
+                // that still stacks is a viewport so narrow, or text so large,
+                // that the persona pill cannot share the row.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Avatar(user: user, level: stats.level),
                       const SizedBox(width: Gap.lg),
                       Expanded(child: _ProfileIdentity(user: user)),
                       const SizedBox(width: Gap.sm),
@@ -462,13 +440,9 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _ProfileIdentity extends StatelessWidget {
-  const _ProfileIdentity({required this.user, this.centered = false});
+  const _ProfileIdentity({required this.user});
 
   final UserProfile user;
-
-  /// Centres the name and the persona pill instead of hugging the start
-  /// edge — the compact header places the identity under a centred avatar.
-  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -476,15 +450,12 @@ class _ProfileIdentity extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final tint = harmonize(user.persona.color, cs.primary);
     return Column(
-      crossAxisAlignment: centered
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           user.displayName.trim().isEmpty
               ? context.tr("Your profile")
               : user.displayName,
-          textAlign: centered ? TextAlign.center : null,
           style: tt.headlineSmall?.copyWith(
             letterSpacing: -.8,
             fontWeight: FontWeight.w700,

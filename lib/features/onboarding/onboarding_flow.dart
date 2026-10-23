@@ -313,14 +313,23 @@ class _FlowHeader extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(title, style: theme.textTheme.labelLarge),
+                      child: Text(
+                        title,
+                        style: theme.textTheme.labelLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: Gap.sm),
                     Text(
                       context.tr("Step {0} of {1}", [index, total]),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
                     ),
                   ],
                 ),
@@ -362,10 +371,17 @@ class _StepTrack extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
-          final gap = count <= 1 ? 0.0 : w / (count - 1);
-          double x(int i) => i * gap;
-          final pillW = gap.clamp(14.0, 30.0);
-          final pillLeft = (x(index) - pillW / 2).clamp(0.0, w - pillW);
+          // The dots and the travelling pill must never run off the track. On
+          // very narrow widths or large text the available width shrinks, so
+          // the dots are inset by a fixed margin and the spacing is derived
+          // from that inset span rather than the raw width — otherwise the
+          // first and last dots, and the pill over them, bleed past the edge.
+          const edgeInset = 6.0;
+          final span = (w - edgeInset * 2).clamp(0.0, w);
+          final gap = count <= 1 ? 0.0 : span / (count - 1);
+          double x(int i) => edgeInset + i * gap;
+          final pillW = (gap).clamp(14.0, 30.0);
+          final pillLeft = (x(index) - pillW / 2).clamp(0.0, (w - pillW).clamp(0.0, w));
 
           return Stack(
             alignment: Alignment.centerLeft,

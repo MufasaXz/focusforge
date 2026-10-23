@@ -40,7 +40,7 @@ enum ThemePreference {
 /// *preference* — it is stored by name and rebuilt on launch — and the theme
 /// file should stay a pure function of what it is handed.
 enum AppPalette {
-  parchment('Parchment', Color(0xFF766747), Color(0xFFD9C8A3)),
+  parchment('Parchment', Color(0xFF766747), Color(0xFFD9B98A)),
   ember('Ember', Color(0xFFE8672A), Color(0xFFFF8A50)),
   tide('Tide', Color(0xFF1B6FD6), Color(0xFF6FA8FF)),
   grove('Grove', Color(0xFF2E7D4F), Color(0xFF6FD39A)),
