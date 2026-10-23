@@ -236,7 +236,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         // compact windows and large text. Keep a readable minimum while
         // deriving the frame from the actual column width.
         final clockSize = (columnWidth - (Gap.lg + 8))
-            .clamp(176.0, 252.0)
+            .clamp(176.0, 272.0)
             .toDouble();
         final compactDock = columnWidth < (wide ? 430 : 360);
         final labelledPlay =
@@ -320,6 +320,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                     // action — the label says what it reads, the hint
                     // says what it does.
                     child: Semantics(
+                      key: const ValueKey('focus-clock'),
                       button: true,
                       label: context.tr("{0}, {1} remaining, {2}", [
                         context.tr(timer.phase.label),

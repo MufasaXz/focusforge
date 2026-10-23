@@ -91,6 +91,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('focus clock gets a larger hero frame on a regular phone', (
+    tester,
+  ) async {
+    phone(tester, width: 420);
+    await tester.pumpWidget(wrap(container(), const FocusScreen()));
+    await settle(tester);
+
+    final clock = tester.getSize(find.byKey(const ValueKey('focus-clock')));
+    expect(clock.width, greaterThanOrEqualTo(264));
+    expect(clock.height, greaterThanOrEqualTo(264));
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('sound choices keep their names and placement when restored', (
     tester,
   ) async {
