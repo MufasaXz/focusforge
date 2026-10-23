@@ -264,6 +264,15 @@ class _AppShellState extends ConsumerState<AppShell>
                                 decoration: ShapeDecoration(
                                   color: cs.surfaceContainerLow,
                                   shape: const StadiumBorder(),
+                                  shadows: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: isDark ? 0.32 : 0.10,
+                                      ),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                                 ),
                                 child: GlassCard(
                                   shape: const StadiumBorder(),
@@ -347,6 +356,15 @@ class _AppShellState extends ConsumerState<AppShell>
                           decoration: ShapeDecoration(
                             shape: const StadiumBorder(),
                             color: cs.surfaceContainerLow,
+                            shadows: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.34 : 0.11,
+                                ),
+                                blurRadius: 30,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
                           child: GlassCard(
                             shape: const StadiumBorder(),

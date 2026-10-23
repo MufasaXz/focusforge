@@ -657,20 +657,27 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                           )
                                           ? Duration.zero
                                           : Motion.base,
-                                      width: labelledPlay ? 104 : 52,
-                                      height: 52,
+                                      width: labelledPlay ? 104 : 56,
+                                      height: 56,
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(
-                                          timer.running ? 26 : 16,
+                                          timer.running ? 28 : 18,
                                         ),
                                         color: accent,
                                         boxShadow: [
                                           BoxShadow(
                                             color: accent.withValues(
-                                              alpha: 0.35,
+                                              alpha: 0.42,
                                             ),
-                                            blurRadius: 14,
-                                            offset: const Offset(0, 6),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 7),
+                                          ),
+                                          BoxShadow(
+                                            color: accent.withValues(
+                                              alpha: 0.20,
+                                            ),
+                                            blurRadius: 30,
+                                            offset: const Offset(0, 14),
                                           ),
                                         ],
                                       ),

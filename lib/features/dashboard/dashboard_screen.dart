@@ -22,6 +22,7 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
+import '../../shared/widgets/tonal_panel.dart';
 import '../onboarding/coach_marks.dart';
 import 'widgets/daily_goal_sheet.dart';
 import 'widgets/focus_heatmap.dart';
@@ -399,6 +400,19 @@ class _Greeting extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // The date as the page's eyebrow — the same accent-over-title
+              // rhythm the screens below the greeting use, so the header joins
+              // the page instead of floating above it.
+              Text(
+                formatDate(now, locale: Localizations.localeOf(context))
+                    .toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.primary,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: Gap.xs),
               Text(
                 // A nameless user gets "Good morning", not "Good morning, " —
                 // the comma only belongs there when something follows it.
@@ -407,12 +421,6 @@ class _Greeting extends StatelessWidget {
                   if (name.isNotEmpty) name,
                 ].join(', '),
                 style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                formatDate(now, locale: Localizations.localeOf(context)),
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -808,32 +816,9 @@ class _PlanGoalCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     // Premium empty state: a soft primary wash with a quiet lift, so the
     // first-run goal reads as an invitation rather than an empty card.
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(
-              cs.primary.withValues(alpha: 0.12),
-              cs.surfaceContainerLow,
-            ),
-            cs.surfaceContainerLow,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(Radii.hero),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.14),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.xl),
-        child: Column(
+    return HeroSurface(
+      accentStrength: 0.12,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
@@ -873,7 +858,6 @@ class _PlanGoalCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

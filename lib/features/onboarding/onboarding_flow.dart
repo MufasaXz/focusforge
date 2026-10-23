@@ -329,24 +329,121 @@ class _FlowHeader extends StatelessWidget {
                   label: context.tr("Setup progress, {0}", [title]),
                   value: context.tr("Step {0} of {1}", [index, total]),
                   child: ExcludeSemantics(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                      child: SizedBox(
-                        height: 6,
-                        child: LinearProgressIndicator(
-                          value: index / total,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
+                    child: _StepTrack(index: index, total: total),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The setup progress as a journey rather than a fill: a thin rail with one
+/// dot per step and the current step stretched into a pill that travels along
+/// it. Done steps keep a filled dot; coming steps are outlines. The travel is
+/// an implicit animation, so a back-tap rewinds the pill instead of jumping.
+class _StepTrack extends StatelessWidget {
+  const _StepTrack({required this.index, required this.total});
+
+  final int index;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final count = total + 1;
+
+    return SizedBox(
+      height: 14,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final gap = count <= 1 ? 0.0 : w / (count - 1);
+          double x(int i) => i * gap;
+          final pillW = gap.clamp(14.0, 30.0);
+          final pillLeft = (x(index) - pillW / 2).clamp(0.0, w - pillW);
+
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              // rail
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 6,
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // done portion of the rail
+              Positioned(
+                left: 0,
+                top: 6,
+                child: AnimatedContainer(
+                  duration: reduce ? Duration.zero : Motion.base,
+                  curve: Motion.emphasized,
+                  width: x(index),
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .65),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // step dots
+              for (var i = 0; i < count; i++)
+                Positioned(
+                  left: x(i) - 4,
+                  top: 3,
+                  child: AnimatedContainer(
+                    duration: reduce ? Duration.zero : Motion.base,
+                    curve: Motion.emphasized,
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i < index
+                          ? cs.primary
+                          : i == index
+                          ? cs.primary
+                          : cs.surfaceContainerHighest,
+                      border: i <= index
+                          ? null
+                          : Border.all(color: cs.outlineVariant),
+                    ),
+                  ),
+                ),
+              // the travelling current-step pill over the active dot
+              AnimatedPositioned(
+                duration: reduce ? Duration.zero : Motion.base,
+                curve: Motion.emphasized,
+                left: pillLeft,
+                top: 0,
+                child: AnimatedContainer(
+                  duration: reduce ? Duration.zero : Motion.base,
+                  curve: Motion.emphasized,
+                  width: pillW,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: .55),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
