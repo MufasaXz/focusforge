@@ -73,8 +73,14 @@ class UserNotifier extends Notifier<UserProfile> {
     await _store.setMap(StoreKeys.user, profile.toJson());
   }
 
-  Future<void> setDisplayName(String name) =>
-      save(state.copyWith(displayName: name.trim()));
+  Future<void> setDisplayName(String name) {
+    // The board and groups cap a display name at 60 characters; a longer one
+    // is cut to the limit rather than rejected on the wire.
+    final trimmed = name.trim();
+    final capped =
+        trimmed.length > 60 ? trimmed.substring(0, 60).trim() : trimmed;
+    return save(state.copyWith(displayName: capped));
+  }
 
   Future<void> setPersona(Persona persona) =>
       save(state.copyWith(persona: persona));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme/app_theme.dart';
 
@@ -140,6 +141,7 @@ class AppTextField extends StatelessWidget {
     this.suffix,
     this.onChanged,
     this.enabled = true,
+    this.maxLength,
   });
 
   final TextEditingController controller;
@@ -150,6 +152,10 @@ class AppTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final bool autofocus;
+
+  /// Hard cap on input length — set where the value feeds a store that has its
+  /// own limit, so the field refuses early rather than failing later.
+  final int? maxLength;
 
   /// Set only when the field is wrong, never while it is merely empty — an
   /// error on an untouched field tells the user off for nothing.
@@ -180,6 +186,12 @@ class AppTextField extends StatelessWidget {
       onSubmitted: onSubmitted,
       onChanged: onChanged,
       autofocus: autofocus,
+      maxLength: maxLength,
+      // The cap is a guard, not a hint — the counter is noise on a field that
+      // almost no one will ever fill to the limit.
+      maxLengthEnforcement: MaxLengthEnforcement.enforced,
+      buildCounter: (_, {currentLength = 0, isFocused = false, maxLength}) =>
+          null,
       style: theme.textTheme.bodyLarge,
       cursorColor: cs.primary,
       cursorRadius: const Radius.circular(Radii.pill),

@@ -90,6 +90,9 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               const SizedBox(height: Gap.sm),
               TextField(
                 controller: _name,
+                // The board and groups cap a display name at 60 characters;
+                // longer input is refused here rather than failing to publish.
+                maxLength: 60,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.done,
                 style: Theme.of(context).textTheme.bodyLarge,
@@ -100,6 +103,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                 },
                 decoration: InputDecoration(
                   hintText: context.tr("Your name"),
+                  counterText: '',
                   hintStyle: Theme.of(context).textTheme.bodyLarge
                       ?.copyWith(color: cs.onSurfaceVariant),
                   filled: true,

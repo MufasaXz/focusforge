@@ -115,6 +115,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
             controller: _name,
             hint: context.tr("Your name"),
             icon: Icons.badge_outlined,
+            maxLength: 60,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           ),
