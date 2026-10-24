@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-24 (build 2029)
+
+- Rebuilt the Neon clock face as lit tubing — a white-hot core over a coloured
+  halo that reads as a tube on dark panels.
+- Turned the Clock face picker into a preview: the selected face fills a tinted
+  hero at reading size, and the rest sit in a two-column grid of live clocks.
+- Added a podium for the leaderboard's top three and lit status dots for
+  members who are focusing right now.
+- Gave each preset a rhythm bar in the plan picker, so a plan's focus/break
+  split is readable without parsing numbers.
+- Folded the Focus tab's daily tally into a goal card with a progress ring.
+- Refined the subject breakdown ring — selected slices lift with rounded caps
+  and a sheen, and the centre reads the share as a percentage.
+- Simplified Account & privacy into grouped, tappable rows with a single
+  account summary at the top.
+- Fixed the displayed app version being a release behind the build, and capped
+  display names at the 60-character limit the leaderboard enforces.
+
 ## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-19
 
 - Improved account recovery with automatic retries and clearer progress while saved study data returns.
