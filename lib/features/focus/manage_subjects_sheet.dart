@@ -10,6 +10,7 @@ import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/utils/format.dart';
 import '../../shared/widgets/form_controls.dart';
 import '../../shared/widgets/sheet_chrome.dart';
 
@@ -194,43 +195,132 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                     label: Text(context.tr("Add subject")),
                   ),
                   const SizedBox(height: Gap.md),
-                  Column(
-                    children: [
-                      if (subjects.isEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(Gap.xl),
-                          child: Text(
+                  if (subjects.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Gap.xl,
+                        horizontal: Gap.lg,
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_outlined,
+                            size: 30,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: Gap.sm),
+                          Text(
                             context.tr("No subjects yet"),
+                            style: theme.textTheme.titleSmall,
                             textAlign: TextAlign.center,
                           ),
-                        ),
-                      for (final subject in subjects)
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: Gap.xs,
-                          ),
-                          leading: Icon(
-                            subject.icon,
-                            color: harmonize(
-                              subject.color,
-                              theme.colorScheme.primary,
+                          const SizedBox(height: Gap.xs),
+                          Text(
+                            context.tr(
+                              "Add your first above — it gets a colour and an icon on its own.",
+                            ),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          title: Text(subject.name),
-                          trailing: IconButton(
-                            tooltip: context.tr("Remove {0}", [subject.name]),
-                            onPressed: _busy ? null : () => _remove(subject),
-                            icon: const Icon(
-                              Icons.remove_circle_outline_rounded,
-                            ),
-                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(Radii.item),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.5),
                         ),
-                    ],
-                  ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.item),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < subjects.length; i++) ...[
+                              if (i > 0)
+                                Divider(
+                                  height: 1,
+                                  indent: 68,
+                                  endIndent: Gap.md,
+                                  color: theme.colorScheme.outlineVariant
+                                      .withValues(alpha: 0.4),
+                                ),
+                              _SubjectRow(
+                                subject: subjects[i],
+                                busy: _busy,
+                                onRemove: () => _remove(subjects[i]),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One subject in the manager: its colour chip, its name and its weekly target.
+///
+/// The icon sits inside the subject's own colour so the row is recognisable at
+/// the glance the picker trades in — a bare icon in the accent says nothing
+/// about which subject it belongs to.
+class _SubjectRow extends StatelessWidget {
+  const _SubjectRow({
+    required this.subject,
+    required this.busy,
+    required this.onRemove,
+  });
+
+  final Subject subject;
+  final bool busy;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final color = harmonize(subject.color, cs.primary);
+
+    return ListTile(
+      contentPadding: const EdgeInsets.only(left: Gap.md, right: Gap.xs),
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(subject.icon, size: 19, color: color),
+      ),
+      title: Text(
+        subject.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        context.tr("{0} a week", [
+          formatMinutes(subject.weekTarget.round()),
+        ]),
+        style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+      trailing: IconButton(
+        tooltip: context.tr("Remove {0}", [subject.name]),
+        onPressed: busy ? null : onRemove,
+        icon: Icon(
+          Icons.remove_circle_outline_rounded,
+          color: cs.error.withValues(alpha: 0.8),
         ),
       ),
     );

@@ -282,6 +282,22 @@ class _Ring extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    // The selected slice's share of the day — the one number
+                    // the ring itself cannot say outright.
+                    if (subject != null && total > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        context.tr("{0} of today", [
+                          '${(subject.minutesToday / total * 100).round()}%',
+                        ]),
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        style: tt.labelSmall?.copyWith(
+                          color: subject.color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -366,14 +382,33 @@ class _DonutPainter extends CustomPainter {
 
       if (sweep > 0.001) {
         final lift = i == selected ? _popDistance * pop : 0.0;
-        paint.color = colors[i];
-        canvas.drawArc(
-          Rect.fromCircle(center: g.centre, radius: g.radius + lift),
-          start + gap / 2 * eased,
-          sweep,
-          false,
-          paint,
+        final rect = Rect.fromCircle(
+          center: g.centre,
+          radius: g.radius + lift,
         );
+        // A lifted slice gets round caps: butt ends read as a straight cut
+        // wherever two slices meet, while the popped one reads as a segment
+        // pulled out of the ring rather than a slice that grew.
+        paint
+          ..color = colors[i]
+          ..strokeCap = i == selected ? StrokeCap.round : StrokeCap.butt;
+        canvas.drawArc(rect, start + gap / 2 * eased, sweep, false, paint);
+
+        // A sheen across the lifted slice — light catching the part of the
+        // ring that stood up.
+        if (i == selected && pop > 0) {
+          canvas.drawArc(
+            rect,
+            start + gap / 2 * eased,
+            sweep,
+            false,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = g.stroke * 0.32
+              ..strokeCap = StrokeCap.round
+              ..color = Colors.white.withValues(alpha: 0.28 * pop),
+          );
+        }
       }
       start += full;
     }
