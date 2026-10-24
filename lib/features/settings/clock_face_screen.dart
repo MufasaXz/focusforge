@@ -33,30 +33,55 @@ class ClockFaceScreen extends ConsumerWidget {
     final timer = ref.watch(timerProvider);
     final preset = ref.watch(presetsProvider)[timer.presetIndex];
 
+    final remaining = timer.hidesDuration(preset)
+        ? const Duration(minutes: 25)
+        : timer.remaining;
+    final progress =
+        timer.hidesDuration(preset) ? 0.0 : timer.progressFor(preset);
+
     return AppPage(
       title: context.tr("Clock face"),
       subtitle: context.tr("How the timer draws its figures"),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final face in ClockFace.values) ...[
-            _FaceCard(
-              face: face,
-              remaining: timer.hidesDuration(preset)
-                  ? const Duration(minutes: 25)
-                  : timer.remaining,
-              progress: timer.hidesDuration(preset)
-                  ? 0
-                  : timer.progressFor(preset),
-              selected: face == selected,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                ref.read(clockFaceProvider.notifier).set(face);
-              },
-            ),
-            const SizedBox(height: Gap.md),
-          ],
-          const SizedBox(height: Gap.xs),
+          // The choice, shown large: the selected face at the size it will
+          // actually be read, so the pick is made on the figure itself rather
+          // than on a thumbnail that could be any of them.
+          _FeaturedFace(
+            face: selected,
+            remaining: remaining,
+            progress: progress,
+          ),
+          const SizedBox(height: Gap.xl),
+          // The seven faces in a two-column grid — each one a live preview of
+          // the same clock, not a sample number.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = (constraints.maxWidth - Gap.md) / 2;
+              return Wrap(
+                spacing: Gap.md,
+                runSpacing: Gap.md,
+                children: [
+                  for (final face in ClockFace.values)
+                    SizedBox(
+                      width: width,
+                      child: _FaceCard(
+                        face: face,
+                        remaining: remaining,
+                        progress: progress,
+                        selected: face == selected,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(clockFaceProvider.notifier).set(face);
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: Gap.lg),
           Text(
             context.tr(
               "The face changes how the figures are drawn, not what they say. The timer, the ring and the full-screen clock all read the same value.",
@@ -70,7 +95,108 @@ class ClockFaceScreen extends ConsumerWidget {
   }
 }
 
-/// One face: what it looks like, what it is called, and whether it is on.
+/// The selected face, shown at reading size in a tinted hero panel.
+///
+/// The grid below is for picking; this panel is for seeing. Showing the chosen
+/// face large — with its name underneath — turns the screen into a preview
+/// first and a list second, which is the order someone choosing a clock
+/// thinks in.
+class _FeaturedFace extends StatelessWidget {
+  const _FeaturedFace({
+    required this.face,
+    required this.remaining,
+    required this.progress,
+  });
+
+  final ClockFace face;
+  final Duration remaining;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedContainer(
+      duration:
+          MediaQuery.disableAnimationsOf(context) ? Duration.zero : Motion.base,
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Radii.hero),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: dark ? 0.16 : 0.10),
+              cs.surfaceContainerLow,
+            ),
+            cs.surfaceContainerLow,
+          ],
+        ),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.4)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: Gap.xl, horizontal: Gap.lg),
+      child: Column(
+        children: [
+          SizedBox(
+            height: face == ClockFace.retro ? 190 : 120,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : Motion.base,
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.94, end: 1).animate(animation),
+                    child: child,
+                  ),
+                ),
+                // Keyed on the face so the preview crossfades between faces
+                // rather than rebuilding the same widget in place.
+                child: FittedBox(
+                  key: ValueKey(face),
+                  fit: BoxFit.scaleDown,
+                  child: ClockDisplay(
+                    remaining: remaining,
+                    face: face,
+                    accent: cs.primary,
+                    height: face == ClockFace.retro ? 168 : 88,
+                    progress: progress,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: Gap.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(face.icon, size: 16, color: cs.primary),
+              const SizedBox(width: Gap.sm),
+              Text(
+                context.tr(face.label),
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            context.tr(face.blurb),
+            textAlign: TextAlign.center,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One face in the picker: a live thumbnail, its name, and whether it is on.
 class _FaceCard extends StatelessWidget {
   const _FaceCard({
     required this.face,
@@ -102,17 +228,17 @@ class _FaceCard extends StatelessWidget {
       onTap: onTap,
       child: Pressable(
         onTap: onTap,
-        scale: 0.98,
+        scale: 0.97,
         child: AnimatedContainer(
           duration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
               : Motion.base,
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.all(Gap.lg),
+          padding: const EdgeInsets.all(Gap.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Radii.card),
             color: selected
-                ? t.primary.withValues(alpha: 0.10)
+                ? t.primary.withValues(alpha: 0.12)
                 : t.surfaceContainerLow,
             border: Border.all(
               color: selected ? t.primary : t.outlineVariant,
@@ -126,20 +252,20 @@ class _FaceCard extends StatelessWidget {
               // card of its own — the flip board — is still visible as a shape
               // rather than dissolving into the row behind it.
               Container(
-                height: face == ClockFace.retro ? 170 : 78,
+                height: face == ClockFace.retro ? 92 : 62,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Radii.tile),
                   color: t.surfaceContainerHighest.withValues(alpha: 0.55),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+                padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: ClockDisplay(
                     remaining: remaining,
                     face: face,
                     accent: t.primary,
-                    height: face == ClockFace.retro ? 156 : 46,
+                    height: face == ClockFace.retro ? 84 : 36,
                     progress: progress,
                   ),
                 ),
@@ -147,11 +273,11 @@ class _FaceCard extends StatelessWidget {
               const SizedBox(height: Gap.md),
               Row(
                 children: [
-                  Icon(face.icon, size: 17, color: t.onSurfaceVariant),
-                  const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Text(
                       context.tr(face.label),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: tt.titleSmall?.copyWith(
                         fontWeight: selected
                             ? FontWeight.w700
@@ -159,9 +285,6 @@ class _FaceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // A check rather than a switch: the choice is one of seven,
-                  // and a switch beside each of seven rows says six of them are
-                  // off rather than that one of them is on.
                   AnimatedScale(
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
@@ -170,16 +293,11 @@ class _FaceCard extends StatelessWidget {
                     scale: selected ? 1 : 0,
                     child: Icon(
                       Icons.check_circle_rounded,
-                      size: 20,
+                      size: 19,
                       color: t.primary,
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                context.tr(face.blurb),
-                style: tt.bodySmall?.copyWith(color: t.onSurfaceVariant),
               ),
             ],
           ),

@@ -645,13 +645,21 @@ class _SegmentPainter extends CustomPainter {
 // Neon — lit figures with a glow
 // ---------------------------------------------------------------------------
 
-/// Figures in the phase colour with a halo around them: the tube-clock look.
+/// Figures drawn as lit tubing: a hot core with a coloured halo around it.
 ///
 /// The glow is the effect and the legibility is the constraint, so the two
-/// are set separately rather than by tinting the figures with the accent. In
-/// the dark scheme the accent is bright enough to read as the tube itself; in
-/// the light one the accent on a pale surface is a smudge at this size, so the
-/// figures step towards the ink and keep the accent only in the halo.
+/// are built separately rather than by tinting the figures with the accent.
+/// The core is the brightest thing — near-white, tinted toward the accent —
+/// and the halo carries the hue out into the dark the way a real tube throws
+/// its colour onto the panel behind it. In the light scheme the same trick is
+/// inverted: the core steps toward the ink so the figure stays a figure on a
+/// pale surface, and the halo keeps the accent.
+///
+/// Three text layers do the work. The two blurred strokes behind the crisp
+/// figure are the halo — the tighter one is the bloom right at the glass, the
+/// wider one is the spill. The figure on top is the filament: a soft white
+/// edge over the core, which is what separates a lit tube from a coloured
+/// shadow on flat text.
 class _NeonClock extends StatelessWidget {
   const _NeonClock({
     required this.text,
@@ -669,23 +677,69 @@ class _NeonClock extends StatelessWidget {
     final cs = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
 
-    final ink = dark ? accent : Color.lerp(accent, cs.onSurface, 0.42)!;
-    final halo = accent.withValues(alpha: dark ? 0.55 : 0.28);
+    // The filament reads hottest against the dark; in daylight the accent
+    // alone cannot carry it, so the core leans toward the ink and the halo
+    // keeps the colour.
+    final core = dark
+        ? Color.lerp(accent, Colors.white, 0.32)!
+        : Color.lerp(accent, cs.onSurface, 0.55)!;
+    final bloom = accent.withValues(alpha: dark ? 0.9 : 0.45);
+    final spill = accent.withValues(alpha: dark ? 0.5 : 0.22);
 
-    return AnimatedDigits(
-      text: text,
-      style: theme.textTheme.displayLarge!.copyWith(
-        fontSize: height,
-        height: 1.02,
-        fontWeight: FontWeight.w500,
-        letterSpacing: -height * 0.03,
-        color: ink,
-        shadows: [
-          Shadow(color: halo, blurRadius: height * 0.22),
-          Shadow(color: halo, blurRadius: height * 0.5),
-          if (dark) Shadow(color: halo, blurRadius: height * 0.95),
-        ],
-      ),
+    final base = theme.textTheme.displayLarge!.copyWith(
+      fontSize: height,
+      height: 1.02,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -height * 0.03,
+      // The glow is painted by the layers behind, so the figure itself keeps
+      // a clean edge — a shadow on the crisp layer would double the blur.
+      shadows: const [],
+    );
+
+    // Stroke width scales with the figure, not the glow: the halo is blur,
+    // the tube wall is a fixed fraction of the glyph.
+    final tube = height * 0.16;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // The wide spill — furthest out, softest.
+        AnimatedDigits(
+          text: text,
+          style: base.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = tube
+              ..color = spill
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, height * 0.34),
+          ),
+        ),
+        // The near bloom — tighter, brighter, hugging the glass.
+        AnimatedDigits(
+          text: text,
+          style: base.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = tube * 0.8
+              ..color = bloom
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, height * 0.12),
+          ),
+        ),
+        // The filament: the crisp core with a white-hot centre.
+        AnimatedDigits(
+          text: text,
+          style: base.copyWith(
+            color: core,
+            shadows: [
+              if (dark)
+                Shadow(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  blurRadius: height * 0.045,
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
