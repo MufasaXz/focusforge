@@ -483,39 +483,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           ),
           Stagger(
             index: 5,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _InfoCapsule(
-                    icon: Icons.local_fire_department_rounded,
-                    color: t.tertiary,
-                    value: context.tr("Day {0}", [streak]),
-                    semanticLabel: context.tr("Streak: {0} days", [streak]),
-                  ),
-                ),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: _InfoCapsule(
-                    icon: Icons.timer_rounded,
-                    color: t.primary,
-                    value: formatMinutes(minutesToday),
-                    semanticLabel: context.tr("Focus time today: {0}", [
-                      formatMinutes(minutesToday),
-                    ]),
-                  ),
-                ),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: _InfoCapsule(
-                    icon: Icons.check_circle_rounded,
-                    color: t.tertiary,
-                    value: context.tr("{0} today", [sessionsToday]),
-                    semanticLabel: context.tr("Sessions today: {0}", [
-                      sessionsToday,
-                    ]),
-                  ),
-                ),
-              ],
+            child: _TodayCard(
+              streak: streak,
+              minutes: minutesToday,
+              sessions: sessionsToday,
             ),
           ),
         ];
@@ -1439,47 +1410,139 @@ class _PresetBar extends StatelessWidget {
   }
 }
 
-class _InfoCapsule extends StatelessWidget {
-  const _InfoCapsule({
+/// The day's tally on one card: how long, how many blocks and the streak,
+/// beside a ring that fills toward the daily goal the plan implies.
+///
+/// The capsules this replaced said the same three numbers but nothing about
+/// how they add up; the goal line at the bottom is what turns three counts
+/// into a day.
+class _TodayCard extends ConsumerWidget {
+  const _TodayCard({
+    required this.streak,
+    required this.minutes,
+    required this.sessions,
+  });
+
+  final int streak;
+  final int minutes;
+  final int sessions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // The day's target: the sum of every subject's weekly target spread over
+    // seven days, so the ring means "share of the week, done today". A user
+    // with no subjects has a two-hour default rather than a ring that can
+    // never fill.
+    final subjects = ref.watch(subjectsProvider);
+    final weekly = subjects.fold<double>(0, (a, s) => a + s.weekTarget);
+    final goal = weekly <= 0 ? 120 : weekly / 7;
+    final progress = (minutes / goal).clamp(0.0, 1.0);
+
+    return ContentCard(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 64,
+              height: 64,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: progress <= 0 ? 0 : progress,
+                    strokeWidth: 6,
+                    backgroundColor: t.surfaceContainerHighest,
+                    color: t.primary,
+                    strokeCap: StrokeCap.round,
+                  ),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: tt.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Gap.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formatMinutes(minutes),
+                    style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    context.tr("of {0} goal", [formatMinutes(goal.round())]),
+                    style: tt.labelSmall?.copyWith(color: t.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: Gap.xs,
+                    children: [
+                      _TodayChip(
+                        icon: Icons.check_circle_outline_rounded,
+                        color: t.tertiary,
+                        label: sessions == 1
+                            ? context.tr("1 session")
+                            : context.tr("{0} sessions", [sessions]),
+                      ),
+                      _TodayChip(
+                        icon: Icons.local_fire_department_rounded,
+                        color: t.tertiary,
+                        label: context.tr("{0}-day streak", [streak]),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayChip extends StatelessWidget {
+  const _TodayChip({
     required this.icon,
     required this.color,
-    required this.value,
-    required this.semanticLabel,
+    required this.label,
   });
 
   final IconData icon;
   final Color color;
-  final String value;
-  final String semanticLabel;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: semanticLabel,
-      excludeSemantics: true,
-      child: Card.outlined(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: Gap.md,
-            horizontal: Gap.sm,
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: Gap.sm, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(Radii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
-            children: [
-              Icon(icon, size: 15, color: color),
-              const SizedBox(height: 5),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
