@@ -1295,6 +1295,18 @@ class _SegmentDot extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Radii.pill),
         color: done || current ? color : t.surfaceContainerHighest,
+        // The running segment glows a little — it is the one dot that is
+        // alive, and a soft halo says so without a pulse the eye reads as a
+        // notification badge.
+        boxShadow: current
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.45),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
     );
   }
@@ -1330,42 +1342,65 @@ class _PresetRow extends StatelessWidget {
       ),
       excludeSemantics: true,
       onTap: onTap,
-      child: ListTile(
-        onTap: onTap,
-        selected: selected,
-        shape: RoundedRectangleBorder(
+      child: AnimatedContainer(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : Motion.base,
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        decoration: BoxDecoration(
+          color: selected
+              ? t.primary.withValues(alpha: 0.10)
+              : t.surfaceContainerLow,
           borderRadius: BorderRadius.circular(Radii.item),
+          border: Border.all(
+            color: selected
+                ? t.primary.withValues(alpha: 0.6)
+                : t.outlineVariant.withValues(alpha: 0.4),
+            width: selected ? 1.5 : 1,
+          ),
         ),
-        selectedTileColor: t.primary.withValues(alpha: 0.10),
-        leading: IconBadge(
-          icon: preset.icon,
-          color: selected ? t.primary : t.onSurfaceVariant,
-          size: 38,
-          radius: 11,
-        ),
-        title: Text(presetDisplayName(context, preset)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 3),
-            Text(
-              context.tr("{0}m focus · {1}m break · {2} segments", [
-                preset.isRandomFocus
-                    ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
-                    : preset.focus,
-                preset.shortBreak,
-                preset.segments,
-              ]),
+        child: ListTile(
+          onTap: onTap,
+          selected: selected,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.item),
+          ),
+          leading: IconBadge(
+            icon: preset.icon,
+            color: selected ? t.primary : t.onSurfaceVariant,
+            size: 38,
+            radius: 11,
+          ),
+          title: Text(
+            presetDisplayName(context, preset),
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
             ),
-            const SizedBox(height: Gap.sm),
-            // The plan, drawn: a focus block and a break block in proportion,
-            // so the rhythm of the preset is readable without parsing numbers.
-            _PresetBar(preset: preset),
-          ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 3),
+              Text(
+                context.tr("{0}m focus · {1}m break · {2} segments", [
+                  preset.isRandomFocus
+                      ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
+                      : preset.focus,
+                  preset.shortBreak,
+                  preset.segments,
+                ]),
+              ),
+              const SizedBox(height: Gap.sm),
+              // The plan, drawn: a focus block and a break block in proportion,
+              // so the rhythm of the preset is readable without parsing numbers.
+              _PresetBar(preset: preset),
+            ],
+          ),
+          trailing: selected
+              ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
+              : null,
         ),
-        trailing: selected
-            ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
-            : null,
       ),
     );
   }

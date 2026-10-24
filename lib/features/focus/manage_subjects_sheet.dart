@@ -233,8 +233,9 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
                         color: theme.colorScheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(Radii.item),
                         border: Border.all(
-                          color: theme.colorScheme.outlineVariant
-                              .withValues(alpha: 0.5),
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                       child: ClipRRect(
@@ -318,9 +319,7 @@ class _SubjectRow extends StatelessWidget {
                 formatHoursShort(subject.weekDone),
                 formatHoursShort(subject.weekTarget),
               ])
-            : context.tr("{0} a week", [
-                formatHoursShort(subject.weekTarget),
-              ]),
+            : context.tr("{0} a week", [formatHoursShort(subject.weekTarget)]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: tt.labelSmall?.copyWith(
