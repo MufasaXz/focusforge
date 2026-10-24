@@ -227,6 +227,7 @@ class _FaceCard extends StatelessWidget {
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
+        key: ValueKey('clock-face-${face.name}'),
         onTap: onTap,
         scale: 0.97,
         child: AnimatedContainer(

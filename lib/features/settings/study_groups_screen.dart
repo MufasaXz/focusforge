@@ -328,11 +328,15 @@ class _GroupCard extends ConsumerWidget {
                       children: [
                         Text(
                           group.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           context.tr("{0} members", [group.memberCount]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: cs.onSurfaceVariant),
                         ),
@@ -357,62 +361,43 @@ class _GroupCard extends ConsumerWidget {
               else ...[
                 // The shared goal, as the card's headline: how far the circle
                 // has got through the week it set itself.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            formatHoursShort(hours),
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            context.tr("of {0} this week", [
-                              formatHoursShort(group.targetHours),
-                            ]),
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // A live member tells more than a count: someone is in a
-                    // block right now, so the dot is lit rather than listed.
-                    if (focusing > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Gap.sm,
-                          vertical: Gap.xs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.tertiary.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(Radii.pill),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.timer_rounded,
-                              size: 13,
-                              color: cs.tertiary,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              context.tr("{0} focusing", [focusing]),
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: cs.tertiary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                Text(
+                  context.tr("{0} of {1} this week", [
+                    formatHoursShort(hours),
+                    formatHoursShort(group.targetHours),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
+                if (focusing > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Gap.xs),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.timer_rounded,
+                          size: 13,
+                          color: cs.tertiary,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            context.tr("{0} focusing now", [focusing]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: cs.tertiary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: Gap.md),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(Radii.pill),
@@ -636,13 +621,11 @@ class _MemberTile extends StatelessWidget {
     final hours = (member.week == week ? member.minutes : 0) / 60;
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: Gap.md,
-        vertical: 2,
-      ),
+      contentPadding: const EdgeInsets.only(left: Gap.md, right: 4),
+      horizontalTitleGap: Gap.sm,
       leading: Container(
-        width: 34,
-        height: 34,
+        width: 30,
+        height: 30,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: medal.withValues(alpha: rank <= 3 ? 0.14 : 0.0),
@@ -656,26 +639,14 @@ class _MemberTile extends StatelessWidget {
           ),
         ),
       ),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              member.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          if (isMe) ...[
-            const SizedBox(width: Gap.xs),
-            Text(
-              '· ${context.tr("You")}',
-              style: tt.labelSmall?.copyWith(color: cs.primary),
-            ),
-          ],
-        ],
+      title: Text(
+        member.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
       ),
       subtitle: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (active) ...[
             Container(
@@ -686,7 +657,7 @@ class _MemberTile extends StatelessWidget {
                 color: cs.tertiary,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: Gap.xs),
           ],
           Flexible(
             child: Text(
@@ -705,9 +676,22 @@ class _MemberTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (isMe)
+            Padding(
+              padding: const EdgeInsets.only(right: Gap.sm),
+              child: Text(
+                context.tr("You"),
+                style: tt.labelSmall?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           Text(
             formatHoursShort(hours),
-            style: tt.titleSmall?.copyWith(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.labelLarge?.copyWith(
               fontWeight: FontWeight.w700,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),

@@ -485,20 +485,31 @@ void main() {
       await tester.pumpWidget(page(container()));
       await tester.pumpAndSettle();
 
+      // Each face is one selectable card in the grid; the featured preview at
+      // the top repeats the chosen face's name, so the offering is asked of
+      // the cards rather than of every label on the page.
       for (final face in ClockFace.values) {
         expect(
-          find.text(face.label),
+          find.descendant(
+            of: find.byKey(ValueKey('clock-face-${face.name}')),
+            matching: find.text(face.label),
+          ),
           findsOneWidget,
           reason: 'a face that is not on the page cannot be chosen',
         );
       }
       // The shipped face is the one the timer is wearing. Asked of the
       // semantics rather than of the check mark: the check is built into every
-      // row and scaled away, so its presence finds all seven.
+      // card and scaled away, so its presence finds all seven.
       final chosen = [
         for (final face in ClockFace.values)
           if (tester
-                  .getSemantics(find.text(face.label))
+                  .getSemantics(
+                    find.descendant(
+                      of: find.byKey(ValueKey('clock-face-${face.name}')),
+                      matching: find.text(face.label),
+                    ),
+                  )
                   .getSemanticsData()
                   .flagsCollection
                   .isSelected ==
@@ -522,9 +533,12 @@ void main() {
       await tester.pumpWidget(page(scope));
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text(ClockFace.segments.label));
+      final segments = find.byKey(
+        const ValueKey('clock-face-segments'),
+      );
+      await tester.ensureVisible(segments);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(ClockFace.segments.label));
+      await tester.tap(segments);
       await tester.pumpAndSettle();
 
       expect(scope.read(clockFaceProvider), ClockFace.segments);
@@ -560,9 +574,9 @@ void main() {
         reason: 'the serif preview has to wear the serif',
       );
 
-      await tester.ensureVisible(find.text(ClockFace.serif.label));
+      await tester.ensureVisible(find.byKey(const ValueKey('clock-face-serif')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(ClockFace.serif.label));
+      await tester.tap(find.byKey(const ValueKey('clock-face-serif')));
       await tester.pumpAndSettle();
 
       expect(scope.read(clockFaceProvider), ClockFace.serif);

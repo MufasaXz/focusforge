@@ -213,10 +213,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                     else if (board.isEmpty)
                       _EmptyBoard(optedIn: optedIn)
                     else ...[
-                      // The podium: the three leaders get a stage, the rest
-                      // read as the standings they are.
-                      _Podium(entries: board.take(3).toList()),
-                      if (board.length > 3) ...[
+                      // A podium needs a field to stand over; a board of one
+                      // or two reads better as rows than as a stage of empty
+                      // seats.
+                      if (board.length >= 3) ...[
+                        _Podium(entries: board.take(3).toList()),
                         const SizedBox(height: Gap.sm),
                         for (var i = 3; i < board.length; i++) ...[
                           if (i > 3)
@@ -227,7 +228,16 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                             ),
                           _BoardRowTile(rank: i + 1, entry: board[i]),
                         ],
-                      ],
+                      ] else
+                        for (var i = 0; i < board.length; i++) ...[
+                          if (i > 0)
+                            const Divider(
+                              height: 1,
+                              indent: Gap.lg,
+                              endIndent: Gap.lg,
+                            ),
+                          _BoardRowTile(rank: i + 1, entry: board[i]),
+                        ],
                     ],
                   ],
                 ),
