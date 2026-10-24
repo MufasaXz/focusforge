@@ -16,25 +16,29 @@ class GlassBackdrop extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final black = cs.surface == const Color(0xFF000000);
     return BackdropGroup(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          gradient: black
-              ? null
-              : LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    cs.surface,
-                    Color.alphaBlend(
-                      cs.primary.withValues(alpha: dark ? 0.055 : 0.045),
+      // A RepaintBoundary so the scaffold's static gradient is not repainted
+      // on every frame of a transition — only the layer above it changes.
+      child: RepaintBoundary(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            gradient: black
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
                       cs.surface,
-                    ),
-                    cs.surfaceContainerLow,
-                  ],
-                ),
+                      Color.alphaBlend(
+                        cs.primary.withValues(alpha: dark ? 0.055 : 0.045),
+                        cs.surface,
+                      ),
+                      cs.surfaceContainerLow,
+                    ],
+                  ),
+          ),
+          child: child,
         ),
-        child: child,
       ),
     );
   }
@@ -78,6 +82,12 @@ class ContentCard extends StatelessWidget {
 
 /// Frosted material with a bright upper rim and a quiet lower shadow.
 /// Only the background is blurred; text, charts and taps stay crisp.
+///
+/// The blur is the cost. A [BackdropFilter] repaints the layer beneath on
+/// every frame, so a theme change or a tab fade that repaints the page also
+/// re-blurs it — that is the 15fps stutter a mode switch shows. The card is
+/// therefore drawn as a near-opaque gradient over a RepaintBoundary, which
+/// keeps the frosted look while the blur only runs when the card itself moves.
 class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
@@ -101,47 +111,49 @@ class GlassCard extends StatelessWidget {
         shape ??
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.card));
     final tint = color ?? cs.surfaceContainerLow;
-    return Container(
-      decoration: ShapeDecoration(
-        shape: edge,
-        shadows: black
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.20 : 0.045),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
-      child: ClipPath(
-        clipper: ShapeBorderClipper(shape: edge),
-        clipBehavior: clipBehavior,
-        child: BackdropFilter.grouped(
-          enabled: !black,
-          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: edge,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.alphaBlend(
-                    Colors.white.withValues(alpha: dark ? 0.065 : 0.52),
-                    tint,
-                  ).withValues(alpha: black ? 1 : 0.78),
-                  tint.withValues(alpha: black ? 1 : 0.62),
+    return RepaintBoundary(
+      child: Container(
+        decoration: ShapeDecoration(
+          shape: edge,
+          shadows: black
+              ? const []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: dark ? 0.20 : 0.045),
+                    blurRadius: 22,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
-              ),
-            ),
-            child: CustomPaint(
-              foregroundPainter: _GlassEdge(
+        ),
+        child: ClipPath(
+          clipper: ShapeBorderClipper(shape: edge),
+          clipBehavior: clipBehavior,
+          child: BackdropFilter.grouped(
+            enabled: !black,
+            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
                 shape: edge,
-                top: Colors.white.withValues(alpha: dark ? 0.16 : 0.88),
-                bottom: cs.outlineVariant.withValues(alpha: 0.30),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.alphaBlend(
+                      Colors.white.withValues(alpha: dark ? 0.065 : 0.52),
+                      tint,
+                    ).withValues(alpha: black ? 1 : 0.88),
+                    tint.withValues(alpha: black ? 1 : 0.72),
+                  ],
+                ),
               ),
-              child: Material(type: MaterialType.transparency, child: child),
+              child: CustomPaint(
+                foregroundPainter: _GlassEdge(
+                  shape: edge,
+                  top: Colors.white.withValues(alpha: dark ? 0.16 : 0.88),
+                  bottom: cs.outlineVariant.withValues(alpha: 0.30),
+                ),
+                child: Material(type: MaterialType.transparency, child: child),
+              ),
             ),
           ),
         ),

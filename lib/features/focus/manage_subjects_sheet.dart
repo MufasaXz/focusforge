@@ -310,15 +310,16 @@ class _SubjectRow extends StatelessWidget {
         style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
       ),
       // The target and how much of it is banked this week — so the row is a
-      // status, not just a name with a delete button.
+      // status, not just a name with a delete button. `weekDone`/`weekTarget`
+      // are stored in hours; `formatHoursShort` writes them as hours.
       subtitle: Text(
         subject.weekDone > 0
             ? context.tr("{0} of {1} done this week", [
-                formatMinutes(subject.weekDone.round()),
-                formatMinutes(subject.weekTarget.round()),
+                formatHoursShort(subject.weekDone),
+                formatHoursShort(subject.weekTarget),
               ])
             : context.tr("{0} a week", [
-                formatMinutes(subject.weekTarget.round()),
+                formatHoursShort(subject.weekTarget),
               ]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

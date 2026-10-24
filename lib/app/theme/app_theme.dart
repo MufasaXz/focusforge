@@ -225,24 +225,19 @@ class AppTheme {
   }
 
   // Neutral surfaces preserve the glass material across accent palettes.
-  //
-  // The dark ladder sits closer to true charcoal than to a blue-grey — warm,
-  // near-black card bodies with hairline outlines rather than cool slabs. The
-  // cool-grey on/text tones are warmed a few points toward parchment so a
-  // screen of dark cards reads as one warm panel rather than as grey glass.
   static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return cs.copyWith(
-      surface: Color(dark ? 0xFF131110 : 0xFFF6F7F9),
-      surfaceContainerLowest: Color(dark ? 0xFF0F0E0D : 0xFFFFFFFF),
-      surfaceContainerLow: Color(dark ? 0xFF1D1B19 : 0xFFFFFFFF),
-      surfaceContainer: Color(dark ? 0xFF242220 : 0xFFEEF0F4),
-      surfaceContainerHigh: Color(dark ? 0xFF2C2926 : 0xFFE7EAF0),
-      surfaceContainerHighest: Color(dark ? 0xFF383431 : 0xFFDEE2E9),
-      onSurface: Color(dark ? 0xFFF3EFE7 : 0xFF252B35),
-      onSurfaceVariant: Color(dark ? 0xFFBFb8AC : 0xFF606977),
-      outline: Color(dark ? 0xFF7d766b : 0xFF8993A1),
-      outlineVariant: Color(dark ? 0xFF423d36 : 0xFFD2D8E0),
+      surface: Color(dark ? 0xFF17191C : 0xFFF6F7F9),
+      surfaceContainerLowest: Color(dark ? 0xFF141517 : 0xFFFFFFFF),
+      surfaceContainerLow: Color(dark ? 0xFF23262A : 0xFFFFFFFF),
+      surfaceContainer: Color(dark ? 0xFF2A2D31 : 0xFFEEF0F4),
+      surfaceContainerHigh: Color(dark ? 0xFF303134 : 0xFFE7EAF0),
+      surfaceContainerHighest: Color(dark ? 0xFF393A3D : 0xFFDEE2E9),
+      onSurface: Color(dark ? 0xFFF2F4F7 : 0xFF252B35),
+      onSurfaceVariant: Color(dark ? 0xFFB8C0CC : 0xFF606977),
+      outline: Color(dark ? 0xFF798491 : 0xFF8993A1),
+      outlineVariant: Color(dark ? 0xFF424A55 : 0xFFD2D8E0),
     );
   }
 
@@ -270,11 +265,8 @@ class AppTheme {
 class Radii {
   const Radii._();
 
-  // Rounded but not pill-like: the reference widget language the app adapts
-  // favours squarer cards — a 16–22 range — over full stadiums, so the hero and
-  // card radii sit a step tighter than a pure Material round.
-  static const double hero = 26;
-  static const double card = 22;
+  static const double hero = 28;
+  static const double card = 24;
   static const double item = 16;
   static const double tile = 12;
   static const double pill = 999;

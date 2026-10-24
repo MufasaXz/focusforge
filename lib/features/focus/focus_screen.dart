@@ -573,7 +573,11 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       ),
                       const SizedBox(width: Gap.sm),
                       Expanded(
-                        child: GlassCard(
+                        // An opaque surface, not glass: the dock rebuilds every
+                        // tick and on every tab switch, and a backdrop blur shows
+                        // one transparent frame before it re-renders. The session
+                        // controls must never flash.
+                        child: ContentCard(
                           color: t.surfaceContainerHigh,
                           shape: const StadiumBorder(),
                           clipBehavior: Clip.antiAlias,
@@ -1431,14 +1435,15 @@ class _TodayCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    // The day's target: the sum of every subject's weekly target spread over
-    // seven days, so the ring means "share of the week, done today". A user
-    // with no subjects has a two-hour default rather than a ring that can
-    // never fill.
+    // The day's target: the sum of every subject's weekly target, spread over
+    // the seven days, so the ring means "share of the daily quota, done". The
+    // targets are stored in *hours* and `minutes` is minutes, so the weekly
+    // total is converted before the day's slice is taken. A user with no
+    // subjects gets a two-hour default rather than a ring that can never fill.
     final subjects = ref.watch(subjectsProvider);
-    final weekly = subjects.fold<double>(0, (a, s) => a + s.weekTarget);
-    final goal = weekly <= 0 ? 120 : weekly / 7;
-    final progress = (minutes / goal).clamp(0.0, 1.0);
+    final weeklyHours = subjects.fold<double>(0, (a, s) => a + s.weekTarget);
+    final goalMinutes = weeklyHours <= 0 ? 120.0 : weeklyHours * 60 / 7;
+    final progress = (minutes / goalMinutes).clamp(0.0, 1.0);
 
     return ContentCard(
       child: Padding(
@@ -1478,7 +1483,9 @@ class _TodayCard extends ConsumerWidget {
                     style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   Text(
-                    context.tr("of {0} goal", [formatMinutes(goal.round())]),
+                    context.tr("of {0} goal", [
+                      formatMinutes(goalMinutes.round()),
+                    ]),
                     style: tt.labelSmall?.copyWith(color: t.onSurfaceVariant),
                   ),
                   const SizedBox(height: Gap.sm),
@@ -1649,7 +1656,9 @@ class _DockNudge extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onTap : null,
         scale: 0.92,
-        child: GlassCard(
+        // Opaque for the same reason as the bar it flanks: a blurred nudge
+        // flashes transparent on the first frame after a tab switch.
+        child: ContentCard(
           color: t.surfaceContainerHigh,
           shape: const StadiumBorder(),
           child: SizedBox(
