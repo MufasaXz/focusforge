@@ -90,7 +90,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               ],
             ),
             AppSection(
-              title: context.tr("Your data"),
+              title: context.tr("Account actions"),
               footnote: context.tr(
                 "Guest study and Shield events stay on this device. Linked accounts privately back up sessions, subjects, plans and goals. Clear local analytics before handing your phone to someone else.",
               ),
@@ -111,6 +111,29 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     "Removes focus history, totals and subject progress",
                   ),
                   onTap: _busy ? null : () => _clearAnalytics(context, ref),
+                ),
+                ListTile(
+                  leading:
+                      Icon(Icons.person_remove_outlined, color: cs.error),
+                  title: Text(
+                    context.tr("Delete account"),
+                    style: TextStyle(
+                      color: cs.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    ref.read(authServiceProvider).usesRemoteCredentials &&
+                            !user.isAnonymous
+                        ? context.tr(
+                            "Permanently remove your account and progress",
+                          )
+                        : context.tr(
+                            "Permanently erase your profile and data",
+                          ),
+                  ),
+                  trailing: const AppChevron(),
+                  onTap: _busy ? null : () => _deleteAccount(context, ref),
                 ),
               ],
             ),
@@ -187,34 +210,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ),
               ],
             ),
-            // Deletion sits apart at the bottom: one destructive action on a
-            // page of recoverable ones, drawn in the page's own danger colour.
-            ContentCard(
-              outlined: true,
-              child: ListTile(
-                leading: Icon(Icons.person_remove_outlined, color: cs.error),
-                title: Text(
-                  context.tr("Delete account"),
-                  style: TextStyle(
-                    color: cs.error,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  ref.read(authServiceProvider).usesRemoteCredentials &&
-                          !user.isAnonymous
-                      ? context.tr(
-                          "Permanently remove your account and progress",
-                        )
-                      : context.tr(
-                          "Permanently erase your profile and data",
-                        ),
-                ),
-                trailing: const AppChevron(),
-                onTap: _busy ? null : () => _deleteAccount(context, ref),
-              ),
-            ),
-            const SizedBox(height: Gap.sm),
             Center(
               child: TextButton(
                 onPressed: _busy
