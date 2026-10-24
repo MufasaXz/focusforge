@@ -1358,25 +1358,82 @@ class _PresetRow extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         selected: selected,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.item),
+        ),
+        selectedTileColor: t.primary.withValues(alpha: 0.10),
         leading: IconBadge(
           icon: preset.icon,
-          color: t.primary,
+          color: selected ? t.primary : t.onSurfaceVariant,
           size: 38,
           radius: 11,
         ),
         title: Text(presetDisplayName(context, preset)),
-        subtitle: Text(
-          context.tr("{0}m focus · {1}m break · {2} segments", [
-            preset.isRandomFocus
-                ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
-                : preset.focus,
-            preset.shortBreak,
-            preset.segments,
-          ]),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 3),
+            Text(
+              context.tr("{0}m focus · {1}m break · {2} segments", [
+                preset.isRandomFocus
+                    ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
+                    : preset.focus,
+                preset.shortBreak,
+                preset.segments,
+              ]),
+            ),
+            const SizedBox(height: Gap.sm),
+            // The plan, drawn: a focus block and a break block in proportion,
+            // so the rhythm of the preset is readable without parsing numbers.
+            _PresetBar(preset: preset),
+          ],
         ),
         trailing: selected
             ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
             : null,
+      ),
+    );
+  }
+}
+
+/// A plan's rhythm as a bar: the focus and break durations side by side, in
+/// proportion to one another, repeated for the segment count.
+class _PresetBar extends StatelessWidget {
+  const _PresetBar({required this.preset});
+
+  final PomodoroPreset preset;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // A random preset has no fixed focus length, so the bar uses the midpoint
+    // of its range — the shape it is most likely to take.
+    final randomMin = preset.randomMinMinutes ?? 0;
+    final randomMax = preset.randomMaxMinutes ?? 0;
+    final focus = preset.isRandomFocus
+        ? (randomMin + randomMax) / 2
+        : preset.focus.toDouble();
+    final rest = preset.shortBreak.toDouble();
+    final total = focus + rest;
+    if (total <= 0) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 5,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Radii.pill),
+        child: Row(
+          children: [
+            Expanded(
+              flex: (focus / total * 100).round(),
+              child: ColoredBox(color: cs.primary.withValues(alpha: 0.85)),
+            ),
+            const SizedBox(width: 2),
+            Expanded(
+              flex: (rest / total * 100).round(),
+              child: ColoredBox(color: cs.tertiary.withValues(alpha: 0.7)),
+            ),
+          ],
+        ),
       ),
     );
   }
