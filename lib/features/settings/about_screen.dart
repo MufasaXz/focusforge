@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/app_version.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
 import 'settings_support.dart';
@@ -21,9 +22,10 @@ class AboutScreen extends StatelessWidget {
   static const _repoUrl = 'https://github.com/MufasaXz/focusforge';
   static const _issuesUrl = 'https://github.com/MufasaXz/focusforge/issues/new';
 
-  /// Kept in step with `pubspec.yaml` by hand. There is no `package_info`
-  /// dependency by design, and one hardcoded string is cheaper than a plugin.
-  static const _version = '1.0.0';
+  /// Kept in step with `pubspec.yaml` via [kAppVersion]. There is no
+  /// `package_info` dependency by design, and one constant is cheaper than a
+  /// plugin.
+  static const _version = kAppVersion;
 
   @override
   Widget build(BuildContext context) {

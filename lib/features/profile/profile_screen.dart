@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
+import '../../core/app_version.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
@@ -28,8 +29,9 @@ import 'widgets/edit_profile_sheet.dart';
 import 'widgets/link_account_sheet.dart';
 
 /// Shown on the About row. There is no `package_info` dependency in this app,
-/// so the version is a constant — keep it in step with `pubspec.yaml`.
-const _appVersion = '1.0.0';
+/// so the version is a shared constant — keep it in step with `pubspec.yaml`.
+/// See `core/app_version.dart`.
+const _appVersion = kAppVersion;
 
 /// Opens a settings destination, asking for an account first when the row is
 /// locked.

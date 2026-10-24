@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/bootstrap.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
+import '../../core/app_version.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
@@ -20,6 +21,7 @@ import '../../core/providers/study_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
 import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/privacy_policy_link.dart';
 import 'settings_support.dart';
@@ -62,195 +64,112 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // The account, at a glance: who is signed in and what that means,
+            // stated on its own surface rather than inside the list it leads.
+            _AccountHeader(user: user, busy: _busy, ref: ref),
+            const SizedBox(height: Gap.xl),
             AppSection(
-              title: context.tr("Account"),
+              title: context.tr("Sign-in"),
               children: [
-                ListTile(
-                  leading: const Icon(Icons.person_outline_rounded),
-                  title: Text(
-                    user.displayName.isEmpty
-                        ? context.tr("Your FocusForge account")
-                        : user.displayName,
+                _Row(
+                  icon: user.isAnonymous
+                      ? Icons.login_rounded
+                      : Icons.logout_rounded,
+                  title: user.isAnonymous
+                      ? context.tr("Sign in or create an account")
+                      : context.tr("Sign out"),
+                  subtitle: context.tr(
+                    "Your setup and local focus history are kept",
                   ),
-                  subtitle: Text(
-                    user.isAnonymous
-                        ? context.tr("On this device · no account required")
-                        : context.tr("Linked account · private study backup"),
-                  ),
-                ),
-                ListTile(
-                  leading: Icon(
-                    user.isAnonymous
-                        ? Icons.login_rounded
-                        : Icons.logout_rounded,
-                  ),
-                  title: Text(
-                    user.isAnonymous
-                        ? context.tr("Sign in or create an account")
-                        : context.tr("Sign out"),
-                  ),
-                  subtitle: Text(
-                    context.tr("Your setup and local focus history are kept"),
-                  ),
-                  trailing: const AppChevron(),
                   onTap: _busy
                       ? null
                       : () => user.isAnonymous
                             ? context.goNamed(AppRoutes.auth)
                             : _signOut(context, ref),
                 ),
-                ListTile(
-                  leading: Icon(Icons.person_remove_outlined, color: cs.error),
-                  title: Text(
-                    context.tr("Delete account"),
-                    style: TextStyle(color: cs.error),
-                  ),
-                  subtitle: Text(
-                    ref.read(authServiceProvider).usesRemoteCredentials &&
-                            !user.isAnonymous
-                        ? context.tr(
-                            "Permanently remove your account, achievements and progress",
-                          )
-                        : context.tr(
-                            "Permanently erase your profile and data from this device",
-                          ),
-                  ),
-                  trailing: const AppChevron(),
-                  onTap: _busy ? null : () => _deleteAccount(context, ref),
-                ),
               ],
             ),
             AppSection(
               title: context.tr("Your data"),
+              footnote: context.tr(
+                "Guest study and Shield events stay on this device. Linked accounts privately back up sessions, subjects, plans and goals. Clear local analytics before handing your phone to someone else.",
+              ),
               children: [
-                ListTile(
-                  leading: IconBadge(
-                    icon: Icons.smartphone_outlined,
-                    color: cs.tertiary,
-                    size: 42,
-                    radius: 12,
+                _Row(
+                  icon: Icons.ios_share,
+                  title: context.tr("Export all data (JSON)"),
+                  subtitle: kIsWeb
+                      ? context.tr("Copies every stored key to the clipboard")
+                      : context.tr("Preview and copy every stored key"),
+                  onTap: _busy ? null : () => _export(context, ref),
+                ),
+                _Row(
+                  icon: Icons.cleaning_services_outlined,
+                  iconColor: cs.error,
+                  title: context.tr("Clear local analytics"),
+                  subtitle: context.tr(
+                    "Removes focus history, totals and subject progress",
                   ),
-                  title: Text(context.tr("Your study history, kept private")),
-                  subtitle: Text(
-                    context.tr(
-                      "Guest study and Shield events stay on this device. Linked accounts privately back up study sessions, subjects, plans and goals. They belong to your account, so signing in restores your study setup. Leaderboard sharing is optional. Clear local analytics before handing your phone to someone else.",
-                    ),
-                  ),
+                  onTap: _busy ? null : () => _clearAnalytics(context, ref),
                 ),
               ],
             ),
             AppSection(
               title: context.tr("What’s in the cloud"),
               footnote: context.tr(
-                "Study and badge backups are private. Public sharing starts only when you opt in.",
+                "Backups are private to your account. Public sharing starts only when you opt in.",
               ),
               children: [
-                ListTile(
-                  title: Text(context.tr("Your account")),
-                  subtitle: Text(
-                    context.tr(
-                      "Sign-in credentials are handled by Firebase. Your profile, subjects, custom plans, goals and focus sessions are backed up privately for linked accounts.",
-                    ),
+                _CloudItem(
+                  icon: Icons.person_outline,
+                  title: context.tr("Your account"),
+                  detail: context.tr(
+                    "Credentials are handled by Firebase. Profile, subjects, plans, goals and sessions are backed up privately.",
                   ),
-                  leading: Icon(Icons.person_outline),
                 ),
-                ListTile(
-                  title: Text(context.tr("Earned achievements")),
-                  subtitle: Text(
-                    context.tr(
-                      "Badge IDs and earned dates are backed up privately for linked accounts. Sign in to the same account to recover your badges and study history.",
-                    ),
+                _CloudItem(
+                  icon: Icons.workspace_premium_outlined,
+                  title: context.tr("Earned achievements"),
+                  detail: context.tr(
+                    "Badge IDs and dates are backed up privately for linked accounts.",
                   ),
-                  leading: Icon(Icons.workspace_premium_outlined),
                 ),
-                ListTile(
-                  title: Text(context.tr("Profile avatar")),
-                  subtitle: Text(
-                    context.tr(
-                      "Your photo is backed up with your account and shared when leaderboard sharing is on.",
-                    ),
+                _CloudItem(
+                  icon: Icons.photo_outlined,
+                  title: context.tr("Profile avatar"),
+                  detail: context.tr(
+                    "Backed up with your account; shared only when leaderboard sharing is on.",
                   ),
-                  leading: const Icon(Icons.photo_outlined),
                 ),
-                ListTile(
-                  title: Text(context.tr("Study group membership")),
-                  subtitle: Text(
-                    context.tr(
-                      "Membership, name, weekly minutes and active focus status · Members only",
-                    ),
+                _CloudItem(
+                  icon: Icons.groups_outlined,
+                  title: context.tr("Study groups"),
+                  detail: context.tr(
+                    "Name, weekly minutes and focus status · members only",
                   ),
-                  leading: Icon(Icons.groups_outlined),
                 ),
-                ListTile(
-                  title: Text(context.tr("Leaderboard scores")),
-                  subtitle: Text(
-                    context.tr(
-                      "Display name, account ID, level and weekly minutes · Shared when you opt in, including after sign-out, until you turn sharing off or delete your account",
-                    ),
+                _CloudItem(
+                  icon: Icons.leaderboard_outlined,
+                  title: context.tr("Leaderboard"),
+                  detail: context.tr(
+                    "Name, level and weekly minutes · shared when you opt in",
                   ),
-                  leading: Icon(Icons.leaderboard_outlined),
-                ),
-              ],
-            ),
-            AppSection(
-              title: context.tr("Actions"),
-              children: [
-                ListTile(
-                  title: Text(context.tr("Export all data (JSON)")),
-                  subtitle: Text(
-                    kIsWeb
-                        ? context.tr("Copies every stored key to the clipboard")
-                        : context.tr("Preview and copy every stored key"),
-                  ),
-                  leading: const Icon(Icons.ios_share),
-                  trailing: const AppChevron(),
-                  onTap: _busy ? null : () => _export(context, ref),
-                ),
-                ListTile(
-                  title: Text(context.tr("Clear local analytics")),
-                  subtitle: Text(
-                    context.tr(
-                      "Removes focus history, totals and subject progress",
-                    ),
-                  ),
-                  leading: Icon(
-                    Icons.cleaning_services_outlined,
-                    color: cs.error,
-                  ),
-                  trailing: const AppChevron(),
-                  onTap: _busy ? null : () => _clearAnalytics(context, ref),
                 ),
               ],
             ),
             AppSection(
               title: context.tr("Legal"),
               children: [
-                ListTile(
-                  title: Text(context.tr("Privacy policy")),
-                  subtitle: Text(
-                    context.tr("Read the full policy on our website"),
-                  ),
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  trailing: const AppChevron(),
+                _Row(
+                  icon: Icons.privacy_tip_outlined,
+                  title: context.tr("Privacy policy"),
                   onTap: _busy
                       ? null
                       : () => openPrivacyResource(context, privacyPolicyUrl),
                 ),
-                ListTile(
-                  title: Text(context.tr("Request deletion on the web")),
-                  subtitle: Text(
-                    context.tr("For account help or remaining cloud records"),
-                  ),
-                  leading: const Icon(Icons.person_remove_outlined),
-                  trailing: const AppChevron(),
-                  onTap: _busy
-                      ? null
-                      : () => openPrivacyResource(context, accountDeletionUrl),
-                ),
-                ListTile(
-                  title: Text(context.tr("Terms of service")),
-                  leading: const Icon(Icons.gavel_outlined),
-                  trailing: const AppChevron(),
+                _Row(
+                  icon: Icons.gavel_outlined,
+                  title: context.tr("Terms of service"),
                   onTap: _busy
                       ? null
                       : () => _showInfo(
@@ -261,16 +180,48 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                           ),
                         ),
                 ),
-                ListTile(
-                  title: Text(context.tr("Open source licences")),
-                  subtitle: Text(
-                    context.tr("Flutter, Riverpod and bundled assets"),
-                  ),
-                  leading: const Icon(Icons.article_outlined),
-                  trailing: const AppChevron(),
+                _Row(
+                  icon: Icons.article_outlined,
+                  title: context.tr("Open source licences"),
                   onTap: _busy ? null : () => _showLicences(context),
                 ),
               ],
+            ),
+            // Deletion sits apart at the bottom: one destructive action on a
+            // page of recoverable ones, drawn in the page's own danger colour.
+            ContentCard(
+              outlined: true,
+              child: ListTile(
+                leading: Icon(Icons.person_remove_outlined, color: cs.error),
+                title: Text(
+                  context.tr("Delete account"),
+                  style: TextStyle(
+                    color: cs.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  ref.read(authServiceProvider).usesRemoteCredentials &&
+                          !user.isAnonymous
+                      ? context.tr(
+                          "Permanently remove your account and progress",
+                        )
+                      : context.tr(
+                          "Permanently erase your profile and data",
+                        ),
+                ),
+                trailing: const AppChevron(),
+                onTap: _busy ? null : () => _deleteAccount(context, ref),
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            Center(
+              child: TextButton(
+                onPressed: _busy
+                    ? null
+                    : () => openPrivacyResource(context, accountDeletionUrl),
+                child: Text(context.tr("Request deletion on the web")),
+              ),
             ),
           ],
         ),
@@ -579,7 +530,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     showLicensePage(
       context: context,
       applicationName: 'FocusForge',
-      applicationVersion: '1.0.0',
+      applicationVersion: kAppVersion,
       applicationLegalese: context.tr("MIT licensed · built with Flutter"),
     );
   }
@@ -804,6 +755,150 @@ class _InfoBody extends StatelessWidget {
           onTap: () => Navigator.of(context).pop(),
         ),
       ],
+    );
+  }
+}
+
+/// The account, summarised on its own card at the top of the page.
+///
+/// One glance answers the two questions the rest of the page hangs off: who is
+/// signed in, and where the data lives. Putting it on a surface of its own
+/// keeps the list below it for *actions* rather than for status.
+class _AccountHeader extends StatelessWidget {
+  const _AccountHeader({
+    required this.user,
+    required this.busy,
+    required this.ref,
+  });
+
+  final UserProfile user;
+  final bool busy;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final linked = !user.isAnonymous;
+
+    return ContentCard(
+      color: Color.alphaBlend(
+        cs.primary.withValues(alpha: linked ? 0.08 : 0.04),
+        cs.surfaceContainerLow,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: (linked ? cs.primary : cs.onSurfaceVariant)
+                    .withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                linked
+                    ? Icons.verified_user_outlined
+                    : Icons.smartphone_rounded,
+                color: linked ? cs.primary : cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName.isEmpty
+                        ? context.tr("Your FocusForge account")
+                        : user.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    linked
+                        ? context.tr("Linked · backed up privately")
+                        : context.tr("On this device only"),
+                    style: tt.labelMedium?.copyWith(
+                      color: linked ? cs.primary : cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A navigable row: icon, label, optional one-line note and a chevron.
+class _Row extends StatelessWidget {
+  const _Row({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.iconColor,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color? iconColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? cs.onSurfaceVariant),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: const AppChevron(),
+      onTap: onTap,
+    );
+  }
+}
+
+/// A non-tappable fact about what syncs: icon, a short name and a short gloss.
+class _CloudItem extends StatelessWidget {
+  const _CloudItem({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: IconBadge(
+        icon: icon,
+        color: cs.tertiary,
+        size: 38,
+        radius: 11,
+      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+      subtitle: Text(
+        detail,
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: cs.onSurfaceVariant),
+      ),
     );
   }
 }
