@@ -212,16 +212,23 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                       const _BoardLoading()
                     else if (board.isEmpty)
                       _EmptyBoard(optedIn: optedIn)
-                    else
-                      for (var i = 0; i < board.length; i++) ...[
-                        if (i > 0)
-                          const Divider(
-                            height: 1,
-                            indent: Gap.lg,
-                            endIndent: Gap.lg,
-                          ),
-                        _BoardRowTile(rank: i + 1, entry: board[i]),
+                    else ...[
+                      // The podium: the three leaders get a stage, the rest
+                      // read as the standings they are.
+                      _Podium(entries: board.take(3).toList()),
+                      if (board.length > 3) ...[
+                        const SizedBox(height: Gap.sm),
+                        for (var i = 3; i < board.length; i++) ...[
+                          if (i > 3)
+                            const Divider(
+                              height: 1,
+                              indent: Gap.lg,
+                              endIndent: Gap.lg,
+                            ),
+                          _BoardRowTile(rank: i + 1, entry: board[i]),
+                        ],
                       ],
+                    ],
                   ],
                 ),
               ),
@@ -417,6 +424,149 @@ class _BoardRowTile extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// The top three, on a stage: first place raised and centred, second and
+/// third a step down on either side. A leaderboard with three identical rows
+/// at the top reads as a list that happens to be sorted; a podium reads as a
+/// finish. Fewer than three entries simply take the seats that exist.
+class _Podium extends StatelessWidget {
+  const _Podium({required this.entries});
+
+  /// The leaders, already ordered — index 0 is first place.
+  final List<LeaderboardEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    // Order the columns 2nd, 1st, 3rd so the winner sits in the middle, and
+    // pull the seats that are not there from either end.
+    final order = <int?>[1, 0, 2];
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.md, bottom: Gap.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final i in order)
+            Expanded(
+              child: i != null && i < entries.length
+                  ? _PodiumSeat(rank: i + 1, entry: entries[i])
+                  : const SizedBox.shrink(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One podium seat: the avatar on its riser, the name and hours beneath.
+class _PodiumSeat extends StatelessWidget {
+  const _PodiumSeat({required this.rank, required this.entry});
+
+  final int rank;
+  final LeaderboardEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
+    final medal = switch (rank) {
+      1 => harmonize(const Color(0xFFB8860B), cs.primary),
+      2 => cs.secondary,
+      _ => cs.tertiary,
+    };
+    final winner = rank == 1;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: medal,
+                  width: winner ? 3 : 2,
+                ),
+                boxShadow: winner
+                    ? [
+                        BoxShadow(
+                          color: medal.withValues(alpha: 0.45),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: CircleAvatar(
+                radius: winner ? 34 : 26,
+                foregroundImage: photoBytes == null
+                    ? null
+                    : MemoryImage(photoBytes),
+                onForegroundImageError: photoBytes == null ? null : (_, _) {},
+                backgroundColor:
+                    entry.isMe ? cs.primary : cs.surfaceContainerHighest,
+                foregroundColor:
+                    entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
+                child: Text(
+                  entry.initials,
+                  style: (winner ? tt.titleMedium : tt.titleSmall)?.copyWith(
+                    color: entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+            // The medal hangs off the bottom of the ring like a real one.
+            Positioned(
+              bottom: winner ? -6 : -5,
+              child: Container(
+                width: winner ? 26 : 21,
+                height: winner ? 26 : 21,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: medal,
+                  border: Border.all(color: cs.surface, width: 2),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$rank',
+                  style: tt.labelSmall?.copyWith(
+                    color: cs.surface,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Gap.lg),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.xs),
+          child: Text(
+            entry.isMe ? '${entry.name} · You' : entry.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: (winner ? tt.titleSmall : tt.labelLarge)?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          formatHoursShort(entry.hours),
+          style: tt.labelMedium?.copyWith(
+            color: medal,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }
