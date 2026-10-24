@@ -483,10 +483,39 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           ),
           Stagger(
             index: 5,
-            child: _TodayCard(
-              streak: streak,
-              minutes: minutesToday,
-              sessions: sessionsToday,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.local_fire_department_rounded,
+                    color: t.tertiary,
+                    value: context.tr("Day {0}", [streak]),
+                    semanticLabel: context.tr("Streak: {0} days", [streak]),
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.timer_rounded,
+                    color: t.primary,
+                    value: formatMinutes(minutesToday),
+                    semanticLabel: context.tr("Focus time today: {0}", [
+                      formatMinutes(minutesToday),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: _InfoCapsule(
+                    icon: Icons.check_circle_rounded,
+                    color: t.tertiary,
+                    value: context.tr("{0} today", [sessionsToday]),
+                    semanticLabel: context.tr("Sessions today: {0}", [
+                      sessionsToday,
+                    ]),
+                  ),
+                ),
+              ],
             ),
           ),
         ];
@@ -573,157 +602,172 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       ),
                       const SizedBox(width: Gap.sm),
                       Expanded(
-                        // An opaque surface, not glass: the dock rebuilds every
-                        // tick and on every tab switch, and a backdrop blur shows
-                        // one transparent frame before it re-renders. The session
-                        // controls must never flash.
-                        child: ContentCard(
-                          color: t.surfaceContainerHigh,
-                          shape: const StadiumBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: compactDock ? Gap.xs : Gap.sm,
-                              vertical: Gap.sm,
-                            ),
-                            // Centred rather than spread. The bar keeps its full
-                            // width — it is a surface the thumb lands on, and a
-                            // shrink-wrapped pill floating over the page reads as
-                            // a tooltip — but the three controls sit together in
-                            // the middle of it, because Reset and Skip are one
-                            // gesture away from the play button, not a reach away
-                            // from it.
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _DockAction(
-                                  icon: Icons.refresh_rounded,
-                                  label: context.tr("Reset"),
-                                  semanticLabel: context.tr("Reset timer"),
-                                  color: t.onSurfaceVariant,
-                                  onTap: () => _changeTimer(
-                                    title: context.tr(
-                                      "Reset this focus block?",
-                                    ),
-                                    confirmLabel: context.tr("Reset block"),
-                                    apply: () => ref
-                                        .read(timerProvider.notifier)
-                                        .reset(),
-                                  ),
-                                ),
-                                SizedBox(width: compactDock ? Gap.xs : Gap.sm),
-                                Semantics(
-                                  button: true,
-                                  label: timer.running
-                                      ? context.tr("Pause {0} timer", [
-                                          phaseNoun,
-                                        ])
-                                      : context.tr("Start {0} timer", [
-                                          phaseNoun,
-                                        ]),
-                                  excludeSemantics: true,
-                                  onTap: toggleTimer,
-                                  child: Pressable(
-                                    onTap: toggleTimer,
-                                    scale: 0.92,
-                                    child: AnimatedContainer(
-                                      duration:
-                                          MediaQuery.disableAnimationsOf(
-                                            context,
-                                          )
-                                          ? Duration.zero
-                                          : Motion.base,
-                                      width: labelledPlay ? 104 : 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                          timer.running ? 28 : 18,
-                                        ),
-                                        color: accent,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: accent.withValues(
-                                              alpha: 0.26,
-                                            ),
-                                            blurRadius: 14,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ],
+                        // An opaque base under the frosted glass: the dock
+                        // rebuilds every tick and on every tab switch, and a
+                        // bare BackdropFilter shows one transparent frame
+                        // before the blur re-renders. The solid tint beneath
+                        // means the bar can never flash.
+                        child: DecoratedBox(
+                          decoration: ShapeDecoration(
+                            color: t.surfaceContainerHigh,
+                            shape: const StadiumBorder(),
+                          ),
+                          child: GlassCard(
+                            color: t.surfaceContainerHigh,
+                            shape: const StadiumBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compactDock ? Gap.xs : Gap.sm,
+                                vertical: Gap.sm,
+                              ),
+                              // Centred rather than spread. The bar keeps its full
+                              // width — it is a surface the thumb lands on, and a
+                              // shrink-wrapped pill floating over the page reads as
+                              // a tooltip — but the three controls sit together in
+                              // the middle of it, because Reset and Skip are one
+                              // gesture away from the play button, not a reach away
+                              // from it.
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _DockAction(
+                                    icon: Icons.refresh_rounded,
+                                    label: context.tr("Reset"),
+                                    semanticLabel: context.tr("Reset timer"),
+                                    color: t.onSurfaceVariant,
+                                    onTap: () => _changeTimer(
+                                      title: context.tr(
+                                        "Reset this focus block?",
                                       ),
-                                      child: AnimatedSwitcher(
+                                      confirmLabel: context.tr("Reset block"),
+                                      apply: () => ref
+                                          .read(timerProvider.notifier)
+                                          .reset(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: compactDock ? Gap.xs : Gap.sm,
+                                  ),
+                                  Semantics(
+                                    button: true,
+                                    label: timer.running
+                                        ? context.tr("Pause {0} timer", [
+                                            phaseNoun,
+                                          ])
+                                        : context.tr("Start {0} timer", [
+                                            phaseNoun,
+                                          ]),
+                                    excludeSemantics: true,
+                                    onTap: toggleTimer,
+                                    child: Pressable(
+                                      onTap: toggleTimer,
+                                      scale: 0.92,
+                                      child: AnimatedContainer(
                                         duration:
                                             MediaQuery.disableAnimationsOf(
                                               context,
                                             )
                                             ? Duration.zero
-                                            : Motion.quick,
-                                        switchInCurve: Motion.decelerate,
-                                        switchOutCurve: Curves.easeInCubic,
-                                        transitionBuilder: (child, animation) =>
-                                            FadeTransition(
-                                              opacity: animation,
-                                              child: ScaleTransition(
-                                                scale: Tween<double>(
-                                                  begin: 0.8,
-                                                  end: 1,
-                                                ).animate(animation),
-                                                child: child,
+                                            : Motion.base,
+                                        width: labelledPlay ? 104 : 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            timer.running ? 28 : 18,
+                                          ),
+                                          color: accent,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: accent.withValues(
+                                                alpha: 0.26,
                                               ),
+                                              blurRadius: 14,
+                                              offset: const Offset(0, 6),
                                             ),
-                                        child: Row(
-                                          key: ValueKey(timer.running),
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              timer.running
-                                                  ? Icons.pause_rounded
-                                                  : Icons.play_arrow_rounded,
-                                              size: labelledPlay ? 22 : 27,
-                                              color: _onPhaseColor(
-                                                t,
-                                                timer.phase,
-                                              ),
-                                            ),
-                                            if (labelledPlay) ...[
-                                              const SizedBox(width: Gap.xs),
-                                              Text(
-                                                timer.running
-                                                    ? context.tr("Pause")
-                                                    : context.tr("Start"),
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .labelLarge
-                                                    ?.copyWith(
-                                                      color: _onPhaseColor(
-                                                        t,
-                                                        timer.phase,
-                                                      ),
-                                                    ),
-                                              ),
-                                            ],
                                           ],
+                                        ),
+                                        child: AnimatedSwitcher(
+                                          duration:
+                                              MediaQuery.disableAnimationsOf(
+                                                context,
+                                              )
+                                              ? Duration.zero
+                                              : Motion.quick,
+                                          switchInCurve: Motion.decelerate,
+                                          switchOutCurve: Curves.easeInCubic,
+                                          transitionBuilder:
+                                              (child, animation) =>
+                                                  FadeTransition(
+                                                    opacity: animation,
+                                                    child: ScaleTransition(
+                                                      scale: Tween<double>(
+                                                        begin: 0.8,
+                                                        end: 1,
+                                                      ).animate(animation),
+                                                      child: child,
+                                                    ),
+                                                  ),
+                                          child: Row(
+                                            key: ValueKey(timer.running),
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                timer.running
+                                                    ? Icons.pause_rounded
+                                                    : Icons.play_arrow_rounded,
+                                                size: labelledPlay ? 22 : 27,
+                                                color: _onPhaseColor(
+                                                  t,
+                                                  timer.phase,
+                                                ),
+                                              ),
+                                              if (labelledPlay) ...[
+                                                const SizedBox(width: Gap.xs),
+                                                Text(
+                                                  timer.running
+                                                      ? context.tr("Pause")
+                                                      : context.tr("Start"),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelLarge
+                                                      ?.copyWith(
+                                                        color: _onPhaseColor(
+                                                          t,
+                                                          timer.phase,
+                                                        ),
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                SizedBox(width: compactDock ? Gap.xs : Gap.sm),
-                                _DockAction(
-                                  icon: Icons.skip_next_rounded,
-                                  label: context.tr("Skip"),
-                                  semanticLabel: context.tr(
-                                    "Skip to next phase",
+                                  SizedBox(
+                                    width: compactDock ? Gap.xs : Gap.sm,
                                   ),
-                                  color: t.onSurfaceVariant,
-                                  onTap: () => _changeTimer(
-                                    title: context.tr("Skip this focus block?"),
-                                    confirmLabel: context.tr("Skip block"),
-                                    apply: () =>
-                                        ref.read(timerProvider.notifier).skip(),
+                                  _DockAction(
+                                    icon: Icons.skip_next_rounded,
+                                    label: context.tr("Skip"),
+                                    semanticLabel: context.tr(
+                                      "Skip to next phase",
+                                    ),
+                                    color: t.onSurfaceVariant,
+                                    onTap: () => _changeTimer(
+                                      title: context.tr(
+                                        "Skip this focus block?",
+                                      ),
+                                      confirmLabel: context.tr("Skip block"),
+                                      apply: () => ref
+                                          .read(timerProvider.notifier)
+                                          .skip(),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1342,65 +1386,42 @@ class _PresetRow extends StatelessWidget {
       ),
       excludeSemantics: true,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : Motion.base,
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(vertical: 3),
-        decoration: BoxDecoration(
-          color: selected
-              ? t.primary.withValues(alpha: 0.10)
-              : t.surfaceContainerLow,
+      child: ListTile(
+        onTap: onTap,
+        selected: selected,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.item),
-          border: Border.all(
-            color: selected
-                ? t.primary.withValues(alpha: 0.6)
-                : t.outlineVariant.withValues(alpha: 0.4),
-            width: selected ? 1.5 : 1,
-          ),
         ),
-        child: ListTile(
-          onTap: onTap,
-          selected: selected,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.item),
-          ),
-          leading: IconBadge(
-            icon: preset.icon,
-            color: selected ? t.primary : t.onSurfaceVariant,
-            size: 38,
-            radius: 11,
-          ),
-          title: Text(
-            presetDisplayName(context, preset),
-            style: TextStyle(
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+        selectedTileColor: t.primary.withValues(alpha: 0.10),
+        leading: IconBadge(
+          icon: preset.icon,
+          color: selected ? t.primary : t.onSurfaceVariant,
+          size: 38,
+          radius: 11,
+        ),
+        title: Text(presetDisplayName(context, preset)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 3),
+            Text(
+              context.tr("{0}m focus · {1}m break · {2} segments", [
+                preset.isRandomFocus
+                    ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
+                    : preset.focus,
+                preset.shortBreak,
+                preset.segments,
+              ]),
             ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 3),
-              Text(
-                context.tr("{0}m focus · {1}m break · {2} segments", [
-                  preset.isRandomFocus
-                      ? '${preset.randomMinMinutes}–${preset.randomMaxMinutes}'
-                      : preset.focus,
-                  preset.shortBreak,
-                  preset.segments,
-                ]),
-              ),
-              const SizedBox(height: Gap.sm),
-              // The plan, drawn: a focus block and a break block in proportion,
-              // so the rhythm of the preset is readable without parsing numbers.
-              _PresetBar(preset: preset),
-            ],
-          ),
-          trailing: selected
-              ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
-              : null,
+            const SizedBox(height: Gap.sm),
+            // The plan, drawn: a focus block and a break block in proportion,
+            // so the rhythm of the preset is readable without parsing numbers.
+            _PresetBar(preset: preset),
+          ],
         ),
+        trailing: selected
+            ? Icon(Icons.check_circle_rounded, size: 18, color: t.primary)
+            : null,
       ),
     );
   }
@@ -1455,144 +1476,46 @@ class _PresetBar extends StatelessWidget {
 /// The capsules this replaced said the same three numbers but nothing about
 /// how they add up; the goal line at the bottom is what turns three counts
 /// into a day.
-class _TodayCard extends ConsumerWidget {
-  const _TodayCard({
-    required this.streak,
-    required this.minutes,
-    required this.sessions,
-  });
-
-  final int streak;
-  final int minutes;
-  final int sessions;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    // The day's target: the sum of every subject's weekly target, spread over
-    // the seven days, so the ring means "share of the daily quota, done". The
-    // targets are stored in *hours* and `minutes` is minutes, so the weekly
-    // total is converted before the day's slice is taken. A user with no
-    // subjects gets a two-hour default rather than a ring that can never fill.
-    final subjects = ref.watch(subjectsProvider);
-    final weeklyHours = subjects.fold<double>(0, (a, s) => a + s.weekTarget);
-    final goalMinutes = weeklyHours <= 0 ? 120.0 : weeklyHours * 60 / 7;
-    final progress = (minutes / goalMinutes).clamp(0.0, 1.0);
-
-    return ContentCard(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 64,
-              height: 64,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: progress <= 0 ? 0 : progress,
-                    strokeWidth: 6,
-                    backgroundColor: t.surfaceContainerHighest,
-                    color: t.primary,
-                    strokeCap: StrokeCap.round,
-                  ),
-                  Text(
-                    '${(progress * 100).round()}%',
-                    style: tt.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: Gap.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    formatMinutes(minutes),
-                    style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    context.tr("of {0} goal", [
-                      formatMinutes(goalMinutes.round()),
-                    ]),
-                    style: tt.labelSmall?.copyWith(color: t.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  Wrap(
-                    spacing: Gap.sm,
-                    runSpacing: Gap.xs,
-                    children: [
-                      _TodayChip(
-                        icon: Icons.check_circle_outline_rounded,
-                        color: t.tertiary,
-                        label: sessions == 1
-                            ? context.tr("1 session")
-                            : context.tr("{0} sessions", [sessions]),
-                      ),
-                      _TodayChip(
-                        icon: Icons.local_fire_department_rounded,
-                        color: t.tertiary,
-                        label: context.tr("{0}-day streak", [streak]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodayChip extends StatelessWidget {
-  const _TodayChip({
+class _InfoCapsule extends StatelessWidget {
+  const _InfoCapsule({
     required this.icon,
     required this.color,
-    required this.label,
+    required this.value,
+    required this.semanticLabel,
   });
 
   final IconData icon;
   final Color color;
-  final String label;
+  final String value;
+  final String semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ConstrainedBox(
-      // The chip never grows past a third of a phone's width — past that the
-      // label truncates rather than pushing the card's row out of shape.
-      constraints: const BoxConstraints(maxWidth: 150),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.sm, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(Radii.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Card.outlined(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: Gap.md,
+            horizontal: Gap.sm,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(height: 5),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1691,20 +1614,26 @@ class _DockNudge extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onTap : null,
         scale: 0.92,
-        // Opaque for the same reason as the bar it flanks: a blurred nudge
-        // flashes transparent on the first frame after a tab switch.
-        child: ContentCard(
-          color: t.surfaceContainerHigh,
-          shape: const StadiumBorder(),
-          child: SizedBox(
-            width: _FocusScreenState._nudgeSize,
-            height: _FocusScreenState._nudgeSize,
-            child: Center(
-              child: Text(
-                minutes > 0 ? '+$minutes' : '$minutes',
-                style: tt.labelLarge?.copyWith(
-                  color: enabled ? color : color.withValues(alpha: 0.38),
-                  fontWeight: FontWeight.w700,
+        // The same opaque base the bar carries, so a blurred pill never reads
+        // transparent on the first frame after a tab switch.
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: t.surfaceContainerHigh,
+            shape: const StadiumBorder(),
+          ),
+          child: GlassCard(
+            color: t.surfaceContainerHigh,
+            shape: const StadiumBorder(),
+            child: SizedBox(
+              width: _FocusScreenState._nudgeSize,
+              height: _FocusScreenState._nudgeSize,
+              child: Center(
+                child: Text(
+                  minutes > 0 ? '+$minutes' : '$minutes',
+                  style: tt.labelLarge?.copyWith(
+                    color: enabled ? color : color.withValues(alpha: 0.38),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

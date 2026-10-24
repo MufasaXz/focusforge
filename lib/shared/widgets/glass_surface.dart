@@ -16,29 +16,25 @@ class GlassBackdrop extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final black = cs.surface == const Color(0xFF000000);
     return BackdropGroup(
-      // A RepaintBoundary so the scaffold's static gradient is not repainted
-      // on every frame of a transition — only the layer above it changes.
-      child: RepaintBoundary(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: cs.surface,
-            gradient: black
-                ? null
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          gradient: black
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.surface,
+                    Color.alphaBlend(
+                      cs.primary.withValues(alpha: dark ? 0.055 : 0.045),
                       cs.surface,
-                      Color.alphaBlend(
-                        cs.primary.withValues(alpha: dark ? 0.055 : 0.045),
-                        cs.surface,
-                      ),
-                      cs.surfaceContainerLow,
-                    ],
-                  ),
-          ),
-          child: child,
+                    ),
+                    cs.surfaceContainerLow,
+                  ],
+                ),
         ),
+        child: child,
       ),
     );
   }
@@ -141,8 +137,8 @@ class GlassCard extends StatelessWidget {
                     Color.alphaBlend(
                       Colors.white.withValues(alpha: dark ? 0.065 : 0.52),
                       tint,
-                    ).withValues(alpha: black ? 1 : 0.88),
-                    tint.withValues(alpha: black ? 1 : 0.72),
+                    ).withValues(alpha: black ? 1 : 0.78),
+                    tint.withValues(alpha: black ? 1 : 0.62),
                   ],
                 ),
               ),
