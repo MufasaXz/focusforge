@@ -309,11 +309,22 @@ class _SubjectRow extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
       ),
+      // The target and how much of it is banked this week — so the row is a
+      // status, not just a name with a delete button.
       subtitle: Text(
-        context.tr("{0} a week", [
-          formatMinutes(subject.weekTarget.round()),
-        ]),
-        style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+        subject.weekDone > 0
+            ? context.tr("{0} of {1} done this week", [
+                formatMinutes(subject.weekDone.round()),
+                formatMinutes(subject.weekTarget.round()),
+              ])
+            : context.tr("{0} a week", [
+                formatMinutes(subject.weekTarget.round()),
+              ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: tt.labelSmall?.copyWith(
+          color: subject.weekDone > 0 ? color : cs.onSurfaceVariant,
+        ),
       ),
       trailing: IconButton(
         tooltip: context.tr("Remove {0}", [subject.name]),
