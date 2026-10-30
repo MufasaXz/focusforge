@@ -37,6 +37,29 @@ class ShieldBridge(
         @Volatile
         private var launchExtras: Map<String, Any>? = null
 
+        /**
+         * Tokens minted for block screens and not yet spent.
+         *
+         * Small and self-trimming: a block screen that never reached
+         * [MainActivity] leaves a token behind, and the oldest are dropped
+         * rather than kept forever. Both block screens live in this process,
+         * so the mint and the spend never have to cross a boundary.
+         */
+        private val launchTokens = java.util.Collections.synchronizedList(ArrayList<String>())
+
+        /** A single-use token for the intent a block screen is about to send. */
+        fun mintLaunchToken(): String =
+            java.util.UUID.randomUUID().toString().also { token ->
+                synchronized(launchTokens) {
+                    while (launchTokens.size >= 8) launchTokens.removeAt(0)
+                    launchTokens.add(token)
+                }
+            }
+
+        /** True once, for a token this process minted. */
+        private fun spendLaunchToken(token: String?): Boolean =
+            token != null && synchronized(launchTokens) { launchTokens.remove(token) }
+
         fun recordLaunch(intent: Intent?) {
             val packageName = intent
                 ?.getStringExtra(FocusAccessibilityService.EXTRA_BLOCKED_PACKAGE)
@@ -44,7 +67,15 @@ class ShieldBridge(
             // to be delivered later: these extras describe the intent that
             // started *this* launch, and replaying an older one would open the
             // app on a block the user has long since dealt with.
-            launchExtras = if (packageName == null) {
+            //
+            // An unsigned launch clears it too. This activity is exported, so
+            // the extras are only worth reading when they carry a token this
+            // process minted for a block screen it actually drew.
+            launchExtras = if (packageName == null ||
+                !spendLaunchToken(
+                    intent.getStringExtra(FocusAccessibilityService.EXTRA_LAUNCH_TOKEN),
+                )
+            ) {
                 null
             } else {
                 mapOf(
@@ -56,7 +87,7 @@ class ShieldBridge(
                     "graceSeconds" to intent.getIntExtra(
                         FocusAccessibilityService.EXTRA_GRACE_SECONDS,
                         ShieldRules.DEFAULT_GRACE_SECONDS,
-                    ),
+                    ).coerceIn(5, 600),
                 )
             }
         }

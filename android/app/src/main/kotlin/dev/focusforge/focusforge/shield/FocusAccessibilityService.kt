@@ -78,6 +78,18 @@ class FocusAccessibilityService : AccessibilityService() {
         const val EXTRA_BLOCKED_LABEL = "ff.blocked.label"
         const val EXTRA_GRACE_SECONDS = "ff.blocked.grace"
 
+        /**
+         * Proof that a block screen, and not some other app, sent the intent.
+         *
+         * [MainActivity] is the launcher activity, so it is exported and any
+         * installed app can start it with extras of its choosing. Without this
+         * the extras above are an open door: a crafted launch would open the
+         * breath screen for a package the shield never covered and hand back
+         * grace for it. The token is minted next to the overlay that is about
+         * to be dismissed and spent on arrival, so a replay buys nothing.
+         */
+        const val EXTRA_LAUNCH_TOKEN = "ff.blocked.token"
+
         /** The live instance, or null while the service is not connected. */
         @Volatile
         var instance: FocusAccessibilityService? = null
@@ -761,7 +773,8 @@ class FocusAccessibilityService : AccessibilityService() {
                     )
                     .putExtra(EXTRA_BLOCKED_PACKAGE, packageName)
                     .putExtra(EXTRA_BLOCKED_LABEL, label)
-                    .putExtra(EXTRA_GRACE_SECONDS, currentRules().graceSeconds),
+                    .putExtra(EXTRA_GRACE_SECONDS, currentRules().graceSeconds)
+                    .putExtra(EXTRA_LAUNCH_TOKEN, ShieldBridge.mintLaunchToken()),
             )
         } catch (_: Exception) {
             // No UI to hand over to, so nothing will grant the grace later and

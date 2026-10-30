@@ -333,7 +333,8 @@ class AppBlockingService : Service() {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                     .putExtra(FocusAccessibilityService.EXTRA_BLOCKED_PACKAGE, pkg)
                     .putExtra(FocusAccessibilityService.EXTRA_BLOCKED_LABEL, label)
-                    .putExtra(FocusAccessibilityService.EXTRA_GRACE_SECONDS, ShieldStore.load(this).graceSeconds))
+                    .putExtra(FocusAccessibilityService.EXTRA_GRACE_SECONDS, ShieldStore.load(this).graceSeconds)
+                    .putExtra(FocusAccessibilityService.EXTRA_LAUNCH_TOKEN, ShieldBridge.mintLaunchToken()))
             } catch (_: Exception) {
                 // A failed breath-screen launch never grants unearned access.
                 view.requestFocus()
