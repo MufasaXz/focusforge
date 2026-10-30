@@ -348,7 +348,12 @@ class AppBlockingService : Service() {
             else { @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE }
         val params = WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT, type,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            // INSET_DECOR is what makes the system report the bar and cutout
+            // insets to a window laid out in screen coordinates. The root pads
+            // itself from them; without the flag it is handed nothing and the
+            // bottom of the screen sits under the navigation bar.
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START }
         try {
             windows.addView(view, params)

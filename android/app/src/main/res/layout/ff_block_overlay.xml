@@ -17,8 +17,7 @@
     android:id="@+id/ff_block_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ff_block_surface"
-    android:fitsSystemWindows="true">
+    android:background="@color/ff_block_surface">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -33,7 +32,8 @@
             android:gravity="center"
             android:orientation="vertical"
             android:paddingHorizontal="28dp"
-            android:paddingVertical="40dp">
+            android:paddingTop="40dp"
+            android:paddingBottom="48dp">
 
             <TextView
                 android:layout_width="wrap_content"

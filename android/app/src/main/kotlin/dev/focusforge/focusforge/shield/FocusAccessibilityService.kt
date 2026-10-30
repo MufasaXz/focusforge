@@ -658,7 +658,12 @@ class FocusAccessibilityService : AccessibilityService() {
             // as the blocked app glitching. Touch is unaffected: a
             // non-focusable window still receives every tap inside it, which is
             // how floating widgets have always worked.
+            // INSET_DECOR has the system report the bar and cutout insets, which
+            // the root pads itself from. YouTube hides its bars for a video, and
+            // a cover that inherits that state draws its last rows under the
+            // navigation bar.
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT,
         ).apply {
