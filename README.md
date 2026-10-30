@@ -36,7 +36,7 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 <sub>A theme-aware preview. Choose Day or Dark to open either gallery.</sub>
 
 <br>
-<sub>Current app renders with fictional demo data in illustrative phone frames. <a href="docs/screenshots/README.md">How the screenshots were made</a>.</sub>
+<sub>Dark is a device capture of the 1.0.4 build; Day is a widget render with demo data. Both sit in illustrative phone frames. <a href="docs/screenshots/README.md">How the screenshots were made</a>.</sub>
 
 </div>
 

@@ -11,7 +11,7 @@ A light workspace for your next focused session.
 
 <img src="gallery-day.png" width="900" alt="FocusForge Day mode: Home, Shield, Focus and You">
 
-<sub>Version 1.0.3 · Build 2019 · Current Flutter interface with fictional demo data.</sub>
+<sub>Version 1.0.3 · Build 2019 · Flutter widget render with fictional demo data.</sub>
 
 </div>
 
