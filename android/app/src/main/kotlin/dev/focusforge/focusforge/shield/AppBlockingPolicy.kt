@@ -2,8 +2,43 @@ package dev.focusforge.focusforge.shield
 
 import java.util.Calendar
 
+/**
+ * What a usage event means to a foreground tracker.
+ *
+ * Shared because the detector and the budget counter each used to carry their
+ * own copy of this mapping, and they drifted: the budget counter never learned
+ * that an activity can stop without pausing, so its interval stayed open and
+ * the day's total kept climbing while the user was in another app entirely.
+ * One mapping, one place to add an event type.
+ */
+enum class UsageAction { RESUME, PAUSE, SCREEN_OFF, SCREEN_ON }
+
 /** Decisions shared by the polling service and native regression tests. */
 object AppBlockingPolicy {
+    /**
+     * The event types that move an app in or out of the foreground.
+     *
+     * Raw constants rather than `UsageEvents.Event`, so this object stays free
+     * of Android and reachable from a plain JVM test. The values are frozen
+     * API: `ACTIVITY_RESUMED` is `MOVE_TO_FOREGROUND` renamed, and the same
+     * integer, as are the other two.
+     */
+    private const val RESUMED = 1
+    private const val PAUSED = 2
+    private const val SCREEN_INTERACTIVE = 15
+    private const val SCREEN_NON_INTERACTIVE = 16
+
+    /** Not every app raises a pause on the way out; a stop ends the session too. */
+    private const val STOPPED = 23
+
+    fun actionFor(eventType: Int): UsageAction? = when (eventType) {
+        RESUMED -> UsageAction.RESUME
+        PAUSED, STOPPED -> UsageAction.PAUSE
+        SCREEN_NON_INTERACTIVE -> UsageAction.SCREEN_OFF
+        SCREEN_INTERACTIVE -> UsageAction.SCREEN_ON
+        else -> null
+    }
+
     /** A pause alone is not evidence that a different app is in front.
      * Preserve an existing cover until a resume identifies the next app.
      * Explicit permission revocation, screen lock, Stop and grace release it separately.

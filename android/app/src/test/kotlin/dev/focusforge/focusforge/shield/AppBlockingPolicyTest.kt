@@ -182,6 +182,35 @@ class AppBlockingPolicyTest {
         assertEquals("settings", AppBlockingPolicy.overlayTarget("settings", packageName))
         assertNull(AppBlockingPolicy.reason("settings", rules(), 1000, 0, setOf("settings"), null))
     }
+    /** The budget counter and the detector read the same event stream; a type
+     *  either loop ignores is time the other one keeps counting. */
+    @Test fun aStoppedActivityEndsAForegroundIntervalLikeAPause() {
+        assertEquals(UsageAction.RESUME, AppBlockingPolicy.actionFor(1))
+        assertEquals(UsageAction.PAUSE, AppBlockingPolicy.actionFor(2))
+        assertEquals(UsageAction.PAUSE, AppBlockingPolicy.actionFor(23))
+        assertEquals(UsageAction.SCREEN_ON, AppBlockingPolicy.actionFor(15))
+        assertEquals(UsageAction.SCREEN_OFF, AppBlockingPolicy.actionFor(16))
+        assertNull(AppBlockingPolicy.actionFor(7))
+    }
+    @Test fun budgetStopsCountingWhenAnAppLeavesWithoutPausing() {
+        // Ten minutes spent, then the app stops rather than pausing, and the
+        // user spends an hour elsewhere. The spend is ten minutes, not seventy.
+        val minute = 60_000L
+        val usage = DailyForegroundUsage("app", 0)
+        usage.resume("app", 0, "Main")
+        usage.pause("app", 10 * minute, "Main")
+        assertEquals(10 * minute, usage.totalAt(70 * minute))
+        assertNull(AppBlockingPolicy.reason(packageName, rules(RuleMode.BUDGET), 70 * minute,
+            0, emptySet(), 10 * minute))
+    }
+    @Test fun yesterdaysUsageIsNotChargedToTodaysBudget() {
+        // The query window opens a day early so a session crossing midnight is
+        // whole. Time that closed before midnight still belongs to yesterday.
+        val usage = DailyForegroundUsage("app", 10_000)
+        usage.resume("app", 1000, "Main")
+        usage.pause("app", 3000, "Main")
+        assertEquals(0L, usage.totalAt(20_000))
+    }
     @Test fun dailyBudgetRestoresAfterUnlockWithoutCountingLockedTime() {
         val usage = DailyForegroundUsage("app", 0)
         usage.resume("app", 1000, "Main")

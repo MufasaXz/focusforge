@@ -234,12 +234,12 @@ class AppBlockingService : Service() {
                 events.getNextEvent(event)
                 lastEventCount++
                 val pkg = event.packageName.orEmpty()
-                when (event.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> if (pkg.isNotEmpty()) foreground.resume(pkg, event.timeStamp, event.className)
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
-                    UsageEvents.Event.ACTIVITY_STOPPED -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
-                    UsageEvents.Event.SCREEN_NON_INTERACTIVE -> foreground.screenOff(event.timeStamp)
-                    UsageEvents.Event.SCREEN_INTERACTIVE -> foreground.screenOn(event.timeStamp)
+                when (AppBlockingPolicy.actionFor(event.eventType)) {
+                    UsageAction.RESUME -> if (pkg.isNotEmpty()) foreground.resume(pkg, event.timeStamp, event.className)
+                    UsageAction.PAUSE -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
+                    UsageAction.SCREEN_OFF -> foreground.screenOff(event.timeStamp)
+                    UsageAction.SCREEN_ON -> foreground.screenOn(event.timeStamp)
+                    null -> { }
                 }
             }
             needsForegroundReplay = false
@@ -257,6 +257,7 @@ class AppBlockingService : Service() {
             budgetSample, budgetSampleAt, now, foreground.packageName == pkg,
         )?.let { return it }
         val midnight = Calendar.getInstance().apply {
+            timeInMillis = now
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
@@ -268,15 +269,20 @@ class AppBlockingService : Service() {
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
                 val eventPackage = event.packageName.orEmpty()
-                when (event.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> if (eventPackage.isNotEmpty()) {
+                when (AppBlockingPolicy.actionFor(event.eventType)) {
+                    UsageAction.RESUME -> if (eventPackage.isNotEmpty()) {
                         usage.resume(eventPackage, event.timeStamp, event.className)
                     }
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> if (eventPackage.isNotEmpty()) {
+                    // A stop counts here too. Without it the interval never
+                    // closes for an app that leaves without pausing, and the
+                    // day's total grows while the user is somewhere else
+                    // entirely, so a budget fires long before it is spent.
+                    UsageAction.PAUSE -> if (eventPackage.isNotEmpty()) {
                         usage.pause(eventPackage, event.timeStamp, event.className)
                     }
-                    UsageEvents.Event.SCREEN_NON_INTERACTIVE -> usage.screenOff(event.timeStamp)
-                    UsageEvents.Event.SCREEN_INTERACTIVE -> usage.screenOn(event.timeStamp)
+                    UsageAction.SCREEN_OFF -> usage.screenOff(event.timeStamp)
+                    UsageAction.SCREEN_ON -> usage.screenOn(event.timeStamp)
+                    null -> { }
                 }
             }
             val total = usage.totalAt(now)
