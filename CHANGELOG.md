@@ -14,6 +14,11 @@
 - The subject ring no longer splits itself evenly between subjects on a day
   with nothing on it yet. An empty day reads as empty rather than as a finished
   one, which is what it looked like every morning.
+- Edge-to-edge is now set up with current APIs rather than through
+  `WindowCompat.enableEdgeToEdge`, whose unguarded `setStatusBarColor` and
+  `setNavigationBarColor` calls Play Console reports as deprecated. The bar
+  colours below Android 15 come from the window theme instead, so they also
+  apply to the launch window before the first frame.
 
 ## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-24 (build 2029)
 
