@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Shield now offers every app that has a launcher icon, so a preinstalled
+  browser, mail client or video app can be restricted like any other. Those
+  were previously hidden for being system apps, which left most of what a
+  student actually wants to close missing from the list with nothing on screen
+  to say why.
+- Fixed today's focus minutes, today's goal, the streak, the heatmap, the top
+  subject and the per-subject counters holding yesterday's numbers when the app
+  was left open past midnight — the chart beside them had already rolled over,
+  so the same screen disagreed with itself.
+- The subject ring no longer splits itself evenly between subjects on a day
+  with nothing on it yet. An empty day reads as empty rather than as a finished
+  one, which is what it looked like every morning.
+
 ## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-24 (build 2029)
 
 - Rebuilt the Neon clock face as lit tubing — a white-hot core over a coloured
