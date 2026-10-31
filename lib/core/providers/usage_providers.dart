@@ -96,6 +96,15 @@ final protectedPackagesProvider = FutureProvider<Set<String>>(
   (ref) => ref.watch(shieldServiceProvider).protectedPackages(),
 );
 
+/// The packages with a launcher icon, asked of the engine itself.
+///
+/// Empty means the engine could not say — an older install, a platform with
+/// no engine — and the list falls back to its previous filter rather than
+/// rendering as though nothing on the device can be opened.
+final launchablePackagesProvider = FutureProvider<Set<String>>(
+  (ref) => ref.watch(shieldServiceProvider).launchablePackages(),
+);
+
 /// One row of the shield's app list: an app, its rule, and today's usage.
 @immutable
 class ShieldAppRow {
@@ -126,17 +135,31 @@ class ShieldAppRow {
 /// on screen, "add an app" stops being a step and a rule becomes something you
 /// switch on a row that is already there.
 ///
-/// Two kinds of package never reach the list. System apps are most of the
-/// device — every service, every overlay, every vendor stub — and they are not
-/// what anyone opens the Shield tab to close, so they buried the handful of
-/// apps the user actually chose to install; the one exception is a system app
-/// that already carries a rule, because hiding it would leave a restriction
-/// running with nothing on screen that could turn it off. And the packages the
-/// engine refuses to cover — the keyboard, the launcher, the status bar, the
-/// settings app, this app — are dropped outright rather than listed with an
-/// inert switch: a control that cannot do anything is worse than no row. That
-/// set is asked of the engine itself, so the list and the enforcement cannot
-/// drift apart.
+/// Two kinds of package never reach the list.
+///
+/// An app with no launcher icon is one the user cannot open, so no block can
+/// ever fire on it — every service, every overlay, every vendor stub. The
+/// launchable set is asked of the engine, which resolves packages to
+/// activities anyway, so the picker's list and the engine's reach answer the
+/// same question.
+///
+/// This used to be decided by `isSystem` instead, which was right while the
+/// app held `QUERY_ALL_PACKAGES` and could see the whole device. It stopped
+/// being right the moment the manifest narrowed to a `<queries>` declaration:
+/// a preinstalled browser, mail client or video app is a *system* app with a
+/// launcher icon, and the filter was hiding most of what a student opens the
+/// Shield tab to close. `isSystem` is still carried on the row, because the
+/// row still says so — it is no longer what decides.
+///
+/// An engine that cannot answer returns an empty set, and the list falls back
+/// to the old filter rather than rendering empty.
+///
+/// And the packages the engine refuses to cover — the keyboard, the launcher,
+/// the status bar, the settings app, this app — are dropped outright rather
+/// than listed with an inert switch: a control that cannot do anything is
+/// worse than no row. An app that already carries a rule is kept whatever
+/// else is true of it, because hiding it would leave a restriction running
+/// with nothing on screen that could turn it off.
 final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
   final apps = ref.watch(installedAppsProvider).valueOrNull;
   if (apps == null) return const [];
@@ -144,16 +167,21 @@ final shieldAppRowsProvider = Provider<List<ShieldAppRow>>((ref) {
   final usage = ref.watch(appUsageTodayProvider).valueOrNull ?? const {};
   final protectedSet =
       ref.watch(protectedPackagesProvider).valueOrNull ?? const {};
+  final launchable =
+      ref.watch(launchablePackagesProvider).valueOrNull ?? const <String>{};
 
   final rules = <String, WhitelistEntry>{
     for (final entry in ref.watch(whitelistProvider))
       if (entry.packageId case final String id) id: entry,
   };
 
+  bool openable(InstalledApp app) =>
+      launchable.isEmpty ? !app.isSystem : launchable.contains(app.packageId);
+
   return [
     for (final app in apps)
       if (!protectedSet.contains(app.packageId) &&
-          (!app.isSystem || rules.containsKey(app.packageId)))
+          (openable(app) || rules.containsKey(app.packageId)))
         ShieldAppRow(
           packageId: app.packageId,
           name: app.name,

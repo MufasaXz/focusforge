@@ -48,6 +48,17 @@ abstract class ShieldPlatformService {
   /// list would eventually disagree with the first, and the row would offer a
   /// switch that does nothing.
   Future<Set<String>> protectedPackages();
+
+  /// The packages that have a launcher icon on this device.
+  ///
+  /// The only apps a block can ever fire on, because they are the only ones
+  /// the user can open. Asked of the engine for the same reason the protected
+  /// set is: it is the side that resolves a package to an activity, and a
+  /// second answer kept on this side would drift from it.
+  ///
+  /// An empty set means "could not tell" rather than "nothing is launchable",
+  /// so a caller narrows its list only when the answer has something in it.
+  Future<Set<String>> launchablePackages();
 }
 
 /// A launch the block screen sent us.
@@ -208,6 +219,13 @@ class RecordingShieldService implements ShieldPlatformService {
 
   @override
   Future<Set<String>> protectedPackages() async => protectedSet;
+
+  /// Settable alongside [protectedSet], so a test can render the list the way
+  /// a device would answer it. Empty is the "could not tell" answer.
+  Set<String> launchableSet = const {};
+
+  @override
+  Future<Set<String>> launchablePackages() async => launchableSet;
 
   @override
   Stream<ShieldInterception> get interceptions => _interceptions.stream;

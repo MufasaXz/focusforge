@@ -87,6 +87,9 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
     ref.invalidate(appUsageTodayProvider);
     ref.invalidate(installedAppsProvider);
     ref.invalidate(protectedPackagesProvider);
+    // An app installed or removed while we were away changes which packages
+    // have a launcher icon, and that is what decides the list.
+    ref.invalidate(launchablePackagesProvider);
   }
 
   @override

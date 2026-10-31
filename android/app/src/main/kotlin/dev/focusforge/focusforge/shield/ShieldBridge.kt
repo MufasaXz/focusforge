@@ -206,6 +206,32 @@ class ShieldBridge(
                 FocusAccessibilityService.protectedPackages(context).toList(),
             )
 
+            // The apps the user can actually open, which are the only apps a
+            // block can ever fire on. Asked of the package manager with the
+            // same launcher intent the manifest declares visibility for, so
+            // the picker's list and the engine's reach are the same question.
+            //
+            // The screen used to narrow its list by `isSystemApp` instead.
+            // That was right while the app held QUERY_ALL_PACKAGES and saw
+            // every service and vendor stub on the device, and wrong the
+            // moment it stopped: a preinstalled browser or video app is a
+            // system app, and hiding those hid most of what a student wants
+            // to close.
+            "launchablePackages" -> result.success(
+                try {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.queryIntentActivities(
+                        Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_LAUNCHER),
+                        0,
+                    ).mapNotNull { it.activityInfo?.packageName }.distinct()
+                } catch (_: Exception) {
+                    // An empty answer means "could not tell", and the screen
+                    // falls back to its old filter rather than showing nothing.
+                    emptyList()
+                },
+            )
+
             "blockedApp" -> result.success(takeLaunch())
 
             else -> result.notImplemented()

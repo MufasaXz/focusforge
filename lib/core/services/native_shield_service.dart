@@ -165,6 +165,26 @@ class NativeShieldService implements ShieldPlatformService {
   }
 
   @override
+  Future<Set<String>> launchablePackages() async {
+    try {
+      final raw = await _methods.invokeMethod<List<dynamic>>(
+        'launchablePackages',
+      );
+      return {
+        for (final entry in raw ?? const <dynamic>[])
+          if (entry is String && entry.isNotEmpty) entry,
+      };
+    } on PlatformException {
+      return const {};
+    } on MissingPluginException {
+      // Not an Android build, or an older install whose engine predates the
+      // method. Empty reads as "could not tell", and the caller keeps its
+      // previous filter rather than emptying the list.
+      return const {};
+    }
+  }
+
+  @override
   Stream<ShieldInterception> get interceptions {
     _subscribe();
     return _interceptions.stream;
