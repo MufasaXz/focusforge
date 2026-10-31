@@ -1,7 +1,9 @@
 package dev.focusforge.focusforge
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import dev.focusforge.focusforge.widgets.FocusWidget
 import dev.focusforge.focusforge.widgets.FocusLiveActivity
@@ -27,7 +29,42 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         // Establish the native window policy before Flutter draws. Flutter's
         // SafeArea/MediaQuery insets keep controls clear of the system bars.
-        WindowCompat.enableEdgeToEdge(window)
+        //
+        // Spelled out rather than delegated to WindowCompat.enableEdgeToEdge,
+        // which calls Window.setStatusBarColor and setNavigationBarColor with
+        // no version guard of its own. Both are deprecated and both are
+        // no-ops from Android 15, and Play Console reports an unguarded call
+        // against this app even when the call sits inside androidx — R8 moves
+        // the method body into one of our own classes, so it is our package
+        // name in the report. Everything below is a current API. The bar
+        // colours those two setters used to supply on Android 14 and older
+        // come from the window theme instead; see values/styles.xml.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Draw into the cutout rather than letting the system letterbox it
+        // away. ALWAYS from Android 11, where it covers the waterfall edges
+        // too; SHORT_EDGES before that, which is as far as Android 9 and 10
+        // go.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        WindowManager.LayoutParams
+                            .LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    } else {
+                        WindowManager.LayoutParams
+                            .LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+            }
+        }
+
+        // Android 10 through 14 paint their own scrim behind a transparent
+        // bar unless told not to. The app's own surface already sits there,
+        // and a second translucent layer over it reads as a seam.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

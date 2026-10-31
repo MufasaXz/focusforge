@@ -5,6 +5,13 @@
         <!-- Show a splash screen on the activity. Automatically removed when
              the Flutter engine draws its first frame -->
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <!-- The two bars the window draws behind. Set here rather than with
+             WindowCompat.enableEdgeToEdge, whose Window.setStatusBarColor and
+             setNavigationBarColor calls are deprecated and carry no version
+             guard; a theme attribute is the same result with no call at all.
+             Ignored from Android 15, which makes every bar transparent. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your
@@ -15,5 +22,8 @@
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <!-- See values/styles.xml. Resolves to the dark surface here. -->
         <item name="android:windowBackground">@color/ff_launch_background</item>
+        <!-- The two bars the window draws behind. See LaunchTheme above. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>
