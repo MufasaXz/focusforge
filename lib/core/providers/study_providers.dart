@@ -21,7 +21,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
 
   @override
   List<Subject> build() =>
-      _withDerivedCounters(_base, ref.watch(sessionsProvider));
+      _withDerivedCounters(
+        _base,
+        ref.watch(sessionsProvider),
+        ref.watch(focusCalendarDateProvider),
+      );
 
   LocalStore get _store => ref.read(localStoreProvider);
 
@@ -33,7 +37,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
   void hydrate(List<Map<String, dynamic>>? stored) {
     if (stored == null) return;
     _base = stored.map(Subject.fromJson).toList(growable: false);
-    state = _withDerivedCounters(_base, ref.read(sessionsProvider));
+    state = _withDerivedCounters(
+      _base,
+      ref.read(sessionsProvider),
+      ref.read(focusCalendarDateProvider),
+    );
   }
 
   Future<void> _persist() => _store.setList(
@@ -43,7 +51,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
 
   Future<void> add(Subject subject) async {
     _base = [..._base, subject];
-    state = _withDerivedCounters(_base, ref.read(sessionsProvider));
+    state = _withDerivedCounters(
+      _base,
+      ref.read(sessionsProvider),
+      ref.read(focusCalendarDateProvider),
+    );
     await _persist();
   }
 
@@ -54,7 +66,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
     final goals = ref.read(focusGoalPlannerProvider.notifier);
     final next = _base.where((s) => s.id != id).toList(growable: false);
     _base = next;
-    state = _withDerivedCounters(_base, ref.read(sessionsProvider));
+    state = _withDerivedCounters(
+      _base,
+      ref.read(sessionsProvider),
+      ref.read(focusCalendarDateProvider),
+    );
     if (ref.read(timerProvider).subjectId == id) {
       ref.read(timerProvider.notifier).setSubject(null);
     }
@@ -72,7 +88,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
       for (final s in _base)
         if (s.id == id) s.copyWith(weekTarget: hours) else s,
     ];
-    state = _withDerivedCounters(_base, ref.read(sessionsProvider));
+    state = _withDerivedCounters(
+      _base,
+      ref.read(sessionsProvider),
+      ref.read(focusCalendarDateProvider),
+    );
     await _persist();
   }
 }
@@ -82,16 +102,24 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
 ///
 /// Deriving beats accumulating: the ring, the weekly chart and the heatmap
 /// already read the log, so a counter incremented separately can drift from
-/// them — and, because nothing resets it, it *does* drift the moment the clock
-/// passes midnight. The week is Monday-aligned, matching the heatmap, so
-/// "this week" means the same span everywhere the app says it.
+/// them. The week is Monday-aligned, matching the heatmap, so "this week"
+/// means the same span everywhere the app says it.
+///
+/// [today] is passed in rather than read from the clock so the caller can
+/// watch [focusCalendarDateProvider] for it. Reading `DateTime.now()` here
+/// made these counters correct only until the clock passed midnight: this is a
+/// derived value inside a cached provider, so nothing recomputed it, and the
+/// breakdown kept yesterday's minutes while the chart beside it rolled over.
 List<Subject> _withDerivedCounters(
   List<Subject> subjects,
   List<FocusSession> sessions,
+  DateTime today,
 ) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final monday = DateTime(
+    today.year,
+    today.month,
+    today.day - (today.weekday - 1),
+  );
 
   int minutesSince(String id, DateTime from) => sessions
       .where(
@@ -211,8 +239,17 @@ final sessionsProvider = NotifierProvider<SessionsNotifier, List<FocusSession>>(
 /// only when the notifier object itself is replaced, so reading the count
 /// through it left the ring at its launch-time value until something else
 /// forced a rebuild.
+///
+/// Which day "today" is comes from [focusCalendarDateProvider] for the same
+/// reason. A cached provider that reads the clock itself is only recomputed
+/// when something else it watches changes, so an app left open overnight held
+/// yesterday's total in the ring while the chart below it — which does watch
+/// the calendar — had already moved on.
 final focusMinutesTodayProvider = Provider<int>(
-  (ref) => _minutesOn(ref.watch(sessionsProvider), DateTime.now()),
+  (ref) => _minutesOn(
+    ref.watch(sessionsProvider),
+    ref.watch(focusCalendarDateProvider),
+  ),
 );
 
 bool _sameDay(DateTime a, DateTime b) =>
@@ -434,7 +471,7 @@ final currentStreakProvider = Provider<int>((ref) {
   };
   if (days.isEmpty) return 0;
 
-  var cursor = _dateOnly(DateTime.now());
+  var cursor = ref.watch(focusCalendarDateProvider);
   if (!days.contains(cursor)) {
     cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     if (!days.contains(cursor)) return 0;
@@ -482,7 +519,7 @@ final topSubjectProvider = Provider.family<TopSubjectSummary?, StudyRange>((
   ref,
   range,
 ) {
-  final now = DateTime.now();
+  final now = ref.watch(focusCalendarDateProvider);
   final start = switch (range) {
     StudyRange.week => DateTime(
       now.year,
@@ -538,7 +575,7 @@ final topSubjectProvider = Provider.family<TopSubjectSummary?, StudyRange>((
 /// being omitted — the shape of the month should not shift as the week fills.
 final heatmapWeeksProvider = Provider<List<List<HeatCell>>>((ref) {
   final sessions = ref.watch(sessionsProvider);
-  final today = _dateOnly(DateTime.now());
+  final today = ref.watch(focusCalendarDateProvider);
   final thisMonday = DateTime(
     today.year,
     today.month,
@@ -1416,7 +1453,7 @@ final dailyGoalProvider = NotifierProvider<DailyGoalsNotifier, DailyGoals>(
 /// one for the day the user is actually in.
 final todayGoalMinutesProvider = Provider<int>((ref) {
   final goals = ref.watch(dailyGoalProvider);
-  return goals.forWeekday(DateTime.now().weekday);
+  return goals.forWeekday(ref.watch(focusCalendarDateProvider).weekday);
 });
 
 /// Seconds of focus logged today, including the block in flight.

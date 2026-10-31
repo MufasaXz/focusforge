@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/focus/custom_plan_sheet.dart';
@@ -41,11 +42,13 @@ void main() {
     randomMaxMinutes: 40,
   );
 
-  ProviderContainer freshContainer({_BoundaryRandom? random}) {
+  ProviderContainer freshContainer({_BoundaryRandom? random, DateTime? today}) {
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
         if (random != null) timerRandomProvider.overrideWithValue(random),
+        if (today != null)
+          focusCalendarDateProvider.overrideWith(() => _FixedCalendar(today)),
       ],
     );
     addTearDown(container.dispose);
@@ -180,17 +183,22 @@ void main() {
   test(
     'completed random blocks credit sampled actual length after process death',
     () async {
-      final container = freshContainer();
-      final timer = await selectRandom(container);
       final end = DateTime.now().subtract(const Duration(seconds: 1));
+      // A session is credited to the calendar day it *started* on, so a
+      // 37-minute segment that ends a second ago began yesterday whenever this
+      // runs in the first half hour after midnight. Pin the calendar to the
+      // segment's own day instead of leaving the assertion to the wall clock.
+      final started = end.subtract(const Duration(minutes: 37));
+      final container = freshContainer(
+        today: DateTime(started.year, started.month, started.day),
+      );
+      final timer = await selectRandom(container);
       timer.hydrate({
         'presetKey': 'custom:random',
         'phase': 'focus',
         'running': true,
         'targetEnd': end.millisecondsSinceEpoch,
-        'segmentStartedAt': end
-            .subtract(const Duration(minutes: 37))
-            .millisecondsSinceEpoch,
+        'segmentStartedAt': started.millisecondsSinceEpoch,
         'sampledFocusMs': 2220000,
         'remainingMs': 1,
       });
@@ -261,4 +269,11 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+}
+
+class _FixedCalendar extends FocusCalendarDateNotifier {
+  _FixedCalendar(this.day);
+  final DateTime day;
+  @override
+  DateTime build() => day;
 }
