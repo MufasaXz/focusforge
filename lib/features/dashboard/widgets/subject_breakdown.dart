@@ -255,6 +255,13 @@ class _Ring extends StatelessWidget {
                   progress: entrance.value,
                   pop: Curves.easeOutCubic.transform(pop.value),
                   selected: selected ?? -1,
+                  // A day with nothing on it yet is every morning, and
+                  // `donutSweeps` splits a zero total evenly so the ring keeps
+                  // its shape and stays tappable. Drawn in subject colour that
+                  // reads as "an equal share of each" — a full, confident ring
+                  // saying the opposite of the 0m underneath it. The track
+                  // colour keeps the geometry and drops the claim.
+                  emptyTrack: total == 0 ? cs.surfaceContainerHighest : null,
                 ),
               ),
               Padding(
@@ -347,10 +354,16 @@ class _DonutPainter extends CustomPainter {
     required this.progress,
     required this.pop,
     required this.selected,
+    this.emptyTrack,
   });
 
   final List<Color> colors;
   final List<double> sweeps;
+
+  /// The colour every unselected slice takes when the day has no time on it,
+  /// or null on a day that does. The selected slice keeps its subject colour
+  /// either way, so tapping a legend row still points at a slice.
+  final Color? emptyTrack;
 
   /// The entrance, 0–1.
   final double progress;
@@ -390,7 +403,7 @@ class _DonutPainter extends CustomPainter {
         // wherever two slices meet, while the popped one reads as a segment
         // pulled out of the ring rather than a slice that grew.
         paint
-          ..color = colors[i]
+          ..color = i == selected ? colors[i] : (emptyTrack ?? colors[i])
           ..strokeCap = i == selected ? StrokeCap.round : StrokeCap.butt;
         canvas.drawArc(rect, start + gap / 2 * eased, sweep, false, paint);
 
@@ -419,6 +432,7 @@ class _DonutPainter extends CustomPainter {
       old.progress != progress ||
       old.pop != pop ||
       old.selected != selected ||
+      old.emptyTrack != emptyTrack ||
       !listEquals(old.sweeps, sweeps) ||
       !listEquals(old.colors, colors);
 }

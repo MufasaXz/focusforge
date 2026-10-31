@@ -137,6 +137,77 @@ void main() {
       expect(find.text('Today'), findsOneWidget);
     });
 
+    testWidgets('a day with nothing on it yet draws no subject colour', (
+      tester,
+    ) async {
+      // `donutSweeps` gives a zero total an even split so the ring keeps its
+      // shape and stays tappable. Painted in subject colour that reads as a
+      // finished day split evenly between them — on every morning of the
+      // week, next to a readout saying 0m. The slices stay, the claim goes.
+      const idle = <Subject>[
+        Subject(
+          id: 'math',
+          name: 'Math',
+          icon: Icons.square_foot_rounded,
+          color: SubjectPalette.math,
+        ),
+        Subject(
+          id: 'physics',
+          name: 'Physics',
+          icon: Icons.bolt_rounded,
+          color: SubjectPalette.physics,
+        ),
+      ];
+      final theme = AppTheme.light();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: SubjectBreakdown(subjects: idle),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Today'), findsOneWidget);
+      expect(find.text('0m'), findsNWidgets(3));
+
+      final painted = <Color>[];
+      final painter = (tester.widget<CustomPaint>(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.size == const Size(168, 168),
+        ),
+      ).painter)!;
+      painter.paint(_ColourSpy(painted), const Size(168, 168));
+
+      expect(painted, isNotEmpty);
+      expect(
+        painted.map((c) => c.toARGB32()).toSet(),
+        {theme.colorScheme.surfaceContainerHighest.toARGB32()},
+        reason: 'an empty day is drawn in the track colour, not in subject hues',
+      );
+
+      // Selecting one still points at its slice, because the user asked.
+      await tester.tap(find.text('Math'));
+      await tester.pumpAndSettle();
+      painted.clear();
+      final selected = (tester.widget<CustomPaint>(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.size == const Size(168, 168),
+        ),
+      ).painter)!;
+      selected.paint(_ColourSpy(painted), const Size(168, 168));
+      expect(
+        painted.map((c) => c.toARGB32()),
+        contains(SubjectPalette.math.toARGB32()),
+      );
+    });
+
     testWidgets('a tap on the ring itself selects the slice under it', (
       tester,
     ) async {
@@ -163,4 +234,26 @@ void main() {
       expect(find.text('Today'), findsOneWidget);
     });
   });
+}
+
+/// Records the stroke colour of every arc the painter draws, and draws nothing.
+///
+/// The painter is a `CustomPainter`, so short of a golden file this is the
+/// only way to assert on the colour it actually put on the ring. Every other
+/// canvas call is accepted and discarded — the test is about one of them.
+class _ColourSpy implements Canvas {
+  _ColourSpy(this._colours);
+  final List<Color> _colours;
+
+  @override
+  void drawArc(
+    Rect rect,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) => _colours.add(paint.color);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
