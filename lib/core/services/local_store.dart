@@ -234,7 +234,10 @@ class StoreKeys {
   static const whitelistTiers = 'shield.whitelist';
   static const youtubeRules = 'shield.youtube';
   static const strictMode = 'shield.strict';
-  static const remoteBlocks = 'shield.parentCache';
+  /// Whether the user agreed to the app-list disclosure. Read before the
+  /// installed-app list or per-app usage is ever queried; see
+  /// `appListConsentProvider`.
+  static const appListConsent = 'shield.appListConsent';
   static const breathEvents = 'shield.breathEvents';
   static const notifications = 'notifications';
   static const achievements = 'achievements';

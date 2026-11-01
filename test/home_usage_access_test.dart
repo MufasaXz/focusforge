@@ -112,6 +112,22 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Open usage settings'));
       await tester.pumpAndSettle();
+      // The app-list disclosure comes next, and declining it stops here too.
+      expect(
+        find.text('Allow FocusForge to read your app list?'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, isEmpty);
+      expect(container.read(appListConsentProvider), isFalse);
+      await tester.tap(find.text('Allow app usage'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open usage settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agree'));
+      await tester.pumpAndSettle();
+      expect(container.read(appListConsentProvider), isTrue);
       expect(manager.requests, [AppPermission.usageAccess]);
       expect(
         find.text('Allow app usage'),

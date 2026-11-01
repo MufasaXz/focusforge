@@ -3,7 +3,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/shield.dart';
 import '../services/app_catalog.dart';
+import '../services/local_store.dart';
+import 'app_providers.dart';
 import 'shield_providers.dart';
+
+/// Whether the user has agreed to the app-list disclosure.
+///
+/// Google Play treats the list of installed apps as personal and sensitive
+/// data, and requires an in-app disclosure and an affirmative tap before an
+/// app reads it. Every provider below that touches the package manager or
+/// usage history answers empty until this is true, so no code path can read
+/// the list first and ask afterwards. Off by default; dismissing the
+/// disclosure, or leaving it, is never taken as a yes.
+class AppListConsentNotifier extends Notifier<bool> {
+  /// [initial] lets a test start from an answer the user already gave; the
+  /// app itself always starts false and is hydrated from the store.
+  AppListConsentNotifier([this._initial = false]);
+
+  final bool _initial;
+
+  @override
+  bool build() => _initial;
+
+  void hydrate(bool? stored) => state = stored ?? false;
+
+  Future<void> set(bool value) async {
+    state = value;
+    await ref.read(localStoreProvider).setBool(StoreKeys.appListConsent, value);
+  }
+}
+
+final appListConsentProvider = NotifierProvider<AppListConsentNotifier, bool>(
+  AppListConsentNotifier.new,
+);
 
 /// The apps installed on this device.
 ///
@@ -11,8 +43,13 @@ import 'shield_providers.dart';
 /// list is a few hundred entries, and the platform call behind it walks the
 /// package manager. It is invalidated on resume, because the user may well
 /// have installed something while they were away.
+///
+/// Empty until the user has agreed to the app-list disclosure, and the
+/// platform is not asked at all before then.
 final installedAppsProvider = FutureProvider<List<InstalledApp>>(
-  (ref) => AppCatalog.installed(excludePackage: AppCatalog.selfPackage),
+  (ref) => ref.watch(appListConsentProvider)
+      ? AppCatalog.installed(excludePackage: AppCatalog.selfPackage)
+      : Future.value(const <InstalledApp>[]),
 );
 
 /// Whether the OS will answer the usage question at all.
@@ -30,7 +67,9 @@ final usageAccessProvider = FutureProvider<bool>(
 /// usage-access grant returns. Screens have to show that state rather than
 /// render a row of zeroes that looks like measured calm.
 final appUsageTodayProvider = FutureProvider<Map<String, int>>(
-  (ref) => AppCatalog.usageToday(),
+  (ref) => ref.watch(appListConsentProvider)
+      ? AppCatalog.usageToday()
+      : Future.value(const <String, int>{}),
 );
 
 /// One app's screen time for today.
@@ -102,7 +141,9 @@ final protectedPackagesProvider = FutureProvider<Set<String>>(
 /// no engine — and the list falls back to its previous filter rather than
 /// rendering as though nothing on the device can be opened.
 final launchablePackagesProvider = FutureProvider<Set<String>>(
-  (ref) => ref.watch(shieldServiceProvider).launchablePackages(),
+  (ref) => ref.watch(appListConsentProvider)
+      ? ref.watch(shieldServiceProvider).launchablePackages()
+      : Future.value(const <String>{}),
 );
 
 /// One row of the shield's app list: an app, its rule, and today's usage.

@@ -19,6 +19,7 @@ import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
+import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
@@ -602,6 +603,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
     final cs = Theme.of(context).colorScheme;
     final query = _search.text.trim().toLowerCase();
 
+    final consent = ref.watch(appListConsentProvider);
     final all = ref.watch(shieldAppRowsProvider);
     final loading = ref.watch(installedAppsProvider).isLoading;
 
@@ -639,7 +641,10 @@ class _AppsViewState extends ConsumerState<_AppsView> {
             children: [
               const ShieldOverview(),
               const SizedBox(height: Gap.lg),
-              if (native && enabled && budgeted > 0 && !usageAccess)
+              // The list itself waits on the disclosure: nothing reads the
+              // installed apps until the user has agreed here.
+              if (!consent) const AppListDisclosureCard(),
+              if (consent && native && enabled && budgeted > 0 && !usageAccess)
                 _PermissionGate(
                   icon: Icons.timelapse_rounded,
                   title: context.tr("Time budgets are not counting"),
@@ -649,41 +654,45 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                   action: context.tr("Review app usage on Home"),
                   permission: AppPermission.usageAccess,
                 ),
-              _SearchField(
-                controller: _search,
-                onChanged: () => setState(() {}),
-              ),
-              const SizedBox(height: Gap.md),
-              Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.xs,
-                children: [
-                  for (final (index, label) in [
-                    context.tr("All"),
-                    context.tr("Blocked"),
-                    context.tr("Focus only"),
-                    context.tr("Budgets"),
-                  ].indexed)
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: _filter == index,
-                      onSelected: (_) => setState(() => _filter = index),
-                    ),
-                ],
-              ),
-              const SizedBox(height: Gap.xl),
-              _ListHeading(
-                title: query.isEmpty && _filter == 0
-                    ? context.tr("All apps")
-                    : context.tr("Results"),
-                note: loading ? context.tr("Reading the device…") : null,
-                icon: Icons.apps_rounded,
-              ),
-              const SizedBox(height: Gap.sm),
+              if (consent) ...[
+                _SearchField(
+                  controller: _search,
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: Gap.md),
+                Wrap(
+                  spacing: Gap.sm,
+                  runSpacing: Gap.xs,
+                  children: [
+                    for (final (index, label) in [
+                      context.tr("All"),
+                      context.tr("Blocked"),
+                      context.tr("Focus only"),
+                      context.tr("Budgets"),
+                    ].indexed)
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: _filter == index,
+                        onSelected: (_) => setState(() => _filter = index),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: Gap.xl),
+                _ListHeading(
+                  title: query.isEmpty && _filter == 0
+                      ? context.tr("All apps")
+                      : context.tr("Results"),
+                  note: loading ? context.tr("Reading the device…") : null,
+                  icon: Icons.apps_rounded,
+                ),
+                const SizedBox(height: Gap.sm),
+              ],
             ],
           ),
         ),
-        if (loading)
+        if (!consent)
+          const SliverToBoxAdapter(child: SizedBox.shrink())
+        else if (loading)
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: Gap.lg + 4),
             sliver: SliverToBoxAdapter(child: SkeletonList(count: 6)),

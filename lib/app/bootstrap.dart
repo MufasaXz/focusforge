@@ -14,6 +14,7 @@ import '../core/providers/goal_planner_providers.dart';
 import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
+import '../core/providers/usage_providers.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
@@ -150,8 +151,12 @@ Future<ProviderContainer> bootstrap() async {
       .read(breathEventsProvider.notifier)
       .hydrate(store.getList(StoreKeys.breathEvents));
 
-  // Replace stale native remote rules with the user's local choices.
-  await store.setMap(StoreKeys.remoteBlocks, {});
+  // Parent control kept a copy of the child's blocked apps here. The feature
+  // is gone; the key is deleted rather than left behind as an empty map.
+  await store.remove('shield.parentCache');
+  container
+      .read(appListConsentProvider.notifier)
+      .hydrate(store.getBool(StoreKeys.appListConsent));
   container.read(shieldSyncBridgeProvider);
 
   // -- Social ----------------------------------------------------------------

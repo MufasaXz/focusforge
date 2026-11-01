@@ -269,6 +269,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(enable);
       await tester.pumpAndSettle();
+      // Usage access first shows the app-list disclosure.
+      await tester.tap(find.text('Agree'));
+      await tester.pumpAndSettle();
       expect(
         find.text('Waiting for you to turn it on in Settings'),
         findsOneWidget,

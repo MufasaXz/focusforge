@@ -18,8 +18,10 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/providers/usage_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
+import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/icon_badge.dart';
@@ -103,6 +105,31 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       : context.tr("Preview and copy every stored key"),
                   onTap: _busy ? null : () => _export(context, ref),
                 ),
+                // Withdrawing is one tap, as granting was. Off clears the
+                // in-memory list at once; the next Shield visit asks again.
+                SwitchListTile(
+                  secondary: Icon(
+                    Icons.apps_rounded,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  title: Text(
+                    context.tr("App list access"),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  subtitle: Text(
+                    context.tr(
+                      "Lets Shield and Home read installed apps and today’s usage on this device. Never uploaded.",
+                    ),
+                  ),
+                  value: ref.watch(appListConsentProvider),
+                  onChanged: _busy
+                      ? null
+                      : (on) => on
+                            ? confirmAppListAccess(context, ref)
+                            : ref
+                                  .read(appListConsentProvider.notifier)
+                                  .set(false),
+                ),
                 _Row(
                   icon: Icons.cleaning_services_outlined,
                   iconColor: cs.error,
@@ -113,8 +140,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   onTap: _busy ? null : () => _clearAnalytics(context, ref),
                 ),
                 ListTile(
-                  leading:
-                      Icon(Icons.person_remove_outlined, color: cs.error),
+                  leading: Icon(Icons.person_remove_outlined, color: cs.error),
                   title: Text(
                     context.tr("Delete account"),
                     style: TextStyle(
@@ -128,9 +154,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                         ? context.tr(
                             "Permanently remove your account and progress",
                           )
-                        : context.tr(
-                            "Permanently erase your profile and data",
-                          ),
+                        : context.tr("Permanently erase your profile and data"),
                   ),
                   trailing: const AppChevron(),
                   onTap: _busy ? null : () => _deleteAccount(context, ref),
@@ -789,8 +813,9 @@ class _AccountHeader extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: (linked ? cs.primary : cs.onSurfaceVariant)
-                    .withValues(alpha: 0.14),
+                color: (linked ? cs.primary : cs.onSurfaceVariant).withValues(
+                  alpha: 0.14,
+                ),
                 borderRadius: BorderRadius.circular(13),
               ),
               child: Icon(
@@ -855,10 +880,7 @@ class _Row extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return ListTile(
       leading: Icon(icon, color: iconColor ?? cs.onSurfaceVariant),
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall,
-      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: const AppChevron(),
       onTap: onTap,
@@ -882,12 +904,7 @@ class _CloudItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return ListTile(
-      leading: IconBadge(
-        icon: icon,
-        color: cs.tertiary,
-        size: 38,
-        radius: 11,
-      ),
+      leading: IconBadge(icon: icon, color: cs.tertiary, size: 38, radius: 11),
       title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Text(
         detail,

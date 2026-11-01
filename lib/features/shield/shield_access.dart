@@ -8,6 +8,7 @@ import '../../core/providers/usage_providers.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
 import '../../shared/widgets/accessibility_disclosure.dart';
+import '../../shared/widgets/app_list_disclosure.dart';
 import '../settings/settings_support.dart';
 
 import 'package:go_router/go_router.dart';
@@ -138,6 +139,13 @@ Future<void> requestShieldPermission(
   AppPermission permission, {
   String? feature,
 }) async {
+  // Usage access is how per-app time is read, so the app-list disclosure
+  // comes first. A "Not now" there ends the request here.
+  if (permission == AppPermission.usageAccess &&
+      !await confirmAppListAccess(context, ref)) {
+    return;
+  }
+  if (!context.mounted) return;
   if (permission == AppPermission.usageAccess &&
       GoRouter.maybeOf(context)?.routeInformationProvider.value.uri.path
               .contains('shield') ==

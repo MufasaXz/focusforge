@@ -8,6 +8,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/services/permission_manager.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/accessibility_disclosure.dart';
+import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
@@ -75,6 +76,11 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
     if (_requesting != null) return;
     if (permission == AppPermission.accessibility &&
         !await confirmShieldAccess(context)) {
+      return;
+    }
+    if (!mounted) return;
+    if (permission == AppPermission.usageAccess &&
+        !await confirmAppListAccess(context, ref)) {
       return;
     }
     if (!mounted) return;

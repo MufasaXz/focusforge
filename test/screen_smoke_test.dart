@@ -81,6 +81,7 @@ void main() {
         // test, so the real one would call a platform channel that never
         // answers and the protected set would stay pending forever.
         shieldServiceProvider.overrideWithValue(engine),
+        appListConsentProvider.overrideWith(() => AppListConsentNotifier(true)),
         installedAppsProvider.overrideWith((ref) async => apps),
         appUsageTodayProvider.overrideWith((ref) async => usage),
         usageAccessProvider.overrideWith((ref) async => usageAccess),

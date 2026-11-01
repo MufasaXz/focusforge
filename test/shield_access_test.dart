@@ -53,6 +53,7 @@ void main() {
       overrides: [
         localStoreProvider.overrideWithValue(store),
         shieldServiceProvider.overrideWithValue(engine),
+        appListConsentProvider.overrideWith(() => AppListConsentNotifier(true)),
         installedAppsProvider.overrideWith(
           (ref) async => const [
             InstalledApp(
