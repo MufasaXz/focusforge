@@ -8,24 +8,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.os.Build
 import java.io.ByteArrayOutputStream
 
 object AppInfo {
-    /** Metadata (label, system flag, version, install times) for a single package. */
-    fun getAppInfo(
-        context: Context,
-        packageName: String,
-    ): Map<String, String?>? {
-        val pm = context.packageManager
-        return try {
-            val packageInfo = pm.getPackageInfo(packageName, 0)
-            appInfoMap(pm, packageInfo)
-        } catch (e: PackageManager.NameNotFoundException) {
-            null
-        }
-    }
-
     /**
      * Metadata for every installed package the caller is allowed to see.
      *
@@ -58,27 +43,19 @@ object AppInfo {
             null
         }
 
+    /**
+     * Name, label and system flag — the three things the Shield list shows.
+     * Versions and install times are not read: nothing in the app uses them.
+     */
     private fun appInfoMap(
         pm: PackageManager,
         packageInfo: PackageInfo,
     ): Map<String, String?> {
         val appInfo = packageInfo.applicationInfo
-        val versionCode =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.versionCode.toLong()
-            }
         return mapOf(
             "packageName" to packageInfo.packageName,
             "appName" to appInfo?.let { pm.getApplicationLabel(it).toString() },
             "isSystemApp" to (appInfo?.isSystemApp() ?: false).toString(),
-            "enabled" to (appInfo?.enabled ?: false).toString(),
-            "versionName" to packageInfo.versionName,
-            "versionCode" to versionCode.toString(),
-            "firstInstallTime" to packageInfo.firstInstallTime.toString(),
-            "lastUpdateTime" to packageInfo.lastUpdateTime.toString(),
         )
     }
 

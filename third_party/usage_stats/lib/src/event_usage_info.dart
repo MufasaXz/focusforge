@@ -3,7 +3,7 @@ import 'parse.dart';
 /// A single usage event emitted by the system, such as an activity moving to
 /// the foreground or a notification being shown.
 ///
-/// Returned by [UsageStats.queryEvents] and [UsageStats.queryEventsForSelf].
+/// Returned by [UsageStats.queryEvents].
 class EventUsageInfo {
   /// Creates an [EventUsageInfo]. Usually constructed via [EventUsageInfo.fromMap].
   EventUsageInfo({

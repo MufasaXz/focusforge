@@ -19,11 +19,6 @@ object Utils {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    fun grantUsagePermission(context: Context) {
-        if (isUsagePermission(context)) return
-        openUsageAccessSettings(context)
-    }
-
     /**
      * Always opens the system "Usage access" settings screen, regardless of the
      * current permission state. Tries to deep-link to this app's entry and falls
