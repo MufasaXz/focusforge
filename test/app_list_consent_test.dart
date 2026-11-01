@@ -119,7 +119,7 @@ void main() {
     );
     expect(find.textContaining('list of apps installed'), findsOneWidget);
     expect(find.textContaining('to let you choose apps to block'), findsOne);
-    expect(find.textContaining('does not upload'), findsOneWidget);
+    expect(find.textContaining('Never uploaded'), findsOneWidget);
   });
 
   testWidgets('tapping outside or pressing Back is not consent', (
@@ -169,7 +169,7 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('does not upload'), findsOneWidget);
+    expect(find.textContaining('Never uploaded'), findsOneWidget);
     await tester.tap(find.text('Agree'));
     await tester.pumpAndSettle();
     expect(c.read(appListConsentProvider), isTrue);
