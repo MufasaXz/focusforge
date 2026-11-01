@@ -12,6 +12,7 @@ import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
+import '../../core/providers/usage_providers.dart';
 import '../../shared/widgets/confetti_burst.dart';
 import '../../shared/widgets/icon_badge.dart';
 import 'onboarding_chrome.dart';
@@ -82,6 +83,9 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
     final plans = ref.watch(presetsProvider);
     final preset =
         plans[ref.watch(timerProvider).presetIndex.clamp(0, plans.length - 1)];
+    // Said as it is: agreeing to the app list is not the same as a Shield
+    // that is running, so the row never claims more than the agreement.
+    final appList = ref.watch(appListConsentProvider);
 
     return StepScaffold(
       title: context.tr("You're all set"),
@@ -91,6 +95,8 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
       primaryBusy: _finishing,
       onPrimary: _finish,
       children: [
+        const _ReadyMark(),
+        const SizedBox(height: Gap.xl),
         ContentCard(
           child: Column(
             children: [
@@ -128,6 +134,20 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
                   ]),
                 ),
               ),
+              const Divider(height: 1, indent: 72),
+              ListTile(
+                leading: IconBadge(
+                  icon: Icons.shield_outlined,
+                  color: appList ? cs.tertiary : cs.onSurfaceVariant,
+                  size: 40,
+                ),
+                title: Text(context.tr("Shield")),
+                subtitle: Text(
+                  appList
+                      ? context.tr("App list allowed · stays on this phone")
+                      : context.tr("Set up anytime in the Shield tab"),
+                ),
+              ),
             ],
           ),
         ),
@@ -138,6 +158,56 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+/// The finish line, drawn: a check inside two soft rings. It settles in once
+/// and stays still, so it reads as done rather than as something loading.
+class _ReadyMark extends StatelessWidget {
+  const _ReadyMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return ExcludeSemantics(
+      child: Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: reduce ? 1 : .7, end: 1),
+          duration: reduce ? Duration.zero : const Duration(milliseconds: 520),
+          curve: Curves.easeOutBack,
+          builder: (context, t, child) =>
+              Transform.scale(scale: t, child: child),
+          child: Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: cs.primary.withValues(alpha: .08),
+            ),
+            alignment: Alignment.center,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withValues(alpha: .16),
+              ),
+              alignment: Alignment.center,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.primary,
+                ),
+                child: Icon(Icons.check_rounded, size: 30, color: cs.onPrimary),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
