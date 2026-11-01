@@ -174,4 +174,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(c.read(appListConsentProvider), isTrue);
   });
+
+  test('the engine gets no app rules until the user agrees', () async {
+    final c = container();
+    c.read(shieldSyncBridgeProvider);
+    await c
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(packageId: 'com.example.game', name: 'Game');
+    Map<String, dynamic> apps() =>
+        engine.lastApplied!.toChannelPayload()['apps'] as Map<String, dynamic>;
+
+    expect(c.read(whitelistProvider), hasLength(1), reason: 'kept, not lost');
+    expect(apps(), isEmpty, reason: 'no consent, nothing to watch for');
+
+    await c.read(appListConsentProvider.notifier).set(true);
+    expect(apps().keys, ['com.example.game']);
+
+    await c.read(appListConsentProvider.notifier).set(false);
+    expect(apps(), isEmpty, reason: 'withdrawing stops it at once');
+    expect(c.read(whitelistProvider), hasLength(1));
+  });
 }

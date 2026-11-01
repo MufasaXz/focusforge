@@ -10,6 +10,7 @@ import '../services/native_shield_service.dart';
 import '../services/shield_service.dart';
 import 'app_providers.dart';
 import 'study_providers.dart';
+import 'usage_providers.dart';
 
 /// The shield engine for this build.
 ///
@@ -90,7 +91,13 @@ void syncShield(
   final List<WhitelistEntry> apps = whitelist ?? ref.read(whitelistProvider);
   final YoutubeRules localYoutube = youtube ?? ref.read(youtubeRulesProvider);
   final config = ShieldConfig(
-    whitelist: apps,
+    // App rules are enforced by watching which app is in front, which is the
+    // usage the app-list disclosure asks about. Without that agreement — never
+    // given, or withdrawn — the engine gets no app rules at all, so it has no
+    // reason to read usage. The rules stay saved and return on Agree.
+    // YouTube filters are a separate Accessibility feature with their own
+    // disclosure, and are unaffected.
+    whitelist: ref.read(appListConsentProvider) ? apps : const [],
     youtube: localYoutube,
     strictMode: strictMode ?? ref.read(strictModeProvider),
     focusUntil: focusWindowEnd(ref.read(timerProvider)),
@@ -122,6 +129,9 @@ final shieldSyncBridgeProvider = Provider<void>((ref) {
     timerProvider.select(focusWindowEnd),
     (_, next) => syncShield(ref),
   );
+  // Agreeing hands the saved app rules back to the engine; withdrawing takes
+  // them away again, at once rather than at the next rule change.
+  ref.listen(appListConsentProvider, (_, next) => syncShield(ref));
   syncShield(ref);
 });
 
