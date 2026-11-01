@@ -53,9 +53,10 @@ service cloud.firestore {
         badgeDate(dates, before, 'five_sessions', latest) && badgeDate(dates, before, 'three_day_streak', latest) &&
         badgeDate(dates, before, 'five_hours', latest) && badgeDate(dates, before, 'ten_hours', latest);
     }
-    // Retired monitoring cannot be recreated. Private owner reads/deletes
-    // below permit account cleanup without reintroducing sharing.
-    match /pairCodes/{code} { allow read, write: if false; }
+    // Parent control is retired. Its pairCodes and per-user guardian,
+    // children, catalog, progress and remoteRules paths have no write rule, so
+    // the default deny keeps them from being recreated; the private-collection
+    // match below still lets an owner read and delete their own legacy rows.
     match /accountCleanup/{doc} {
       allow get: if request.auth != null && doc == 'schema';
       allow list, write: if false;
@@ -73,8 +74,12 @@ service cloud.firestore {
            request.auth.token.auth_time <= request.time.toMillis() / 1000 + 60));
     }
     match /users/{uid} {
+      // The app never writes this document; everything private lives in the
+      // subcollections below, each with its own shape check. Parent control
+      // was the last writer, so an open write here would accept any field —
+      // an installed-app list included — with no rule saying what it is.
       allow read, delete: if owner(uid);
-      allow create, update: if self(uid);
+      allow create, update: if false;
       match /achievements/{doc} {
         allow read: if owner(uid) && (cleanupAccount() || deleting(uid));
         allow create: if account() && self(uid) && doc == 'earned' &&

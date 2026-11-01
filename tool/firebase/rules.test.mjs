@@ -228,6 +228,13 @@ test('retired paths allow private owner cleanup but never new monitoring writes'
   await assertFails(getDocs(collection(db('child'), 'pairCodes')));
   await assertFails(setDoc(doc(db('child'), 'pairCodes/NEW23456ABCDEFGH'), {childUid:'child'}));
 });
+test('the user root document takes no client writes, so it cannot carry an app list', async () => {
+  await assertFails(setDoc(doc(db('student'), 'users/student'), {apps:['com.example.game']}));
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'users/student'), {legacy:true}));
+  await assertFails(updateDoc(doc(db('student'), 'users/student'), {apps:['com.example.game']}));
+  await assertSucceeds(getDoc(doc(db('student'), 'users/student')));
+  await assertSucceeds(deleteDoc(doc(db('student'), 'users/student')));
+});
 test('an account being deleted cannot republish badges, board rows or join groups', async () => {
   await seedGroup();
   await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'accountDeletions/student'), {requestedAt:now()}));
@@ -354,12 +361,11 @@ test('unverified password credentials cannot create cloud profiles, badges or so
   await assertSucceeds(deleteDoc(doc(unverified,'users',uid)));
 });
 
-test('verified password credentials can save private profile and badges', async () => {
+test('verified password credentials can save private badges', async () => {
   const uid = 'email-verified';
   const verified = env.authenticatedContext(uid, {
     email_verified:true,
     firebase:{sign_in_provider:'password'},
   }).firestore();
-  await assertSucceeds(setDoc(doc(verified,'users',uid),{name:'Verified'}));
   await assertSucceeds(setDoc(doc(verified,'users',uid,'achievements','earned'),earnedBadges()));
 });
