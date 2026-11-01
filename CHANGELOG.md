@@ -19,6 +19,15 @@
   `setNavigationBarColor` calls Play Console reports as deprecated. The bar
   colours below Android 15 come from the window theme instead, so they also
   apply to the launch window before the first frame.
+- FocusForge now asks before it reads the list of installed apps or per-app
+  usage. The Shield tab shows the disclosure in place of the list, usage
+  access asks first, and Profile → Privacy can withdraw it. Until the user
+  agrees, nothing reads the list; it never leaves the device either way.
+- Removed the parts of the bundled usage-statistics plugin the app never
+  used — network, storage and configuration statistics, and app version and
+  install-time details.
+- Firestore no longer accepts client writes to the user's root document. No
+  current feature wrote it; parent control was the last.
 
 ## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-24 (build 2029)
 
