@@ -316,6 +316,24 @@ void main() {
     timer.pause();
   });
 
+  test('a block skipped into while paused starts when it is started', () async {
+    final scope = container();
+    final timer = scope.read(timerProvider.notifier);
+    // Into a break and back out without ever running the clock.
+    timer.skip();
+    timer.skip();
+    expect(timer.state.phase, TimerPhase.focus);
+    expect(timer.state.segmentStartedAt, isNull);
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    final pressed = DateTime.now();
+    timer.start();
+    final started = timer.state.segmentStartedAt!;
+    expect(started.isBefore(pressed), isFalse);
+    expect(timer.state.segmentId, 's-${started.microsecondsSinceEpoch}');
+    timer.pause();
+  });
+
   test(
     'the day log and summary share completed sessions, oldest first',
     () async {

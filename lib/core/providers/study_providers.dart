@@ -1347,7 +1347,10 @@ class TimerNotifier extends Notifier<TimerState> {
     };
 
     final duration = _durationFor(nextPhase);
-    final nextStarted = nextPhase == TimerPhase.focus ? DateTime.now() : null;
+    // A block reached while paused has not begun; start() stamps it later.
+    final nextStarted = nextPhase == TimerPhase.focus && wasRunning
+        ? DateTime.now()
+        : null;
     state = TimerState(
       phase: nextPhase,
       running: wasRunning,
