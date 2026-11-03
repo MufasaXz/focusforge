@@ -106,6 +106,10 @@ class YoutubeRules {
     this.shorts = false,
     this.feed = false,
     this.focusOnly = false,
+    this.study = false,
+    this.studyChannels = const [],
+    this.studyKeywords = const [],
+    this.useSubjects = true,
   });
 
   /// Close the Shorts player.
@@ -122,22 +126,80 @@ class YoutubeRules {
   /// rest of the day, and shut while the user is working.
   final bool focusOnly;
 
-  bool get any => shorts || feed;
+  /// Study mode: only videos from [studyChannels] (and a bundled list of
+  /// well-known educational creators) play, plus videos whose title names one
+  /// of [studyKeywords] or, with [useSubjects], one of the user's subjects.
+  /// Shorts close while it is on.
+  final bool study;
+
+  /// Channel names or @handles, as the user typed or picked them.
+  final List<String> studyChannels;
+
+  /// Extra words that let a video through when its title contains them.
+  final List<String> studyKeywords;
+
+  /// Whether the user's subject names count as keywords too.
+  final bool useSubjects;
+
+  bool get any => shorts || feed || study;
 
   static const off = YoutubeRules();
 
-  YoutubeRules copyWith({bool? shorts, bool? feed, bool? focusOnly}) =>
-      YoutubeRules(
-        shorts: shorts ?? this.shorts,
-        feed: feed ?? this.feed,
-        focusOnly: focusOnly ?? this.focusOnly,
-      );
+  /// Channel and keyword lists are capped to what the engine reads.
+  static const maxChannels = 100;
+  static const maxKeywords = 50;
+
+  YoutubeRules copyWith({
+    bool? shorts,
+    bool? feed,
+    bool? focusOnly,
+    bool? study,
+    List<String>? studyChannels,
+    List<String>? studyKeywords,
+    bool? useSubjects,
+  }) => YoutubeRules(
+    shorts: shorts ?? this.shorts,
+    feed: feed ?? this.feed,
+    focusOnly: focusOnly ?? this.focusOnly,
+    study: study ?? this.study,
+    studyChannels: studyChannels ?? this.studyChannels,
+    studyKeywords: studyKeywords ?? this.studyKeywords,
+    useSubjects: useSubjects ?? this.useSubjects,
+  );
+
+  /// What the engine receives: the user's keywords plus, when chosen, their
+  /// subject names.
+  YoutubeRules forEngine(Iterable<String> subjects) => copyWith(
+    studyKeywords: {
+      ...studyKeywords,
+      if (useSubjects)
+        ...subjects.map((s) => s.trim()).where((s) => s.length >= 3),
+    }.take(maxKeywords).toList(),
+  );
 
   Map<String, dynamic> toJson() => {
     'shorts': shorts,
     'feed': feed,
     'focusOnly': focusOnly,
+    'study': study,
+    'studyChannels': studyChannels,
+    'studyKeywords': studyKeywords,
+    'useSubjects': useSubjects,
   };
+
+  /// Trimmed, non-empty strings, de-duplicated without regard to case.
+  static List<String> _strings(Object? value, int limit) {
+    if (value is! List) return const [];
+    final seen = <String>{};
+    return [
+      for (final item in value.whereType<String>())
+        if (item.trim() case final text
+            when text.isNotEmpty &&
+                text.length <= 100 &&
+                seen.add(text.toLowerCase()))
+          text,
+    ].take(limit).toList();
+  }
 
   /// Type-tested rather than cast: this is read during bootstrap, where a
   /// wrong-typed value must degrade to "off" instead of aborting the launch.
@@ -145,6 +207,10 @@ class YoutubeRules {
     shorts: j['shorts'] is bool ? j['shorts'] as bool : false,
     feed: j['feed'] is bool ? j['feed'] as bool : false,
     focusOnly: j['focusOnly'] is bool ? j['focusOnly'] as bool : false,
+    study: j['study'] is bool ? j['study'] as bool : false,
+    studyChannels: _strings(j['studyChannels'], maxChannels),
+    studyKeywords: _strings(j['studyKeywords'], maxKeywords),
+    useSubjects: j['useSubjects'] is bool ? j['useSubjects'] as bool : true,
   );
 }
 

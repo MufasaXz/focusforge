@@ -61,8 +61,16 @@ data class YoutubeRules(
      * surfaces are picked rather than the whole package.
      */
     val focusOnly: Boolean,
+    /**
+     * Study mode: only videos from [studyChannels] (or the bundled study
+     * catalog) play, plus videos whose title names one of [studyKeywords].
+     * Shorts are closed while it is on.
+     */
+    val study: Boolean = false,
+    val studyChannels: List<String> = emptyList(),
+    val studyKeywords: List<String> = emptyList(),
 ) {
-    val any: Boolean get() = shorts || feed
+    val any: Boolean get() = shorts || feed || study
 
     companion object {
         val OFF = YoutubeRules(shorts = false, feed = false, focusOnly = false)
@@ -161,6 +169,9 @@ data class ShieldRules(
                     shorts = yt?.optBoolean("shorts", false) ?: false,
                     feed = yt?.optBoolean("feed", false) ?: false,
                     focusOnly = yt?.optBoolean("focusOnly", false) ?: false,
+                    study = yt?.optBoolean("study", false) ?: false,
+                    studyChannels = yt?.optJSONArray("studyChannels").strings(100),
+                    studyKeywords = yt?.optJSONArray("studyKeywords").strings(50),
                 )
 
                 // `optLong` returns 0 for an absent key, which would read as a
@@ -249,11 +260,26 @@ object ShieldStore {
                 JSONObject()
                     .put("shorts", rules.youtube.shorts)
                     .put("feed", rules.youtube.feed)
-                    .put("focusOnly", rules.youtube.focusOnly),
+                    .put("focusOnly", rules.youtube.focusOnly)
+                    .put("study", rules.youtube.study)
+                    .put("studyChannels", JSONArray(rules.youtube.studyChannels))
+                    .put("studyKeywords", JSONArray(rules.youtube.studyKeywords)),
             )
             .put("strictUntil", rules.strictUntilMillis ?: JSONObject.NULL)
             .put("focusUntil", rules.focusUntilMillis ?: JSONObject.NULL)
             .put("graceSeconds", rules.graceSeconds)
             .toString()
     }
+}
+
+/** Up to [limit] non-blank strings from a JSON array; empty when absent. */
+private fun JSONArray?.strings(limit: Int): List<String> {
+    if (this == null) return emptyList()
+    val out = ArrayList<String>()
+    for (i in 0 until length()) {
+        if (out.size >= limit) break
+        val value = optString(i, "").trim()
+        if (value.isNotEmpty() && value.length <= 100) out.add(value)
+    }
+    return out
 }
