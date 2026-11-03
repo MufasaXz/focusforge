@@ -175,12 +175,14 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                         : Color(user.avatarColor!),
                     onTap: () =>
                         notifier.setAvatar(icon: null, color: user.avatarColor),
-                    child: Text(
-                      user.initials,
-                      style: tt.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    child: user.initials.isEmpty
+                        ? const Icon(Icons.person_rounded, size: 20)
+                        : Text(
+                            user.initials,
+                            style: tt.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                   for (final name in AppIcons.curated)
                     _MarkChoice(
@@ -301,7 +303,13 @@ class AvatarDisc extends StatelessWidget {
                       ),
                     )
                   : Center(
-                      child: icon == null
+                      child: icon == null && user.initials.isEmpty
+                          ? Icon(
+                              Icons.person_rounded,
+                              size: size * 0.5,
+                              color: onColor,
+                            )
+                          : icon == null
                           ? Text(
                               user.initials,
                               style: Theme.of(context).textTheme.titleLarge

@@ -723,7 +723,10 @@ class FirebaseAuthService extends AuthService {
     if (provider != null && provider.isNotEmpty) return provider;
     final remote = user.displayName?.trim();
     if (remote != null && remote.isNotEmpty) return remote;
-    return email == null ? '' : _nameFromEmail(email);
+    // The account's own address when the caller had none to pass, so a
+    // signed-in profile always has a name to draw initials from.
+    final address = email ?? user.email;
+    return address == null || address.isEmpty ? '' : _nameFromEmail(address);
   }
 
   Future<UserProfile> _persist(

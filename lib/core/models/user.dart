@@ -228,7 +228,8 @@ class UserProfile {
 
   String get initials {
     final parts = displayName.trim().split(RegExp(r'\s+'));
-    if (displayName.trim().isEmpty) return '?';
+    // Empty, not a placeholder: the avatar draws a person icon instead.
+    if (displayName.trim().isEmpty) return '';
     if (parts.length == 1) {
       return parts.first.characters.take(1).toString().toUpperCase();
     }
