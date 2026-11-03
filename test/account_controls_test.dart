@@ -17,6 +17,7 @@ import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
+import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
@@ -586,7 +587,10 @@ void main() {
     expect(container.read(activeFocusGoalProvider), isNotNull);
     container.read(timerProvider.notifier).start();
     await store.setString('auth.deletedCredential', 'stale-deleted-uid');
+    await container.read(appListConsentProvider.notifier).set(true);
     await resetPersistedState(container);
+    expect(container.read(appListConsentProvider), isFalse);
+    expect(store.getBool(StoreKeys.appListConsent), isNull);
     expect(store.getString('auth.deletedCredential'), 'stale-deleted-uid');
     expect(container.read(timerProvider).running, isFalse);
     expect(container.read(userProvider).uid, isEmpty);
