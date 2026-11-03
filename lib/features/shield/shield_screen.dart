@@ -1918,14 +1918,9 @@ class _YoutubeView extends ConsumerWidget {
             child: Column(
               children: [
                 _SurfaceSwitch(
-                  // YouTube's own Shorts mark, so the row is recognisable at
-                  // a glance; it names the feature the switch closes.
-                  leading: Image.asset(
-                    'assets/images/youtube_shorts.png',
-                    width: 24,
-                    height: 24,
-                    excludeFromSemantics: true,
-                  ),
+                  // The Shorts mark as an outline icon, tinted like the
+                  // row's other icons, so it names the feature it closes.
+                  image: const AssetImage('assets/images/youtube_shorts.png'),
                   title: context.tr("Block Shorts"),
                   body: context.tr(
                     "The Shorts player closes. Ordinary videos keep playing, so a lecture link still works.",
@@ -2043,7 +2038,7 @@ Future<void> _changeSurface(
 class _SurfaceSwitch extends StatelessWidget {
   const _SurfaceSwitch({
     this.icon,
-    this.leading,
+    this.image,
     required this.title,
     required this.body,
     required this.value,
@@ -2052,8 +2047,9 @@ class _SurfaceSwitch extends StatelessWidget {
 
   final IconData? icon;
 
-  /// A mark drawn in place of [icon], such as the Shorts logo.
-  final Widget? leading;
+  /// A monochrome mark used in place of [icon], such as the Shorts outline;
+  /// it is tinted the same way.
+  final ImageProvider? image;
   final String title;
   final String body;
   final bool value;
@@ -2068,9 +2064,13 @@ class _SurfaceSwitch extends StatelessWidget {
         HapticFeedback.selectionClick();
         onChanged(v);
       },
-      secondary:
-          leading ??
-          Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
+      secondary: image != null
+          ? ImageIcon(
+              image,
+              size: 24,
+              color: value ? cs.tertiary : cs.onSurfaceVariant,
+            )
+          : Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
       title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),
