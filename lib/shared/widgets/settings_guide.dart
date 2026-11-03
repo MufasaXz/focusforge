@@ -14,6 +14,8 @@ class SettingsGuide {
     required this.toggleLabel,
     required this.steps,
     this.listSection,
+    this.recording,
+    this.still,
   });
 
   /// One sentence on what the access is for.
@@ -31,6 +33,11 @@ class SettingsGuide {
 
   /// Three short steps, in order.
   final List<String> steps;
+
+  /// A screen recording of the real Android pages, played in place of the
+  /// sketch when there is one, and its last frame for reduced motion.
+  final String? recording;
+  final String? still;
 
   static const usageAccess = SettingsGuide._(
     why: 'Shield uses this to see which app is open and how long you used it today.',
@@ -64,6 +71,8 @@ class SettingsGuide {
       'Turn on Use FocusForge, then tap Allow',
       'Come back to FocusForge',
     ],
+    recording: 'assets/guides/accessibility.webp',
+    still: 'assets/guides/accessibility_still.webp',
   );
 
   /// The guide for [permission], or null when it opens no settings list.
@@ -132,7 +141,11 @@ class _GuideSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Gap.lg),
-          ExcludeSemantics(child: _SettingsDemo(guide: guide)),
+          ExcludeSemantics(
+            child: guide.recording == null
+                ? _SettingsDemo(guide: guide)
+                : _Recording(guide: guide),
+          ),
           const SizedBox(height: Gap.lg),
           for (final (index, step) in guide.steps.indexed)
             Padding(
@@ -184,6 +197,43 @@ class _GuideSheet extends StatelessWidget {
             child: Text(context.tr("Not now")),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The recorded walk through Android's own pages, in a phone-shaped frame.
+class _Recording extends StatelessWidget {
+  const _Recording({required this.guide});
+
+  final SettingsGuide guide;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final still = MediaQuery.disableAnimationsOf(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 380),
+        child: AspectRatio(
+          aspectRatio: 480 / 782,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(Radii.card),
+              border: Border.all(color: cs.outlineVariant, width: 3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.card - 3),
+              child: Image.asset(
+                still ? guide.still ?? guide.recording! : guide.recording!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

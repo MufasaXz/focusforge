@@ -1,7 +1,7 @@
 name: focusforge
 description: "FocusForge — an open-source, privacy-first study companion with app shielding, focus timers, analytics and gamification."
 publish_to: 'none'
-version: 1.0.4+2029
+version: 1.0.5+2034
 
 environment:
   sdk: ^3.13.5
@@ -61,6 +61,8 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/guides/
+    - assets/images/
 
   fonts:
     - family: FocusDial
