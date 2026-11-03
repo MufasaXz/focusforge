@@ -51,22 +51,13 @@ class SetupChoiceCard extends StatelessWidget {
         curve: Motion.decelerate,
         decoration: BoxDecoration(
           color: selected
-              ? Color.alphaBlend(accent.withValues(alpha: .11), cs.surface)
-              : cs.surfaceContainerLow,
+              ? Color.alphaBlend(accent.withValues(alpha: .08), cs.surface)
+              : cs.surface,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
-            color: selected ? accent : cs.outlineVariant.withValues(alpha: .45),
-            width: selected ? 1.75 : 1,
+            color: selected ? accent : cs.outlineVariant.withValues(alpha: .6),
+            width: selected ? 1.5 : 1,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: accent.withValues(alpha: .10),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -94,9 +85,19 @@ class SetupChoiceCard extends StatelessWidget {
                           ),
                           const SizedBox(height: Gap.xs),
                         ],
-                        Text(title, style: tt.titleMedium),
-                        const SizedBox(height: Gap.xs),
-                        Text(description, style: tt.bodyMedium),
+                        Text(
+                          title,
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          description,
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),

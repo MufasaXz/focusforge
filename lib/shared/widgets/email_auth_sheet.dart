@@ -10,7 +10,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/services/auth_service.dart';
 import 'form_controls.dart';
-import 'tonal_panel.dart';
 import 'privacy_policy_link.dart';
 import 'email_verification_panel.dart';
 
@@ -102,6 +101,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
       !_busy &&
       !_succeeded &&
       _emailValid &&
+      !_resetSent &&
       (_resetMode ||
           _passwordValid && (!_signUp || _confirmation.text == _password.text));
 
@@ -284,11 +284,6 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Eyebrow(
-                context.tr("YOUR FOCUSFORGE ACCOUNT"),
-                icon: Icons.lock_outline_rounded,
-              ),
-              const SizedBox(height: Gap.lg),
               Row(
                 children: [
                   Expanded(
@@ -316,7 +311,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                         'Enter your account email. We will send a link to reset your password securely with Firebase.',
                       )
                     : widget.service.usesRemoteCredentials
-                    ? context.tr("Linked account · private profile backup")
+                    ? context.tr(
+                        "Sign in to back up your progress and use it on any phone.",
+                      )
                     : context.tr(
                         "Account sign-in is unavailable. You can study on this device without an account.",
                       ),
@@ -405,28 +402,21 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
               ],
               if (_resetSent) ...[
                 const SizedBox(height: Gap.lg),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    context.tr(
-                      'If an account exists for {0}, a reset link is on its way. Check your inbox and spam folder. Open the link to choose a new password on Firebase’s secure page, then return here to sign in.',
-                      [_emailValue],
-                    ),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
+                _ResetSentPanel(email: _emailValue),
               ],
               const SizedBox(height: Gap.xl),
               PrimaryAction(
                 label: _resetMode
-                    ? context.tr('Send reset link')
+                    ? _resetSent
+                          ? context.tr('Link sent')
+                          : context.tr('Send reset link')
                     : _signUp
                     ? context.tr("Create account")
                     : context.tr("Sign in"),
                 busy: _busy,
                 enabled: _canSubmit,
                 onTap: _submit,
-                icon: _succeeded ? Icons.check_rounded : null,
+                icon: _succeeded || _resetSent ? Icons.check_rounded : null,
               ),
               const SizedBox(height: Gap.xs),
               if (_resetMode) ...[
@@ -448,6 +438,84 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                   ),
               ],
               const PrivacyPolicyLink(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Confirms a reset email went out: a green tick that pops in once and the
+/// address it went to.
+///
+/// Firebase answers the same way whether or not the address has an account,
+/// so the copy says the email is on its way only if one exists, rather than
+/// confirming an account to whoever typed the address.
+class _ResetSentPanel extends StatelessWidget {
+  const _ResetSentPanel({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final green = dark ? const Color(0xFF7BD8A0) : const Color(0xFF1B7A43);
+    final surface = dark ? const Color(0xFF16321F) : const Color(0xFFE6F4EA);
+    final still = MediaQuery.of(context).disableAnimations;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(Radii.card),
+          border: Border.all(color: green.withValues(alpha: 0.35)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Gap.lg),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: still ? 1 : 0.4, end: 1),
+                duration: still
+                    ? Duration.zero
+                    : const Duration(milliseconds: 420),
+                curve: Curves.easeOutBack,
+                builder: (context, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: green,
+                  size: 28,
+                  semanticLabel: context.tr('Reset link sent'),
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('Reset link sent'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: green,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: Gap.xs),
+                    Text(
+                      context.tr(
+                        'If {0} has a FocusForge account, the email is on its way. Open it, tap Reset password and choose a new one, then sign in here. Not in your inbox? Check spam.',
+                        [email],
+                      ),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

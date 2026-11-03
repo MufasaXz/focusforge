@@ -12,10 +12,9 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/focus/widgets/clock_faces.dart';
-import 'package:focusforge/features/onboarding/goal_step.dart';
 import 'package:focusforge/features/onboarding/onboarding_chrome.dart';
 import 'package:focusforge/features/onboarding/permissions_step.dart';
-import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
 import 'package:focusforge/features/onboarding/setup_choice_card.dart';
 
 void main() {
@@ -56,11 +55,7 @@ void main() {
         viewport(tester, const Size(320, 480));
         var continued = false;
         await tester.pumpWidget(
-          wrap(
-            PersonaStep(onNext: () => continued = true),
-            scale: 2,
-            dark: dark,
-          ),
+          wrap(FocusStep(onNext: () => continued = true), scale: 2, dark: dark),
         );
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(find.text('Fewer distractions'), 180);
@@ -88,8 +83,14 @@ void main() {
         expect(find.byType(RetroClock), findsNothing);
         expect(find.text('25:00'), findsNothing);
         expect(tester.takeException(), isNull);
-        await tester.scrollUntilVisible(find.text('Skip for now'), 160);
-        expect(find.text('Skip for now').hitTestable(), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Continue without an account'),
+          160,
+        );
+        expect(
+          find.text('Continue without an account').hitTestable(),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -152,21 +153,6 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-
-  testWidgets('goal suggestions fit narrow screens with enlarged text', (
-    tester,
-  ) async {
-    viewport(tester, const Size(320, 640));
-    await tester.pumpWidget(wrap(GoalStep(onNext: () {}), scale: 2));
-    await tester.pumpAndSettle();
-    final suggested = find.widgetWithText(FilterChip, 'Recommended');
-    await tester.scrollUntilVisible(suggested, 160);
-    await tester.pumpAndSettle();
-    await tester.tap(suggested);
-    await tester.pumpAndSettle();
-    expect(suggested.hitTestable(), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 
   testWidgets('unsupported platforms have no irrelevant enable buttons', (
     tester,

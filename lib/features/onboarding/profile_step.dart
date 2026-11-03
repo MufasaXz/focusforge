@@ -5,18 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
-import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/icon_badge.dart';
+import '../../features/profile/widgets/avatar_sheet.dart';
+import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
-/// Screen 3 — profile.
+/// Screen 3 — profile: a photo and a name, both optional.
 ///
-/// Name and timezone only. The avatar is initials rather than an upload: there
-/// is no image pipeline yet, and a fake camera button that opens nothing is
-/// worse than no button. The timezone is detected from the device clock — it
-/// is needed for scheduled strictness and leaderboard resets, and asking the
-/// user to type it would be a guaranteed typo.
+/// The avatar opens the same sheet the Profile tab uses, so a photo chosen here
+/// is the one shown everywhere afterwards. The timezone is still recorded,
+/// from the device clock, because scheduled strictness and weekly resets need
+/// it; it is not shown, since there is nothing for the user to decide.
 class ProfileStep extends ConsumerStatefulWidget {
   const ProfileStep({super.key, required this.onNext});
 
@@ -30,8 +29,6 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
   late final TextEditingController _name = TextEditingController(
     text: ref.read(userProvider).displayName,
   );
-
-  late final String _timezone = _detectTimezone();
 
   @override
   void initState() {
@@ -51,7 +48,7 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
   }
 
   /// No timezone database is bundled, so the IANA name is out of reach; the
-  /// platform's own label plus the UTC offset is the honest thing to show.
+  /// platform's own label plus the UTC offset is what gets stored.
   static String _detectTimezone() {
     final now = DateTime.now();
     final offset = now.timeZoneOffset;
@@ -65,26 +62,15 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
     return name.isEmpty || name == gmt ? gmt : '$name ($gmt)';
   }
 
-  static String _initialsOf(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList(growable: false);
-    if (parts.isEmpty) return '';
-    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
-    return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
-  }
-
   Future<void> _commit() async {
     final notifier = ref.read(userProvider.notifier);
     final name = _name.text.trim();
     if (name.isNotEmpty) await notifier.setDisplayName(name);
 
+    final timezone = _detectTimezone();
     final profile = ref.read(userProvider);
-    if (profile.timezone != _timezone) {
-      await notifier.save(profile.copyWith(timezone: _timezone));
+    if (profile.timezone != timezone) {
+      await notifier.save(profile.copyWith(timezone: timezone));
     }
     if (mounted) widget.onNext();
   }
@@ -92,29 +78,66 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final initials = _initialsOf(_name.text);
+    final user = ref.watch(userProvider);
+    // The preview follows the field before it is saved.
+    final preview = user.copyWith(displayName: _name.text);
+    final hasPhoto = user.avatarPhoto != null || user.avatarIcon != null;
 
     return StepScaffold(
       title: context.tr("Your profile"),
-      eyebrow: context.tr("ABOUT YOU"),
       subtitle: context.tr("What should we call you?"),
       onPrimary: _commit,
       children: [
         Stagger(
           index: 2,
-          child: Center(child: _Avatar(initials: initials)),
+          child: Center(
+            child: Column(
+              children: [
+                Semantics(
+                  button: true,
+                  label: context.tr("Choose photo"),
+                  excludeSemantics: true,
+                  child: Pressable(
+                    onTap: () => showAvatarSheet(context),
+                    scale: 0.95,
+                    child: AvatarDisc(
+                      user: preview,
+                      size: 104,
+                      editable: true,
+                      frame: false,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.md),
+                TextButton.icon(
+                  onPressed: () => showAvatarSheet(context),
+                  icon: Icon(
+                    hasPhoto
+                        ? Icons.edit_outlined
+                        : Icons.add_photo_alternate_outlined,
+                    size: 18,
+                  ),
+                  label: Text(context.tr("Choose photo")),
+                ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: Gap.xl),
+        const SizedBox(height: Gap.lg),
         Stagger(
           index: 3,
-          child: SectionHeader(title: context.tr("Display name")),
+          child: Text(
+            context.tr("Display name"),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
         ),
+        const SizedBox(height: Gap.sm),
         Stagger(
           index: 4,
           child: AppTextField(
             controller: _name,
             hint: context.tr("Your name"),
-            icon: Icons.badge_outlined,
+            icon: Icons.person_outline_rounded,
             maxLength: 60,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
@@ -123,76 +146,13 @@ class _ProfileStepState extends ConsumerState<ProfileStep> {
         const SizedBox(height: Gap.sm),
         Stagger(
           index: 5,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text(
-              context.tr("Optional. You can change it later."),
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-        ),
-        const SizedBox(height: Gap.xl),
-        Stagger(index: 6, child: SectionHeader(title: context.tr("Timezone"))),
-        Stagger(
-          index: 7,
-          child: Card.outlined(
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.card),
-              side: BorderSide(color: cs.outlineVariant),
-            ),
-            child: ListTile(
-              leading: IconBadge(
-                icon: Icons.public_outlined,
-                color: cs.tertiary,
-                size: 36,
-                radius: Radii.tile,
-              ),
-              title: Text(
-                _timezone,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              subtitle: Text(
-                context.tr("Detected from your device"),
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              trailing: Chip(
-                visualDensity: VisualDensity.compact,
-                label: Text(
-                  context.tr("Auto"),
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: cs.tertiary),
-                ),
-              ),
-            ),
+          child: Text(
+            context.tr("Optional. You can change it later."),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initials});
-
-  final String initials;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return CircleAvatar(
-      radius: 48,
-      backgroundColor: cs.primaryContainer,
-      child: initials.isEmpty
-          ? Icon(Icons.person_rounded, size: 38, color: cs.onPrimaryContainer)
-          : Text(
-              initials,
-              style: Theme.of(context).textTheme.displayMedium
-                  ?.copyWith(fontSize: 32, color: cs.onPrimaryContainer),
-            ),
     );
   }
 }

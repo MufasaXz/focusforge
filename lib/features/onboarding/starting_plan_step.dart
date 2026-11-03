@@ -98,7 +98,6 @@ class _StartingPlanStepState extends ConsumerState<StartingPlanStep> {
 
     return StepScaffold(
       title: context.tr("Choose your pace"),
-      eyebrow: context.tr("YOUR FIRST SESSION"),
       subtitle: context.tr("We suggest {0} minutes. Pick what works for you.", [
         suggested.focus,
       ]),

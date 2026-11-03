@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import '../../shared/widgets/form_controls.dart';
 import '../../shared/widgets/stagger.dart';
-import '../../shared/widgets/tonal_panel.dart';
 
 /// Furniture shared by every onboarding step.
 ///
@@ -36,7 +35,6 @@ class StepScaffold extends StatefulWidget {
     this.primaryBusy = false,
     this.secondary,
     this.footnote,
-    this.eyebrow = 'YOUR SETUP',
   });
 
   final String title;
@@ -48,7 +46,6 @@ class StepScaffold extends StatefulWidget {
   final bool primaryBusy;
   final Widget? secondary;
   final String? footnote;
-  final String eyebrow;
 
   @override
   State<StepScaffold> createState() => _StepScaffoldState();
@@ -80,9 +77,10 @@ class _StepScaffoldState extends State<StepScaffold> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
 
+    // No label above the title: the header already names the step, and a
+    // second caption in capitals only repeats it.
     final body = <Widget>[
-      Eyebrow(widget.eyebrow),
-      const SizedBox(height: Gap.md),
+      const SizedBox(height: Gap.sm),
       Stagger(
         index: 0,
         child: Semantics(
@@ -101,7 +99,7 @@ class _StepScaffoldState extends State<StepScaffold> {
             padding: const EdgeInsets.only(top: Gap.md),
             child: Text(
               widget.subtitle!,
-              style: Theme.of(context).textTheme.bodyMedium
+              style: Theme.of(context).textTheme.bodyLarge
                   ?.copyWith(color: t.onSurfaceVariant),
             ),
           ),

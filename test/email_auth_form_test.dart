@@ -90,36 +90,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('reset sends a Firebase link and explains the hosted page', (
-    tester,
-  ) async {
-    await showForm(tester);
-    await tester.enterText(
-      find.byType(TextField).first,
-      ' person@example.com ',
-    );
-    await tester.enterText(find.byType(TextField).last, 'old-password');
-    await tester.tap(find.text('Forgot password?'));
-    await tester.pumpAndSettle();
-    expect(find.byType(TextField), findsOneWidget);
-    await tester.tap(find.text('Send reset link'));
-    await tester.pumpAndSettle();
-    expect(auth.requests, ['person@example.com']);
-    expect(find.textContaining('a reset link is on its way'), findsOneWidget);
-    expect(find.textContaining('Firebase’s secure page'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
-    await tester.enterText(find.byType(TextField).first, 'other@example.com');
-    await tester.pump();
-    expect(find.textContaining('a reset link is on its way'), findsNothing);
-    await tester.tap(find.text('Back to sign in'));
-    await tester.pumpAndSettle();
-    expect(find.text('Sign in with email'), findsOneWidget);
-    expect(
-      tester.widget<TextField>(find.byType(TextField).last).controller!.text,
-      isEmpty,
-    );
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'reset shows a green sent state and locks until the address changes',
+    (tester) async {
+      await showForm(tester);
+      await tester.enterText(
+        find.byType(TextField).first,
+        ' person@example.com ',
+      );
+      await tester.enterText(find.byType(TextField).last, 'old-password');
+      await tester.tap(find.text('Forgot password?'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsOneWidget);
+      await tester.tap(find.text('Send reset link'));
+      await tester.pumpAndSettle();
+      expect(auth.requests, ['person@example.com']);
+      expect(find.text('Reset link sent'), findsOneWidget);
+      expect(find.textContaining('the email is on its way'), findsOneWidget);
+      expect(find.textContaining('person@example.com'), findsWidgets);
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+      expect(find.text('Link sent'), findsOneWidget);
+      // A second tap must not send a second email to the same address.
+      await tester.tap(find.text('Link sent'));
+      await tester.pumpAndSettle();
+      expect(auth.requests, ['person@example.com']);
+      expect(find.byType(TextField), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'other@example.com');
+      await tester.pump();
+      expect(find.text('Reset link sent'), findsNothing);
+      expect(find.text('Send reset link'), findsOneWidget);
+      await tester.tap(find.text('Back to sign in'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign in with email'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+        isEmpty,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'requesting a reset prevents duplicate sends and editing the address',
@@ -161,7 +170,7 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('Send reset link'), findsOneWidget);
     expect(find.text('Six-digit code'), findsNothing);
-    expect(find.textContaining('a reset link is on its way'), findsNothing);
+    expect(find.text('Reset link sent'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

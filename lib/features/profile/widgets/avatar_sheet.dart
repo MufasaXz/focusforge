@@ -232,6 +232,7 @@ class AvatarDisc extends StatelessWidget {
     required this.size,
     this.level = 1,
     this.editable = false,
+    this.frame = true,
   });
 
   final UserProfile user;
@@ -246,6 +247,10 @@ class AvatarDisc extends StatelessWidget {
   /// Draws the small pencil badge, and says "tap to change" to a screen
   /// reader. The tap itself belongs to the caller.
   final bool editable;
+
+  /// The level frame around the disc. Setup leaves it off: there is no level
+  /// to show before the first session.
+  final bool frame;
 
   @override
   Widget build(BuildContext context) {
@@ -313,11 +318,12 @@ class AvatarDisc extends StatelessWidget {
                             ),
                     ),
             ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _AvatarFrame(tier: tier)),
+            if (frame)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(painter: _AvatarFrame(tier: tier)),
+                ),
               ),
-            ),
             if (editable)
               Positioned(
                 right: -2,

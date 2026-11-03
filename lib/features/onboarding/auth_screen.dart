@@ -203,173 +203,329 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Widget _content(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final providers = ref.watch(authServiceProvider).supportedProviders;
     final googleLive = providers.contains('google');
+    final emailLive = providers.contains('email');
     final bottomInset = widget.embedded
         ? MediaQuery.paddingOf(context).bottom
         : 0.0;
+    final note = googleLive
+        ? context.tr("An account is optional. You can sign in later.")
+        : emailLive
+        ? context.tr(
+            "Google sign-in is not available in this build. Use email or skip — you can link an account later.",
+          )
+        : context.tr(
+            "Account sign-in is unavailable right now. Skip to study on this device and try signing in later.",
+          );
 
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final breathingRoom = (constraints.maxHeight * 0.025).clamp(12.0, 24.0);
-        return SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              Gap.xl,
-              breathingRoom,
-              Gap.xl,
-              Gap.xl + bottomInset,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_auth.restorationPending &&
-                    _auth.recoveryState.value == null) ...[
-                  Text(
-                    context.tr(
-                      "Your saved profile could not be loaded. Connect to the internet and try again.",
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          // Intrinsic height lets the spacer below push the legal links to the
+          // foot of a tall screen while still scrolling on a short one.
+          child: IntrinsicHeight(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                Gap.xl,
+                Gap.lg,
+                Gap.xl,
+                Gap.lg + bottomInset,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_auth.restorationPending &&
+                      _auth.recoveryState.value == null)
+                    _RecoveryNotice(
+                      onRetry: _busy == null
+                          ? () => _run('restore', _auth.restore)
+                          : null,
                     ),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  FilledButton.icon(
-                    onPressed: _busy == null
-                        ? () => _run('restore', _auth.restore)
-                        : null,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(context.tr("Retry account recovery")),
-                  ),
-                  const SizedBox(height: Gap.lg),
-                ],
-                Stagger(
-                  index: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: Gap.xxl,
-                      bottom: Gap.xl,
-                    ),
+                  const SizedBox(height: Gap.xxl),
+                  Stagger(
+                    index: 0,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const AppMark(size: 40),
-                            const SizedBox(width: Gap.md),
-                            Expanded(
-                              child: Text(
-                                'FocusForge',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
+                        const AppMark(size: 72),
+                        const SizedBox(height: Gap.xl),
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            context.tr("Welcome to FocusForge"),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -.6,
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: Gap.xxl),
-                        Text(
-                          context.tr("Make room for\nwhat matters."),
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(
-                                letterSpacing: -1.2,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: Gap.md),
+                        const SizedBox(height: Gap.sm),
                         Text(
                           context.tr(
-                            "A quieter space to study, one session at a time.",
+                            "Sign in to back up your progress and use it on any phone.",
                           ),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: cs.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: Gap.xl),
-                Stagger(
-                  index: 1,
-                  child: Text(
-                    context.tr("Sign in to connect"),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                const SizedBox(height: Gap.sm),
-                Stagger(
-                  index: 2,
-                  child: Text(
-                    context.tr(
-                      "Restore your profile, level and achievements, join groups and compare focus time.",
+                  const SizedBox(height: Gap.xxl),
+                  Stagger(
+                    index: 1,
+                    child: _SignInButton(
+                      label: context.tr("Continue with Google"),
+                      leading: const GoogleMark(size: 22),
+                      busy: _busy == 'google',
+                      done: _done == 'google',
+                      // A disabled button that stays in place explains itself;
+                      // one that vanishes on some builds does not.
+                      onTap: googleLive && _busy == null
+                          ? () => _run(
+                              'google',
+                              () => _auth.linkAccount(provider: 'google'),
+                            )
+                          : null,
                     ),
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                ),
-                const SizedBox(height: Gap.lg),
-                Stagger(
-                  index: 3,
-                  child: ProviderRow(
-                    label: context.tr("Continue with Google"),
-                    leading: const GoogleMark(),
-                    busy: _busy == 'google',
-                    done: _done == 'google',
-                    // A disabled row that still explains itself beats a row that
-                    // vanishes on some builds and not others.
-                    onTap: googleLive && _busy == null
-                        ? () => _run(
-                            'google',
-                            () => _auth.linkAccount(provider: 'google'),
-                          )
-                        : null,
+                  const SizedBox(height: Gap.md),
+                  Stagger(
+                    index: 2,
+                    child: _SignInButton(
+                      label: context.tr("Continue with Email"),
+                      leading: Icon(
+                        Icons.mail_outline_rounded,
+                        size: 22,
+                        color: cs.onSurface,
+                      ),
+                      busy: _busy == 'email',
+                      onTap: _busy == null && emailLive ? _email : null,
+                    ),
                   ),
-                ),
-                const SizedBox(height: Gap.md),
-                Stagger(
-                  index: 4,
-                  child: ProviderRow(
-                    label: context.tr("Continue with Email"),
-                    leading: const MailMark(),
-                    busy: _busy == 'email',
-                    onTap: _busy == null && providers.contains('email')
-                        ? _email
-                        : null,
+                  const SizedBox(height: Gap.lg),
+                  Stagger(index: 3, child: _OrDivider(label: context.tr("or"))),
+                  const SizedBox(height: Gap.sm),
+                  Stagger(
+                    index: 4,
+                    child: Center(
+                      child: TextButton(
+                        onPressed: _busy == null ? _skip : null,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          textStyle: theme.textTheme.titleSmall,
+                        ),
+                        child: _busy == 'skip'
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(context.tr("Continue without an account")),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: Gap.lg),
-                Stagger(
-                  index: 5,
-                  child: GhostAction(
-                    label: context.tr("Skip for now"),
-                    icon: Icons.arrow_forward_rounded,
-                    onTap: _busy == null ? _skip : null,
-                  ),
-                ),
-                const SizedBox(height: Gap.sm),
-                Stagger(
-                  index: 6,
-                  child: Text(
-                    googleLive
-                        ? context.tr(
-                            "An account is optional. You can sign in later.",
-                          )
-                        : providers.contains('email')
-                        ? context.tr(
-                            "Google sign-in is not available in this build. Use email or skip — you can link an account later.",
-                          )
-                        : context.tr(
-                            "Account sign-in is unavailable right now. Skip to study on this device and try signing in later.",
-                          ),
+                  const SizedBox(height: Gap.xs),
+                  Text(
+                    note,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: Gap.sm),
-                const PrivacyPolicyLink(),
-              ],
+                  const Spacer(),
+                  const SizedBox(height: Gap.xl),
+                  const _LegalLinks(),
+                ],
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown above everything when a saved profile could not be fetched.
+class _RecoveryNotice extends StatelessWidget {
+  const _RecoveryNotice({required this.onRetry});
+
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Gap.lg),
+      decoration: BoxDecoration(
+        color: cs.errorContainer.withValues(alpha: .5),
+        borderRadius: BorderRadius.circular(Radii.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr(
+              "Your saved profile could not be loaded. Connect to the internet and try again.",
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: Gap.sm),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(context.tr("Retry account recovery")),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A full-width sign-in button: provider mark on the left, label centred,
+/// progress or a tick on the right while it works.
+class _SignInButton extends StatelessWidget {
+  const _SignInButton({
+    required this.label,
+    required this.leading,
+    required this.onTap,
+    this.busy = false,
+    this.done = false,
+  });
+
+  final String label;
+  final Widget leading;
+  final VoidCallback? onTap;
+  final bool busy;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final enabled = onTap != null || busy || done;
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      excludeSemantics: true,
+      child: AnimatedOpacity(
+        duration: Motion.quick,
+        opacity: enabled ? 1 : .45,
+        child: Material(
+          color: cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.pill),
+            side: BorderSide(color: cs.outline.withValues(alpha: .55)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 56,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+                child: Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: 24,
+                      child: Center(child: leading),
+                    ),
+                    Expanded(
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox.square(
+                      dimension: 24,
+                      child: busy
+                          ? const Padding(
+                              padding: EdgeInsets.all(3),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : done
+                          ? Icon(Icons.check_rounded, color: cs.primary)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final line = Expanded(child: Divider(color: cs.outlineVariant, height: 1));
+    return ExcludeSemantics(
+      child: Row(
+        children: [
+          line,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          line,
+        ],
+      ),
+    );
+  }
+}
+
+/// Privacy policy and terms, side by side at the foot of the screen.
+class _LegalLinks extends StatelessWidget {
+  const _LegalLinks();
+
+  static const _termsUrl = 'https://focusforgeorg.vercel.app/terms';
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextButton.styleFrom(
+      minimumSize: const Size(48, 44),
+      textStyle: Theme.of(context).textTheme.labelLarge,
+      foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: Gap.sm,
+      children: [
+        TextButton(
+          style: style,
+          onPressed: () => openPrivacyResource(context, privacyPolicyUrl),
+          child: Text(context.tr("Privacy policy")),
+        ),
+        TextButton(
+          style: style,
+          onPressed: () => openPrivacyResource(context, _termsUrl),
+          child: Text(context.tr("Terms of service")),
+        ),
+      ],
     );
   }
 }
