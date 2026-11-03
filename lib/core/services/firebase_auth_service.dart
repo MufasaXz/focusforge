@@ -16,9 +16,10 @@ import 'study_backup_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
 ///
-/// LocalStore supports offline study. Verified linked accounts privately back
-/// up study settings and sessions before a restored profile is published.
-/// Optional groups, leaderboard sharing and badge backups have separate services.
+/// LocalStore holds study history and setup, which stay on the device. Verified
+/// linked accounts privately back up their profile and level, restored before
+/// the profile is published. Optional groups, leaderboard sharing and badge
+/// backups have separate services.
 ///
 /// Constructed only after `Firebase.initializeApp()` has succeeded; see
 /// `bootstrap()`, which falls back to [LocalAuthService] otherwise.
