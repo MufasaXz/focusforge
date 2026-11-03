@@ -35,7 +35,6 @@ import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
-import 'package:focusforge/features/dashboard/widgets/study_tracker.dart';
 import 'package:focusforge/features/focus/fullscreen_clock.dart';
 import 'package:focusforge/features/onboarding/coach_marks.dart';
 import 'package:focusforge/features/shield/shield_screen.dart';
@@ -515,27 +514,6 @@ void main() {
         find.text('50m'),
         findsWidgets,
         reason: 'the ring, the breakdown and the day all agree',
-      );
-      expect(find.text('Weekly progress'), findsOneWidget);
-
-      // The tracker opens on the week; the month is the other window onto the
-      // same log.
-      await tester.tap(find.text('Month'));
-      await settle(tester);
-      expect(find.text('Monthly progress'), findsOneWidget);
-      await tester.tap(find.text('Week'));
-      await settle(tester);
-
-      // Tapping a bar opens that day's breakdown. Today is the last bar, so
-      // the tap goes to the right-hand end of the tracker rather than to a
-      // label that appears in three other places on the page.
-      final tracker = tester.getRect(find.byType(StudyTracker));
-      await tester.tapAt(Offset(tracker.right - 12, tracker.center.dy));
-      await settle(tester);
-      expect(
-        find.text('Today'),
-        findsWidgets,
-        reason: 'the tracker labels the bar and the sheet names the day',
       );
       expect(find.text('Math'), findsWidgets);
       expect(tester.takeException(), isNull);

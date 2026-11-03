@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +11,6 @@ import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/widgets/session_shortcut.dart';
 import 'package:focusforge/features/dashboard/widgets/day_summary_sheet.dart';
-import 'package:focusforge/features/dashboard/widgets/study_tracker.dart';
 import 'package:focusforge/core/data/seed.dart';
 import 'package:focusforge/features/focus/focus_screen.dart';
 import 'package:focusforge/features/focus/ambient_mixer.dart';
@@ -424,37 +421,6 @@ void main() {
       expect(find.text(label), findsOneWidget);
     }
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('each chart day offers a named action and keyboard activation', (
-    tester,
-  ) async {
-    final handle = tester.ensureSemantics();
-    final day = DayBar('Thu', 1, date: DateTime(2026, 10, 8));
-    DayBar? opened;
-    await tester.pumpWidget(
-      wrap(
-        container(),
-        StudyTracker(days: [day], onDayTap: (value) => opened = value),
-      ),
-    );
-    await settle(tester);
-    final action = find.bySemanticsLabel(
-      'Thursday, October 8. 1 hour focused. View day summary',
-    );
-    expect(action, findsOneWidget);
-    expect(
-      tester
-          .getSemantics(action)
-          .getSemanticsData()
-          .hasAction(SemanticsAction.tap),
-      isTrue,
-    );
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump();
-    expect(opened, same(day));
-    handle.dispose();
   });
 
   testWidgets('reduced motion reveals delayed content immediately', (

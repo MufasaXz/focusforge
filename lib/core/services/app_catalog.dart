@@ -8,11 +8,15 @@ class InstalledApp {
     required this.packageId,
     required this.name,
     required this.isSystem,
+    this.category,
   });
 
   final String packageId;
   final String name;
   final bool isSystem;
+
+  /// Android's declared app category, when the phone reports one.
+  final int? category;
 }
 
 /// Reads the device's app list, its launcher icons and its real usage.
@@ -73,6 +77,7 @@ class AppCatalog {
             packageId: packageId,
             name: label.trim(),
             isSystem: app.isSystemApp,
+            category: app.category,
           ),
         );
       }
@@ -151,6 +156,22 @@ class AppCatalog {
       final midnight = DateTime(now.year, now.month, now.day);
       final events = await UsageStats.queryEvents(midnight, now);
       return foregroundMinutes(events, until: now);
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Foreground minutes per package between [start] and [end], from the same
+  /// event stream as [usageToday]. Android keeps these events for a limited
+  /// number of days, so older ranges can come back empty.
+  static Future<Map<String, int>> usageBetween(
+    DateTime start,
+    DateTime end,
+  ) async {
+    if (!isSupported || !end.isAfter(start)) return const {};
+    try {
+      final events = await UsageStats.queryEvents(start, end);
+      return foregroundMinutes(events, until: end);
     } catch (_) {
       return const {};
     }

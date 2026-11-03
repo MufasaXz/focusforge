@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import java.io.ByteArrayOutputStream
 
 object AppInfo {
@@ -44,7 +45,9 @@ object AppInfo {
         }
 
     /**
-     * Name, label and system flag — the three things the Shield list shows.
+     * Name, label, system flag and the developer's declared category (games,
+     * social, video, productivity…), which the usage stats group apps by.
+     * The category exists from Android 8.0; earlier it is left out.
      * Versions and install times are not read: nothing in the app uses them.
      */
     private fun appInfoMap(
@@ -56,6 +59,12 @@ object AppInfo {
             "packageName" to packageInfo.packageName,
             "appName" to appInfo?.let { pm.getApplicationLabel(it).toString() },
             "isSystemApp" to (appInfo?.isSystemApp() ?: false).toString(),
+            "category" to
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appInfo?.category?.toString()
+                } else {
+                    null
+                },
         )
     }
 

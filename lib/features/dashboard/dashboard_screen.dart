@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
-import '../../core/data/seed.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/coach_providers.dart';
 import '../../core/providers/study_providers.dart';
@@ -19,20 +18,16 @@ import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/tonal_panel.dart';
 import '../onboarding/coach_marks.dart';
 import 'widgets/daily_goal_sheet.dart';
-import 'widgets/focus_heatmap.dart';
-import 'widgets/day_summary_sheet.dart';
 import 'widgets/goal_ring.dart';
 import 'widgets/session_shortcut.dart';
+import 'usage_stats.dart';
 import 'widgets/usage_access_card.dart';
-import 'widgets/study_tracker.dart';
 import 'widgets/subject_breakdown.dart';
-import 'widgets/top_subject_card.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
@@ -66,11 +61,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _calendar.cancel();
     super.dispose();
   }
-
-  /// Which window the tracker is showing. Local state rather than a provider:
-  /// it is a way of looking at the log, not a fact about the user, and it
-  /// should start on the week every time the app opens.
-  StudyRange _range = StudyRange.week;
 
   Future<void> _refresh() async {
     ref.read(timerProvider.notifier).sync();
@@ -111,13 +101,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sessionsToday = sessions
         .where((s) => s.completed && _sameDay(s.startedAt, now))
         .length;
-
-    // Every number on this screen is derived from the session log, so the
-    // chart, the heatmap and the ring above them can never disagree.
-    final days = ref.watch(rangeBarsProvider(_range));
-    final total = ref.watch(rangeTotalHoursProvider(_range));
-    final average = ref.watch(rangeAverageHoursProvider(_range));
-    final heatmapWeeks = ref.watch(heatmapWeeksProvider);
 
     // Measure the room remaining beside the rail, including split windows.
     return LayoutBuilder(
@@ -202,54 +185,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           const UsageAccessCard(),
         ];
+        // Screen time, once the phone shares it: today's total, this week's
+        // bars by category, and the full stats one tap away.
+        final screenTime =
+            ref.watch(appListConsentProvider) &&
+            ref.watch(usageAccessProvider).valueOrNull == true;
         final history = <Widget>[
-          if ((_range == StudyRange.month
-              ? sessions.isNotEmpty
-              : days.any((day) => day.hours > 0))) ...[
+          if (screenTime) ...[
             const SizedBox(height: Gap.xl),
             SectionHeader(
-              title: _range == StudyRange.week
-                  ? context.tr("Weekly progress")
-                  : context.tr("Monthly progress"),
+              title: context.tr("Screen time"),
               icon: Icons.bar_chart_rounded,
             ),
-            _TrackerPanel(
-              range: _range,
-              onRangeChanged: (r) => setState(() => _range = r),
-              total: total,
-              average: average,
-              days: days,
-              onDayTap: (day) => _openDay(day),
-            ),
-            const SizedBox(height: Gap.xl),
-            // Both of these are month-shaped reads: the grid covers five weeks and
-            // the card names the leader of the span the chart is showing. They
-            // answer "how has this month gone", which the week view never asks, so
-            // they appear with the month rather than padding the week's page.
-            if (_range == StudyRange.month) ...[
-              SectionHeader(
-                title: context.tr("Top subject"),
-                icon: Icons.workspace_premium_rounded,
-              ),
-              TopSubjectCard(range: _range),
-              const SizedBox(height: Gap.xl),
-              SectionHeader(
-                title: context.tr("Focus heatmap"),
-                icon: Icons.calendar_month_rounded,
-              ),
-              GlassCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(Gap.lg),
-                  child: FocusHeatmap(
-                    weeks: heatmapWeeks,
-                    // The same sheet the tracker's bars open: a day is a day, and
-                    // which of the two views it was reached from is not a fact
-                    // about the day.
-                    onDayTap: (date) => showDaySummarySheet(context, date),
-                  ),
-                ),
-              ),
-            ],
+            const ScreenTimeOverview(),
           ],
         ];
 
@@ -352,13 +300,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     for (var i = 0; i < children.length; i++)
       Stagger(index: from + i, child: children[i]),
   ];
-
-  /// Opens the tapped day's summary.
-  void _openDay(DayBar day) {
-    final date = day.date;
-    if (date == null) return;
-    showDaySummarySheet(context, date);
-  }
 }
 
 bool _sameDay(DateTime a, DateTime b) =>
@@ -404,8 +345,10 @@ class _Greeting extends StatelessWidget {
               // rhythm the screens below the greeting use, so the header joins
               // the page instead of floating above it.
               Text(
-                formatDate(now, locale: Localizations.localeOf(context))
-                    .toUpperCase(),
+                formatDate(
+                  now,
+                  locale: Localizations.localeOf(context),
+                ).toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: cs.primary,
                   letterSpacing: 1.4,
@@ -705,100 +648,6 @@ class _GoalRow extends StatelessWidget {
   }
 }
 
-/// Completed focus across the selected week or month.
-class _TrackerPanel extends StatelessWidget {
-  const _TrackerPanel({
-    required this.range,
-    required this.onRangeChanged,
-    required this.total,
-    required this.average,
-    required this.days,
-    required this.onDayTap,
-  });
-
-  final StudyRange range;
-  final ValueChanged<StudyRange> onRangeChanged;
-  final double total;
-  final double average;
-  final List<DayBar> days;
-  final ValueChanged<DayBar> onDayTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    final activeDays = days.where((day) => day.hours > 0).length;
-    final month = range == StudyRange.month;
-    return ContentCard(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              month ? context.tr("This month") : context.tr("Last 7 days"),
-              style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.md),
-            AppSegmentedControl<StudyRange>(
-              options: {
-                for (final r in StudyRange.values) r: context.tr(r.label),
-              },
-              selected: range,
-              onChanged: onRangeChanged,
-            ),
-            const SizedBox(height: Gap.lg),
-            Text(
-              formatHoursShort(total),
-              style: tt.displaySmall?.copyWith(
-                letterSpacing: -1.4,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(height: Gap.xs),
-            Text(
-              total <= 0
-                  ? context.tr("Your finished focus sessions will appear here.")
-                  : context.tr("Total completed focus"),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.lg),
-            Wrap(
-              spacing: Gap.lg,
-              runSpacing: Gap.sm,
-              children: [
-                Text(
-                  context.tr("{0} active {1}", [
-                    activeDays,
-                    activeDays == 1 ? 'day' : 'days',
-                  ]),
-                  style: tt.labelMedium,
-                ),
-                Text(
-                  context.tr("{0} / active day", [formatHoursShort(average)]),
-                  style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            StudyTracker(days: days, onDayTap: onDayTap, month: month),
-            const SizedBox(height: Gap.md),
-            Text(
-              month
-                  ? context.tr(
-                      "Swipe through the dates. Tap a day for its subjects.",
-                    )
-                  : context.tr("Tap a day to see the subjects you focused on."),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// A first target is an explicit choice, rather than a shipped default.
 class _PlanGoalCard extends StatelessWidget {
   const _PlanGoalCard({
@@ -819,45 +668,45 @@ class _PlanGoalCard extends StatelessWidget {
     return HeroSurface(
       accentStrength: 0.12,
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: IconBadge(
-                icon: Icons.flag_outlined,
-                color: cs.primary,
-                size: 52,
-                radius: 17,
-              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: IconBadge(
+              icon: Icons.flag_outlined,
+              color: cs.primary,
+              size: 52,
+              radius: 17,
             ),
-            const SizedBox(height: Gap.md),
-            Text(
-              savedGoalMinutes == null
-                  ? context.tr("Make room for focus")
-                  : context.tr("Your goal · {0}", [
-                      formatMinutes(savedGoalMinutes!),
-                    ]),
-              textAlign: TextAlign.center,
-              style: tt.headlineSmall,
-            ),
-            const SizedBox(height: Gap.sm),
-            Text(
-              savedGoalMinutes == null
-                  ? context.tr(
-                      "Choose your focus time for today. Subject targets are optional.",
-                    )
-                  : context.tr("Your saved target is ready whenever you are."),
-              textAlign: TextAlign.center,
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.lg),
-            FilledButton.icon(
-              key: ctaKey,
-              onPressed: onPlan,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(context.tr("Set goal")),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: Gap.md),
+          Text(
+            savedGoalMinutes == null
+                ? context.tr("Make room for focus")
+                : context.tr("Your goal · {0}", [
+                    formatMinutes(savedGoalMinutes!),
+                  ]),
+            textAlign: TextAlign.center,
+            style: tt.headlineSmall,
+          ),
+          const SizedBox(height: Gap.sm),
+          Text(
+            savedGoalMinutes == null
+                ? context.tr(
+                    "Choose your focus time for today. Subject targets are optional.",
+                  )
+                : context.tr("Your saved target is ready whenever you are."),
+            textAlign: TextAlign.center,
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: Gap.lg),
+          FilledButton.icon(
+            key: ctaKey,
+            onPressed: onPlan,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(context.tr("Set goal")),
+          ),
+        ],
+      ),
     );
   }
 }

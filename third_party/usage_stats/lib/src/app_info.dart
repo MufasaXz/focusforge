@@ -9,6 +9,7 @@ class AppInfo {
     required this.packageName,
     this.appName,
     required this.isSystemApp,
+    this.category,
   });
 
   /// Builds an [AppInfo] from a platform-channel map.
@@ -16,6 +17,7 @@ class AppInfo {
         packageName: map['packageName'] as String? ?? '',
         appName: map['appName'] as String?,
         isSystemApp: '${map['isSystemApp']}' == 'true',
+        category: int.tryParse('${map['category']}'),
       );
 
   /// The application's package name.
@@ -26,6 +28,10 @@ class AppInfo {
 
   /// Whether the app is part of the system image.
   final bool isSystemApp;
+
+  /// Android's `ApplicationInfo.category` (`CATEGORY_GAME` is 0, social 4,
+  /// video 2, productivity 7…), or null before Android 8.0 or when undefined.
+  final int? category;
 
   @override
   String toString() => 'AppInfo(packageName: $packageName, appName: $appName, '

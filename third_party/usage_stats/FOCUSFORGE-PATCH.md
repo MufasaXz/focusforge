@@ -23,3 +23,10 @@ aggregated usage statistics, standby bucket and inactivity checks,
 install-time fields. The Dart and native runtime sources are therefore no
 longer upstream's; the sentence above that says they are unchanged applies to
 the build-script patch only.
+
+## App category (FocusForge 1.0.5)
+
+`queryInstalledApps` also returns `category`, Android's
+`ApplicationInfo.category` (Android 8.0 and later; absent before). The usage
+stats screen uses it to group screen time into distracting, productive and
+other apps on the device. Nothing leaves the phone.
