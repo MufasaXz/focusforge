@@ -15,8 +15,10 @@
   screen recording of the real pages.
 - The Shield app sheet offers Time budget and Only while focusing, with
   allowance presets; Always allowed and Blocked are gone from it.
-- YouTube's Block Shorts row shows the Shorts mark.
-- What brings you here? is redesigned.
+- YouTube's Block Shorts row shows an outline Shorts icon.
+- Usage stats: tap any app to group it as Distracting, Productive or Others
+  yourself, or back to automatic. More study apps are recognised.
+- What brings you here? shows each answer with its own coloured icon.
 - Reset emails are sent by FocusForge with a Reset password button that opens
   a FocusForge page.
 - Study sessions now stay on the device. A linked account backs up only its
