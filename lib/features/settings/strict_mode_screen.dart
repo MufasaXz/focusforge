@@ -164,7 +164,7 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
           AppSection(
             title: context.tr("Your controls stay available"),
             footnote: context.tr(
-              "Android Settings, the launcher, keyboard, calls and emergency access are protected. Use Stop in the app-boundaries notification to pause enforcement. You can revoke access or uninstall at any time.",
+              "Android Settings, the launcher, keyboard, calls and emergency access are protected. During Strict Mode, Stop in the app-boundaries notification opens the emergency unlock; otherwise it pauses enforcement. You can revoke access or uninstall at any time.",
             ),
             children: [
               ListTile(

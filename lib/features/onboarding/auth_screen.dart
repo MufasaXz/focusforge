@@ -228,7 +228,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     _auth.recoveryState.value == null) ...[
                   Text(
                     context.tr(
-                      "Your saved study data could not be loaded. Connect to the internet and try again.",
+                      "Your saved profile could not be loaded. Connect to the internet and try again.",
                     ),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -298,7 +298,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   index: 2,
                   child: Text(
                     context.tr(
-                      "Restore your study data, join groups and compare focus time.",
+                      "Restore your profile, level and achievements, join groups and compare focus time.",
                     ),
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
