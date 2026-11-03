@@ -15,10 +15,11 @@ import io.flutter.plugin.common.MethodChannel
  * The Dart side of the shield.
  *
  * Deliberately thin. Everything that has to keep working when the Flutter
- * engine is not running lives in [FocusAccessibilityService]; this class only
- * carries config down and events up. A method that needed the service to be
- * alive would be a method that stops working the moment the user swipes the app
- * away — which is precisely when blocking matters most.
+ * engine is not running lives in [AppBlockingService] (whole apps) and
+ * [FocusAccessibilityService] (YouTube surfaces); this class only carries config
+ * down and events up. A method that needed a service to be alive would be a
+ * method that stops working the moment the user swipes the app away — which is
+ * precisely when blocking matters most.
  */
 class ShieldBridge(
     private val context: Context,

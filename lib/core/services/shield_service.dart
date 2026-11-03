@@ -4,10 +4,9 @@ import '../models/shield.dart';
 
 /// The contract between the app and the native shielding engine.
 ///
-/// The UI never talks to a `MethodChannel` directly. It calls this, which means
-/// the Android `AccessibilityService` / iOS `FamilyControls` implementation can
-/// land later without touching a single widget — and that the whole shield
-/// layer is testable today against [RecordingShieldService].
+/// The UI never talks to a `MethodChannel` directly. It calls this, which keeps
+/// the native Android engines out of every widget and makes the whole shield
+/// layer testable against [RecordingShieldService].
 abstract class ShieldPlatformService {
   /// Whether the OS-level service is installed and enabled by the user.
   Future<bool> isServiceEnabled();
@@ -118,7 +117,7 @@ class ShieldConfig {
   /// Everything the native side needs, and nothing else.
   ///
   /// Keyed by Android package name, because that is the only identifier the
-  /// accessibility service can match against — an internal row id would be a
+  /// native engines can match against — an internal row id would be a
   /// rule the engine has no way to recognise. Entries with no package, or in
   /// the always-allowed tier, produce no rule at all rather than one that
   /// silently does nothing.
@@ -166,8 +165,8 @@ class ShieldInterception {
   final bool walkedAway;
 }
 
-/// Stands in for the native engine everywhere there is no accessibility
-/// service to talk to — the browser preview, tests, and any non-Android build.
+/// Stands in for the native engines everywhere there is none to talk to — the
+/// browser preview, tests, and any non-Android build.
 ///
 /// It remembers the last config it was handed and logs the hand-off calls, so
 /// the shield layer is fully exercisable — and inspectable — without a device.
