@@ -116,9 +116,6 @@ void main() {
       final config = StrictModeConfig.fromJson(const {});
       expect(config.enabled, isFalse);
       expect(config.durationMinutes, 120);
-      expect(config.allowCalls, isTrue);
-      expect(config.allowEmergency, isTrue);
-      expect(config.allowMaps, isFalse);
       expect(config.cooldownSeconds, 60);
     });
 
@@ -141,9 +138,6 @@ void main() {
       const fields = [
         'enabled',
         'durationMinutes',
-        'allowCalls',
-        'allowEmergency',
-        'allowMaps',
         'cooldownSeconds',
       ];
       for (final field in fields) {

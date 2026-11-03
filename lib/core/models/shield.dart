@@ -186,9 +186,6 @@ class StrictModeConfig {
     this.enabled = false,
     this.enabledAtMillis,
     this.durationMinutes = 120,
-    this.allowCalls = true,
-    this.allowEmergency = true,
-    this.allowMaps = false,
     this.commitmentPhrase = 'I am choosing to break my focus commitment',
     this.cooldownSeconds = 60,
   });
@@ -203,9 +200,6 @@ class StrictModeConfig {
   final int? enabledAtMillis;
 
   final int durationMinutes;
-  final bool allowCalls;
-  final bool allowEmergency;
-  final bool allowMaps;
   final String commitmentPhrase;
   final int cooldownSeconds;
 
@@ -227,9 +221,6 @@ class StrictModeConfig {
     int? enabledAtMillis,
     bool clearEnabledAt = false,
     int? durationMinutes,
-    bool? allowCalls,
-    bool? allowEmergency,
-    bool? allowMaps,
     String? commitmentPhrase,
     int? cooldownSeconds,
   }) => StrictModeConfig(
@@ -238,9 +229,6 @@ class StrictModeConfig {
         ? null
         : (enabledAtMillis ?? this.enabledAtMillis),
     durationMinutes: durationMinutes ?? this.durationMinutes,
-    allowCalls: allowCalls ?? this.allowCalls,
-    allowEmergency: allowEmergency ?? this.allowEmergency,
-    allowMaps: allowMaps ?? this.allowMaps,
     commitmentPhrase: commitmentPhrase ?? this.commitmentPhrase,
     cooldownSeconds: cooldownSeconds ?? this.cooldownSeconds,
   );
@@ -249,9 +237,6 @@ class StrictModeConfig {
     'enabled': enabled,
     'enabledAtMillis': ?enabledAtMillis,
     'durationMinutes': durationMinutes,
-    'allowCalls': allowCalls,
-    'allowEmergency': allowEmergency,
-    'allowMaps': allowMaps,
     'cooldownSeconds': cooldownSeconds,
   };
 
@@ -263,11 +248,6 @@ class StrictModeConfig {
     enabled: j['enabled'] is bool ? j['enabled'] as bool : false,
     enabledAtMillis: _intOrNull(j['enabledAtMillis']),
     durationMinutes: _intOrNull(j['durationMinutes']) ?? 120,
-    allowCalls: j['allowCalls'] is bool ? j['allowCalls'] as bool : true,
-    allowEmergency: j['allowEmergency'] is bool
-        ? j['allowEmergency'] as bool
-        : true,
-    allowMaps: j['allowMaps'] is bool ? j['allowMaps'] as bool : false,
     cooldownSeconds: _intOrNull(j['cooldownSeconds']) ?? 60,
   );
 }
