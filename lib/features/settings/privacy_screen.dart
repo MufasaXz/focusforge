@@ -94,7 +94,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             AppSection(
               title: context.tr("Account actions"),
               footnote: context.tr(
-                "Guest study and Shield events stay on this device. Linked accounts privately back up sessions, subjects, plans and goals. Clear local analytics before handing your phone to someone else.",
+                "Study sessions, subjects, plans, goals and Shield events stay on this device and are removed if you uninstall the app. Linked accounts privately back up only your profile, level and achievements. Clear local analytics before handing your phone to someone else.",
               ),
               children: [
                 _Row(
@@ -171,7 +171,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   icon: Icons.person_outline,
                   title: context.tr("Your account"),
                   detail: context.tr(
-                    "Credentials are handled by Firebase. Profile, subjects, plans, goals and sessions are backed up privately.",
+                    "Credentials are handled by Firebase. Only your profile and level are backed up privately.",
                   ),
                 ),
                 _CloudItem(
@@ -508,7 +508,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       context: context,
       title: context.tr("Sign out?"),
       message: context.tr(
-        "Your study data stays on this device. Online changes are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.",
+        "Your study data stays on this device. Your profile, level and achievements are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.",
       ),
       confirmLabel: context.tr("Sign out"),
       icon: Icons.logout_rounded,

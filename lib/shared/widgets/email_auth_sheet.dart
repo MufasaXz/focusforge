@@ -316,7 +316,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet>
                         'Enter your account email. We will send a link to reset your password securely with Firebase.',
                       )
                     : widget.service.usesRemoteCredentials
-                    ? context.tr("Linked account · private study backup")
+                    ? context.tr("Linked account · private profile backup")
                     : context.tr(
                         "Account sign-in is unavailable. You can study on this device without an account.",
                       ),

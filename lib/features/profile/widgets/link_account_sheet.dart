@@ -111,7 +111,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> {
             const SizedBox(height: Gap.xs),
             Text(
               context.tr(
-                "Sign in to back up your study progress and use groups and the leaderboard. Your study setup on this device is kept.",
+                "Sign in to back up your profile, level and achievements and use groups and the leaderboard. Your study setup on this device is kept.",
               ),
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant),
