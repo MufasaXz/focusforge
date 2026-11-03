@@ -26,6 +26,10 @@ class WidgetService {
   static Future<bool> takeDashboardLaunch() =>
       _takeLaunch('takeDashboardLaunch');
 
+  /// True once, when the app-boundaries notification's Stop was tapped during
+  /// a Strict Mode window.
+  static Future<bool> takeStrictLaunch() => _takeLaunch('takeStrictLaunch');
+
   static Future<bool> _takeLaunch(String method) async {
     if (!_supported) return false;
     try {

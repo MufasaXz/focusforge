@@ -6,11 +6,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
 
-    <!-- Local app boundaries use UsageEvents and a user-started visible foreground service.
+    <!-- Local app boundaries use UsageEvents and a visible foreground service for rules the user chose.
          Draw-over-apps displays the pause; Accessibility is only for YouTube filters. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <!-- Restores rules the user already chose after a restart; see BootReceiver. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <!-- Usage access, for the per-app screen-time breakdown. A special
          permission: the user grants it from Settings rather than from a
@@ -92,8 +94,15 @@
         <service android:name=".shield.AppBlockingService" android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-started app focus boundaries: locally query UsageEvents to detect chosen distracting apps and display a pause overlay. Ongoing notification offers Stop; no remote controls, boot starts, message capture or content collection."/>
+                android:value="User-chosen app focus boundaries: locally query UsageEvents to detect chosen distracting apps and display a pause overlay. Restarts after a reboot only for rules the user set and did not stop. Ongoing notification offers Stop, which opens the emergency unlock during a Strict Mode window the user started; no remote controls, message capture or content collection."/>
         </service>
+
+        <receiver android:name=".shield.BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <receiver android:name=".widgets.FocusLiveActivity" android:exported="false">
             <intent-filter>
