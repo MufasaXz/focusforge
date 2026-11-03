@@ -47,40 +47,33 @@ void main() {
     ),
   );
 
-  testWidgets('the setup step is the app-list disclosure, in normal use', (
-    tester,
-  ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    try {
-      expect(
-        const PermissionManager().supports(AppPermission.usageAccess),
-        isTrue,
-      );
-      await tester.pumpWidget(wrap(UsageAccessStep(onNext: () {})));
-      await tester.pumpAndSettle();
+  testWidgets(
+    'the setup step is a checklist that never asks for Accessibility',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        expect(
+          const PermissionManager().supports(AppPermission.usageAccess),
+          isTrue,
+        );
+        await tester.pumpWidget(wrap(UsageAccessStep(onNext: () {})));
+        await tester.pumpAndSettle();
+        expect(find.text('Limit distracting apps'), findsOneWidget);
+        expect(find.text('Usage access'), findsOneWidget);
+        expect(find.text('Display over other apps'), findsOneWidget);
+        expect(find.text('Notifications'), findsOneWidget);
+        // One row at a time: only the first carries a button.
+        expect(find.text('Allow'), findsOneWidget);
+        expect(find.text('Continue without app blocking'), findsOneWidget);
+        expect(find.textContaining('Accessibility'), findsNothing);
+        expect(calls, isNot(contains('queryInstalledApps')));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
 
-      expect(find.text('Limit distracting apps'), findsOneWidget);
-      // What is read, for which feature, and where it goes — before any
-      // button that could grant it.
-      expect(
-        find.textContaining('apps installed on this phone'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('block or limit apps in Shield'), findsOne);
-      expect(find.textContaining('never uploaded or shared'), findsOneWidget);
-      expect(find.text('Agree and allow'), findsOneWidget);
-      expect(find.text('Not now'), findsOneWidget);
-      // Only this access is asked about here; the others are explained where
-      // their features are turned on.
-      expect(find.textContaining('Accessibility'), findsNothing);
-      expect(find.textContaining('Draw over'), findsNothing);
-      expect(calls, isNot(contains('queryInstalledApps')));
-    } finally {
-      debugDefaultTargetPlatformOverride = null;
-    }
-  });
-
-  testWidgets('Not now moves on with nothing agreed and nothing opened', (
+  testWidgets('Continue without app blocking moves on with nothing agreed', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -90,7 +83,7 @@ void main() {
         wrap(UsageAccessStep(onNext: () => continued = true)),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Not now'));
+      await tester.tap(find.text('Continue without app blocking'));
       await tester.pumpAndSettle();
       expect(continued, isTrue);
       expect(container.read(appListConsentProvider), isFalse);
@@ -100,7 +93,7 @@ void main() {
     }
   });
 
-  testWidgets('Agree and allow records consent before opening settings', (
+  testWidgets('Allow shows the disclosure, then the guide, then settings', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -116,16 +109,38 @@ void main() {
           });
       await tester.pumpWidget(wrap(UsageAccessStep(onNext: () {})));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Agree and allow'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
 
+      // Not now on the disclosure: nothing agreed, nothing opened.
+      await tester.tap(find.text('Allow'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Allow FocusForge to read your app list?'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('never uploaded or shared'), findsOneWidget);
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+      expect(container.read(appListConsentProvider), isFalse);
+      expect(calls, isNot(contains('openUsageAccessSettings')));
+
+      // Agree, read the guide, open settings.
+      await tester.tap(find.text('Allow'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agree'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('Turn on Permit usage access'), findsOneWidget);
+      expect(calls, isNot(contains('openUsageAccessSettings')));
+      await tester.ensureVisible(find.text('Open settings'));
+      await tester.pump();
+      await tester.tap(find.text('Open settings'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 5));
       expect(calls, contains('openUsageAccessSettings'));
       expect(consentWhenOpened, isTrue, reason: 'agreement comes first');
       expect(store.getBool(StoreKeys.appListConsent), isTrue);
-      // Agreed but not yet switched on in Android: the step says what is
-      // left instead of claiming access, and still offers a way past.
-      expect(find.text('Allow usage access'), findsOneWidget);
-      expect(find.text('Not now'), findsOneWidget);
+      // Not yet switched on in Android: the row still offers Allow.
+      expect(find.text('Allow'), findsOneWidget);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
