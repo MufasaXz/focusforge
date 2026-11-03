@@ -276,12 +276,17 @@ void main() {
       backend.failSave = false;
       await tester.pump(const Duration(seconds: 21));
       expect(backend.saves, greaterThan(attempts));
-      expect(backend.accounts['alice']!.settings[StoreKeys.dailyGoal], 480);
+      expect(backend.accounts['alice']!.settings[StoreKeys.user], isNotNull);
     },
   );
 
-  test('reinstall restores completed setup, subjects, plans, goals and study dates', () async {
+  test('reinstall restores profile and level, and nothing else', () async {
     await store.setMap(StoreKeys.user, alice.toJson());
+    await store.setMap(StoreKeys.stats, const {
+      'xp': 40,
+      'level': 7,
+      'creditedSessionIds': ['monday'],
+    });
     await store.setList(StoreKeys.subjects, [
       {'id': 'math', 'name': 'Mathematics'},
     ]);
@@ -303,13 +308,6 @@ void main() {
         'minutes': 240,
         'completed': true,
       },
-      {
-        'id': 'tuesday',
-        'ownerUid': 'alice',
-        'startedAt': DateTime(2026, 10, 13).millisecondsSinceEpoch,
-        'minutes': 180,
-        'completed': true,
-      },
     ]);
     await service.connect(alice);
     await service.flush();
@@ -320,15 +318,82 @@ void main() {
     );
     expect(restored.onboardingComplete, isTrue);
     expect(restored.dailyGoalMinutes, 480);
+    expect(store.getMap(StoreKeys.stats)?['level'], 7);
+    expect(store.getMap(StoreKeys.stats)?['xp'], 40);
+    expect(store.getList(StoreKeys.subjects), isEmpty);
+    expect(store.getMap(StoreKeys.planLibrary), isNull);
+    expect(store.getMap('goal.planner'), isNull);
+    expect(store.getList(StoreKeys.sessions), isEmpty);
+  });
+
+  test('nothing but profile, level and sharing consent reaches the cloud', () async {
+    await store.setMap(StoreKeys.user, alice.toJson());
+    await store.setMap(StoreKeys.stats, const {
+      'xp': 40,
+      'level': 7,
+      'creditedSessionIds': ['s-1760000000000000'],
+    });
+    await store.setBool(StoreKeys.boardOptIn, true);
+    await store.setList(StoreKeys.subjects, [
+      {'id': 'math'},
+    ]);
+    await store.setInt(StoreKeys.dailyGoal, 480);
+    await store.setList(StoreKeys.sessions, [
+      {
+        'id': 's-1760000000000000',
+        'ownerUid': 'alice',
+        'startedAt': 1,
+        'minutes': 25,
+        'completed': true,
+      },
+    ]);
+    await service.connect(alice);
+    await service.flush();
+    final cloud = backend.accounts['alice']!;
+    expect(cloud.sessions, isEmpty);
+    expect(cloud.settings.keys.toSet(), {
+      StoreKeys.user,
+      StoreKeys.stats,
+      StoreKeys.boardOptIn,
+    });
+    expect(jsonEncode(cloud.settings), isNot(contains('s-1760000000000000')));
+    expect(store.getList(StoreKeys.sessions).single['id'], 's-1760000000000000');
+  });
+
+  test('signing back in on the same device keeps its local study data', () async {
+    await store.setMap(StoreKeys.user, alice.toJson());
+    await store.setList(StoreKeys.subjects, [
+      {'id': 'math'},
+    ]);
+    await store.setMap(StoreKeys.stats, const {
+      'xp': 1,
+      'level': 2,
+      'creditedSessionIds': ['monday'],
+    });
+    await store.setList(StoreKeys.sessions, [
+      {'id': 'monday', 'ownerUid': 'alice', 'startedAt': 1, 'minutes': 25},
+    ]);
+    await service.connect(alice);
+    await service.flush();
+    service.disconnect();
+    backend.accounts['alice'] = StudyBackup(
+      settings: {
+        ...backend.accounts['alice']!.settings,
+        StoreKeys.stats: jsonEncode(const {'xp': 9, 'level': 8}),
+      },
+      sessions: const [],
+      modifiedAt: DateTime.now()
+          .add(const Duration(days: 1))
+          .millisecondsSinceEpoch,
+    );
+    await service.connect(alice, reconcile: true);
     expect(store.getList(StoreKeys.subjects).single['id'], 'math');
-    expect(store.getMap(StoreKeys.planLibrary)?['plans'], [
-      {'id': 'own-plan'},
-    ]);
-    expect(store.getMap('goal.planner')?['day'], {'totalMinutes': 480});
-    expect(store.getList(StoreKeys.sessions).map((s) => s['minutes']), [
-      240,
-      180,
-    ]);
+    expect(store.getList(StoreKeys.sessions).single['id'], 'monday');
+    final stats = store.getMap(StoreKeys.stats)!;
+    expect(stats['level'], 8);
+    // The newer level came from the cloud; the receipt that stops this device
+    // awarding the same block twice did not, and must survive.
+    expect(stats['creditedSessionIds'], ['monday']);
   });
 
   test(
@@ -389,37 +454,90 @@ void main() {
     expect(store.getList(StoreKeys.sessions), hasLength(1));
   });
 
+  test('Firestore backend never uploads sessions', () async {
+    final db = FakeFirebaseFirestore();
+    final cloud = FirebaseStudyBackupBackend(db);
+    await cloud.save(
+      'alice',
+      StudyBackup(
+        settings: const {'goal': 'saved'},
+        sessions: [
+          FocusSession(
+            id: 'session/1',
+            subjectId: 'math',
+            startedAt: DateTime(2026, 10, 12),
+            minutes: 25,
+            ownerUid: 'alice',
+          ).toJson(),
+        ],
+        modifiedAt: 100,
+      ),
+    );
+    expect((await db.collection('users/alice/sessionData').get()).docs, isEmpty);
+    final recovered = await FirebaseStudyBackupBackend(db).load('alice');
+    expect(recovered?.settings, {'goal': 'saved'});
+    expect(recovered?.sessions, isEmpty);
+    expect(await cloud.load('bob'), isNull);
+  });
+
   test(
-    'Firestore backend restores paginated real session payloads and settings',
+    'sessions an older build uploaded move to the device, then leave the cloud',
     () async {
       final db = FakeFirebaseFirestore();
-      final cloud = FirebaseStudyBackupBackend(db);
-      final rows = List.generate(
-        405,
-        (i) => FocusSession(
-          id: 'session/$i',
-          subjectId: 'math',
-          startedAt: DateTime(2026, 10, 12),
-          minutes: 25,
-          ownerUid: 'alice',
-        ).toJson(),
+      for (var i = 0; i < 405; i++) {
+        await db.doc('users/alice/sessionData/row$i').set(
+          FocusSession(
+            id: 'session/$i',
+            subjectId: 'math',
+            startedAt: DateTime(2026, 10, 12),
+            minutes: 25,
+            ownerUid: 'alice',
+          ).toJson(),
+        );
+      }
+      await db.doc('users/alice/preferences/studyBackup').set({
+        'version': 1,
+        'ownerUid': 'alice',
+        'data': jsonEncode({
+          StoreKeys.user: jsonEncode(alice.toJson()),
+          StoreKeys.subjects: jsonEncode([
+            {'id': 'legacy-math'},
+          ]),
+        }),
+        'modifiedAt': 100,
+      });
+      final migrating = StudyBackupService(store, FirebaseStudyBackupBackend(db));
+      addTearDown(migrating.dispose);
+      await migrating.connect(
+        const UserProfile(uid: 'alice', isAnonymous: false),
       );
-      final backup = StudyBackup(
-        settings: {'goal': 'saved'},
-        sessions: rows,
-        modifiedAt: 100,
-      );
-      await cloud.save('alice', backup);
-      final recovered = await FirebaseStudyBackupBackend(db).load('alice');
-      expect(recovered?.sessions, hasLength(405));
-      expect(recovered?.settings, {'goal': 'saved'});
-      expect(
-        recovered?.sessions.map((s) => s['id']).toSet(),
-        rows.map((s) => s['id']).toSet(),
-      );
-      expect(await cloud.load('bob'), isNull);
+      expect(store.getList(StoreKeys.sessions), hasLength(405));
+      expect(store.getList(StoreKeys.subjects).single['id'], 'legacy-math');
+      await migrating.flush();
+      expect((await db.collection('users/alice/sessionData').get()).docs, isEmpty);
+      final saved = await db.doc('users/alice/preferences/studyBackup').get();
+      expect(saved.data()?['data'], isNot(contains('legacy-math')));
+      // The device copy outlives the cloud copy.
+      expect(store.getList(StoreKeys.sessions), hasLength(405));
+      expect(store.getList(StoreKeys.subjects).single['id'], 'legacy-math');
     },
   );
+
+  test('a session row loaded after the last read is not deleted', () async {
+    final db = FakeFirebaseFirestore();
+    final cloud = FirebaseStudyBackupBackend(db);
+    final row = {'id': 'seen', 'ownerUid': 'alice', 'startedAt': 1};
+    await db.doc('users/alice/sessionData/seen').set(row);
+    await cloud.load('alice');
+    await db.doc('users/alice/sessionData/late').set({...row, 'id': 'late'});
+    await cloud.save(
+      'alice',
+      const StudyBackup(settings: {}, sessions: [], modifiedAt: 1),
+    );
+    final left = await db.collection('users/alice/sessionData').get();
+    expect(left.docs.map((d) => d.id), ['late']);
+  });
+
   test('changing account abandons the previous accounts live timer', () async {
     final container = ProviderContainer(
       overrides: [localStoreProvider.overrideWithValue(store)],
