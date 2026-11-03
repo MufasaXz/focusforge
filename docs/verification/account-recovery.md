@@ -1,5 +1,7 @@
 # Account recovery and profile refinement
 
+> Superseded in part: linked accounts now back up only their profile, level, sharing consent and badges. Study sessions, subjects, plans and goals stay on the device, and rows older builds uploaded are moved there and deleted from Firestore. The session restore described below applies only to that one-time move.
+
 Returning linked accounts now retry transient cloud reads twice, refresh a rejected credential once, and share one in-flight restore between the Firebase SDK event and the explicit sign-in result. Recovery errors retain their diagnostic type/code without logging account IDs, credentials or saved content. The UI no longer describes every backup failure as an internet outage. A single app-level loading card follows actual restore/retry state. Startup renders the local shell before cloud recovery finishes. Cloud writes remain fenced until the server read succeeds.
 
 Recovery work is bound to a credential generation. Sign-out clears its cached request and detaches the next session's queue, so a quick same-account sign-in can finish before a stale read returns. Stale responses cannot reopen account gates or clear the new session's loading state.
