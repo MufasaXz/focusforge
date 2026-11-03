@@ -214,7 +214,7 @@ class _Recording extends StatelessWidget {
     final still = MediaQuery.disableAnimationsOf(context);
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 380),
+        constraints: const BoxConstraints(maxHeight: 300),
         child: AspectRatio(
           aspectRatio: 480 / 782,
           child: DecoratedBox(
