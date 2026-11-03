@@ -131,8 +131,14 @@ final enrichedWhitelistProvider = Provider<List<WhitelistEntry>>((ref) {
 });
 
 /// The packages the engine refuses to cover, asked of the engine itself.
+///
+/// Behind the same consent as the list it annotates: the answer names the
+/// launcher, keyboard and dialer installed on this phone, and nothing shows it
+/// until the list itself is allowed.
 final protectedPackagesProvider = FutureProvider<Set<String>>(
-  (ref) => ref.watch(shieldServiceProvider).protectedPackages(),
+  (ref) => ref.watch(appListConsentProvider)
+      ? ref.watch(shieldServiceProvider).protectedPackages()
+      : Future.value(const <String>{}),
 );
 
 /// The packages with a launcher icon, asked of the engine itself.

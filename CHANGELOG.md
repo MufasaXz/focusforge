@@ -28,6 +28,16 @@
   install-time details.
 - Firestore no longer accepts client writes to the user's root document. No
   current feature wrote it; parent control was the last.
+- The last setup step is now the app-list disclosure itself: what is read,
+  why, and that it stays on the phone, with "Agree and allow" as the only way
+  to open Usage access and "Not now" to skip. Home asks once instead of twice.
+- Saved app rules reach the blocking engine only while the app list is
+  agreed to; withdrawing in Privacy pauses them at once, and agreeing again
+  brings them back.
+- The disclosure, the Account & privacy screen and the password-reset and
+  email-verification sheets are translated into all 24 bundled languages.
+- Setup ends on a clear finish with a Shield summary, and the Account step no
+  longer shows a back arrow that went nowhere.
 
 ## [1.0.4](https://github.com/MufasaXz/focusforge/releases/tag/1.0.4) — 2026-10-24 (build 2029)
 

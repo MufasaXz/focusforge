@@ -101,29 +101,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Allow app usage'), findsOneWidget);
       expect(manager.requests, isEmpty);
+      // First time: one dialog, the app-list disclosure, which already
+      // covers what usage access reads. Declining it requests nothing.
       await tester.tap(find.text('Allow app usage'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('stays on this device'), findsWidgets);
-      expect(find.textContaining('messages'), findsOneWidget);
-      await tester.tap(find.text('Not now'));
-      await tester.pumpAndSettle();
-      expect(manager.requests, isEmpty);
-      await tester.tap(find.text('Allow app usage'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Open usage settings'));
-      await tester.pumpAndSettle();
-      // The app-list disclosure comes next, and declining it stops here too.
       expect(
         find.text('Allow FocusForge to read your app list?'),
         findsOneWidget,
       );
+      expect(find.text('Why FocusForge asks for app usage'), findsNothing);
+      expect(find.textContaining('Never uploaded'), findsOneWidget);
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
       expect(manager.requests, isEmpty);
       expect(container.read(appListConsentProvider), isFalse);
+
       await tester.tap(find.text('Allow app usage'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Open usage settings'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Agree'));
       await tester.pumpAndSettle();
@@ -134,6 +127,28 @@ void main() {
         findsOneWidget,
         reason: 'Opening settings does not mean granted',
       );
+
+      // Already agreed: the usage explainer is the one dialog, and declining
+      // it still sends nobody to Settings.
+      await tester.tap(find.text('Allow app usage'));
+      await tester.pumpAndSettle();
+      expect(find.text('Why FocusForge asks for app usage'), findsOneWidget);
+      expect(find.textContaining('messages'), findsOneWidget);
+      expect(
+        find.text('Allow FocusForge to read your app list?'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, [AppPermission.usageAccess]);
+      await tester.tap(find.text('Allow app usage'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open usage settings'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, [
+        AppPermission.usageAccess,
+        AppPermission.usageAccess,
+      ]);
       debugDefaultTargetPlatformOverride = null;
     },
   );

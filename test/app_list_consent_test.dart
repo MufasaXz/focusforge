@@ -119,7 +119,7 @@ void main() {
     );
     expect(find.textContaining('list of apps installed'), findsOneWidget);
     expect(find.textContaining('to let you choose apps to block'), findsOne);
-    expect(find.textContaining('does not upload'), findsOneWidget);
+    expect(find.textContaining('Never uploaded'), findsOneWidget);
   });
 
   testWidgets('tapping outside or pressing Back is not consent', (
@@ -169,9 +169,29 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('does not upload'), findsOneWidget);
+    expect(find.textContaining('Never uploaded'), findsOneWidget);
     await tester.tap(find.text('Agree'));
     await tester.pumpAndSettle();
     expect(c.read(appListConsentProvider), isTrue);
+  });
+
+  test('the engine gets no app rules until the user agrees', () async {
+    final c = container();
+    c.read(shieldSyncBridgeProvider);
+    await c
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(packageId: 'com.example.game', name: 'Game');
+    Map<String, dynamic> apps() =>
+        engine.lastApplied!.toChannelPayload()['apps'] as Map<String, dynamic>;
+
+    expect(c.read(whitelistProvider), hasLength(1), reason: 'kept, not lost');
+    expect(apps(), isEmpty, reason: 'no consent, nothing to watch for');
+
+    await c.read(appListConsentProvider.notifier).set(true);
+    expect(apps().keys, ['com.example.game']);
+
+    await c.read(appListConsentProvider.notifier).set(false);
+    expect(apps(), isEmpty, reason: 'withdrawing stops it at once');
+    expect(c.read(whitelistProvider), hasLength(1));
   });
 }

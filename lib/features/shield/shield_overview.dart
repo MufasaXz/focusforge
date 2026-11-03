@@ -24,6 +24,10 @@ class ShieldOverview extends ConsumerWidget {
     final overlay = ref.watch(overlayAccessProvider).valueOrNull ?? false;
     final youtubeAccess = ref.watch(shieldEnabledProvider).valueOrNull ?? false;
     final rules = ref.watch(enforcedRulesProvider);
+    // Saved app rules reach the engine only after the app-list agreement, so
+    // without it the honest next step is the disclosure below, not a
+    // permission.
+    final consent = ref.watch(appListConsentProvider);
     final youtube = ref.watch(youtubeRulesProvider);
     final supported = NativeShieldService.isSupported;
     final enabled = supported && usage && overlay && access.valueOrNull == true;
@@ -61,6 +65,10 @@ class ShieldOverview extends ConsumerWidget {
                 ? context.tr(
                     "Your saved app rules are inactive. Enable an app rule when you want boundaries active again.",
                   )
+                : rules.isNotEmpty && !consent
+                ? context.tr(
+                    "Your app rules are saved. Agree to the app list below to turn them back on.",
+                  )
                 : rules.isNotEmpty && !enabled
                 ? !usage
                       ? context.tr(
@@ -78,7 +86,7 @@ class ShieldOverview extends ConsumerWidget {
                   ),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
-          if (supported && rules.isNotEmpty && !usage) ...[
+          if (supported && consent && rules.isNotEmpty && !usage) ...[
             const SizedBox(height: Gap.sm),
             Align(
               alignment: Alignment.centerLeft,
@@ -89,7 +97,11 @@ class ShieldOverview extends ConsumerWidget {
               ),
             ),
           ],
-          if (supported && rules.isNotEmpty && !enabled && !overlay) ...[
+          if (supported &&
+              consent &&
+              rules.isNotEmpty &&
+              !enabled &&
+              !overlay) ...[
             const SizedBox(height: Gap.md),
             Align(
               alignment: Alignment.centerLeft,

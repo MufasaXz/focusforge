@@ -82,29 +82,12 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
   }
 
   Future<void> _request() async {
-    final allow = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr("Why FocusForge asks for app usage")),
-        scrollable: true,
-        content: Text(
-          context.tr(
-            "Usage Access lets FocusForge read which app is open and how long apps are used. We use this on your device to show screen-time totals and enforce the app boundaries and daily budgets you choose.\n\nThis data stays on this device and is not uploaded. It does not let us read messages, typed text or browsing content. Access is optional: your focus timer and study history work without it. You can revoke it in Android Settings at any time.\n\nContinue to Android Usage Access settings, select FocusForge and decide whether to allow it.",
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.tr("Not now")),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr("Open usage settings")),
-          ),
-        ],
-      ),
-    );
-    if (allow != true || !mounted) return;
+    // One disclosure, never two in a row. Until the app list is agreed to,
+    // `requestShieldPermission` shows that disclosure, and it already says
+    // what usage access reads and where it goes. Once it is agreed, this
+    // dialog is the reminder of what Android's page is about to grant.
+    if (ref.read(appListConsentProvider) && !await _confirmUsage()) return;
+    if (!mounted) return;
     setState(() => _opening = true);
     try {
       await requestShieldPermission(context, ref, AppPermission.usageAccess);
@@ -112,4 +95,29 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
       if (mounted) setState(() => _opening = false);
     }
   }
+
+  Future<bool> _confirmUsage() async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(context.tr("Why FocusForge asks for app usage")),
+          scrollable: true,
+          content: Text(
+            context.tr(
+              "Usage Access lets FocusForge read which app is open and how long apps are used. We use this on your device to show screen-time totals and enforce the app boundaries and daily budgets you choose.\n\nThis data stays on this device and is not uploaded. It does not let us read messages, typed text or browsing content. Access is optional: your focus timer and study history work without it. You can revoke it in Android Settings at any time.\n\nContinue to Android Usage Access settings, select FocusForge and decide whether to allow it.",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(context.tr("Not now")),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.tr("Open usage settings")),
+            ),
+          ],
+        ),
+      ) ==
+      true;
 }

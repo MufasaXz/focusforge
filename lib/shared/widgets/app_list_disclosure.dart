@@ -13,9 +13,108 @@ import '../../core/providers/usage_providers.dart';
 /// plainly where the data goes. Kept to that one subject: it is not folded
 /// into the accessibility or usage-access explanations, which describe other
 /// access.
-String appListDisclosureText(BuildContext context) => context.tr(
-  "FocusForge reads the list of apps installed on this phone, and how long you used each one today, to let you choose apps to block or limit in Shield and to show your screen time on Home. This happens only while you use those screens.\n\nThe app list and usage times stay on this device. FocusForge does not upload, store on a server, or share them with anyone — not with study groups, the leaderboard or your account backup.\n\nYou can withdraw this at any time in Profile → Privacy. Focus timers work without it.",
-);
+///
+/// One lead sentence in the policy's own shape, then three short points, so
+/// the part a person actually reads is the part that matters. The same body is
+/// used by the dialog, the Shield card and the setup step, so the three can
+/// never describe the access differently.
+class AppListDisclosureBody extends StatelessWidget {
+  const AppListDisclosureBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          context.tr(
+            "FocusForge reads the list of apps installed on this phone and how long you used each one today, to let you choose apps to block or limit in Shield and to show your screen time on Home.",
+          ),
+          style: theme.textTheme.bodyLarge,
+        ),
+        const SizedBox(height: Gap.lg),
+        _Point(
+          icon: Icons.phone_android_rounded,
+          title: context.tr("Stays on this phone"),
+          body: context.tr(
+            "Never uploaded, stored on a server or shared — not with study groups, the leaderboard or your backup.",
+          ),
+        ),
+        _Point(
+          icon: Icons.touch_app_outlined,
+          title: context.tr("Only after you agree"),
+          body: context.tr(
+            "Nothing is read before you tap Agree, and only while you use Shield or Home.",
+          ),
+        ),
+        _Point(
+          icon: Icons.tune_rounded,
+          title: context.tr("You stay in control"),
+          body: context.tr(
+            "Withdraw anytime in You → Account & privacy. Focus timers work without it.",
+          ),
+          last: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _Point extends StatelessWidget {
+  const _Point({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.last = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : Gap.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: cs.primary),
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Asks once, in a dialog, before anything reads the app list.
 ///
@@ -31,7 +130,7 @@ Future<bool> confirmAppListAccess(BuildContext context, WidgetRef ref) async {
       icon: const Icon(Icons.apps_rounded),
       title: Text(context.tr("Allow FocusForge to read your app list?")),
       scrollable: true,
-      content: Text(appListDisclosureText(context)),
+      content: const AppListDisclosureBody(),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -75,23 +174,21 @@ class AppListDisclosureCard extends ConsumerWidget {
               Icon(Icons.apps_rounded, color: cs.primary),
               const SizedBox(width: Gap.sm),
               Expanded(
-                child: Text(
-                  context.tr("Allow FocusForge to read your app list?"),
-                  style: theme.textTheme.titleMedium,
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    context.tr("Allow FocusForge to read your app list?"),
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: Gap.md),
-          Text(
-            appListDisclosureText(context),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
+          const AppListDisclosureBody(),
           const SizedBox(height: Gap.lg),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
+          SizedBox(
+            width: double.infinity,
             child: FilledButton(
               onPressed: () =>
                   ref.read(appListConsentProvider.notifier).set(true),

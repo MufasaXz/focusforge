@@ -175,7 +175,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     final shown = steps.indexOf(_index);
 
     return PopScope(
-      canPop: _index == 0,
+      // Account is the first screen that asks anything. Back from it leaves
+      // setup, as Back from any first screen does, rather than replaying the
+      // splash, which would only hand straight back to Account.
+      canPop: _index <= _authIndex,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
@@ -192,7 +195,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                       index: shown,
                       total: total,
                       title: _stageName(_index),
-                      onBack: _back,
+                      onBack: _index > _authIndex ? _back : null,
                     ),
                   Expanded(
                     child: PageView.builder(
@@ -290,22 +293,31 @@ class _FlowHeader extends StatelessWidget {
   final int index;
   final int total;
   final String title;
-  final VoidCallback onBack;
+
+  /// Null on the first interactive step, which has nowhere to go back to.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Gap.sm, Gap.sm, Gap.lg, Gap.sm),
+      padding: EdgeInsets.fromLTRB(
+        onBack == null ? Gap.xl : Gap.sm,
+        Gap.sm,
+        Gap.lg,
+        Gap.sm,
+      ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            tooltip: context.tr("Back"),
-            icon: const Icon(Icons.arrow_back_rounded, size: 20),
-          ),
-          const SizedBox(width: Gap.sm),
+          if (onBack != null) ...[
+            IconButton(
+              onPressed: onBack,
+              tooltip: context.tr("Back"),
+              icon: const Icon(Icons.arrow_back_rounded, size: 20),
+            ),
+            const SizedBox(width: Gap.sm),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -381,7 +393,10 @@ class _StepTrack extends StatelessWidget {
           final gap = count <= 1 ? 0.0 : span / (count - 1);
           double x(int i) => edgeInset + i * gap;
           final pillW = (gap).clamp(14.0, 30.0);
-          final pillLeft = (x(index) - pillW / 2).clamp(0.0, (w - pillW).clamp(0.0, w));
+          final pillLeft = (x(index) - pillW / 2).clamp(
+            0.0,
+            (w - pillW).clamp(0.0, w),
+          );
 
           return Stack(
             alignment: Alignment.centerLeft,
