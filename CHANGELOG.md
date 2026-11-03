@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Study sessions now stay on the device. A linked account backs up only its
+  profile, level, leaderboard consent and badges, so signing in again on any
+  phone brings those back. Subjects, plans, goals and history do not follow to a
+  new install. Sessions older builds uploaded are moved to the device on the next
+  sign-in and deleted from the cloud, and Firestore no longer accepts new ones.
+- Fixed a block shortened with the dock's −5 being logged at its full planned
+  length when the app restarted before it finished.
+- Fixed agreement to the app-list disclosure outliving a deleted account until
+  the next launch.
+- During Strict Mode, Stop in the app-boundaries notification opens the emergency
+  unlock instead of ending the commitment in one tap.
+- App boundaries now resume after a reboot or app update, unless the notification
+  was used to stop them.
+- Focus-only app rules no longer poll eight times a second while no focus block
+  is running, and rules are re-parsed only when they change.
 - Shield now offers every app that has a launcher icon, so a preinstalled
   browser, mail client or video app can be restricted like any other. Those
   were previously hidden for being system apps, which left most of what a
