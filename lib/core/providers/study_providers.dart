@@ -955,8 +955,6 @@ class TimerNotifier extends Notifier<TimerState> {
       _durationForPreset(preset, phase).inMilliseconds,
     );
     final paused = Duration(milliseconds: pausedMs < 0 ? 0 : pausedMs);
-    final extraMs = _intOr(stored['segmentExtraMs'], 0);
-    final extra = Duration(milliseconds: extraMs < 0 ? 0 : extraMs);
     final sampleMs = _intOr(stored['sampledFocusMs'], 0);
     final validSample =
         preset.isRandomFocus &&
@@ -965,6 +963,21 @@ class TimerNotifier extends Notifier<TimerState> {
         sampleMs <= preset.randomMaxMinutes! * 60000;
     final sampled = validSample ? Duration(milliseconds: sampleMs) : null;
     final actualFocus = sampled ?? preset.focusDuration;
+    // The dock's −5 is stored as a negative extra, and it has to survive with
+    // the +5: dropping it logged a block cut to 20 minutes as the 25 it was
+    // planned for. An extra that lands outside what the dock allows is not one
+    // it wrote, so it degrades to none.
+    final storedExtra = Duration(
+      milliseconds: _intOr(stored['segmentExtraMs'], 0),
+    );
+    final extended =
+        (phase == TimerPhase.focus
+            ? actualFocus
+            : _durationForPreset(preset, phase)) +
+        storedExtra;
+    final extra = extended < minSegment || extended > maxSegment
+        ? Duration.zero
+        : storedExtra;
 
     _ticker?.cancel();
     final now = DateTime.now();
