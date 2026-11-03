@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.5
+## [1.0.5](https://github.com/MufasaXz/focusforge/releases/tag/1.0.5) — 2026-11-03 (build 2034)
 
 - Usage stats: Home shows today's screen time and this week's bars, split into
   distracting, productive and other apps, and opens a full Daily/Weekly view
