@@ -336,7 +336,8 @@ void main() {
         expect(store.getMap(StoreKeys.user)?['displayName'], 'Saved name');
         expect(store.getInt(StoreKeys.dailyGoal), 480);
         expect(backend.saved?.modifiedAt, 123);
-        expect(backend.saved?.settings[StoreKeys.dailyGoal], 480);
+        // Restored from the older cloud document, then kept on the device only.
+        expect(backend.saved?.settings.containsKey(StoreKeys.dailyGoal), isFalse);
       },
     );
   }
