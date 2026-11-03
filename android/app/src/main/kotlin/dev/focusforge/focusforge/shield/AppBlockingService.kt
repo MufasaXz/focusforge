@@ -23,9 +23,10 @@ import java.io.FileDescriptor
 import java.io.PrintWriter
 
 /**
- * User-started local app boundaries. Usage access detects foreground activity;
+ * User-chosen local app boundaries. Usage access detects foreground activity;
  * draw-over-app permission displays the pause. Accessibility is never consulted.
- * No boot receiver or background-start exemption: starts originate in visible UI.
+ * Starts come from visible UI, or from [BootReceiver] for rules the user already
+ * chose. Either way the notification is up and Stop's latch is honoured.
  */
 @Suppress("DEPRECATION")
 class AppBlockingService : Service() {
@@ -35,7 +36,7 @@ class AppBlockingService : Service() {
         private const val ACTION_STOP = "dev.focusforge.STOP_APP_BOUNDARIES"
         private const val PREFS = "focusforge_shield"
         private const val PAUSED = "app_blocking_paused"
-        private const val POLL_MS = 120L
+        const val EXTRA_OPEN_STRICT_MODE = "open_strict_mode"
         @Volatile var instance: AppBlockingService? = null
             private set
         @Volatile var activityVisible = false
@@ -62,16 +63,31 @@ class AppBlockingService : Service() {
                 instance?.stopSelf()
                 return false
             }
-            if (instance != null) return true
+            instance?.let { it.wake(); return true }
             if (!AppBlockingPolicy.shouldStart(true, isPaused(context), activityVisible,
                     hasUsageAccess(context), overlayAllowed(context))) return false
-            return try {
-                val intent = Intent(context, AppBlockingService::class.java)
-                if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
-                else context.startService(intent)
-                true
-            } catch (_: RuntimeException) { false }
+            return launch(context)
         }
+
+        /**
+         * Picks the user's rules back up after a reboot or an app update, when
+         * no screen is visible. Without this a Strict Mode window the user
+         * committed to ended the moment the phone restarted.
+         */
+        fun syncAfterRestart(context: Context): Boolean {
+            if (instance != null) return true
+            val hasRules = ShieldStore.load(context).apps.isNotEmpty()
+            if (!AppBlockingPolicy.shouldStart(hasRules, isPaused(context), true,
+                    hasUsageAccess(context), overlayAllowed(context))) return false
+            return launch(context)
+        }
+
+        private fun launch(context: Context): Boolean = try {
+            val intent = Intent(context, AppBlockingService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
+            else context.startService(intent)
+            true
+        } catch (_: RuntimeException) { false }
 
         fun pauseFromUser(context: Context) {
             context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(PAUSED, true).apply()
@@ -107,6 +123,25 @@ class AppBlockingService : Service() {
     @Volatile private var lastDetectorAt = 0L
     @Volatile private var lastEventCount = 0
     @Volatile private var lastBlockReason: String? = null
+    // The detector re-reads the store on every poll; parse only when it changed.
+    private var rulesRaw: String? = null
+    private var rulesParsed = ShieldRules.EMPTY
+    @Volatile private var notifiedStrict = false
+
+    private fun currentRules(): ShieldRules {
+        val raw = ShieldStore.raw(this)
+        if (raw != rulesRaw) {
+            rulesRaw = raw
+            rulesParsed = ShieldRules.parse(raw)
+        }
+        return rulesParsed
+    }
+
+    /** A pushed config applies now, not at the end of an idle wait. */
+    private fun wake() {
+        detector.removeCallbacks(poll)
+        detector.post(poll)
+    }
 
     override fun onBind(intent: Intent?) = null
 
@@ -120,6 +155,16 @@ class AppBlockingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            val rules = ShieldStore.load(this)
+            if (!AppBlockingPolicy.stopPausesBoundaries(rules, System.currentTimeMillis())) {
+                // A tap on a notification posted before the window opened.
+                if (instance === this) {
+                    syncNotification(true)
+                    return START_STICKY
+                }
+                stopSelf()
+                return START_NOT_STICKY
+            }
             pauseFromUser(this)
             stopSelf()
             return START_NOT_STICKY
@@ -131,7 +176,8 @@ class AppBlockingService : Service() {
         }
         if (instance === this) return START_STICKY
         try {
-            val notification = notification()
+            notifiedStrict = ShieldStore.load(this).strictModeActive(System.currentTimeMillis())
+            val notification = notification(notifiedStrict)
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             } else startForeground(NOTIFICATION_ID, notification)
@@ -146,7 +192,14 @@ class AppBlockingService : Service() {
         return START_STICKY
     }
 
-    private fun notification(): Notification {
+    private fun syncNotification(strict: Boolean) {
+        if (strict == notifiedStrict) return
+        notifiedStrict = strict
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(NOTIFICATION_ID, notification(strict))
+    }
+
+    private fun notification(strict: Boolean): Notification {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
             NotificationChannel(CHANNEL, DeviceStrings.text(this, "App boundaries"), NotificationManager.IMPORTANCE_LOW).apply {
@@ -156,13 +209,19 @@ class AppBlockingService : Service() {
         )
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val open = PendingIntent.getActivity(this, 4702, Intent(this, MainActivity::class.java), flags)
-        val stop = PendingIntent.getService(this, 4703,
+        // An activity PendingIntent during Strict Mode, not a service that then
+        // starts one: Android blocks that hand-off from a notification tap.
+        val stop = if (strict) PendingIntent.getActivity(this, 4704,
+            Intent(this, MainActivity::class.java).putExtra(EXTRA_OPEN_STRICT_MODE, true), flags)
+        else PendingIntent.getService(this, 4703,
             Intent(this, AppBlockingService::class.java).setAction(ACTION_STOP), flags)
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL)
             else Notification.Builder(this)
         return builder.setSmallIcon(R.drawable.ic_focus_live)
             .setContentTitle(DeviceStrings.text(this, "FocusForge app boundaries are active"))
-            .setContentText(DeviceStrings.text(this, "Your chosen apps are paused on this device. Tap Stop to pause boundaries."))
+            .setContentText(DeviceStrings.text(this,
+                if (strict) "Paused until Strict Mode ends."
+                else "Your chosen apps are paused on this device. Tap Stop to pause boundaries."))
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, DeviceStrings.text(this, "Stop"), stop).build()).build()
     }
@@ -177,8 +236,9 @@ class AppBlockingService : Service() {
                 main.post { dismissOverlay(); stopSelf() }
                 return
             }
-            val rules = ShieldStore.load(this@AppBlockingService)
+            val rules = currentRules()
             if (rules.apps.isEmpty()) { main.post { stopSelf() }; return }
+            syncNotification(rules.strictModeActive(now))
             val power = getSystemService(POWER_SERVICE) as PowerManager
             val lock = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
             if (!power.isInteractive || lock.isKeyguardLocked) {
@@ -213,7 +273,7 @@ class AppBlockingService : Service() {
                     showOverlay(front, reason)
                 }
             }
-            detector.postDelayed(this, POLL_MS)
+            detector.postDelayed(this, AppBlockingPolicy.pollDelay(rules, now, covered != null))
         }
     }
 
@@ -400,6 +460,6 @@ class AppBlockingService : Service() {
     override fun dump(fd: FileDescriptor?, writer: PrintWriter?, args: Array<out String>?) {
         writer?.println("App boundaries: usage=${hasUsageAccess(this)} overlay=${overlayAllowed(this)} paused=${isPaused(this)}")
         writer?.println("detectorAt=$lastDetectorAt queryAt=$lastQueryAt events=$lastEventCount foreground=${foreground.packageName}")
-        writer?.println("rules=${ShieldStore.load(this).apps.size} protected=${foreground.packageName in protected} reason=$lastBlockReason covered=$covered")
+        writer?.println("rules=${ShieldStore.load(this).apps.size} strict=$notifiedStrict protected=${foreground.packageName in protected} reason=$lastBlockReason covered=$covered")
     }
 }

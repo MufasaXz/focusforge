@@ -33,6 +33,31 @@ class AppBlockingPolicyTest {
         YoutubeRules.OFF, 300, strict, focus,
     )
 
+    @Test fun focusOnlyRulesIdleUntilABlockRuns() {
+        assertEquals(AppBlockingPolicy.IDLE_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.FOCUS), 1000, false))
+        assertEquals(AppBlockingPolicy.ARMED_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.FOCUS, focus = 2000), 1000, false))
+        assertEquals(AppBlockingPolicy.IDLE_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.FOCUS, focus = 1000), 1000, false))
+        assertEquals(AppBlockingPolicy.ARMED_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.FOCUS, strict = 2000), 1000, false))
+    }
+    @Test fun blockAndBudgetRulesStayArmed() {
+        assertEquals(AppBlockingPolicy.ARMED_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.BLOCK), 1000, false))
+        assertEquals(AppBlockingPolicy.ARMED_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.BUDGET), 1000, false))
+    }
+    @Test fun aLiveCoverKeepsTheFastPoll() {
+        assertEquals(AppBlockingPolicy.ARMED_POLL_MS,
+            AppBlockingPolicy.pollDelay(rules(RuleMode.FOCUS), 1000, true))
+    }
+    @Test fun stopPausesOnlyOutsideStrictMode() {
+        assertTrue(AppBlockingPolicy.stopPausesBoundaries(rules(), 1000))
+        assertFalse(AppBlockingPolicy.stopPausesBoundaries(rules(strict = 2000), 1000))
+        assertTrue(AppBlockingPolicy.stopPausesBoundaries(rules(strict = 2000), 2000))
+    }
     @Test fun protectedPackagesAreNeverBlockedEvenDuringStrictMode() {
         assertNull(AppBlockingPolicy.reason(packageName, rules(strict = 2000), 1000,
             0, setOf(packageName), 999999))
