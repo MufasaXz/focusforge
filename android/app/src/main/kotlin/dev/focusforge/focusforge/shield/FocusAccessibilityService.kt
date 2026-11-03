@@ -6,7 +6,6 @@ import android.os.PowerManager
 import android.view.accessibility.AccessibilityWindowInfo
 import android.content.Context
 import android.content.Intent
-import android.graphics.Rect
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -598,14 +597,6 @@ class FocusAccessibilityService : AccessibilityService() {
 
         val signals = YouTubeSurfaceSignals()
 
-        // Study mode reads labels only from the upper part of the window, where
-        // the player, the title and the channel row sit; the recommendations
-        // below are other videos and must not decide this one.
-        val readText = current.youtube.study
-        val window = Rect().also { root.getBoundsInScreen(it) }
-        val textCutoff = window.top + (window.height() * 0.6f).toInt()
-        val bounds = Rect()
-
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var visited = 0
@@ -615,15 +606,6 @@ class FocusAccessibilityService : AccessibilityService() {
             val resourceId = node.viewIdResourceName
             val visible = node.isVisibleToUser
             signals.observe(resourceId, visible)
-            if (readText && visible) {
-                node.getBoundsInScreen(bounds)
-                if (bounds.top <= textCutoff) {
-                    signals.observeText(
-                        node.text?.toString(),
-                        node.contentDescription?.toString(),
-                    )
-                }
-            }
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { queue.add(it) }
             }

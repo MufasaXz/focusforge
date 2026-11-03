@@ -14,7 +14,6 @@ import '../../app/shell/app_shell.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/shield.dart';
 import '../../core/providers/shield_providers.dart';
-import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
@@ -1919,9 +1918,14 @@ class _YoutubeView extends ConsumerWidget {
             child: Column(
               children: [
                 _SurfaceSwitch(
-                  // The Shorts mark as an outline icon, tinted like the
-                  // row's other icons, so it names the feature it closes.
-                  image: const AssetImage('assets/images/youtube_shorts.png'),
+                  // YouTube's own Shorts mark, so the row is recognisable at
+                  // a glance; it names the feature the switch closes.
+                  leading: Image.asset(
+                    'assets/images/youtube_shorts.png',
+                    width: 24,
+                    height: 24,
+                    excludeFromSemantics: true,
+                  ),
                   title: context.tr("Block Shorts"),
                   body: context.tr(
                     "The Shorts player closes. Ordinary videos keep playing, so a lecture link still works.",
@@ -1979,10 +1983,8 @@ class _YoutubeView extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: Gap.lg),
-        const Stagger(index: 3, child: _StudyModeCard()),
-        const SizedBox(height: Gap.lg),
         Stagger(
-          index: 4,
+          index: 3,
           child: Card.outlined(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Radii.item),
@@ -2018,246 +2020,6 @@ class _YoutubeView extends ConsumerWidget {
   }
 }
 
-/// YouTube Study mode: only study videos play.
-///
-/// A video plays when its channel is one of the user's study channels or a
-/// well-known educational creator, or when its title names one of their
-/// subjects or keywords. Everything else, Shorts included, pauses with a
-/// screen saying why.
-class _StudyModeCard extends ConsumerWidget {
-  const _StudyModeCard();
-
-  Future<void> _addDialog(
-    BuildContext context, {
-    required String title,
-    required String hint,
-    required ValueChanged<String> onAdd,
-  }) async {
-    final controller = TextEditingController();
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 100,
-          decoration: InputDecoration(hintText: hint),
-          onSubmitted: (v) => Navigator.pop(context, v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.tr("Cancel")),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: Text(context.tr("Add")),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (value != null && value.trim().isNotEmpty) onAdd(value.trim());
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final rules = ref.watch(youtubeRulesProvider);
-    final notifier = ref.read(youtubeRulesProvider.notifier);
-    final subjects = [
-      for (final subject in ref.watch(subjectsProvider))
-        if (subject.name.trim().length >= 3) subject.name.trim(),
-    ];
-    final labelStyle = theme.textTheme.titleSmall?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
-    final mutedStyle = theme.textTheme.bodySmall?.copyWith(
-      color: cs.onSurfaceVariant,
-    );
-
-    return GlassCard(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: rules.study
-                        ? cs.primary
-                        : cs.primary.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(Radii.tile),
-                  ),
-                  child: Icon(
-                    Icons.school_outlined,
-                    color: rules.study ? cs.onPrimary : cs.primary,
-                  ),
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr("Study mode"),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.tr(
-                          "Only study videos play. Everything else, Shorts included, pauses.",
-                        ),
-                        style: mutedStyle,
-                      ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: rules.study,
-                  onChanged: (v) {
-                    HapticFeedback.selectionClick();
-                    unawaited(
-                      _changeSurface(
-                        context,
-                        ref,
-                        v,
-                        () => notifier.setStudy(v),
-                        feature: context.tr("Study mode"),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            Text(context.tr("Your study channels"), style: labelStyle),
-            const SizedBox(height: 2),
-            Text(
-              context.tr(
-                "Khan Academy, CrashCourse, 3Blue1Brown, Physics Wallah and other well-known study channels are allowed already.",
-              ),
-              style: mutedStyle,
-            ),
-            const SizedBox(height: Gap.sm),
-            Wrap(
-              spacing: Gap.sm,
-              runSpacing: Gap.sm,
-              children: [
-                for (final channel in rules.studyChannels)
-                  InputChip(
-                    label: Text(channel),
-                    onDeleted: () => unawaited(notifier.removeChannel(channel)),
-                    deleteButtonTooltipMessage: context.tr("Remove {0}", [
-                      channel,
-                    ]),
-                  ),
-                ActionChip(
-                  avatar: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(context.tr("Add channel")),
-                  onPressed: () => _addDialog(
-                    context,
-                    title: context.tr("Add a study channel"),
-                    hint: context.tr("Channel name or @handle"),
-                    onAdd: (v) => unawaited(notifier.addChannel(v)),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: Gap.xl * 1.5),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr("Videos about my subjects"),
-                        style: labelStyle,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subjects.isEmpty
-                            ? context.tr(
-                                "Add subjects in Focus and videos whose title names one will play.",
-                              )
-                            : context.tr("Titles that name {0} will play.", [
-                                subjects.take(4).join(', '),
-                              ]),
-                        style: mutedStyle,
-                      ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: rules.useSubjects,
-                  onChanged: (v) => unawaited(notifier.setUseSubjects(v)),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            Text(context.tr("Extra keywords"), style: labelStyle),
-            const SizedBox(height: Gap.sm),
-            Wrap(
-              spacing: Gap.sm,
-              runSpacing: Gap.sm,
-              children: [
-                for (final keyword in rules.studyKeywords)
-                  InputChip(
-                    label: Text(keyword),
-                    onDeleted: () => unawaited(notifier.removeKeyword(keyword)),
-                    deleteButtonTooltipMessage: context.tr("Remove {0}", [
-                      keyword,
-                    ]),
-                  ),
-                ActionChip(
-                  avatar: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(context.tr("Add keyword")),
-                  onPressed: () => _addDialog(
-                    context,
-                    title: context.tr("Add a keyword"),
-                    hint: context.tr("For example: calculus"),
-                    onAdd: (v) => unawaited(notifier.addKeyword(v)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 16,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: Text(
-                    context.tr(
-                      "Study mode reads the channel name and title of the video you open, on this phone only. Nothing it reads is saved or sent.",
-                    ),
-                    style: mutedStyle,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 Future<void> _changeSurface(
   BuildContext context,
   WidgetRef ref,
@@ -2281,7 +2043,7 @@ Future<void> _changeSurface(
 class _SurfaceSwitch extends StatelessWidget {
   const _SurfaceSwitch({
     this.icon,
-    this.image,
+    this.leading,
     required this.title,
     required this.body,
     required this.value,
@@ -2290,9 +2052,8 @@ class _SurfaceSwitch extends StatelessWidget {
 
   final IconData? icon;
 
-  /// A monochrome mark used in place of [icon], such as the Shorts outline;
-  /// it is tinted the same way.
-  final ImageProvider? image;
+  /// A mark drawn in place of [icon], such as the Shorts logo.
+  final Widget? leading;
   final String title;
   final String body;
   final bool value;
@@ -2307,13 +2068,9 @@ class _SurfaceSwitch extends StatelessWidget {
         HapticFeedback.selectionClick();
         onChanged(v);
       },
-      secondary: image != null
-          ? ImageIcon(
-              image,
-              size: 24,
-              color: value ? cs.tertiary : cs.onSurfaceVariant,
-            )
-          : Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
+      secondary:
+          leading ??
+          Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
       title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),

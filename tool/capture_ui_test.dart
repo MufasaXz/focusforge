@@ -164,14 +164,6 @@ void main() {
           if (state.position.axis == Axis.vertical) state.position.jumpTo(0);
         }
         await capture('$route-${mode.name}');
-        if (route == 'shield') {
-          await tester.tap(find.text('YouTube').first);
-          await tester.pumpAndSettle();
-          await capture('shield-youtube-${mode.name}');
-          await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
-          await tester.pumpAndSettle();
-          await capture('shield-youtube2-${mode.name}');
-        }
         if (route == 'focus') {
           expect(find.text('25:00'), findsWidgets);
           expect(container.read(timerProvider).subjectId, 'math');

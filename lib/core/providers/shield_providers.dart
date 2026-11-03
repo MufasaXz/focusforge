@@ -89,10 +89,7 @@ void syncShield(
   // receiver has no context type, so Dart would infer the `ref.read` result as
   // nullable.
   final List<WhitelistEntry> apps = whitelist ?? ref.read(whitelistProvider);
-  final YoutubeRules savedYoutube = youtube ?? ref.read(youtubeRulesProvider);
-  final localYoutube = savedYoutube.forEngine(
-    ref.read(subjectsProvider).map((s) => s.name),
-  );
+  final YoutubeRules localYoutube = youtube ?? ref.read(youtubeRulesProvider);
   final config = ShieldConfig(
     // App rules are enforced by watching which app is in front, which is the
     // usage the app-list disclosure asks about. Without that agreement — never
@@ -345,68 +342,13 @@ final activeShieldCountProvider = Provider<int>(
 /// second one should not have to add YouTube to a block list they do not want.
 class YoutubeRulesNotifier extends Notifier<YoutubeRules> {
   @override
-  YoutubeRules build() {
-    // Subject names are Study mode keywords, so a renamed or new subject has
-    // to reach the engine as well.
-    ref.listen(subjectsProvider, (_, _) {
-      if (state.study && state.useSubjects) syncShield(ref);
-    });
-    return YoutubeRules.off;
-  }
+  YoutubeRules build() => YoutubeRules.off;
 
   LocalStore get _store => ref.read(localStoreProvider);
 
   void hydrate(Map<String, dynamic>? stored) {
     if (stored != null) state = YoutubeRules.fromJson(stored);
   }
-
-  Future<void> setStudy(bool value) => set(state.copyWith(study: value));
-
-  Future<void> setUseSubjects(bool value) =>
-      set(state.copyWith(useSubjects: value));
-
-  /// Adds a channel name or @handle, ignoring case-insensitive duplicates.
-  Future<void> addChannel(String channel) {
-    final value = channel.trim();
-    if (value.isEmpty ||
-        state.studyChannels.length >= YoutubeRules.maxChannels ||
-        state.studyChannels.any(
-          (c) => c.toLowerCase() == value.toLowerCase(),
-        )) {
-      return Future.value();
-    }
-    return set(state.copyWith(studyChannels: [...state.studyChannels, value]));
-  }
-
-  Future<void> removeChannel(String channel) => set(
-    state.copyWith(
-      studyChannels: [
-        for (final c in state.studyChannels)
-          if (c != channel) c,
-      ],
-    ),
-  );
-
-  Future<void> addKeyword(String keyword) {
-    final value = keyword.trim();
-    if (value.length < 3 ||
-        state.studyKeywords.length >= YoutubeRules.maxKeywords ||
-        state.studyKeywords.any(
-          (k) => k.toLowerCase() == value.toLowerCase(),
-        )) {
-      return Future.value();
-    }
-    return set(state.copyWith(studyKeywords: [...state.studyKeywords, value]));
-  }
-
-  Future<void> removeKeyword(String keyword) => set(
-    state.copyWith(
-      studyKeywords: [
-        for (final k in state.studyKeywords)
-          if (k != keyword) k,
-      ],
-    ),
-  );
 
   Future<void> set(YoutubeRules next) async {
     state = next;

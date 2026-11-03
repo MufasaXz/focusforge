@@ -23,7 +23,8 @@ Future<bool> confirmShieldAccess(
           children: [
             Text(
               context.tr(
-                "FocusForge uses Accessibility only for its optional YouTube filters, and only while one is on. Shorts and feed filters check YouTube’s screen identifiers to tell those screens from ordinary videos. Study mode also reads the channel name and title of the video you open, to compare them with your study channels and subjects. These checks stay on your device and nothing they read is saved or uploaded. While a pause is showing, FocusForge checks only which app is in front, so the pause closes when you leave. It never reads messages, passwords or what you type. Access is optional and can be turned off in Android Settings at any time.",
+                "{0}FocusForge uses Android Accessibility only for optional YouTube screen filters. It checks YouTube screen identifiers to tell Shorts and supported feeds from ordinary videos. These screen checks stay on your device and are not stored or sent to a server. It does not read messages, passwords or text you type.\n\nWhile a YouTube pause is visible, it checks application window package names so the pause closes when you leave YouTube; it does not inspect other apps’ contents.\n\nNormal app boundaries use Usage access and Draw over other apps. They work without Accessibility.\n\nYour chosen app names, pause decisions and their times are saved only on this device for Shield insights.\n\nThis access is optional. You can turn it off in Android Settings at any time. The focus timer works without it.\n\nIn Android Settings, choose FocusForge under Accessibility and enable its service. Return here and turn on your chosen rule.",
+                const [''],
               ),
             ),
           ],

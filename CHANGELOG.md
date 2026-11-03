@@ -15,15 +15,7 @@
   screen recording of the real pages.
 - The Shield app sheet offers Time budget and Only while focusing, with
   allowance presets; Always allowed and Blocked are gone from it.
-- YouTube's Block Shorts row shows the Shorts mark, as an outline icon.
-- YouTube Study mode: only videos from your study channels, a bundled list of
-  well-known educational creators, or whose title names one of your subjects or
-  keywords will play; everything else, Shorts included, pauses. The channel is
-  read on the video page from the Subscribe button, the @handle or the title,
-  and matched exactly. Nothing read is kept. The Accessibility disclosure and
-  Android's service description now say so.
-- Usage stats: tap any app to group it as Distracting, Productive or Others
-  yourself, or back to automatic. More study apps are recognised.
+- YouTube's Block Shorts row shows the Shorts mark.
 - What brings you here? is redesigned.
 - Reset emails are sent by FocusForge with a Reset password button that opens
   a FocusForge page.
