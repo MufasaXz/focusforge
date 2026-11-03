@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "{0} 分钟时段",
   "Distracting": "分心",
   "Productive": "高效",
-  "Others": "其他"
+  "Others": "其他",
+  "Automatic": "自动",
+  "Group {0} as": "将 {0} 归为",
+  "Grouped by Shield rules and the app's type": "按 Shield 规则和应用类型",
+  "Your choice is kept on this phone and used in every chart.": "你的选择保存在这部手机上，并用于所有图表。"
 }

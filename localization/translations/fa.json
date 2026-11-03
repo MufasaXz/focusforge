@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "بلوک‌های {0} دقیقه‌ای",
   "Distracting": "حواس‌پرت‌کن",
   "Productive": "مفید",
-  "Others": "سایر"
+  "Others": "سایر",
+  "Automatic": "خودکار",
+  "Group {0} as": "گروه‌بندی {0} به‌عنوان",
+  "Grouped by Shield rules and the app's type": "بر اساس قوانین Shield و نوع برنامه",
+  "Your choice is kept on this phone and used in every chart.": "انتخاب شما روی همین گوشی می‌ماند و در همهٔ نمودارها به کار می‌رود."
 }

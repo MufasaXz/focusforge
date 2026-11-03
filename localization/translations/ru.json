@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "Блоки по {0} мин",
   "Distracting": "Отвлекающие",
   "Productive": "Полезные",
-  "Others": "Другие"
+  "Others": "Другие",
+  "Automatic": "Автоматически",
+  "Group {0} as": "Отнести {0} к группе",
+  "Grouped by Shield rules and the app's type": "По правилам Shield и типу приложения",
+  "Your choice is kept on this phone and used in every chart.": "Ваш выбор хранится на этом телефоне и используется во всех графиках."
 }

@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "{0} मिनिटांचे ब्लॉक",
   "Distracting": "लक्ष विचलित करणारी",
   "Productive": "उपयुक्त",
-  "Others": "इतर"
+  "Others": "इतर",
+  "Automatic": "आपोआप",
+  "Group {0} as": "{0} ला या गटात ठेवा",
+  "Grouped by Shield rules and the app's type": "Shield नियम आणि ॲपच्या प्रकारानुसार",
+  "Your choice is kept on this phone and used in every chart.": "तुमची निवड याच फोनवर राहते आणि प्रत्येक चार्टमध्ये वापरली जाते."
 }

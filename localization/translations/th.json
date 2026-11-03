@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "ช่วงละ {0} นาที",
   "Distracting": "ทำให้เสียสมาธิ",
   "Productive": "มีประโยชน์",
-  "Others": "อื่นๆ"
+  "Others": "อื่นๆ",
+  "Automatic": "อัตโนมัติ",
+  "Group {0} as": "จัด {0} เป็น",
+  "Grouped by Shield rules and the app's type": "ตามกฎ Shield และประเภทแอป",
+  "Your choice is kept on this phone and used in every chart.": "ตัวเลือกของคุณเก็บไว้ในโทรศัพท์เครื่องนี้และใช้ในทุกแผนภูมิ"
 }

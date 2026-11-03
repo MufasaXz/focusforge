@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "فترات {0} دقيقة",
   "Distracting": "مشتِّتة",
   "Productive": "مفيدة",
-  "Others": "أخرى"
+  "Others": "أخرى",
+  "Automatic": "تلقائي",
+  "Group {0} as": "تصنيف {0} كـ",
+  "Grouped by Shield rules and the app's type": "حسب قواعد Shield ونوع التطبيق",
+  "Your choice is kept on this phone and used in every chart.": "يبقى اختيارك على هذا الهاتف ويُستخدم في كل الرسوم البيانية."
 }

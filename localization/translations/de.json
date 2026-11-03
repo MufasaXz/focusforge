@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "{0}-Min.-Blöcke",
   "Distracting": "Ablenkend",
   "Productive": "Produktiv",
-  "Others": "Andere"
+  "Others": "Andere",
+  "Automatic": "Automatisch",
+  "Group {0} as": "{0} einordnen als",
+  "Grouped by Shield rules and the app's type": "Nach Shield-Regeln und App-Art",
+  "Your choice is kept on this phone and used in every chart.": "Deine Wahl bleibt auf diesem Handy und gilt in jedem Diagramm."
 }

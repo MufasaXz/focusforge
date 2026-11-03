@@ -1306,5 +1306,9 @@
   "{0}-min blocks": "{0} 分ブロック",
   "Distracting": "気が散るアプリ",
   "Productive": "生産的なアプリ",
-  "Others": "その他"
+  "Others": "その他",
+  "Automatic": "自動",
+  "Group {0} as": "{0} の分類",
+  "Grouped by Shield rules and the app's type": "Shield のルールとアプリの種類による",
+  "Your choice is kept on this phone and used in every chart.": "選択はこのスマートフォンに保存され、すべてのグラフに使われます。"
 }
