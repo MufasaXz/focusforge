@@ -1,7 +1,24 @@
 # Changelog
 
-## Unreleased
+## 1.0.5
 
+- Usage stats: Home shows today's screen time and this week's bars, split into
+  distracting, productive and other apps, and opens a full Daily/Weekly view
+  with category filters, a change against last week, search and per-app time.
+  Apps are grouped by Shield rules, a short list of known apps and the
+  category Android reports. Everything is read and kept on the phone.
+- The week/month study tracker, focus heatmap and top-subject card are gone
+  from Home; the goal card and subject breakdown stay.
+- Setup's permission step is a checklist (usage access, display over other
+  apps, notifications) with Continue without app blocking, and each Android
+  settings page is introduced by a guide. The Accessibility guide plays a
+  screen recording of the real pages.
+- The Shield app sheet offers Time budget and Only while focusing, with
+  allowance presets; Always allowed and Blocked are gone from it.
+- YouTube's Block Shorts row shows the Shorts mark.
+- What brings you here? is redesigned.
+- Reset emails are sent by FocusForge with a Reset password button that opens
+  a FocusForge page.
 - Study sessions now stay on the device. A linked account backs up only its
   profile, level, leaderboard consent and badges, so signing in again on any
   phone brings those back. Subjects, plans, goals and history do not follow to a

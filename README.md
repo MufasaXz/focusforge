@@ -16,7 +16,7 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 
 **Free & open source** · No ads · No subscriptions
 
-<sub>Version 1.0.4 · Android 7.0+ · MIT licensed</sub>
+<sub>Version 1.0.5 · Android 7.0+ · MIT licensed</sub>
 
 <br>
 
