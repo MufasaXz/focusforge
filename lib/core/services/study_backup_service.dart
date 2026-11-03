@@ -6,7 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart';
 import 'local_store.dart';
 
-/// Private study data, independent of optional public leaderboard sharing.
+/// One account's data, either as this device holds it or as the cloud does.
+///
+/// The on-device copy carries everything. The cloud copy carries only
+/// [StudyBackupService.cloudKeys] and no sessions: study history stays local.
+/// [sessions] is still read from the cloud so that rows an older build uploaded
+/// can move back to the device once, and then be deleted there.
 class StudyBackup {
   const StudyBackup({
     required this.settings,
@@ -46,7 +51,17 @@ abstract class StudyBackupBackend {
 class FirebaseStudyBackupBackend implements StudyBackupBackend {
   FirebaseStudyBackupBackend(this.db);
   final FirebaseFirestore db;
-  final _saved = <String, String>{};
+
+  /// The settings document as last read or written, so a save that changes
+  /// nothing — a finished session changes only local keys — costs no write.
+  final _savedSettings = <String, String>{};
+
+  /// Document ids of session rows an older build uploaded, by account.
+  ///
+  /// Only ids this backend has actually returned from [load] are ever deleted.
+  /// By then the service has merged them into the device, so a row that
+  /// arrives afterwards waits for the next load rather than being lost.
+  final _legacySessions = <String, Set<String>>{};
   static const _wait = Duration(seconds: 12);
   DocumentReference<Map<String, dynamic>> _settings(String uid) =>
       db.doc('users/$uid/preferences/studyBackup');
@@ -58,6 +73,7 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
         .get(const GetOptions(source: Source.server))
         .timeout(_wait);
     final rows = <Map<String, dynamic>>[];
+    final legacy = <String>{};
     QueryDocumentSnapshot<Map<String, dynamic>>? last;
     while (true) {
       Query<Map<String, dynamic>> query = _sessions(uid)
@@ -71,12 +87,13 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
         final row = doc.data();
         if (row['ownerUid'] == uid && row['id'] is String) {
           rows.add(row);
-          _saved['$uid/${doc.id}'] = jsonEncode(row);
+          legacy.add(doc.id);
         }
       }
       if (page.docs.length < 400) break;
       last = page.docs.last;
     }
+    _legacySessions[uid] = legacy;
     if (!config.exists && rows.isEmpty) return null;
     final data = config.data();
     Map<String, dynamic> settings = {};
@@ -87,6 +104,7 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
       if (decoded is Map<String, dynamic>) {
         settings = decoded;
         hasSettings = true;
+        _savedSettings[uid] = '${data?['modifiedAt']}:$encoded';
       }
     } on FormatException {
       /* A corrupt config must not erase valid sessions. */
@@ -99,39 +117,43 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
     );
   }
 
+  /// Writes the settings document, then removes legacy session rows.
+  ///
+  /// [StudyBackup.sessions] is deliberately ignored: nothing here can upload a
+  /// session, whatever a caller passes.
   @override
   Future<void> save(String uid, StudyBackup backup) async {
     final data = jsonEncode(backup.settings);
     if (utf8.encode(data).length > 300000) {
       throw StateError('Study settings exceed backup limit');
     }
-    final pending = <MapEntry<String, Map<String, dynamic>>>[];
-    for (final row in backup.sessions) {
-      final id = row['id'];
-      if (id is! String || row['ownerUid'] != uid) continue;
-      final encoded = base64Url.encode(utf8.encode(id)).replaceAll('=', '');
-      if (_saved['$uid/$encoded'] != jsonEncode(row)) {
-        pending.add(MapEntry(encoded, row));
-      }
+    final signature = '${backup.modifiedAt}:$data';
+    if (_savedSettings[uid] != signature) {
+      await _settings(uid)
+          .set({
+            'version': 1,
+            'ownerUid': uid,
+            'data': data,
+            'modifiedAt': backup.modifiedAt,
+          })
+          .timeout(_wait);
+      _savedSettings[uid] = signature;
     }
-    for (var start = 0; start < pending.length; start += 400) {
+    await _deleteLegacySessions(uid);
+  }
+
+  Future<void> _deleteLegacySessions(String uid) async {
+    final pending = _legacySessions[uid];
+    if (pending == null) return;
+    while (pending.isNotEmpty) {
+      final page = pending.take(400).toList(growable: false);
       final batch = db.batch();
-      for (final entry in pending.skip(start).take(400)) {
-        batch.set(_sessions(uid).doc(entry.key), entry.value);
+      for (final id in page) {
+        batch.delete(_sessions(uid).doc(id));
       }
       await batch.commit().timeout(_wait);
-      for (final entry in pending.skip(start).take(400)) {
-        _saved['$uid/${entry.key}'] = jsonEncode(entry.value);
-      }
+      pending.removeAll(page);
     }
-    await _settings(uid)
-        .set({
-          'version': 1,
-          'ownerUid': uid,
-          'data': data,
-          'modifiedAt': backup.modifiedAt,
-        })
-        .timeout(_wait);
   }
 }
 
@@ -150,20 +172,84 @@ class StudyBackupService {
   void Function(UserProfile)? onReconciled;
   int _generation = 0;
   Future<void> _writes = Future.value();
-  static const keys = {
+
+  /// What a linked account keeps in the cloud: the profile, the level and the
+  /// leaderboard consent. Earned badges have their own document.
+  ///
+  /// The consent travels because the public row does: a phone that restored
+  /// the row but not the choice would show sharing as off while it was on.
+  static const cloudKeys = {
     StoreKeys.user,
+    StoreKeys.stats,
+    StoreKeys.boardOptIn,
+  };
+
+  /// Study setup, kept for each account on this device and never uploaded.
+  static const localKeys = {
     StoreKeys.subjects,
     StoreKeys.planLibrary,
     StoreKeys.customPlan,
     StoreKeys.dailyGoal,
     StoreKeys.dailyGoalDays,
     'goal.planner',
-    StoreKeys.stats,
-    StoreKeys.boardOptIn,
   };
+
+  static const keys = {...cloudKeys, ...localKeys};
   String _cache(String uid) => 'study.account.$uid';
+
+  /// The part of [settings] allowed to leave the device.
+  ///
+  /// Credited session ids are stripped from the stats: each encodes when a
+  /// block started, which is exactly the history that stays local. A stats
+  /// value that cannot be read is dropped rather than uploaded unfiltered.
+  Map<String, dynamic> _cloudSettings(Map<String, dynamic> settings) {
+    final cloud = <String, dynamic>{};
+    for (final key in cloudKeys) {
+      if (!settings.containsKey(key)) continue;
+      final value = settings[key];
+      if (key != StoreKeys.stats) {
+        cloud[key] = value;
+        continue;
+      }
+      final stats = _decodeMap(value);
+      if (stats == null) continue;
+      cloud[key] = jsonEncode(stats..remove('creditedSessionIds'));
+    }
+    return cloud;
+  }
+
+  static Map<String, dynamic>? _decodeMap(Object? value) {
+    if (value is! String) return null;
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// [stats] with this device's credited session ids put back.
+  ///
+  /// The cloud copy has none, and those receipts are what stop a recovered
+  /// block being awarded twice, so restoring a level must not erase them.
+  static Object? _withLocalCredits(Object? stats, StudyBackup? local) {
+    final restored = _decodeMap(stats);
+    if (restored == null) return stats;
+    final ids = <String>{
+      for (final source in [
+        _decodeMap(local?.settings[StoreKeys.stats]),
+        restored,
+      ])
+        if (source?['creditedSessionIds'] case final List credited)
+          ...credited.whereType<String>(),
+    };
+    return jsonEncode({...restored, 'creditedSessionIds': ids.toList()});
+  }
+
   String _settingsSignature(String uid) {
-    final settings = {..._capture(uid).settings};
+    // Only what the cloud holds: a local edit must not outrank a newer profile
+    // or level saved from another device.
+    final settings = _cloudSettings(_capture(uid).settings);
     final raw = settings[StoreKeys.user];
     if (raw is String) {
       try {
@@ -332,6 +418,21 @@ class StudyBackupService {
       }
     }
     final settings = chosen?.settings ?? <String, dynamic>{};
+    // Local setup comes from the winning snapshot when it has any: that is the
+    // device itself, or a document an older build wrote, read this once before
+    // the next save strips it. A current cloud document has none, so the
+    // account's own copy on this device stands.
+    Object? restoredValue(String key) {
+      if (settings.containsKey(key)) return settings[key];
+      if (!localKeys.contains(key)) return null;
+      for (final source in [local, remoteSettings, guest]) {
+        if (source?.settings.containsKey(key) == true) {
+          return source!.settings[key];
+        }
+      }
+      return null;
+    }
+
     UserProfile restored = profile;
     final raw = settings[StoreKeys.user];
     if (raw is String) {
@@ -354,8 +455,10 @@ class StudyBackupService {
     try {
       for (final key in keys) {
         checkCurrent();
-        final value = settings[key];
         if (key == StoreKeys.user) continue;
+        final value = key == StoreKeys.stats
+            ? _withLocalCredits(restoredValue(key), local)
+            : restoredValue(key);
         if (value is String) {
           await store.setString(key, value);
         } else if (value is bool) {
@@ -439,7 +542,14 @@ class StudyBackupService {
           onReconciled?.call(restored);
           backup = _capture(uid);
         }
-        await backend.save(uid, backup);
+        await backend.save(
+          uid,
+          StudyBackup(
+            settings: _cloudSettings(backup.settings),
+            sessions: const [],
+            modifiedAt: backup.modifiedAt,
+          ),
+        );
       } catch (_) {
         // Reconciliation increments the generation. Retry only while this
         // account remains current, even if the network read failed.
