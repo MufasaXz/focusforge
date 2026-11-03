@@ -150,4 +150,64 @@ void main() {
     final sessions = container.read(sessionsProvider);
     expect(sessions.single.minutes, 30);
   });
+
+  test('a block cut short logs the shorter length after a restart', () async {
+    final container = freshContainer();
+    final timer = container.read(timerProvider.notifier);
+
+    timer.hydrate({
+      'presetIndex': 0,
+      'phase': TimerPhase.focus.name,
+      'running': true,
+      'targetEnd': DateTime.now()
+          .subtract(const Duration(seconds: 1))
+          .millisecondsSinceEpoch,
+      'segmentStartedAt': DateTime.now()
+          .subtract(const Duration(minutes: 20))
+          .millisecondsSinceEpoch,
+      'completedFocusSegments': 0,
+      'segmentExtraMs': minusFive.inMilliseconds,
+    });
+
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(container.read(sessionsProvider).single.minutes, 20);
+  });
+
+  test('a paused block cut short keeps its length across a restart', () {
+    final container = freshContainer();
+    final timer = container.read(timerProvider.notifier);
+    final preset = container.read(presetsProvider).first;
+
+    timer.hydrate({
+      'presetIndex': 0,
+      'phase': TimerPhase.focus.name,
+      'running': false,
+      'remainingMs': const Duration(minutes: 10).inMilliseconds,
+      'segmentStartedAt': DateTime.now()
+          .subtract(const Duration(minutes: 10))
+          .millisecondsSinceEpoch,
+      'completedFocusSegments': 0,
+      'segmentExtraMs': minusFive.inMilliseconds,
+    });
+
+    expect(timer.state.plannedDuration(preset), preset.focusDuration + minusFive);
+  });
+
+  test('an extra the dock could not have written is ignored', () {
+    final container = freshContainer();
+    final timer = container.read(timerProvider.notifier);
+    final preset = container.read(presetsProvider).first;
+
+    timer.hydrate({
+      'presetIndex': 0,
+      'phase': TimerPhase.focus.name,
+      'running': false,
+      'remainingMs': const Duration(minutes: 10).inMilliseconds,
+      'segmentExtraMs': const Duration(days: 1).inMilliseconds * -1,
+    });
+
+    expect(timer.state.plannedDuration(preset), preset.focusDuration);
+  });
 }
