@@ -121,6 +121,13 @@ void main() {
       await tester.tap(find.text('Agree'));
       await tester.pumpAndSettle();
       expect(container.read(appListConsentProvider), isTrue);
+      // The guide comes next; Android opens only from its button.
+      expect(find.text('Turn on Usage access'), findsOneWidget);
+      expect(manager.requests, isEmpty);
+      await tester.ensureVisible(find.text('Open settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open settings'));
+      await tester.pumpAndSettle();
       expect(manager.requests, [AppPermission.usageAccess]);
       expect(
         find.text('Allow app usage'),
@@ -128,22 +135,25 @@ void main() {
         reason: 'Opening settings does not mean granted',
       );
 
-      // Already agreed: the usage explainer is the one dialog, and declining
-      // it still sends nobody to Settings.
+      // Already agreed: the guide is the one sheet, and Not now still
+      // sends nobody to Settings.
       await tester.tap(find.text('Allow app usage'));
       await tester.pumpAndSettle();
-      expect(find.text('Why FocusForge asks for app usage'), findsOneWidget);
-      expect(find.textContaining('messages'), findsOneWidget);
+      expect(find.text('Turn on Usage access'), findsOneWidget);
       expect(
         find.text('Allow FocusForge to read your app list?'),
         findsNothing,
       );
+      await tester.ensureVisible(find.text('Not now'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
       expect(manager.requests, [AppPermission.usageAccess]);
       await tester.tap(find.text('Allow app usage'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Open usage settings'));
+      await tester.ensureVisible(find.text('Open settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open settings'));
       await tester.pumpAndSettle();
       expect(manager.requests, [
         AppPermission.usageAccess,

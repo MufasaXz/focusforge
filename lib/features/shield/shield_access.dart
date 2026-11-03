@@ -9,6 +9,7 @@ import '../../core/services/native_shield_service.dart';
 import '../../core/services/permission_manager.dart';
 import '../../shared/widgets/accessibility_disclosure.dart';
 import '../../shared/widgets/app_list_disclosure.dart';
+import '../../shared/widgets/settings_guide.dart';
 import '../settings/settings_support.dart';
 
 import 'package:go_router/go_router.dart';
@@ -88,49 +89,13 @@ Future<bool> _granted(Future<bool> answer) async {
   }
 }
 
+/// The overlay guide says what the access is for and how to turn it on, so no
+/// separate explanation dialog comes first.
 Future<void> _offerAccess(
   BuildContext context,
   WidgetRef ref,
   AppPermission permission,
-) async {
-  final allow = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      icon: const Icon(Icons.timelapse_rounded),
-      title: Text(
-        permission == AppPermission.overlay
-            ? context.tr("Allow draw over other apps")
-            : context.tr("Allow usage access first"),
-      ),
-      scrollable: true,
-      content: Text(
-        permission == AppPermission.overlay
-            ? context.tr(
-                "Draw over other apps is off, so FocusForge cannot show the pause screen over your chosen apps. This rule will stay off.\n\nAllow FocusForge in Android Draw over other apps settings, then return and enable the rule again.",
-              )
-            : context.tr(
-                "Usage access is off, so FocusForge cannot detect when your chosen apps are open or measure their daily budgets. This rule will stay off.\n\nAllow FocusForge in Android Usage access settings, then return and enable the rule again. Usage history stays on this device.",
-              ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(context.tr("Later")),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(
-            permission == AppPermission.overlay
-                ? context.tr("Open overlay settings")
-                : context.tr("Open usage settings"),
-          ),
-        ),
-      ],
-    ),
-  );
-  if (allow != true || !context.mounted) return;
-  await requestShieldPermission(context, ref, permission);
-}
+) => requestShieldPermission(context, ref, permission);
 
 /// Opens only the requested Android setting, with accessibility disclosure.
 Future<void> requestShieldPermission(
@@ -157,6 +122,11 @@ Future<void> requestShieldPermission(
       !await confirmShieldAccess(context, feature: feature)) {
     return;
   }
+  if (!context.mounted) return;
+  // Android opens a long list here, with no dialog of its own; the guide shows
+  // exactly what to tap before the user is sent there.
+  final guide = SettingsGuide.forPermission(permission);
+  if (guide != null && !await showSettingsGuide(context, guide)) return;
   if (!context.mounted) return;
   final outcome = await ref
       .read(shieldPermissionManagerProvider)

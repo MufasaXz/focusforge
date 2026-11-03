@@ -124,9 +124,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(whitelistProvider), isEmpty);
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Later'), findsOneWidget);
-    expect(find.text('Allow draw over other apps'), findsOneWidget);
+    // The overlay guide explains the access and shows where to turn it on.
+    expect(find.text('Turn on Display over other apps'), findsOneWidget);
+    expect(find.text('Open settings'), findsOneWidget);
     expect(find.text('Go to Home'), findsNothing);
     expect(find.text('Open usage settings'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -269,9 +269,11 @@ void main() {
       find.descendant(of: row, matching: find.byType(GestureDetector)).last,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Allow draw over other apps'), findsOneWidget);
+    expect(find.text('Turn on Display over other apps'), findsOneWidget);
     expect(container.read(whitelistProvider), isEmpty);
-    await tester.tap(find.text('Open overlay settings'));
+    await tester.ensureVisible(find.text('Open settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open settings'));
     await tester.pumpAndSettle();
     expect(manager.requests, [AppPermission.overlay]);
     expect(container.read(whitelistProvider), isEmpty);
@@ -385,7 +387,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(whitelistProvider), isEmpty);
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Turn on Display over other apps'), findsOneWidget);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
@@ -434,6 +436,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Agree and open Settings'), findsOneWidget);
       await tester.tap(find.text('Agree and open Settings'));
+      await tester.pumpAndSettle();
+      // The guide shows the Accessibility page before Android opens it.
+      expect(manager.requests, isEmpty);
+      expect(find.text('Turn on Accessibility'), findsOneWidget);
+      await tester.ensureVisible(find.text('Open settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open settings'));
       await tester.pumpAndSettle();
       expect(manager.requests, [AppPermission.accessibility]);
       expect(container.read(youtubeRulesProvider).shorts, isFalse);
