@@ -110,7 +110,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Why FocusForge asks for app usage'), findsNothing);
-      expect(find.textContaining('Never uploaded'), findsOneWidget);
+      expect(find.textContaining('never uploaded or shared'), findsOneWidget);
       await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
       expect(manager.requests, isEmpty);

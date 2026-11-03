@@ -62,9 +62,12 @@ void main() {
       expect(find.text('Limit distracting apps'), findsOneWidget);
       // What is read, for which feature, and where it goes — before any
       // button that could grant it.
-      expect(find.textContaining('list of apps installed'), findsOneWidget);
-      expect(find.textContaining('to let you choose apps to block'), findsOne);
-      expect(find.textContaining('Never uploaded'), findsOneWidget);
+      expect(
+        find.textContaining('apps installed on this phone'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('block or limit apps in Shield'), findsOne);
+      expect(find.textContaining('never uploaded or shared'), findsOneWidget);
       expect(find.text('Agree and allow'), findsOneWidget);
       expect(find.text('Not now'), findsOneWidget);
       // Only this access is asked about here; the others are explained where

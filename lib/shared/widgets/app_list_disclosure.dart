@@ -8,52 +8,49 @@ import '../../core/providers/usage_providers.dart';
 
 /// The prominent disclosure for the installed-app list and per-app usage.
 ///
-/// Google Play's User Data policy asks for this wording shape — what the app
-/// collects, to enable which feature, in what scenario — and for it to say
-/// plainly where the data goes. Kept to that one subject: it is not folded
-/// into the accessibility or usage-access explanations, which describe other
-/// access.
-///
-/// One lead sentence in the policy's own shape, then three short points, so
-/// the part a person actually reads is the part that matters. The same body is
-/// used by the dialog, the Shield card and the setup step, so the three can
-/// never describe the access differently.
+/// Google Play's User Data policy asks it to say what is read, for which
+/// feature, and where the data goes, before anything is read and in the normal
+/// flow of the app. Four short rows answer exactly those questions, so the part
+/// a person actually reads is the part that matters. The same body is used by
+/// the dialog, the Shield card and the setup step, so the three can never
+/// describe the access differently. It covers this one access only; Usage
+/// access settings, overlay and Accessibility are explained where they are
+/// asked for.
 class AppListDisclosureBody extends StatelessWidget {
   const AppListDisclosureBody({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          context.tr(
-            "FocusForge reads the list of apps installed on this phone and how long you used each one today, to let you choose apps to block or limit in Shield and to show your screen time on Home.",
+        _Point(
+          icon: Icons.apps_rounded,
+          title: context.tr("What FocusForge reads"),
+          body: context.tr(
+            "The apps installed on this phone and how long you used each one today.",
           ),
-          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: Gap.lg),
+        _Point(
+          icon: Icons.timer_outlined,
+          title: context.tr("Why"),
+          body: context.tr(
+            "To let you block or limit apps in Shield and show your screen time on Home.",
+          ),
+        ),
         _Point(
           icon: Icons.phone_android_rounded,
-          title: context.tr("Stays on this phone"),
+          title: context.tr("Where it goes"),
           body: context.tr(
-            "Never uploaded, stored on a server or shared — not with study groups, the leaderboard or your backup.",
+            "Nowhere. It stays on this phone and is never uploaded or shared.",
           ),
         ),
         _Point(
-          icon: Icons.touch_app_outlined,
-          title: context.tr("Only after you agree"),
+          icon: Icons.toggle_on_outlined,
+          title: context.tr("Your choice"),
           body: context.tr(
-            "Nothing is read before you tap Agree, and only while you use Shield or Home.",
-          ),
-        ),
-        _Point(
-          icon: Icons.tune_rounded,
-          title: context.tr("You stay in control"),
-          body: context.tr(
-            "Withdraw anytime in You → Account & privacy. Focus timers work without it.",
+            "Nothing is read until you agree. Turn it off anytime in You → Account & privacy.",
           ),
           last: true,
         ),
@@ -80,30 +77,26 @@ class _Point extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Padding(
-      padding: EdgeInsets.only(bottom: last ? 0 : Gap.md),
+      padding: EdgeInsets.only(bottom: last ? 0 : Gap.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: .12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: cs.primary),
-          ),
+          Icon(icon, size: 22, color: cs.primary),
           const SizedBox(width: Gap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: theme.textTheme.titleSmall),
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   body,
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
                 ),
@@ -127,7 +120,7 @@ Future<bool> confirmAppListAccess(BuildContext context, WidgetRef ref) async {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      icon: const Icon(Icons.apps_rounded),
+      icon: const Icon(Icons.shield_outlined),
       title: Text(context.tr("Allow FocusForge to read your app list?")),
       scrollable: true,
       content: const AppListDisclosureBody(),
@@ -160,33 +153,38 @@ class AppListDisclosureCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.all(Gap.lg),
+      padding: const EdgeInsets.all(Gap.xl),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(Radii.card),
         border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.apps_rounded, color: cs.primary),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    context.tr("Allow FocusForge to read your app list?"),
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.shield_outlined, color: cs.primary),
           ),
           const SizedBox(height: Gap.md),
-          const AppListDisclosureBody(),
+          Semantics(
+            header: true,
+            child: Text(
+              context.tr("Allow FocusForge to read your app list?"),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           const SizedBox(height: Gap.lg),
+          const AppListDisclosureBody(),
+          const SizedBox(height: Gap.xl),
           SizedBox(
             width: double.infinity,
             child: FilledButton(

@@ -117,9 +117,9 @@ void main() {
       find.text('Allow FocusForge to read your app list?'),
       findsOneWidget,
     );
-    expect(find.textContaining('list of apps installed'), findsOneWidget);
-    expect(find.textContaining('to let you choose apps to block'), findsOne);
-    expect(find.textContaining('Never uploaded'), findsOneWidget);
+    expect(find.textContaining('apps installed on this phone'), findsOneWidget);
+    expect(find.textContaining('block or limit apps in Shield'), findsOne);
+    expect(find.textContaining('never uploaded or shared'), findsOneWidget);
   });
 
   testWidgets('tapping outside or pressing Back is not consent', (
@@ -169,7 +169,7 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('Never uploaded'), findsOneWidget);
+    expect(find.textContaining('never uploaded or shared'), findsOneWidget);
     await tester.tap(find.text('Agree'));
     await tester.pumpAndSettle();
     expect(c.read(appListConsentProvider), isTrue);

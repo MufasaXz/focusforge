@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/permission_manager.dart';
-import '../../core/utils/format.dart';
 import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/icon_badge.dart';
 import 'onboarding_chrome.dart';
@@ -102,9 +101,10 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
       title: supported
           ? context.tr("Limit distracting apps")
           : context.tr("You are ready to focus"),
-      eyebrow: context.tr("OPTIONAL ACCESS"),
       subtitle: supported
-          ? null
+          ? context.tr(
+              "Pause the apps that pull you away. Optional, and you can set it up later in Shield.",
+            )
           : context.tr("Your timer works without any extra device access."),
       primaryLabel: done
           ? context.tr("Continue")
@@ -124,8 +124,6 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
       // disclosure pushed below the fold.
       children: [
         if (supported) ...[
-          const _ScreenTimePreview(),
-          const SizedBox(height: Gap.md),
           if (done)
             _StatusCard(
               icon: Icons.check_circle_outline_rounded,
@@ -138,14 +136,12 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
           else ...[
             DecoratedBox(
               decoration: BoxDecoration(
-                color: cs.surfaceContainerLow,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(Radii.card),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: .7),
-                ),
+                border: Border.all(color: cs.outlineVariant),
               ),
               child: const Padding(
-                padding: EdgeInsets.all(Gap.lg),
+                padding: EdgeInsets.all(Gap.xl),
                 child: AppListDisclosureBody(),
               ),
             ),
@@ -163,94 +159,6 @@ class _UsageAccessStepState extends ConsumerState<UsageAccessStep>
           ],
         ],
       ],
-    );
-  }
-}
-
-/// What the access is for, drawn rather than described: three apps with a
-/// day's time on them, the busiest one carrying a limit. Decorative — the
-/// disclosure beneath it is the text that counts, so screen readers skip it.
-class _ScreenTimePreview extends StatelessWidget {
-  const _ScreenTimePreview();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final rows = [
-      (Icons.smart_display_rounded, cs.error, 72, true),
-      (Icons.forum_rounded, cs.primary, 41, false),
-      (Icons.menu_book_rounded, cs.tertiary, 18, false),
-    ];
-    return ExcludeSemantics(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(Radii.card),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: .7)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Gap.lg,
-            vertical: Gap.sm,
-          ),
-          child: Column(
-            children: [
-              for (final (icon, color, minutes, limited) in rows)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-                  child: Row(
-                    children: [
-                      IconBadge(icon: icon, color: color, size: 30, radius: 9),
-                      const SizedBox(width: Gap.md),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.pill),
-                          child: Stack(
-                            children: [
-                              Container(
-                                height: 8,
-                                color: cs.surfaceContainerHighest,
-                              ),
-                              FractionallySizedBox(
-                                widthFactor: minutes / 90,
-                                child: Container(
-                                  height: 8,
-                                  color: color.withValues(alpha: .75),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: Gap.md),
-                      SizedBox(
-                        width: 56,
-                        child: Text(
-                          formatMinutes(minutes),
-                          textAlign: TextAlign.end,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Icon(
-                        limited
-                            ? Icons.hourglass_bottom_rounded
-                            : Icons.circle_outlined,
-                        size: 16,
-                        color: limited ? cs.error : cs.outlineVariant,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
