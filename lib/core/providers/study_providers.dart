@@ -674,8 +674,6 @@ class TimerState {
   bool hidesDuration(PomodoroPreset preset) =>
       phase == TimerPhase.focus && preset.isRandomFocus;
 
-  bool get idle => !running && remaining == _presetDurationOf(phase);
-
   /// How long this segment is actually running for.
   Duration plannedDuration(PomodoroPreset preset) =>
       (phase == TimerPhase.focus && sampledFocusDuration != null
@@ -722,10 +720,6 @@ class TimerState {
         TimerPhase.shortBreak => preset.shortBreakDuration,
         TimerPhase.longBreak => preset.longBreakDuration,
       };
-
-  static Duration _presetDurationOf(TimerPhase p) => p == TimerPhase.focus
-      ? const Duration(minutes: 25)
-      : const Duration(minutes: 5);
 
   /// 0..1 through the current segment, for the ring.
   double progressFor(PomodoroPreset preset) {

@@ -404,16 +404,6 @@ final strictModeProvider =
       StrictModeNotifier.new,
     );
 
-/// True while a strict-mode window is open, so the UI can say so rather than
-/// leaving the user to work it out from a switch.
-final strictModeActiveProvider = Provider<bool>((ref) {
-  final config = ref.watch(strictModeProvider);
-  final started = config.enabledAtMillis;
-  if (!config.enabled || started == null) return false;
-  final ends = started + config.durationMinutes * 60000;
-  return DateTime.now().millisecondsSinceEpoch < ends;
-});
-
 // -- Deep Breath Gate --------------------------------------------------------
 
 class BreathEventsNotifier extends Notifier<List<BreathEvent>> {
