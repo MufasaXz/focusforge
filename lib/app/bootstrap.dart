@@ -310,6 +310,10 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   container.invalidate(notificationsProvider);
   container.invalidate(volumesProvider);
   container.invalidate(boardOptInProvider);
+  // Agreement to the app-list disclosure was given by the deleted account's
+  // owner. The wipe below removes the stored answer; this removes the live one,
+  // or the next setup could read the installed-app list without asking.
+  container.invalidate(appListConsentProvider);
 
   // Every shield mutation funnels through `syncShield`, so invalidation alone
   // would leave the platform layer holding the deleted configuration. Writing
