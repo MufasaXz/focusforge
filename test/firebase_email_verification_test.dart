@@ -10,6 +10,7 @@ import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/firebase_auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/password_reset_mailer.dart';
 import 'package:focusforge/core/services/study_backup_service.dart';
 
 class _Backup implements StudyBackupBackend {
@@ -151,6 +152,8 @@ void main() {
   late LocalStore store;
   late _Auth auth;
   late FirebaseAuthService service;
+  late List<String> mailed;
+  late ResetMailResult mailResult;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     store = await LocalStore.open();
@@ -165,21 +168,47 @@ void main() {
       ).toJson(),
     );
     auth = _Auth();
-    service = FirebaseAuthService(store, firebaseAuth: auth);
+    mailed = [];
+    mailResult = ResetMailResult.unavailable;
+    service = FirebaseAuthService(
+      store,
+      firebaseAuth: auth,
+      resetMailer: (email) async {
+        mailed.add(email);
+        return mailResult;
+      },
+    );
   });
   tearDown(() async {
     service.dispose();
     await auth.controller.close();
   });
-  test(
-    'password reset trims email and keeps unknown accounts private',
-    () async {
-      await service.sendPasswordReset(' person@example.com ');
-      expect(auth.resetEmail, 'person@example.com');
-      auth.resetFailure = FirebaseAuthException(code: 'user-not-found');
-      await service.sendPasswordReset('unknown@example.com');
-    },
-  );
+  test('password reset uses the FocusForge email when it is sent', () async {
+    mailResult = ResetMailResult.sent;
+    await service.sendPasswordReset(' person@example.com ');
+    expect(mailed, ['person@example.com']);
+    expect(auth.resetEmail, isNull, reason: 'no second email from Firebase');
+  });
+  test('password reset reports a busy service instead of retrying', () async {
+    mailResult = ResetMailResult.rateLimited;
+    await expectLater(
+      service.sendPasswordReset('person@example.com'),
+      throwsA(
+        isA<AuthException>().having(
+          (error) => error.failure,
+          'failure',
+          AuthFailure.tooManyRequests,
+        ),
+      ),
+    );
+    expect(auth.resetEmail, isNull);
+  });
+  test('password reset falls back to Firebase, trims email and keeps unknown accounts private', () async {
+    await service.sendPasswordReset(' person@example.com ');
+    expect(auth.resetEmail, 'person@example.com');
+    auth.resetFailure = FirebaseAuthException(code: 'user-not-found');
+    await service.sendPasswordReset('unknown@example.com');
+  });
   test('password reset surfaces delivery and connection errors', () async {
     auth.resetFailure = FirebaseAuthException(code: 'network-request-failed');
     await expectLater(
@@ -337,7 +366,10 @@ void main() {
         expect(store.getInt(StoreKeys.dailyGoal), 480);
         expect(backend.saved?.modifiedAt, 123);
         // Restored from the older cloud document, then kept on the device only.
-        expect(backend.saved?.settings.containsKey(StoreKeys.dailyGoal), isFalse);
+        expect(
+          backend.saved?.settings.containsKey(StoreKeys.dailyGoal),
+          isFalse,
+        );
       },
     );
   }

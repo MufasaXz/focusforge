@@ -12,6 +12,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
+import 'password_reset_mailer.dart';
 import 'study_backup_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
@@ -33,8 +34,10 @@ class FirebaseAuthService extends AuthService {
     FirebaseFirestore? firestore,
     FirestoreAccountCleanup? accountCleanup,
     GoogleSignIn? googleSignIn,
+    PasswordResetMailer? resetMailer,
     this.studyBackup,
   }) : _auth = firebaseAuth ?? FirebaseAuth.instance,
+       _resetMailer = resetMailer ?? sendFocusForgeResetEmail,
        _firestoreOverride = firestore,
        _cleanupOverride = accountCleanup,
        _googleClient = googleSignIn {
@@ -432,11 +435,27 @@ class FirebaseAuthService extends AuthService {
 
   GoogleSignIn _googleSignIn() => _googleClient ??= GoogleSignIn();
 
+  /// FocusForge's own reset email; Firebase's is the fallback.
+  final PasswordResetMailer _resetMailer;
+
   @override
   Future<void> sendPasswordReset(String email) async {
     _validateEmail(email);
+    final address = email.trim();
+    switch (await _resetMailer(address)) {
+      case ResetMailResult.sent:
+        return;
+      case ResetMailResult.invalidEmail:
+        throw const AuthException(AuthFailure.invalidEmail);
+      case ResetMailResult.rateLimited:
+        throw const AuthException(AuthFailure.tooManyRequests);
+      case ResetMailResult.unavailable:
+        // The service could not be reached: Firebase's plainer email still
+        // resets the password, so the user is never left without one.
+        break;
+    }
     try {
-      await _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
+      await _guard(() => _auth.sendPasswordResetEmail(email: address));
     } on AuthException catch (error) {
       // Keep reset responses identical for registered and unknown addresses.
       if (error.failure != AuthFailure.userNotFound) rethrow;
