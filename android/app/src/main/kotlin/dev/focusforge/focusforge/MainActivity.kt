@@ -92,6 +92,11 @@ class MainActivity : FlutterActivity() {
                     intent?.removeExtra("open_dashboard")
                     result.success(open)
                 }
+                "takeStrictLaunch" -> {
+                    val open = intent?.getBooleanExtra(AppBlockingService.EXTRA_OPEN_STRICT_MODE, false) ?: false
+                    intent?.removeExtra(AppBlockingService.EXTRA_OPEN_STRICT_MODE)
+                    result.success(open)
+                }
                 else -> result.notImplemented()
             }
         }
