@@ -87,10 +87,13 @@ reproduce. Screenshots help enormously for anything visual.
 
 ## Scope
 
-The shield is a native Android `AccessibilityService`
-(`android/app/src/main/kotlin/dev/focusforge/focusforge/shield/`): it draws its
-own pause screen as an overlay and re-reads its rules from storage when the
-service starts, so it keeps working while the Flutter engine is not running.
+The shield is native Android code
+(`android/app/src/main/kotlin/dev/focusforge/focusforge/shield/`) with two
+engines. `AppBlockingService` is a foreground service that detects whole-app
+rules with Usage Access and draws its pause screen with Draw over other apps.
+`FocusAccessibilityService` is the optional `AccessibilityService` behind the
+YouTube Shorts and feed filters. Both read their rules from storage, so they
+keep working while the Flutter engine is not running.
 Dart only carries configuration down and events up, through
 `ShieldPlatformService` — `RecordingShieldService` stands in wherever there is
 no engine, which is what the widget tests use.

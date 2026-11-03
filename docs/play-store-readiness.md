@@ -113,7 +113,7 @@ OEM behavior or bypass immunity. The guide attachment was removed on request.
 | Accessibility service | Local YouTube view-ID checks and a pause screen for supported Shorts/feed filters | Separate disclosure and affirmative agreement before Android Settings when a YouTube filter is enabled. Refusal leaves the filter off. |
 | Usage access | Local screen-time totals, budgets and foreground-app detection for selected whole-app rules | Optional Home card below the goal/session tile, with disclosure before Android Settings. Shield can save pending rules without this grant; enforcement stays inactive until Usage and Overlay access are both granted. |
 | Draw over other apps | A pause screen over a whole app selected by the user | Request in context for normal app rules. Missing/revoked access leaves enforcement inactive. No Accessibility grant is needed for this path. |
-| Foreground service (specialUse) | Continue local selected-app detection while FocusForge is in the background | Started from the visible app, with a persistent notification and Stop action. Declare and demonstrate this use in Play Console; approval is reviewed separately. |
+| Foreground service (specialUse) | Continue local selected-app detection while FocusForge is in the background | Started from the visible app, or after a reboot or app update for rules the user already set and did not stop, with a persistent notification. Stop pauses it; during a Strict Mode window the user started, Stop opens the emergency unlock instead. Declare and demonstrate both in Play Console; approval is reviewed separately. |
 | Notifications | The user's running timer countdown and subject | Optional. Timer remains usable if notifications are refused. |
 | Promoted notifications | Request OS eligibility for a running timer on supported Android/OEM live surfaces | A normal, non-runtime declaration; Android/OEM/user settings decide promotion. Do not promise support for every dynamic bar or island. |
 
@@ -174,12 +174,15 @@ stored would conflict with the local pause history.
    disclosure, agreement, Settings enablement, supported YouTube filtering,
    refusal and triggering the disclosure again. Also submit the specialUse
    foreground-service declaration/video showing user-started normal app
-   shielding, the running notification and its working Stop action. Show every
+   shielding, the restart after a reboot, the running notification, its working
+   Stop action and Stop opening the emergency unlock during Strict Mode. Show every
    disclosure paragraph slowly if it scrolls. Also test revocation. Promo
    footage is not compliance proof.
-4. Complete Data safety accurately: Firebase IDs/email/name, private badges,
-   optional group membership/minutes/timer deadlines and board name/minutes
-   are cloud data. Detailed sessions/usage/screen contents are not uploaded.
+4. Complete Data safety accurately: Firebase IDs/email/name, the private profile
+   and level backup (including the optional photo), private badges, optional
+   group membership/minutes/timer deadlines and board name/minutes are cloud
+   data. Detailed sessions, subjects, plans, goals, usage and screen contents are
+   not uploaded. Deploy the updated rules so `sessionData` accepts no new writes.
    Do not claim no collection or end-to-end encryption. Review Firebase's
    service metadata too. Anonymous Firebase sign-in still sends an account ID
    and contacts the service; an email-free flow does not mean no server contact.
