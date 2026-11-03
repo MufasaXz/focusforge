@@ -15,6 +15,7 @@ class SetupChoiceCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.badge,
+    this.iconColor,
   });
 
   final String title;
@@ -24,6 +25,9 @@ class SetupChoiceCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final String? badge;
+
+  /// The icon's own colour, when it should differ from [color].
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +73,14 @@ class SetupChoiceCard extends StatelessWidget {
               padding: const EdgeInsets.all(Gap.lg),
               child: Row(
                 children: [
-                  IconBadge(icon: icon, color: accent, size: 40, radius: 12),
+                  IconBadge(
+                    icon: icon,
+                    color: iconColor == null
+                        ? accent
+                        : harmonize(iconColor!, cs.primary),
+                    size: 40,
+                    radius: 12,
+                  ),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: Column(
