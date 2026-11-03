@@ -292,69 +292,70 @@ class ScreenTimeOverview extends ConsumerWidget {
       ),
     );
 
-    return GlassCard(
-      child: InkWell(
-        onTap: open,
-        child: Padding(
-          padding: const EdgeInsets.all(Gap.lg),
-          child: week.when(
-            loading: () => const SizedBox(
-              height: 220,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, _) =>
-                Text(context.tr("Screen time could not be read right now.")),
-            data: (days) {
-              final today = days.length > todayIndex
-                  ? days[todayIndex]
-                  : const <String, int>{};
-              final split = classifier.split(today);
-              final total = split.values.fold(0, (a, b) => a + b);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              formatMinutes(total),
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -.5,
-                              ),
-                            ),
-                            Text(
-                              context.tr("Screen time today"),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: open,
-                        child: Text(context.tr("See all")),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Gap.lg),
-                  UsageWeekChart(
-                    week: days,
-                    classifier: classifier,
-                    selected: todayIndex,
-                    height: 110,
-                    onDayTap: open,
-                  ),
-                  const SizedBox(height: Gap.md),
-                  UsageLegend(split: split),
-                ],
-              );
-            },
+    // Straight on the page rather than in a card: the section header above
+    // already groups it, and a box around a chart only shrinks it.
+    return InkWell(
+      onTap: open,
+      borderRadius: BorderRadius.circular(Radii.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+        child: week.when(
+          loading: () => const SizedBox(
+            height: 220,
+            child: Center(child: CircularProgressIndicator()),
           ),
+          error: (_, _) =>
+              Text(context.tr("Screen time could not be read right now.")),
+          data: (days) {
+            final today = days.length > todayIndex
+                ? days[todayIndex]
+                : const <String, int>{};
+            final split = classifier.split(today);
+            final total = split.values.fold(0, (a, b) => a + b);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            formatMinutes(total),
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.5,
+                            ),
+                          ),
+                          Text(
+                            context.tr("Screen time today"),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: open,
+                      child: Text(context.tr("See all")),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gap.lg),
+                UsageWeekChart(
+                  week: days,
+                  classifier: classifier,
+                  selected: todayIndex,
+                  height: 110,
+                  onDayTap: open,
+                ),
+                const SizedBox(height: Gap.md),
+                UsageLegend(split: split),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -629,6 +630,12 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
                         for (final (i, row) in rows.indexed) ...[
                           if (i > 0) const Divider(height: 1, indent: 72),
                           _AppUsageRow(
+                            onTap: () => _chooseCategory(
+                              context,
+                              ref,
+                              row.key,
+                              classifier.nameOf(row.key),
+                            ),
                             packageId: row.key,
                             name: classifier.nameOf(row.key),
                             category: classifier.categoryOf(row.key),
@@ -650,8 +657,90 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
   }
 }
 
+/// Lets the user put an app in a group of their own choosing, or hand it back
+/// to the automatic grouping.
+Future<void> _chooseCategory(
+  BuildContext context,
+  WidgetRef ref,
+  String packageId,
+  String name,
+) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  useSafeArea: true,
+  builder: (context) => Consumer(
+    builder: (context, ref, _) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final chosen = ref.watch(usageCategoryOverridesProvider)[packageId];
+      Future<void> pick(UsageCategory? category) async {
+        await ref
+            .read(usageCategoryOverridesProvider.notifier)
+            .set(packageId, category);
+        if (context.mounted) Navigator.pop(context);
+      }
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.xl, 0, Gap.xl, Gap.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr("Group {0} as", [name]),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: Gap.xs),
+            Text(
+              context.tr(
+                "Your choice is kept on this phone and used in every chart.",
+              ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+            for (final category in UsageCategory.values)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: usageColor(category, cs),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                title: Text(context.tr(usageLabel(category))),
+                trailing: chosen == category
+                    ? Icon(Icons.check_rounded, color: cs.primary)
+                    : null,
+                onTap: () => pick(category),
+              ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text(context.tr("Automatic")),
+              subtitle: Text(
+                context.tr("Grouped by Shield rules and the app's type"),
+              ),
+              trailing: chosen == null
+                  ? Icon(Icons.check_rounded, color: cs.primary)
+                  : null,
+              onTap: () => pick(null),
+            ),
+          ],
+        ),
+      );
+    },
+  ),
+);
+
 class _AppUsageRow extends StatelessWidget {
   const _AppUsageRow({
+    required this.onTap,
     required this.packageId,
     required this.name,
     required this.category,
@@ -664,68 +753,75 @@ class _AppUsageRow extends StatelessWidget {
   final UsageCategory category;
   final int minutes;
   final bool average;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final color = usageColor(category, cs);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
-      child: Row(
-        children: [
-          AppIconAvatar(
-            packageId: packageId,
-            fallbackIcon: Icons.apps_rounded,
-            fallbackColor: color,
-            size: 44,
-            radius: 22,
-          ),
-          const SizedBox(width: Gap.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: Gap.xs),
-                    Text(
-                      context.tr(usageLabel(category)),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: category == UsageCategory.other
-                            ? cs.onSurfaceVariant
-                            : color,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
+        child: Row(
+          children: [
+            AppIconAvatar(
+              packageId: packageId,
+              fallbackIcon: Icons.apps_rounded,
+              fallbackColor: color,
+              size: 44,
+              radius: 22,
             ),
-          ),
-          Text(
-            average
-                ? context.tr("{0} a day", [formatMinutes(minutes)])
-                : formatMinutes(minutes),
-            style: theme.textTheme.titleSmall,
-          ),
-        ],
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: Gap.xs),
+                      Text(
+                        context.tr(usageLabel(category)),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: category == UsageCategory.other
+                              ? cs.onSurfaceVariant
+                              : color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              average
+                  ? context.tr("{0} a day", [formatMinutes(minutes)])
+                  : formatMinutes(minutes),
+              style: theme.textTheme.titleSmall,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -238,6 +238,9 @@ class StoreKeys {
   /// installed-app list or per-app usage is ever queried; see
   /// `appListConsentProvider`.
   static const appListConsent = 'shield.appListConsent';
+
+  /// The user's own grouping of apps in Usage stats: package → category name.
+  static const usageCategories = 'usage.categories';
   static const breathEvents = 'shield.breathEvents';
   static const notifications = 'notifications';
   static const achievements = 'achievements';

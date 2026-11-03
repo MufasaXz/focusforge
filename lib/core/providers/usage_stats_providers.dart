@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_catalog.dart';
+import '../services/local_store.dart';
+import 'app_providers.dart';
 import 'shield_providers.dart';
 import 'usage_providers.dart';
 
@@ -25,9 +27,13 @@ class UsageClassifier {
     required this.apps,
     required this.shielded,
     required this.launchable,
+    this.overrides = const {},
   });
 
   final Map<String, InstalledApp> apps;
+
+  /// The user's own choices, which outrank everything else.
+  final Map<String, UsageCategory> overrides;
   final Set<String> shielded;
   final Set<String> launchable;
 
@@ -91,6 +97,35 @@ class UsageClassifier {
     'com.wolfram.android.alpha',
     'com.physicswallah.live',
     'com.google.android.apps.bard',
+    'com.openai.chatgpt',
+    'com.google.android.apps.youtube.kids',
+    'com.vedantu.app',
+    'com.adda247.app',
+    'com.testbook.tbapp',
+    'co.gradeup.android',
+    'com.embibe.student',
+    'com.allen.digital',
+    'com.aakash.app',
+    'com.toppr.app',
+    'com.doubtnut.app',
+    'com.brainly',
+    'com.chegg',
+    'com.socratic.android',
+    'org.edx.mobile',
+    'com.memrise.android.memrisecompanion',
+    'com.babbel.mobile.android.en',
+    'com.goodnotes.android',
+    'com.microsoft.teams',
+    'us.zoom.videomeetings',
+    'com.google.android.apps.meetings',
+    'com.adobe.reader',
+    'com.google.android.apps.photos.scanner',
+    'com.microsoft.office.lens',
+    'com.todoist',
+    'com.ticktick.task',
+    'net.cozic.joplin',
+    'md.obsidian',
+    'com.forest.android',
   };
 
   /// Whether [packageId]'s time belongs in the screen-time totals.
@@ -101,6 +136,8 @@ class UsageClassifier {
   }
 
   UsageCategory categoryOf(String packageId) {
+    final chosen = overrides[packageId];
+    if (chosen != null) return chosen;
     if (shielded.contains(packageId)) return UsageCategory.distracting;
     if (_knownDistracting.contains(packageId)) return UsageCategory.distracting;
     if (_knownProductive.contains(packageId)) return UsageCategory.productive;
@@ -133,9 +170,44 @@ class UsageClassifier {
   }
 }
 
+/// The user's own app groups, kept on the phone.
+class UsageCategoryOverrides extends Notifier<Map<String, UsageCategory>> {
+  @override
+  Map<String, UsageCategory> build() {
+    final stored = ref
+        .read(localStoreProvider)
+        .getMap(StoreKeys.usageCategories);
+    return {
+      for (final entry in (stored ?? const {}).entries)
+        for (final category in UsageCategory.values)
+          if (category.name == entry.value) entry.key: category,
+    };
+  }
+
+  /// Sets [packageId]'s group, or returns it to automatic when null.
+  Future<void> set(String packageId, UsageCategory? category) async {
+    final next = {...state};
+    if (category == null) {
+      next.remove(packageId);
+    } else {
+      next[packageId] = category;
+    }
+    state = next;
+    await ref.read(localStoreProvider).setMap(StoreKeys.usageCategories, {
+      for (final entry in next.entries) entry.key: entry.value.name,
+    });
+  }
+}
+
+final usageCategoryOverridesProvider =
+    NotifierProvider<UsageCategoryOverrides, Map<String, UsageCategory>>(
+      UsageCategoryOverrides.new,
+    );
+
 final usageClassifierProvider = Provider<UsageClassifier>((ref) {
   final apps = ref.watch(installedAppsProvider).valueOrNull ?? const [];
   return UsageClassifier(
+    overrides: ref.watch(usageCategoryOverridesProvider),
     apps: {for (final app in apps) app.packageId: app},
     shielded: {
       for (final entry in ref.watch(whitelistProvider))
