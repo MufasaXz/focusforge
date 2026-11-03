@@ -1360,20 +1360,26 @@ class AppRuleSheet extends ConsumerStatefulWidget {
 }
 
 class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
+  /// The two limits this sheet offers. An app closed outright by the row's
+  /// switch still opens here, showing that, so it can be moved to one of
+  /// these or have its rule removed.
+  static const _choices = [WhitelistTier.budgeted, WhitelistTier.focusOnly];
+
   late WhitelistTier _tier;
   late int _budget;
-  bool _hadRule = false;
+  WhitelistTier? _current;
 
   static const _step = 5;
   static const _min = 5;
   static const _max = 8 * 60;
+  static const _presets = [15, 30, 60, 120];
 
   @override
   void initState() {
     super.initState();
     final existing = _existing;
-    _hadRule = existing != null;
-    _tier = existing?.tier ?? WhitelistTier.blocked;
+    _current = existing?.tier;
+    _tier = _choices.contains(_current) ? _current! : WhitelistTier.budgeted;
     _budget = existing?.budgetMinutes ?? WhitelistNotifier.defaultBudgetMinutes;
   }
 
@@ -1383,9 +1389,7 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
       .firstOrNull;
 
   Future<void> _apply() async {
-    if (_tier.isEnforced && !await ensureShieldAccess(context, ref)) {
-      return;
-    }
+    if (!await ensureShieldAccess(context, ref)) return;
     if (!mounted) return;
     final notifier = ref.read(whitelistProvider.notifier);
     await notifier.addInstalledApp(
@@ -1413,14 +1417,19 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _setBudget(int minutes) {
+    HapticFeedback.selectionClick();
+    setState(() => _budget = minutes.clamp(_min, _max));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final accent = harmonize(_tier.color, cs.primary);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final used = widget.usedMinutes;
 
     return SheetSurface(
-      padding: const EdgeInsets.all(Gap.xl),
+      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.xl),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -1428,184 +1437,123 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SheetHandle(),
-              const SizedBox(height: Gap.lg),
               Row(
                 children: [
-                  AppIconAvatar(
-                    packageId: widget.packageId,
-                    fallbackIcon: widget.icon,
-                    fallbackColor: accent,
-                    size: 48,
-                    radius: 14,
-                  ),
-                  const SizedBox(width: Gap.md),
+                  const Spacer(),
+                  const SheetHandle(),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.packageId,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: SheetCloseButton(
+                        label: context.tr("Close"),
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
                     ),
-                  ),
-                  SheetCloseButton(
-                    label: context.tr("Close"),
-                    onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
-              const SizedBox(height: Gap.lg),
-              for (final tier in WhitelistTier.values) ...[
-                _TierOption(
-                  tier: tier,
-                  selected: _tier == tier,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _tier = tier);
-                  },
+              Center(
+                child: AppIconAvatar(
+                  packageId: widget.packageId,
+                  fallbackIcon: widget.icon,
+                  fallbackColor: cs.primary,
+                  size: 64,
+                  radius: 18,
                 ),
+              ),
+              const SizedBox(height: Gap.md),
+              Text(
+                widget.name,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                used > 0
+                    ? context.tr("{0} used today", [formatMinutes(used)])
+                    : context.tr("Not used today"),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              if (_current == WhitelistTier.blocked) ...[
                 const SizedBox(height: Gap.sm),
-              ],
-              if (_tier == WhitelistTier.budgeted) ...[
-                const SizedBox(height: Gap.md),
-                ContentCard(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Gap.md,
-                      Gap.sm,
-                      Gap.md,
-                      Gap.md,
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                context.tr("Daily allowance"),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ),
-                            _StepButton(
-                              icon: Icons.remove_rounded,
-                              label: context.tr("Less time"),
-                              enabled: _budget > _min,
-                              onTap: () => setState(
-                                () => _budget = (_budget - _step).clamp(
-                                  _min,
-                                  _max,
-                                ),
-                              ),
-                            ),
-                            Semantics(
-                              label: context.tr("Daily allowance"),
-                              value: formatMinutes(_budget),
-                              child: SizedBox(
-                                width: 68,
-                                child: Text(
-                                  formatMinutes(_budget),
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                              ),
-                            ),
-                            _StepButton(
-                              icon: Icons.add_rounded,
-                              label: context.tr("More time"),
-                              enabled: _budget < _max,
-                              onTap: () => setState(
-                                () => _budget = (_budget + _step).clamp(
-                                  _min,
-                                  _max,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (used > 0) ...[
-                          const SizedBox(height: Gap.sm),
-                          Semantics(
-                            label: context.tr("Used today"),
-                            value: formatMinutes(used),
-                            child: LinearProgressIndicator(
-                              value: _budget == 0
-                                  ? 0
-                                  : (used / _budget).clamp(0.0, 1.0),
-                              color: used >= _budget
-                                  ? cs.error
-                                  : harmonize(
-                                      WhitelistTier.budgeted.color,
-                                      cs.primary,
-                                    ),
-                              backgroundColor: cs.surfaceContainerHighest,
-                              minHeight: 5,
-                            ),
-                          ),
-                          const SizedBox(height: Gap.xs),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              context.tr("{0} used today", [
-                                formatMinutes(used),
-                              ]),
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                Center(
+                  child: _InfoPill(
+                    icon: Icons.block_rounded,
+                    label: context.tr("Blocked now"),
+                    color: cs.error,
                   ),
                 ),
               ],
               const SizedBox(height: Gap.xl),
-              Row(
-                children: [
-                  // Only offered when there is something to remove: on an app
-                  // with no rule the button would be a no-op dressed as an
-                  // action.
-                  if (_hadRule) ...[
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: _remove,
-                        style: TextButton.styleFrom(
-                          foregroundColor: cs.error,
-                          minimumSize: const Size.fromHeight(48),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final (index, tier) in _choices.indexed) ...[
+                      if (index > 0) const SizedBox(width: Gap.md),
+                      Expanded(
+                        child: _LimitChoice(
+                          tier: tier,
+                          selected: _tier == tier,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _tier = tier);
+                          },
                         ),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                        ),
-                        label: Text(context.tr("Remove")),
                       ),
-                    ),
-                    const SizedBox(width: Gap.md),
+                    ],
                   ],
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _apply,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                      child: Text(context.tr("Save rule")),
-                    ),
-                  ),
-                ],
+                ),
               ),
+              const SizedBox(height: Gap.lg),
+              AnimatedSize(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : Motion.base,
+                curve: Motion.emphasized,
+                alignment: Alignment.topCenter,
+                child: _tier == WhitelistTier.budgeted
+                    ? _BudgetEditor(
+                        minutes: _budget,
+                        used: used,
+                        presets: _presets,
+                        canLower: _budget > _min,
+                        canRaise: _budget < _max,
+                        onLower: () => _setBudget(_budget - _step),
+                        onRaise: () => _setBudget(_budget + _step),
+                        onPreset: _setBudget,
+                      )
+                    : _FocusOnlyNote(),
+              ),
+              const SizedBox(height: Gap.xl),
+              FilledButton(
+                onPressed: _apply,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                child: Text(context.tr("Save rule")),
+              ),
+              // Only offered when there is something to remove: on an app
+              // with no rule the button would be a no-op dressed as an
+              // action.
+              if (_current != null) ...[
+                const SizedBox(height: Gap.xs),
+                TextButton(
+                  onPressed: _remove,
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.error,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: Text(context.tr("Remove rule")),
+                ),
+              ],
             ],
           ),
         ),
@@ -1614,8 +1562,42 @@ class _AppRuleSheetState extends ConsumerState<AppRuleSheet> {
   }
 }
 
-class _TierOption extends StatelessWidget {
-  const _TierOption({
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: 6),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(Radii.pill),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: Gap.xs),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: color, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One of the two limits, as a tile: icon, name, one line on what it does.
+class _LimitChoice extends StatelessWidget {
+  const _LimitChoice({
     required this.tier,
     required this.selected,
     required this.onTap,
@@ -1627,78 +1609,93 @@ class _TierOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final accent = harmonize(tier.color, cs.primary);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final (icon, body) = switch (tier) {
-      WhitelistTier.blocked => (
-        Icons.block_rounded,
-        context.tr("Closes as soon as it opens."),
-      ),
       WhitelistTier.focusOnly => (
         Icons.center_focus_strong_rounded,
-        context.tr(
-          "Closed while a focus block runs, and open the rest of the day.",
-        ),
+        context.tr("Closed during focus blocks"),
       ),
-      WhitelistTier.budgeted => (
+      _ => (
         Icons.hourglass_bottom_rounded,
-        context.tr("Open until the day's allowance is spent, then it closes."),
-      ),
-      WhitelistTier.alwaysAllowed => (
-        Icons.check_circle_outline_rounded,
-        context.tr("Never closed. Useful for the apps your work runs through."),
+        context.tr("A daily allowance, then it closes"),
       ),
     };
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : Motion.quick;
 
     return Semantics(
       button: true,
       selected: selected,
+      inMutuallyExclusiveGroup: true,
       label: '${context.tr(tier.label)}. $body',
       onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(Gap.md),
-            decoration: BoxDecoration(
-              color: selected
-                  ? accent.withValues(alpha: 0.12)
-                  : cs.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(Radii.item),
-              border: Border.all(
-                color: selected ? accent : cs.outlineVariant,
-                width: selected ? 1.5 : 1,
-              ),
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: duration,
+          padding: const EdgeInsets.all(Gap.lg),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary.withValues(alpha: .10)
+                : cs.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(Radii.card),
+            border: Border.all(
+              color: selected ? cs.primary : cs.outlineVariant,
+              width: selected ? 1.5 : 1,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: selected ? accent : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr(tier.label),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        body,
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                    ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? cs.primary
+                          : cs.onSurfaceVariant.withValues(alpha: .12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                    ),
                   ),
+                  const Spacer(),
+                  AnimatedSwitcher(
+                    duration: duration,
+                    child: Icon(
+                      selected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      key: ValueKey(selected),
+                      size: 22,
+                      color: selected ? cs.primary : cs.outline,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              Text(
+                context.tr(tier.label),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-                if (selected)
-                  Icon(Icons.check_rounded, size: 20, color: accent),
-              ],
-            ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                body,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1706,46 +1703,167 @@ class _TierOption extends StatelessWidget {
   }
 }
 
-class _StepButton extends StatelessWidget {
-  const _StepButton({
+/// The daily allowance: a large figure with − and +, quick presets, and
+/// today's use against it.
+class _BudgetEditor extends StatelessWidget {
+  const _BudgetEditor({
+    required this.minutes,
+    required this.used,
+    required this.presets,
+    required this.canLower,
+    required this.canRaise,
+    required this.onLower,
+    required this.onRaise,
+    required this.onPreset,
+  });
+
+  final int minutes;
+  final int used;
+  final List<int> presets;
+  final bool canLower;
+  final bool canRaise;
+  final VoidCallback onLower;
+  final VoidCallback onRaise;
+  final ValueChanged<int> onPreset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Gap.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.card),
+      ),
+      child: Column(
+        children: [
+          Text(
+            context.tr("Daily allowance"),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: Gap.sm),
+          Row(
+            children: [
+              _RoundStep(
+                icon: Icons.remove_rounded,
+                label: context.tr("Less time"),
+                onTap: canLower ? onLower : null,
+              ),
+              Expanded(
+                child: Semantics(
+                  label: context.tr("Daily allowance"),
+                  value: formatMinutes(minutes),
+                  excludeSemantics: true,
+                  child: Text(
+                    formatMinutes(minutes),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+              _RoundStep(
+                icon: Icons.add_rounded,
+                label: context.tr("More time"),
+                onTap: canRaise ? onRaise : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: Gap.sm,
+            runSpacing: Gap.sm,
+            children: [
+              for (final preset in presets)
+                ChoiceChip(
+                  label: Text(formatMinutes(preset)),
+                  selected: minutes == preset,
+                  showCheckmark: false,
+                  onSelected: (_) => onPreset(preset),
+                ),
+            ],
+          ),
+          if (used > 0) ...[
+            const SizedBox(height: Gap.lg),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.pill),
+              child: LinearProgressIndicator(
+                value: minutes == 0 ? 0 : (used / minutes).clamp(0.0, 1.0),
+                color: used >= minutes ? cs.error : cs.primary,
+                backgroundColor: cs.surfaceContainerHighest,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: Gap.xs),
+            Text(
+              context.tr("{0} of {1} used today", [
+                formatMinutes(used),
+                formatMinutes(minutes),
+              ]),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusOnlyNote extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Gap.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.card),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.timer_outlined, color: cs.primary),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Text(
+              context.tr(
+                "Closed while a focus block runs, and open the rest of the day.",
+              ),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoundStep extends StatelessWidget {
+  const _RoundStep({
     required this.icon,
     required this.label,
-    required this.enabled,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final bool enabled;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      onTap: enabled ? onTap : null,
-      child: ExcludeSemantics(
-        child: Pressable(
-          scale: 0.86,
-          onTap: enabled ? onTap : null,
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Center(
-              child: Icon(
-                icon,
-                size: 18,
-                color: enabled ? cs.onSurface : cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => IconButton.filledTonal(
+    onPressed: onTap,
+    tooltip: label,
+    iconSize: 22,
+    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+    icon: Icon(icon),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1800,7 +1918,14 @@ class _YoutubeView extends ConsumerWidget {
             child: Column(
               children: [
                 _SurfaceSwitch(
-                  icon: Icons.slow_motion_video_rounded,
+                  // YouTube's own Shorts mark, so the row is recognisable at
+                  // a glance; it names the feature the switch closes.
+                  leading: Image.asset(
+                    'assets/images/youtube_shorts.png',
+                    width: 24,
+                    height: 24,
+                    excludeFromSemantics: true,
+                  ),
                   title: context.tr("Block Shorts"),
                   body: context.tr(
                     "The Shorts player closes. Ordinary videos keep playing, so a lecture link still works.",
@@ -1917,14 +2042,18 @@ Future<void> _changeSurface(
 
 class _SurfaceSwitch extends StatelessWidget {
   const _SurfaceSwitch({
-    required this.icon,
+    this.icon,
+    this.leading,
     required this.title,
     required this.body,
     required this.value,
     required this.onChanged,
   });
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// A mark drawn in place of [icon], such as the Shorts logo.
+  final Widget? leading;
   final String title;
   final String body;
   final bool value;
@@ -1939,7 +2068,9 @@ class _SurfaceSwitch extends StatelessWidget {
         HapticFeedback.selectionClick();
         onChanged(v);
       },
-      secondary: Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
+      secondary:
+          leading ??
+          Icon(icon, color: value ? cs.tertiary : cs.onSurfaceVariant),
       title: Text(title, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),
