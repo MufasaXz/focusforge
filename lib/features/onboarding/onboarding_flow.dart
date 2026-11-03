@@ -12,7 +12,7 @@ import 'auth_screen.dart';
 import 'onboarding_chrome.dart';
 import 'complete_step.dart';
 import 'starting_plan_step.dart';
-import 'persona_step.dart';
+import 'focus_step.dart';
 import 'profile_step.dart';
 import 'splash_step.dart';
 import 'subjects_step.dart';
@@ -21,7 +21,7 @@ import 'usage_access_step.dart';
 /// First-run setup, with only the steps needed by this device.
 ///
 /// The router sends every un-onboarded user here and nothing else can, so this
-/// widget owns the whole journey: splash, account, persona, profile, subjects,
+/// widget owns the whole journey: splash, account, focus, profile, subjects,
 /// starting plan and celebration. The last step flips `completeOnboarding()` and
 /// the router takes it from there.
 ///
@@ -131,7 +131,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     if (previous >= 0) unawaited(_go(steps[previous]));
   }
 
-  void _afterPersona() {
+  void _afterFocus() {
     if (_index == 2) _next();
   }
 
@@ -168,8 +168,6 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
-    // Refresh subject suggestions after the persona answer changes.
-    ref.watch(userProvider.select((u) => u.persona));
     final steps = _steps;
     final total = steps.length - 1;
     final shown = steps.indexOf(_index);
@@ -233,13 +231,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   Widget _buildStep(int step) => switch (step) {
     0 => SplashStep(onDone: _afterSplash),
     1 => AuthScreen(embedded: true, onAuthenticated: _afterAuthentication),
-    2 => PersonaStep(onNext: _afterPersona),
+    2 => FocusStep(onNext: _afterFocus),
     4 => ProfileStep(onNext: () => _advanceFrom(4)),
-    // Rebuild persona-specific recommendations when that answer changes.
-    5 => SubjectsStep(
-      key: ValueKey(ref.read(userProvider).persona),
-      onNext: () => _advanceFrom(5),
-    ),
+    5 => SubjectsStep(onNext: () => _advanceFrom(5)),
     6 => UsageAccessStep(onNext: () => _advanceFrom(6)),
     7 => StartingPlanStep(onNext: () => _advanceFrom(7)),
     _ => const CompleteStep(),

@@ -132,42 +132,6 @@ class ThemeSettings {
   );
 }
 
-/// Who is using the app. Persona drives the defaults offered during onboarding
-/// and the copy used across the app — see the master plan's persona matrix.
-enum Persona {
-  student(
-    'Student',
-    Icons.school_rounded,
-    'High school, college, exam prep',
-    'What do you study?',
-    Color(0xFF7FA9FF),
-  ),
-  professional(
-    'Professional',
-    Icons.work_rounded,
-    'Deep work, meetings, productivity',
-    'What do you work on?',
-    Color(0xFFB79CFF),
-  );
-
-  const Persona(
-    this.label,
-    this.icon,
-    this.blurb,
-    this.subjectPrompt,
-    this.color,
-  );
-
-  final String label;
-  final IconData icon;
-  final String blurb;
-  final String subjectPrompt;
-  final Color color;
-
-  static Persona fromName(String? name) =>
-      values.firstWhere((v) => v.name == name, orElse: () => Persona.student);
-}
-
 /// A starting preference; it never enables blocking or changes a running timer.
 enum FocusIntention {
   consistency(
@@ -217,7 +181,6 @@ class UserProfile {
   const UserProfile({
     this.uid = '',
     this.displayName = '',
-    this.persona = Persona.student,
     this.focusIntention = FocusIntention.consistency,
     this.timezone = 'UTC',
     this.onboardingComplete = false,
@@ -231,7 +194,6 @@ class UserProfile {
 
   final String uid;
   final String displayName;
-  final Persona persona;
   final FocusIntention focusIntention;
   final String timezone;
   final bool onboardingComplete;
@@ -278,7 +240,6 @@ class UserProfile {
   UserProfile copyWith({
     String? uid,
     String? displayName,
-    Persona? persona,
     FocusIntention? focusIntention,
     String? timezone,
     bool? onboardingComplete,
@@ -293,7 +254,6 @@ class UserProfile {
   }) => UserProfile(
     uid: uid ?? this.uid,
     displayName: displayName ?? this.displayName,
-    persona: persona ?? this.persona,
     focusIntention: focusIntention ?? this.focusIntention,
     timezone: timezone ?? this.timezone,
     onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -311,7 +271,6 @@ class UserProfile {
   Map<String, dynamic> toJson() => {
     'uid': uid,
     'displayName': displayName,
-    'persona': persona.name,
     'focusIntention': focusIntention.name,
     'timezone': timezone,
     'onboardingComplete': onboardingComplete,
@@ -326,7 +285,6 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
     uid: j['uid'] as String? ?? '',
     displayName: j['displayName'] as String? ?? '',
-    persona: Persona.fromName(j['persona'] as String?),
     focusIntention: FocusIntention.fromName(j['focusIntention']),
     timezone: j['timezone'] as String? ?? 'UTC',
     onboardingComplete: j['onboardingComplete'] as bool? ?? false,

@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/models/subject_naming.dart';
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/sheet_chrome.dart';
@@ -93,7 +92,7 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
       // The same starting target the onboarding picker uses, so a subject
       // added later is not the only one without a goal — and derived from
       // the persona rather than made up here.
-      weekTarget: SeedData.defaultWeeklyTarget(ref.read(userProvider).persona),
+      weekTarget: SeedData.defaultWeeklyTarget,
     );
     await ref.read(subjectsProvider.notifier).add(subject);
     if (mounted) Navigator.of(context).pop(subject);

@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/app.dart';
 import 'package:focusforge/app/router.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
-import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
 import 'package:focusforge/features/onboarding/profile_step.dart';
 import 'package:focusforge/features/onboarding/starting_plan_step.dart';
 import 'package:focusforge/features/onboarding/complete_step.dart';
@@ -175,7 +175,7 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Close'));
       await tester.pumpAndSettle();
       for (final step in <String, Widget>{
-        'focus-choice': PersonaStep(onNext: () {}),
+        'focus-choice': FocusStep(onNext: () {}),
         'profile': ProfileStep(onNext: () {}),
         'plan': StartingPlanStep(onNext: () {}),
         'complete': const CompleteStep(),

@@ -338,7 +338,7 @@ class _HeroCard extends StatelessWidget {
                 // Avatar left, identity beside it, edit affordance on the right —
                 // the arrangement the compact card reads best at. The only case
                 // that still stacks is a viewport so narrow, or text so large,
-                // that the persona pill cannot share the row.
+                // that the name cannot share the row.
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -448,48 +448,15 @@ class _ProfileIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final tint = harmonize(user.persona.color, cs.primary);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          user.displayName.trim().isEmpty
-              ? context.tr("Your profile")
-              : user.displayName,
-          style: tt.headlineSmall?.copyWith(
-            letterSpacing: -.8,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: Gap.sm),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: tint.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(Radii.tile),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Gap.md,
-              vertical: Gap.sm,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(user.persona.icon, size: 16, color: tint),
-                const SizedBox(width: Gap.sm),
-                Flexible(
-                  child: Text(
-                    context.tr(user.persona.label),
-                    style: tt.labelMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return Text(
+      user.displayName.trim().isEmpty
+          ? context.tr("Your profile")
+          : user.displayName,
+      style: tt.headlineSmall?.copyWith(
+        letterSpacing: -.8,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }

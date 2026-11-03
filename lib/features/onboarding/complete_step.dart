@@ -19,7 +19,7 @@ import 'onboarding_chrome.dart';
 
 /// Screen 8 — the celebration, and the end of the flow.
 ///
-/// It reflects the user's own choices back at them — persona, subjects and blocks — because the fastest way to make a setup feel worth it is to show
+/// It reflects the user's own choices back at them — focus, subjects and blocks — because the fastest way to make a setup feel worth it is to show
 /// that it actually configured something. The final action
 /// flips the onboarding flag and hands over to the dashboard, which is what
 /// the router has been waiting for.
@@ -75,7 +75,7 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final user = ref.watch(userProvider);
-    final persona = user.persona;
+    final intention = user.focusIntention;
     final subjectCount = ref.watch(subjectsProvider).length;
     // The preset the timer will actually start with, not a claim about the
     // shield: apps are chosen in the Shield tab now, so a count here would be
@@ -89,7 +89,6 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
 
     return StepScaffold(
       title: context.tr("You're all set"),
-      eyebrow: context.tr("READY TO FOCUS"),
       subtitle: context.tr("Your first session is ready."),
       primaryLabel: context.tr("Open FocusForge"),
       primaryBusy: _finishing,
@@ -102,12 +101,12 @@ class _CompleteStepState extends ConsumerState<CompleteStep> {
             children: [
               ListTile(
                 leading: IconBadge(
-                  icon: persona.icon,
+                  icon: intention.icon,
                   color: cs.primary,
                   size: 40,
                 ),
-                title: Text(context.tr("Profile")),
-                subtitle: Text(context.tr(persona.label)),
+                title: Text(context.tr("Your focus")),
+                subtitle: Text(context.tr(intention.label)),
               ),
               const Divider(height: 1, indent: 72),
               ListTile(

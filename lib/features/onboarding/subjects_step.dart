@@ -6,12 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/seed.dart';
 import '../../core/models/subject_naming.dart';
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/stagger.dart';
 import 'onboarding_chrome.dart';
 
-/// Screen 4 — subjects, persona-aware.
+/// Screen 4 — subjects.
 ///
 /// Selecting a chip saves the subject immediately. Time allocations belong
 /// to the Home goal planner and do not interrupt first-run setup.
@@ -28,10 +27,8 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   final _selected = <String>{};
   final _custom = <SubjectTemplate>[];
 
-  late final Persona _persona = ref.read(userProvider).persona;
-
   List<SubjectTemplate> get _templates => [
-    ...SeedData.templatesFor(_persona),
+    ...SeedData.subjectTemplates,
     ..._custom,
   ];
 
@@ -43,7 +40,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
     // held only in local state would quietly revert. Anything already in the
     // store starts selected, because that is genuinely what the app holds.
     final existing = ref.read(subjectsProvider);
-    final templates = SeedData.templatesFor(_persona);
+    const templates = SeedData.subjectTemplates;
     final templateNames = {
       for (final template in templates) template.name.toLowerCase(),
     };
@@ -154,7 +151,7 @@ class _SubjectsStepState extends ConsumerState<SubjectsStep> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return StepScaffold(
-      title: context.tr(_persona.subjectPrompt),
+      title: context.tr("What will you focus on?"),
       subtitle: context.tr("Pick your subjects or add your own."),
       primaryEnabled: _selected.isNotEmpty,
       primaryLabel: _selected.isEmpty

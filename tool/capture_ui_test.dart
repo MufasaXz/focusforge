@@ -25,7 +25,7 @@ import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
-import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/onboarding/profile_step.dart';
 import 'package:focusforge/features/onboarding/subjects_step.dart';
@@ -204,7 +204,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark(amoled: true),
           home: Scaffold(
-            body: SafeArea(child: PersonaStep(onNext: () {})),
+            body: SafeArea(child: FocusStep(onNext: () {})),
           ),
         ),
       ),

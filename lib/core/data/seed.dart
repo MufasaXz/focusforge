@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import '../models/social.dart';
 import '../models/study.dart';
-import '../models/user.dart';
 
 // Re-exported so a screen can pull its content and its types from one import.
 export '../models/icon_registry.dart';
@@ -35,7 +34,7 @@ class HeatCell {
   ][date.weekday - 1];
 }
 
-/// A suggested subject during onboarding, per persona.
+/// A suggested subject during onboarding.
 @immutable
 class SubjectTemplate {
   const SubjectTemplate(this.name, this.icon, this.color);
@@ -432,59 +431,41 @@ class SeedData {
 
   // -- Onboarding ------------------------------------------------------------
 
-  static const studentSubjects = <SubjectTemplate>[
+  /// Suggested subjects during setup. Anyone can add their own; these are
+  /// only the quick picks.
+  static const subjectTemplates = <SubjectTemplate>[
     SubjectTemplate('Math', Icons.square_foot_rounded, SubjectPalette.math),
     SubjectTemplate('Physics', Icons.bolt_rounded, SubjectPalette.physics),
-    SubjectTemplate('English', Icons.menu_book_rounded, SubjectPalette.english),
-    SubjectTemplate(
-      'History',
-      Icons.history_edu_rounded,
-      SubjectPalette.history,
-    ),
     SubjectTemplate(
       'Chemistry',
       Icons.science_rounded,
       SubjectPalette.chemistry,
     ),
     SubjectTemplate('Biology', Icons.biotech_rounded, SubjectPalette.biology),
+    SubjectTemplate('English', Icons.menu_book_rounded, SubjectPalette.english),
+    SubjectTemplate(
+      'History',
+      Icons.history_edu_rounded,
+      SubjectPalette.history,
+    ),
     SubjectTemplate('Computer Science', Icons.code_rounded, Color(0xFF7FC8FF)),
+    SubjectTemplate('Writing', Icons.edit_note_rounded, Color(0xFFB79CFF)),
     SubjectTemplate('Art', Icons.palette_rounded, Color(0xFFFFB3D9)),
   ];
-
-  static const professionalSubjects = <SubjectTemplate>[
-    SubjectTemplate('Deep Work', Icons.psychology_rounded, SubjectPalette.math),
-    SubjectTemplate('Planning', Icons.insights_rounded, SubjectPalette.physics),
-    SubjectTemplate('Writing', Icons.edit_note_rounded, SubjectPalette.english),
-    SubjectTemplate('Coding', Icons.code_rounded, Color(0xFF7FC8FF)),
-    SubjectTemplate('Meetings', Icons.call_rounded, SubjectPalette.history),
-    SubjectTemplate('Email', Icons.mail_rounded, SubjectPalette.chemistry),
-  ];
-
-  static List<SubjectTemplate> templatesFor(Persona p) => switch (p) {
-    Persona.student => studentSubjects,
-    Persona.professional => professionalSubjects,
-  };
 
   /// The daily goal before the user has chosen one.
   ///
   /// A product default, not a claim about anyone: the goal step treats this
-  /// exact value as "not chosen yet" and opens on the persona's recommended
-  /// suggestion instead. Any other number is a deliberate choice and is left
+  /// exact value as "not chosen yet" and opens on the recommended suggestion
+  /// instead. Any other number is a deliberate choice and is left
   /// alone.
   static const focusGoalMinutes = 300;
 
-  /// The weekly target a newly created subject starts with.
-  ///
-  /// Derived from the persona's recommended daily goal rather than fixed: a
-  /// parent aiming at an hour a day and a professional aiming at six do not
-  /// want the same weekly bar over every subject, and a made-up number here
-  /// would be the app inventing a goal nobody set.
-  static double defaultWeeklyTarget(Persona p) =>
-      (goalSuggestions(p)[1] / 30).clamp(3, 8).toDouble();
+  /// The weekly target a newly created subject starts with, in hours: the
+  /// recommended daily goal spread across a week, kept between 3 and 8.
+  static double get defaultWeeklyTarget =>
+      (goalSuggestions[1] / 30).clamp(3, 8).toDouble();
 
   /// Daily-goal suggestions, in minutes — Light / Recommended / Intense.
-  static List<int> goalSuggestions(Persona p) => switch (p) {
-    Persona.student => const [120, 180, 300],
-    Persona.professional => const [120, 240, 360],
-  };
+  static const goalSuggestions = [120, 180, 300];
 }

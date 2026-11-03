@@ -8,7 +8,7 @@ import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/app/router.dart';
-import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +24,7 @@ void main() {
         'isAnonymous': false,
         'dailyGoalMinutes': 240,
       });
-      expect(profile.persona, Persona.student);
+      expect(profile.toJson().containsKey('persona'), isFalse);
       expect(profile.uid, 'returning-user');
       expect(profile.displayName, 'Alex');
       expect(profile.onboardingComplete, isTrue);
@@ -69,23 +69,25 @@ void main() {
     expect(engine.lastApplied!.youtube.feed, isTrue);
     expect(engine.lastApplied!.youtube.focusOnly, isTrue);
   });
-  testWidgets(
-    'onboarding offers personal study roles without parent monitoring',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      final store = await LocalStore.open();
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [localStoreProvider.overrideWithValue(store)],
-          child: MaterialApp(home: Scaffold(body: PersonaStep(onNext: () {}))),
+  testWidgets('onboarding asks about focus, not roles or parent monitoring', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [localStoreProvider.overrideWithValue(store)],
+        child: MaterialApp(
+          home: Scaffold(body: FocusStep(onNext: () {})),
         ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Parent'), findsNothing);
-      expect(find.text('Student'), findsOneWidget);
-      expect(find.text('Professional'), findsOneWidget);
-    },
-  );
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Parent'), findsNothing);
+    expect(find.text('Student'), findsNothing);
+    expect(find.text('Professional'), findsNothing);
+    expect(find.text('What brings you here?'), findsOneWidget);
+  });
   testWidgets('old parent deep links redirect to the ordinary profile', (
     tester,
   ) async {

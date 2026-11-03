@@ -8,7 +8,7 @@ import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
-import 'package:focusforge/features/onboarding/persona_step.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -72,7 +72,7 @@ void main() {
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
             child: child!,
           ),
-          home: Scaffold(body: PersonaStep(onNext: () => advanced = true)),
+          home: Scaffold(body: FocusStep(onNext: () => advanced = true)),
         ),
       ),
     );
@@ -106,7 +106,7 @@ void main() {
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
             child: child!,
           ),
-          home: Scaffold(body: PersonaStep(onNext: () {})),
+          home: Scaffold(body: FocusStep(onNext: () {})),
         ),
       ),
     );
@@ -116,14 +116,16 @@ void main() {
         .hydrate(
           UserProfile.fromJson({
             'uid': 'restored',
-            'persona': 'professional',
             'focusIntention': 'deepWork',
           }),
         );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(container.read(userProvider).persona, Persona.professional);
+    expect(
+      container.read(userProvider).focusIntention,
+      FocusIntention.deepWork,
+    );
     expect(store.getMap(StoreKeys.user)?['focusIntention'], 'deepWork');
   });
 }

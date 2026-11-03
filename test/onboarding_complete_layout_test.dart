@@ -24,7 +24,9 @@ void main() {
           addTearDown(container.dispose);
           container
               .read(userProvider.notifier)
-              .hydrate(const UserProfile(persona: Persona.professional));
+              .hydrate(
+                const UserProfile(focusIntention: FocusIntention.deepWork),
+              );
           tester.view.physicalSize = Size(width, 1100);
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.reset);
@@ -46,9 +48,9 @@ void main() {
           );
           await tester.pumpAndSettle();
           for (final label in [
-            'Profile',
+            'Your focus',
             'Subjects',
-          'Classic Pomodoro',
+            'Classic Pomodoro',
             'Open FocusForge',
           ]) {
             await tester.scrollUntilVisible(find.text(label), 120);

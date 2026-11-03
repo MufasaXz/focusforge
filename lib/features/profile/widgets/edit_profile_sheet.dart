@@ -5,11 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/shell/app_shell.dart';
 import '../../../app/theme/app_theme.dart';
-import '../../../core/models/user.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Opens the sheet that edits the display name and persona.
+/// Opens the sheet that edits the display name.
 ///
 /// A function rather than a bare widget so the caller never has to know how
 /// the sheet is presented — the profile screen only decides *when*.
@@ -32,14 +31,12 @@ class _EditProfileSheet extends ConsumerStatefulWidget {
 
 class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late final TextEditingController _name;
-  late Persona _persona;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(userProvider);
     _name = TextEditingController(text: user.displayName);
-    _persona = user.persona;
   }
 
   @override
@@ -53,7 +50,6 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   Future<void> _save() async {
     final notifier = ref.read(userProvider.notifier);
     await notifier.setDisplayName(_name.text);
-    await notifier.setPersona(_persona);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -121,29 +117,6 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                     borderSide: BorderSide(color: cs.primary, width: 1.4),
                   ),
                 ),
-              ),
-              const SizedBox(height: Gap.lg),
-              _FieldLabel(text: context.tr("Persona")),
-              const SizedBox(height: Gap.sm),
-              Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
-                children: [
-                  for (final p in Persona.values)
-                    FilterChip(
-                      selected: p == _persona,
-                      onSelected: (_) => setState(() => _persona = p),
-                      // The persona icon is the leading glyph; a checkmark
-                      // would replace it when the chip is selected.
-                      showCheckmark: false,
-                      avatar: Icon(
-                        p.icon,
-                        size: 15,
-                        color: p == _persona ? p.color : cs.onSurfaceVariant,
-                      ),
-                      label: Text(context.tr(p.label)),
-                    ),
-                ],
               ),
               const SizedBox(height: Gap.xl),
               FilledButton.icon(

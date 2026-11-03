@@ -7,7 +7,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/subject_appearance.dart';
 import '../../core/models/subject_naming.dart';
 import '../../core/data/seed.dart';
-import '../../core/providers/app_providers.dart';
 import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/utils/format.dart';
@@ -60,9 +59,7 @@ class _ManageSubjectsSheetState extends ConsumerState<_ManageSubjectsSheet> {
               name: name,
               icon: SubjectAppearance.icon(name),
               color: SubjectAppearance.unusedColor(subjects),
-              weekTarget: SeedData.defaultWeeklyTarget(
-                ref.read(userProvider).persona,
-              ),
+              weekTarget: SeedData.defaultWeeklyTarget,
             ),
           );
       _name.clear();
