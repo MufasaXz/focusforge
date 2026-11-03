@@ -72,6 +72,30 @@ object AppBlockingPolicy {
         add(Calendar.DATE, -1)
     }.timeInMillis.coerceAtLeast(0L)
 
+    /** How often to look while a rule could close the app in front. */
+    const val ARMED_POLL_MS = 120L
+
+    /** How often to look while nothing could fire. [AppBlockingService.sync] wakes it early. */
+    const val IDLE_POLL_MS = 2_000L
+
+    /**
+     * A focus-only rule has nothing to do until a block runs, so a phone with
+     * only those rules should not query usage events eight times a second all
+     * day. Starting a block pushes a config, which wakes the detector at once.
+     */
+    fun pollDelay(rules: ShieldRules, now: Long, covering: Boolean): Long =
+        if (covering || rules.strictModeActive(now) || rules.focusActive(now) ||
+            rules.apps.values.any { it.mode != RuleMode.FOCUS }) ARMED_POLL_MS
+        else IDLE_POLL_MS
+
+    /**
+     * The notification's Stop pauses boundaries, except during a Strict Mode
+     * window: there it opens the emergency unlock, so the commitment still ends
+     * through the phrase and the cooldown rather than one tap.
+     */
+    fun stopPausesBoundaries(rules: ShieldRules, now: Long): Boolean =
+        !rules.strictModeActive(now)
+
     fun shouldStart(hasRules: Boolean, paused: Boolean, visible: Boolean,
                     usageGranted: Boolean, overlayGranted: Boolean): Boolean =
         hasRules && !paused && visible && usageGranted && overlayGranted
