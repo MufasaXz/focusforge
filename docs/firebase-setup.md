@@ -5,9 +5,10 @@ Cloud Function, Scheduler, Blaze plan or TTL is required. Spark's normal
 storage/read/write/delete quotas still apply. Retired Functions code is not
 deployed by firebase.json and is not called by the app.
 
-Firebase stores credentials, private badges, private groups and the optional
-weekly leaderboard. Detailed sessions, settings, app usage and installed-app
-lists stay on device. Parent control is removed. API keys in APKs are public
+Firebase stores credentials, the private profile and level backup, private
+badges, private groups and the optional weekly leaderboard. Detailed sessions,
+subjects, plans, goals, app usage and installed-app lists stay on device. The
+app moves session rows older builds uploaded to the device, then deletes them. Parent control is removed. API keys in APKs are public
 client identifiers; server rules enforce ownership.
 
 ## Activate client deletion
