@@ -1478,7 +1478,13 @@ final todayGoalMinutesProvider = Provider<int>((ref) {
 final liveFocusSecondsTodayProvider = Provider<int>((ref) {
   final banked = ref.watch(focusMinutesTodayProvider) * 60;
   final timer = ref.watch(timerProvider);
-  if (timer.phase != TimerPhase.focus || timer.segmentStartedAt == null) {
+  final started = timer.segmentStartedAt;
+  // A block is logged on the day it started. One begun before midnight lands
+  // in yesterday's total when it finishes, so counting it here would fill
+  // today's ring and then take the time back.
+  if (timer.phase != TimerPhase.focus ||
+      started == null ||
+      !_sameDay(started, ref.watch(focusCalendarDateProvider))) {
     return banked;
   }
   final preset = ref.watch(presetsProvider)[timer.presetIndex];
