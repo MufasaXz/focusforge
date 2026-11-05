@@ -1255,16 +1255,17 @@ class TimerNotifier extends Notifier<TimerState> {
         targetEnd: moved,
         remaining: remaining.isNegative ? Duration.zero : remaining,
       );
-    } else if (state.segmentStartedAt != null) {
+    } else {
+      // Paused or not started: what has already run stays run. Only a focus
+      // block is stamped when it starts, so the stamp cannot tell a half-run
+      // break from one that has not begun; the remaining time can. A segment
+      // that has not begun has its whole old length left, so it lands on the
+      // new one and the clock shows it before the first tick.
       final remaining = state.remaining + delta;
       state = state.copyWith(
         segmentExtra: extra,
         remaining: remaining.isNegative ? Duration.zero : remaining,
       );
-    } else {
-      // Not started: the segment is exactly as long as it is now planned to
-      // be, so the clock shows the new length before the first tick.
-      state = state.copyWith(segmentExtra: extra, remaining: planned);
     }
     unawaited(_persist());
   }

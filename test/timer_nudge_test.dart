@@ -104,6 +104,31 @@ void main() {
     expect(timer.state.remaining, preset.focusDuration);
   });
 
+  test('a paused break keeps the time it has already run', () {
+    final container = freshContainer();
+    final timer = container.read(timerProvider.notifier);
+    final preset = container.read(presetsProvider).first;
+    const ran = Duration(minutes: 3);
+
+    // A short break paused three minutes in. Breaks carry no start stamp.
+    timer.hydrate({
+      'presetIndex': 0,
+      'phase': TimerPhase.shortBreak.name,
+      'running': false,
+      'remainingMs': (preset.shortBreakDuration - ran).inMilliseconds,
+      'completedFocusSegments': 1,
+    });
+    expect(timer.state.segmentStartedAt, isNull);
+
+    timer.nudge(five);
+
+    expect(timer.state.remaining, preset.shortBreakDuration - ran + five);
+    expect(
+      timer.state.plannedDuration(preset),
+      preset.shortBreakDuration + five,
+    );
+  });
+
   test('the bounds hold at both ends', () {
     final container = freshContainer();
     final timer = container.read(timerProvider.notifier);
