@@ -326,137 +326,175 @@ class _HeroCard extends StatelessWidget {
           key: const ValueKey('profile-hero'),
           accentStrength: 0.10,
           child: Column(
-              children: [
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Eyebrow(
-                    context.tr("YOUR SPACE"),
-                    icon: Icons.person_outline_rounded,
-                  ),
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Eyebrow(
+                  context.tr("YOUR SPACE"),
+                  icon: Icons.person_outline_rounded,
                 ),
-                const SizedBox(height: Gap.xl),
-                // Avatar left, identity beside it, edit affordance on the right —
-                // the arrangement the compact card reads best at. The only case
-                // that still stacks is a viewport so narrow, or text so large,
-                // that the name cannot share the row.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Avatar(user: user, level: stats.level),
-                      const SizedBox(width: Gap.lg),
-                      Expanded(child: _ProfileIdentity(user: user)),
-                      const SizedBox(width: Gap.sm),
-                      const _EditProfileButton(),
+              ),
+              const SizedBox(height: Gap.xl),
+              // Avatar left, identity beside it, edit affordance on the right —
+              // the arrangement the compact card reads best at. The only case
+              // that still stacks is a viewport so narrow, or text so large,
+              // that the name cannot share the row.
+              // The level and its progress sit under the name, beside the
+              // avatar, so the identity reads as one block rather than a
+              // name floating over empty space.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _Avatar(user: user, level: stats.level),
+                  const SizedBox(width: Gap.lg),
+                  Expanded(
+                    child: _ProfileIdentity(user: user, stats: stats),
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  const _EditProfileButton(),
+                ],
+              ),
+              const SizedBox(height: Gap.xl),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: t.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(Radii.item),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Gap.lg,
+                    horizontal: Gap.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _HeroStat(
+                          value: _hours(stats.totalFocusHours),
+                          label: context.tr("Total focus"),
+                        ),
+                      ),
+                      _Divider(t: t),
+                      Expanded(
+                        child: _HeroStat(
+                          value: '$streak',
+                          label: context.tr("Day streak"),
+                          accent: t.tertiary,
+                        ),
+                      ),
+                      _Divider(t: t),
+                      Expanded(
+                        child: _HeroStat(
+                          value: '$unlocked/$totalBadges',
+                          label: context.tr("Badges"),
+                        ),
+                      ),
                     ],
                   ),
-                const SizedBox(height: Gap.xl),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: t.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(Radii.item),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: Gap.lg,
-                      horizontal: Gap.sm,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _HeroStat(
-                            value: _hours(stats.totalFocusHours),
-                            label: context.tr("Total focus"),
-                          ),
-                        ),
-                        _Divider(t: t),
-                        Expanded(
-                          child: _HeroStat(
-                            value: '$streak',
-                            label: context.tr("Day streak"),
-                            accent: t.tertiary,
-                          ),
-                        ),
-                        _Divider(t: t),
-                        Expanded(
-                          child: _HeroStat(
-                            value: '$unlocked/$totalBadges',
-                            label: context.tr("Badges"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-                const SizedBox(height: Gap.lg),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: Gap.lg,
-                  runSpacing: Gap.xs,
-                  children: [
-                    Text(
-                      context.tr("Level {0}", [stats.level]),
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    Text(
-                      stats.isMaxLevel
-                          ? context.tr("{0} XP · Max level", [stats.xp])
-                          : context.tr("{0} / {1} XP", [
-                              stats.xp,
-                              stats.xpForNext,
-                            ]),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Gap.sm),
-                Semantics(
-                  label: stats.isMaxLevel
-                      ? context.tr("Level {0}, maximum level. {1} XP", [
-                          stats.level,
-                          stats.xp,
-                        ])
-                      : context.tr("Level {0}, {1} of {2} XP", [
-                          stats.level,
-                          stats.xp,
-                          stats.xpForNext,
-                        ]),
-                  value: context.tr("{0} percent", [
-                    (stats.levelProgress * 100).round(),
-                  ]),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                    child: LinearProgressIndicator(
-                      value: stats.levelProgress,
-                      color: t.secondary,
-                      backgroundColor: t.surfaceContainerHighest,
-                      minHeight: 7,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 }
 
 class _ProfileIdentity extends StatelessWidget {
-  const _ProfileIdentity({required this.user});
+  const _ProfileIdentity({required this.user, required this.stats});
 
   final UserProfile user;
+  final GamificationStats stats;
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return Text(
-      user.displayName.trim().isEmpty
-          ? context.tr("Your profile")
-          : user.displayName,
-      style: tt.headlineSmall?.copyWith(
-        letterSpacing: -.8,
-        fontWeight: FontWeight.w700,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          user.displayName.trim().isEmpty
+              ? context.tr("Your profile")
+              : user.displayName,
+          style: tt.headlineSmall?.copyWith(
+            letterSpacing: -.8,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: Gap.sm),
+        // A wrap, not a row: at large text sizes the XP falls under the
+        // level instead of pushing past the edge of the card.
+        Wrap(
+          spacing: Gap.sm,
+          runSpacing: 2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            // One run of text with the icon inline, so it wraps like text.
+            Text.rich(
+              TextSpan(
+                children: [
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(end: Gap.xs),
+                      child: Icon(
+                        Icons.military_tech_rounded,
+                        size: 16,
+                        color: cs.primary,
+                      ),
+                    ),
+                  ),
+                  TextSpan(text: context.tr("Level {0}", [stats.level])),
+                ],
+              ),
+              style: tt.labelLarge?.copyWith(
+                color: cs.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              stats.isMaxLevel
+                  ? context.tr("{0} XP · Max level", [stats.xp])
+                  : context.tr("{0} / {1} XP", [stats.xp, stats.xpForNext]),
+              style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+        const SizedBox(height: Gap.sm),
+        Semantics(
+          label: stats.isMaxLevel
+              ? context.tr("Level {0}, maximum level. {1} XP", [
+                  stats.level,
+                  stats.xp,
+                ])
+              : context.tr("Level {0}, {1} of {2} XP", [
+                  stats.level,
+                  stats.xp,
+                  stats.xpForNext,
+                ]),
+          value: context.tr("{0} percent", [
+            (stats.levelProgress * 100).round(),
+          ]),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.pill),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: stats.levelProgress),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : Motion.deliberate,
+              curve: Motion.emphasized,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                color: cs.primary,
+                backgroundColor: cs.surfaceContainerHighest,
+                minHeight: 6,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
