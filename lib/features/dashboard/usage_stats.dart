@@ -8,6 +8,7 @@ import '../../core/providers/usage_stats_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_icon_avatar.dart';
 import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/icon_badge.dart';
 
 /// Fixed colours for the three groups, so a bar reads the same in either
 /// theme and on every screen.
@@ -268,10 +269,12 @@ class UsageLegend extends StatelessWidget {
   }
 }
 
-/// Today's screen time on Home: the total, this week's bars and the split,
-/// opening the full stats.
-class ScreenTimeOverview extends ConsumerWidget {
-  const ScreenTimeOverview({super.key});
+/// Today's screen time on Home, as one line that opens the full stats.
+///
+/// Home is about study, so the week there is drawn by subject; the phone's
+/// own use is one tap away rather than a second chart competing with it.
+class ScreenTimeLink extends ConsumerWidget {
+  const ScreenTimeLink({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -281,81 +284,60 @@ class ScreenTimeOverview extends ConsumerWidget {
     final week = ref.watch(weekUsageProvider(weekStart(now)));
     final classifier = ref.watch(usageClassifierProvider);
     final todayIndex = now.weekday - DateTime.monday;
-
-    void open([int? day]) => Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => UsageStatsScreen(
-          initialDay: day == null
-              ? null
-              : addDays(weekStart(now), day),
-        ),
-      ),
+    final total = week.whenOrNull(
+      data: (days) => days.length > todayIndex
+          ? classifier.split(days[todayIndex]).values.fold(0, (a, b) => a + b)
+          : 0,
     );
 
-    // Straight on the page rather than in a card: the section header above
-    // already groups it, and a box around a chart only shrinks it.
-    return InkWell(
-      onTap: open,
-      borderRadius: BorderRadius.circular(Radii.card),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Gap.sm),
-        child: week.when(
-          loading: () => const SizedBox(
-            height: 220,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (_, _) =>
-              Text(context.tr("Screen time could not be read right now.")),
-          data: (days) {
-            final today = days.length > todayIndex
-                ? days[todayIndex]
-                : const <String, int>{};
-            final split = classifier.split(today);
-            final total = split.values.fold(0, (a, b) => a + b);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    void open() => Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const UsageStatsScreen()),
+    );
+
+    return Material(
+      color: cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: open,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: Gap.sm,
+            ),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            formatMinutes(total),
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -.5,
-                            ),
-                          ),
-                          Text(
-                            context.tr("Screen time today"),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: open,
-                      child: Text(context.tr("See all")),
-                    ),
-                  ],
+                IconBadge(
+                  icon: Icons.phone_android_rounded,
+                  color: cs.primary,
+                  size: 36,
+                  radius: 10,
                 ),
-                const SizedBox(height: Gap.lg),
-                UsageWeekChart(
-                  week: days,
-                  classifier: classifier,
-                  selected: todayIndex,
-                  height: 110,
-                  onDayTap: open,
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(
+                    context.tr("Screen time today"),
+                    style: theme.textTheme.bodyLarge,
+                  ),
                 ),
-                const SizedBox(height: Gap.md),
-                UsageLegend(split: split),
+                const SizedBox(width: Gap.sm),
+                Text(
+                  total == null ? '–' : formatMinutes(total),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: Gap.xs),
+                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
               ],
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

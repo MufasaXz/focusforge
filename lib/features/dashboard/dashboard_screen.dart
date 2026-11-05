@@ -25,7 +25,7 @@ import '../onboarding/coach_marks.dart';
 import 'widgets/daily_goal_sheet.dart';
 import 'widgets/goal_ring.dart';
 import 'widgets/session_shortcut.dart';
-import 'usage_stats.dart';
+import 'widgets/study_week.dart';
 import 'widgets/usage_access_card.dart';
 import 'widgets/subject_breakdown.dart';
 
@@ -185,19 +185,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           const UsageAccessCard(),
         ];
-        // Screen time, once the phone shares it: today's total, this week's
-        // bars by category, and the full stats one tap away.
+        // The week, by subject, once there is study to draw — and today's
+        // screen time under it, once the phone shares it.
         final screenTime =
             ref.watch(appListConsentProvider) &&
             ref.watch(usageAccessProvider).valueOrNull == true;
+        // An inactive week stays a single, centred column: an empty chart is
+        // not worth spreading the page into two for.
+        final studied = ref.watch(weekStudyProvider).total > 0;
         final history = <Widget>[
-          if (screenTime) ...[
+          if (studied || screenTime) ...[
             const SizedBox(height: Gap.xl),
             SectionHeader(
-              title: context.tr("Screen time"),
+              title: context.tr("This week"),
               icon: Icons.bar_chart_rounded,
             ),
-            const ScreenTimeOverview(),
+            StudyWeekOverview(screenTime: screenTime),
           ],
         ];
 
@@ -206,6 +209,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             (session) =>
                 session.completed && session.subjectId.trim().isNotEmpty,
           )) ...[
+            const SizedBox(height: Gap.xl),
             SectionHeader(
               title: context.tr("Subject breakdown"),
               icon: Icons.donut_large_rounded,
