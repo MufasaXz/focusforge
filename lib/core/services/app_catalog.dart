@@ -134,6 +134,18 @@ class AppCatalog {
   /// closes a session too — guarded so it can never close one twice.
   static const int _stopped = 23;
 
+  /// `SCREEN_NON_INTERACTIVE`, `KEYGUARD_SHOWN` and `DEVICE_SHUTDOWN`. After
+  /// any of them nothing is in front of the user, whatever the last app event
+  /// said: an app that never reported its pause stops counting here.
+  static const int _screenOff = 16;
+  static const int _keyguardShown = 17;
+  static const int _shutdown = 26;
+
+  /// How far before a window its events are read. An app already open when
+  /// the window starts is then seen opening, and its time inside the window
+  /// counts; everything is clipped to the window, so nothing before it does.
+  static const Duration _lookback = Duration(hours: 3);
+
   /// Today's foreground time per package, in minutes.
   ///
   /// Empty when usage access has not been granted. That is a real state the UI
@@ -154,8 +166,11 @@ class AppCatalog {
     try {
       final now = DateTime.now();
       final midnight = DateTime(now.year, now.month, now.day);
-      final events = await UsageStats.queryEvents(midnight, now);
-      return foregroundMinutes(events, until: now);
+      final events = await UsageStats.queryEvents(
+        midnight.subtract(_lookback),
+        now,
+      );
+      return foregroundMinutes(events, from: midnight, until: now);
     } catch (_) {
       return const {};
     }
@@ -170,84 +185,116 @@ class AppCatalog {
   ) async {
     if (!isSupported || !end.isAfter(start)) return const {};
     try {
-      final events = await UsageStats.queryEvents(start, end);
-      return foregroundMinutes(events, until: end);
+      final events = await UsageStats.queryEvents(
+        start.subtract(_lookback),
+        end,
+      );
+      return foregroundMinutes(events, from: start, until: end);
     } catch (_) {
       return const {};
     }
   }
 
-  /// Folds a day's usage events into minutes of foreground time per package.
+  /// Folds a window's usage events into minutes of foreground time per
+  /// package, counted the way the system's own Digital Wellbeing counts.
   ///
-  /// Split out from [usageToday] so the arithmetic is reachable without a
-  /// platform channel — this is the part that was wrong, and it is pure.
+  /// Split out so the arithmetic is reachable without a platform channel —
+  /// this is the part that has been wrong, and it is pure.
   ///
-  /// An app's time is the span between a resume and the matching pause. The
-  /// two are counted rather than toggled, because one app can have several
-  /// activities alive at once: a pause that takes the count to zero ends the
-  /// session, and any other pause is an activity the user moved off inside the
-  /// same app. Anything still open at [until] is counted up to it — that is
-  /// the session in progress, and leaving it out is what made the number look
-  /// stuck.
+  /// One app is in front at a time. It is in front from its first resumed
+  /// activity until the last of them pauses or stops, until another app
+  /// comes to the front, or until the screen goes off or locks — whichever
+  /// is first. Each activity is tracked by its class, so a stop that a
+  /// previous screen reports late cannot end the current one, and an app
+  /// that never reports its pause stops counting the moment anything else
+  /// takes over. Time is clipped to [from]–[until]; whatever is still in
+  /// front at [until] is counted up to it, because that is the session the
+  /// user is in while they look at the number.
+  ///
+  /// The sum is kept in milliseconds and only then cut into whole minutes,
+  /// with the leftover seconds handed to the apps they are largest for. The
+  /// apps' minutes then add up to the window's own rounded total, where
+  /// rounding each app separately could drift a day by many minutes.
   static Map<String, int> foregroundMinutes(
     Iterable<EventUsageInfo> events, {
     required DateTime until,
+    DateTime? from,
   }) {
-    final open = <String, int>{};
-    final since = <String, int>{};
-    final total = <String, int>{};
+    final windowStart = from?.millisecondsSinceEpoch;
+    final windowEnd = until.millisecondsSinceEpoch;
+    final spent = <String, int>{};
+
+    String? front;
+    var since = 0;
+    // The front app's resumed activities. A named activity is resumed or it
+    // is not; events without a class name are counted, so two of those still
+    // need two pauses.
+    final resumed = <String?, int>{};
+
+    void close(int at) {
+      final package = front;
+      if (package == null) return;
+      final begin = windowStart != null && since < windowStart
+          ? windowStart
+          : since;
+      final end = at < windowEnd ? at : windowEnd;
+      if (end > begin) spent[package] = (spent[package] ?? 0) + (end - begin);
+      front = null;
+      resumed.clear();
+    }
 
     for (final event in events) {
-      final packageId = event.packageName;
       final type = event.eventTypeValue;
       final at = int.tryParse(event.timeStamp ?? '');
-      if (packageId == null ||
-          packageId.isEmpty ||
-          type == null ||
-          at == null) {
+      if (type == null || at == null) continue;
+      if (type == _screenOff || type == _keyguardShown || type == _shutdown) {
+        close(at);
         continue;
       }
-
-      final count = open[packageId] ?? 0;
+      final package = event.packageName;
+      if (package == null || package.isEmpty) continue;
+      final activity = event.className;
       if (type == _resumed) {
-        if (count == 0) since[packageId] = at;
-        open[packageId] = count + 1;
-      } else if ((type == _paused || type == _stopped) && count > 0) {
-        // Guarded rather than trusted: the query is documented to answer in
-        // time order, and a negative span folded into the total would silently
-        // subtract real time from the day.
-        final startedAt = since[packageId] ?? at;
-        if (at > startedAt) {
-          total[packageId] = (total[packageId] ?? 0) + (at - startedAt);
-          // The span just counted ends here, and the app is still in front —
-          // so the next one starts here too. Leaving `since` where it was
-          // counts everything between the first resume and the last pause
-          // once per activity, which on a feed with three activities open
-          // trebles the day.
-          since[packageId] = at;
+        if (front != package) {
+          close(at);
+          front = package;
+          since = at;
         }
-        open[packageId] = count - 1;
-        if (count - 1 == 0) since.remove(packageId);
+        resumed[activity] = activity == null ? (resumed[activity] ?? 0) + 1 : 1;
+      } else if ((type == _paused || type == _stopped) && front == package) {
+        final count = resumed[activity] ?? 0;
+        if (count <= 0) continue;
+        if (count == 1) {
+          resumed.remove(activity);
+        } else {
+          resumed[activity] = count - 1;
+        }
+        if (resumed.isEmpty) close(at);
       }
     }
+    close(windowEnd);
 
-    // Whatever is still open is being used right now.
-    final end = until.millisecondsSinceEpoch;
-    for (final entry in open.entries) {
-      if (entry.value <= 0) continue;
-      final startedAt = since[entry.key];
-      if (startedAt == null || end <= startedAt) continue;
-      total[entry.key] = (total[entry.key] ?? 0) + (end - startedAt);
+    final minutes = <String, int>{};
+    final leftover = <String, int>{};
+    var whole = 0;
+    var all = 0;
+    for (final MapEntry(key: package, value: ms) in spent.entries) {
+      minutes[package] = ms ~/ 60000;
+      leftover[package] = ms % 60000;
+      whole += ms ~/ 60000;
+      all += ms;
     }
-
-    // Rounded, not truncated: an app used for 50 seconds is a minute of the
-    // day, and dropping the remainder from every row is how a day's total ends
-    // up an hour short. Nothing is dropped for being small — a package that
-    // was opened at all was opened, and the card's empty state has to mean
-    // what it says.
+    var spare = (all / 60000).round() - whole;
+    for (final package
+        in leftover.keys.toList()
+          ..sort((a, b) => leftover[b]!.compareTo(leftover[a]!))) {
+      if (spare <= 0) break;
+      minutes[package] = minutes[package]! + 1;
+      spare--;
+    }
     return {
-      for (final entry in total.entries)
-        if (entry.value > 0) entry.key: (entry.value / 60000).round(),
+      for (final entry in minutes.entries)
+        if (entry.value > 0) entry.key: entry.value,
     };
   }
 }
