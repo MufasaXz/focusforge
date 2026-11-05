@@ -254,6 +254,31 @@ class AvatarDisc extends StatelessWidget {
   /// to show before the first session.
   final bool frame;
 
+  /// The chosen glyph, else the initials, else a person when there is no name.
+  Widget _mark(BuildContext context, String? icon, Color onColor) {
+    if (icon != null) {
+      return Center(
+        child: Icon(AppIcons.resolve(icon), size: size * 0.46, color: onColor),
+      );
+    }
+    final initials = user.initials;
+    if (initials.isEmpty) {
+      return Center(
+        child: Icon(Icons.person_rounded, size: size * 0.5, color: onColor),
+      );
+    }
+    return Center(
+      child: Text(
+        initials,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: onColor,
+          fontWeight: FontWeight.w700,
+          fontSize: size * 0.34,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -298,33 +323,13 @@ class AvatarDisc extends StatelessWidget {
                         width: size,
                         height: size,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            Center(child: Text(user.initials)),
+                        // A photo that cannot be decoded falls back to the
+                        // same mark as no photo at all.
+                        errorBuilder: (context, _, _) =>
+                            _mark(context, icon, onColor),
                       ),
                     )
-                  : Center(
-                      child: icon == null && user.initials.isEmpty
-                          ? Icon(
-                              Icons.person_rounded,
-                              size: size * 0.5,
-                              color: onColor,
-                            )
-                          : icon == null
-                          ? Text(
-                              user.initials,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: onColor,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: size * 0.34,
-                                  ),
-                            )
-                          : Icon(
-                              AppIcons.resolve(icon),
-                              size: size * 0.46,
-                              color: onColor,
-                            ),
-                    ),
+                  : _mark(context, icon, onColor),
             ),
             if (frame)
               Positioned.fill(
