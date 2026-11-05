@@ -127,8 +127,8 @@ class ProfileScreen extends ConsumerWidget {
         icon: Icons.lock_outlined,
         label: context.tr("Strict Mode"),
         routeName: AppRoutes.strictMode,
-        trailing: strict.enabled ? 'On' : context.tr("Off"),
-        trailingColor: strict.enabled ? t.error : null,
+        trailing: strict.isActive ? 'On' : context.tr("Off"),
+        trailingColor: strict.isActive ? t.error : null,
       ),
       _SettingSpec(
         icon: Icons.notifications_active_outlined,

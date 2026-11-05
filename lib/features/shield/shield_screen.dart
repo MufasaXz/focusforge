@@ -434,9 +434,9 @@ class _ShieldStatusSheet extends ConsumerWidget {
               ),
               _StatusLine(
                 icon: Icons.lock_rounded,
-                color: strict.enabled ? cs.tertiary : cs.onSurfaceVariant,
+                color: strict.isActive ? cs.tertiary : cs.onSurfaceVariant,
                 label: context.tr("Strict mode"),
-                value: strict.enabled
+                value: strict.isActive
                     ? context.tr("{0} min session", [strict.durationMinutes])
                     : context.tr("Off"),
               ),

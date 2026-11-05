@@ -30,25 +30,45 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
   /// Live slider position while a drag is in flight; null when idle.
   double? _draggingHours;
 
+  /// Redraws the page when the open window runs out, so it reads Off then.
+  Timer? _windowEnd;
+
+  @override
+  void dispose() {
+    _windowEnd?.cancel();
+    super.dispose();
+  }
+
+  void _redrawWhenWindowEnds(StrictModeConfig config) {
+    _windowEnd?.cancel();
+    final ends = config.endsAt;
+    if (ends == null) return;
+    final left = ends.difference(DateTime.now());
+    if (left.isNegative) return;
+    _windowEnd = Timer(left, () {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final config = ref.watch(strictModeProvider);
-    // The length of a running window is part of the commitment.
+    // A window that has run out is over, even though `enabled` stays set.
+    // Its length is part of the commitment while it is open.
     final locked = config.isActive;
+    _redrawWhenWindowEnds(config);
     final hours = _draggingHours ?? config.durationMinutes / 60;
 
     return AppPage(
       title: context.tr("Strict Mode"),
-      subtitle: config.enabled
-          ? context.tr("Locked in")
-          : context.tr("Not active"),
+      subtitle: locked ? context.tr("Locked in") : context.tr("Not active"),
       trailing: Chip(
-        label: Text(config.enabled ? context.tr("Active") : context.tr("Off")),
-        backgroundColor: config.enabled ? cs.errorContainer : null,
+        label: Text(locked ? context.tr("Active") : context.tr("Off")),
+        backgroundColor: locked ? cs.errorContainer : null,
         labelStyle: TextStyle(
           fontSize: 12,
-          color: config.enabled ? cs.onErrorContainer : cs.onSurfaceVariant,
+          color: locked ? cs.onErrorContainer : cs.onSurfaceVariant,
         ),
       ),
       child: Column(
@@ -189,11 +209,11 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
           ),
           const SizedBox(height: Gap.sm),
           AppActionButton(
-            label: config.enabled
+            label: locked
                 ? context.tr("End Strict Mode")
                 : context.tr("Activate Strict Mode"),
-            icon: config.enabled ? Icons.lock_open_rounded : Icons.lock_rounded,
-            destructive: config.enabled,
+            icon: locked ? Icons.lock_open_rounded : Icons.lock_rounded,
+            destructive: locked,
             onTap: () => _confirmToggle(config),
           ),
         ],
@@ -211,7 +231,8 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
   /// cooldown is enforced inside the sheet, so a user who types the phrase and
   /// confirms immediately still has to sit through it.
   Future<void> _confirmToggle(StrictModeConfig config) async {
-    final activating = !config.enabled;
+    // Turning on again after a window ran out opens a fresh window.
+    final activating = !config.isActive;
     final window = _formatWindow(config.durationMinutes / 60);
 
     final confirmed = await showAppDialog<bool>(

@@ -141,4 +141,42 @@ void main() {
       expect(slider.onChangeEnd, isNull);
     });
   });
+
+  testWidgets('a window that has run out reads as off and can start again', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = freshContainer();
+    // Turned on three hours ago for two hours: `enabled` is still set.
+    await container
+        .read(strictModeProvider.notifier)
+        .update(
+          StrictModeConfig(
+            enabled: true,
+            enabledAtMillis: DateTime.now()
+                .subtract(const Duration(hours: 3))
+                .millisecondsSinceEpoch,
+            durationMinutes: 120,
+          ),
+        );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: StrictModeScreen()),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Not active'), findsOneWidget);
+    expect(find.text('Activate Strict Mode'), findsOneWidget);
+    expect(find.text('End Strict Mode'), findsNothing);
+    expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNotNull);
+  });
 }
