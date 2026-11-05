@@ -3,7 +3,7 @@
     <!-- Dark-mode counterpart of values/colors.xml. Android picks this
          automatically from the system setting, which is the same signal the
          app follows now that its default theme is `system`. -->
-    <color name="ff_launch_background">#181210</color>
+    <color name="ff_launch_background">#131110</color>
 
     <!-- Night counterparts of the Parchment roles in values/colors.xml, on
          the app's warm charcoal surfaces. -->

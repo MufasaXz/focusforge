@@ -3,7 +3,7 @@
     <!-- The window behind the splash. This is the theme's own `surface` role,
          so the hand-off from the Android window to the Flutter splash has no
          visible seam. values-night/ carries the dark one. -->
-    <color name="ff_launch_background">#FFF8F6</color>
+    <color name="ff_launch_background">#EDE7E3</color>
 
     <!-- The block screen. It is drawn by a service rather than by Flutter, so
          it cannot read the app's ColorScheme: these are the Parchment roles
