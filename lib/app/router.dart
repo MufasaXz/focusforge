@@ -25,6 +25,7 @@ import '../features/settings/study_groups_screen.dart';
 import '../features/shield/breath_gate.dart';
 import '../features/shield/shield_screen.dart';
 import 'shell/app_shell.dart';
+import 'shell/swipeable_branches.dart';
 
 /// Route names in one place. `context.goNamed(AppRoutes.focus)` beats a string
 /// literal that a rename can silently break.
@@ -157,9 +158,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // -- The four tabs -----------------------------------------------------
-      StatefulShellRoute.indexedStack(
+      // Pages rather than an indexed stack, so a horizontal swipe moves
+      // between the tabs as well as the bar does.
+      StatefulShellRoute(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
+        navigatorContainerBuilder: (context, navigationShell, children) =>
+            SwipeableBranches(shell: navigationShell, children: children),
         branches: [
           StatefulShellBranch(
             routes: [

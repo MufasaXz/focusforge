@@ -120,6 +120,19 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A tab swiped out of view keeps its state but is not laid out, so its
+    // targets cannot be measured and the spotlight would point at nothing.
+    // The tips step aside while the tab is away and pick up again on return.
+    if (!TickerMode.valuesOf(context).enabled) {
+      _removeEntry();
+    } else if (_steps.isNotEmpty && _entry == null) {
+      _show();
+    }
+  }
+
   /// Runs once, from the first build. The flag is read through the container
   /// rather than a [Consumer] so the dashboard can drop this in without making
   /// its own widget tree Riverpod-aware.
@@ -254,6 +267,9 @@ class _CoachMarksState extends ConsumerState<CoachMarks>
     if (!box.hasSize || !box.attached) return null;
 
     final origin = box.localToGlobal(Offset.zero, ancestor: space);
+    // A box kept alive off screen has no real position; it measures as NaN,
+    // which also never equals itself, so the tracker would never settle.
+    if (!origin.isFinite) return null;
     return origin & box.size;
   }
 
