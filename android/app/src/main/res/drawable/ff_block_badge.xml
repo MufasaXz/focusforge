@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The paused badge on the icon tile, ringed in the page colour so it sits
+     on the tile's corner rather than inside it. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/ff_block_accent" />
+    <stroke
+        android:width="3dp"
+        android:color="@color/ff_block_surface" />
+</shape>

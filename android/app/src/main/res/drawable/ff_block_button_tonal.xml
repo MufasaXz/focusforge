@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The way back in: a tonal pill, present but quieter than the way out. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ff_block_ripple_tonal">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ff_block_tonal" />
+            <corners android:radius="28dp" />
+        </shape>
+    </item>
+</ripple>

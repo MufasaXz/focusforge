@@ -5,12 +5,17 @@
          app follows now that its default theme is `system`. -->
     <color name="ff_launch_background">#181210</color>
 
-    <!-- Warm scheme roles with readable action contrast in dark mode. -->
-    <color name="ff_block_surface">#181210</color>
-    <color name="ff_block_on_surface">#EDE0DB</color>
-    <color name="ff_block_muted">#D8C2BA</color>
-    <color name="ff_block_outline">#54433C</color>
-    <color name="ff_block_accent">#FFB692</color>
-    <color name="ff_block_on_accent">#542100</color>
-    <color name="ff_block_container">#332822</color>
+    <!-- Night counterparts of the Parchment roles in values/colors.xml, on
+         the app's warm charcoal surfaces. -->
+    <color name="ff_block_surface">#131110</color>
+    <color name="ff_block_on_surface">#F3EFE7</color>
+    <color name="ff_block_muted">#BFB8AC</color>
+    <color name="ff_block_outline">#423D36</color>
+    <color name="ff_block_accent">#F1BE6D</color>
+    <color name="ff_block_on_accent">#432C00</color>
+    <color name="ff_block_container">#242220</color>
+    <color name="ff_block_tonal">#55442A</color>
+    <color name="ff_block_on_tonal">#F9DFBB</color>
+    <color name="ff_block_ripple">#26000000</color>
+    <color name="ff_block_ripple_tonal">#1FF9DFBB</color>
 </resources>

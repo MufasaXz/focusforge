@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The block screen's side margin. Wider screens get a wider margin, so
+         the full-width actions keep a phone's proportions instead of
+         stretching across a tablet. -->
+    <dimen name="ff_block_gutter">28dp</dimen>
+</resources>

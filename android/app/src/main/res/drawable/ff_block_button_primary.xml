@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The filled action on the block screen. A ripple over a solid ember pill,
-     sized to match the app's own FilledButton. -->
+<!-- The way out of the blocked app: a filled pill in the primary role, the
+     loudest thing on the screen. -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#33FFFFFF">
+    android:color="@color/ff_block_ripple">
     <item>
         <shape android:shape="rectangle">
             <solid android:color="@color/ff_block_accent" />
-            <corners android:radius="26dp" />
+            <corners android:radius="28dp" />
         </shape>
     </item>
 </ripple>

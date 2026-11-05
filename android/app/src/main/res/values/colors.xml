@@ -5,14 +5,19 @@
          visible seam. values-night/ carries the dark one. -->
     <color name="ff_launch_background">#FFF8F6</color>
 
-    <!-- The block screen. It is drawn by the accessibility service rather than
-         by Flutter, so it cannot read the app's ColorScheme — these are the
-         same roles, kept here by hand. values-night/ carries the dark set. -->
-    <color name="ff_block_surface">#FFF8F6</color>
-    <color name="ff_block_on_surface">#201A18</color>
-    <color name="ff_block_muted">#54433C</color>
-    <color name="ff_block_outline">#D8C2BA</color>
-    <color name="ff_block_accent">#9A461C</color>
+    <!-- The block screen. It is drawn by a service rather than by Flutter, so
+         it cannot read the app's ColorScheme: these are the Parchment roles
+         (page, ink, primary, secondary container) kept here by hand, the
+         surfaces matching the day theme. values-night/ carries the night set. -->
+    <color name="ff_block_surface">#EDE7E3</color>
+    <color name="ff_block_on_surface">#27231C</color>
+    <color name="ff_block_muted">#5E5950</color>
+    <color name="ff_block_outline">#D3CBC0</color>
+    <color name="ff_block_accent">#765A0B</color>
     <color name="ff_block_on_accent">#FFFFFF</color>
-    <color name="ff_block_container">#F5E5DE</color>
+    <color name="ff_block_container">#F8F3EE</color>
+    <color name="ff_block_tonal">#F4E0BB</color>
+    <color name="ff_block_on_tonal">#52452A</color>
+    <color name="ff_block_ripple">#33FFFFFF</color>
+    <color name="ff_block_ripple_tonal">#1F52452A</color>
 </resources>
