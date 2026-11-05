@@ -22,6 +22,15 @@ void main() {
     );
   });
 
+  test('leaves out a sub-address tag', () {
+    expect(
+      FirebaseAuthService.nameFromEmail('sam.rivera+focusforge@example.com'),
+      'Sam Rivera',
+    );
+    // Nothing left before the tag: no name, so the board shows its default.
+    expect(FirebaseAuthService.nameFromEmail('+tag@example.com'), '');
+  });
+
   test('fits the 60 characters the board and groups accept', () {
     // A local part may be 64 characters long.
     final name = FirebaseAuthService.nameFromEmail('${'a' * 64}@example.com');

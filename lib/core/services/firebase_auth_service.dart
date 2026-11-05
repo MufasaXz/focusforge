@@ -932,7 +932,14 @@ class FirebaseAuthService extends AuthService {
   static String nameFromEmail(String email) => _nameFromEmail(email);
 
   static String _nameFromEmail(String email) {
-    final local = email.split('@').first.replaceAll(RegExp(r'[._\-]+'), ' ');
+    // A sub-address tag (`sam+focusforge`) labels the inbox, not the person,
+    // and this name is published to the board and to groups.
+    final local = email
+        .split('@')
+        .first
+        .split('+')
+        .first
+        .replaceAll(RegExp(r'[._\-]+'), ' ');
     final name = local
         .split(' ')
         .where((w) => w.isNotEmpty)
