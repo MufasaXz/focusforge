@@ -18,6 +18,7 @@ import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/social_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/providers/usage_stats_providers.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
@@ -599,5 +600,20 @@ void main() {
     expect(container.read(activeFocusGoalProvider), isNull);
     expect(container.read(focusGoalPlannerProvider).week, isNull);
     expect(store.getMap(FocusGoalPlannerNotifier.storageKey), isNull);
+  });
+
+  test('deletion reset forgets the app groups the user chose', () async {
+    final groups = container.read(usageCategoryOverridesProvider.notifier);
+    await groups.set('com.example.video', UsageCategory.distracting);
+    expect(container.read(usageCategoryOverridesProvider), isNotEmpty);
+
+    await resetPersistedState(container);
+
+    expect(container.read(usageCategoryOverridesProvider), isEmpty);
+    // The next choice must not write the deleted user's groups back.
+    await groups.set('com.example.notes', UsageCategory.productive);
+    expect(store.getMap(StoreKeys.usageCategories), {
+      'com.example.notes': 'productive',
+    });
   });
 }

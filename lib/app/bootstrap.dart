@@ -15,6 +15,7 @@ import '../core/providers/shield_providers.dart';
 import '../core/providers/social_providers.dart';
 import '../core/providers/study_providers.dart';
 import '../core/providers/usage_providers.dart';
+import '../core/providers/usage_stats_providers.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
@@ -341,9 +342,11 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setSubject(null);
 
   await store.clearAll();
-  // This notifier reads its stored plan in build(). Rebuild after the wipe
-  // so Home cannot carry a deleted user's target into the welcome flow.
+  // These notifiers read the store in build(). Rebuild after the wipe so Home
+  // cannot carry a deleted user's target or app groups into the welcome flow,
+  // or write those groups back with the next change.
   container.invalidate(focusGoalPlannerProvider);
+  container.invalidate(usageCategoryOverridesProvider);
   if (deletedCredential != null) {
     await store.setString('auth.deletedCredential', deletedCredential);
   }
