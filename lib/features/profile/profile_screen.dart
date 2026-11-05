@@ -426,8 +426,12 @@ class _ProfileIdentity extends StatelessWidget {
         const SizedBox(height: Gap.sm),
         // A wrap, not a row: at large text sizes the XP falls under the
         // level instead of pushing past the edge of the card.
+        // The level at the start of the bar and the XP at its end, so the two
+        // read as the bar's own labels rather than one crowded phrase. A wrap
+        // still, so at large text the XP drops under the level.
         Wrap(
-          spacing: Gap.sm,
+          alignment: WrapAlignment.spaceBetween,
+          spacing: Gap.lg,
           runSpacing: 2,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
@@ -510,18 +514,18 @@ class _Avatar extends StatelessWidget {
   final UserProfile user;
   final int level;
 
+  // No pencil of its own: the profile has one way in, the Edit button, and
+  // the avatar opens the same editor, where the name and the avatar change
+  // together.
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: context.tr("Change your avatar. Level {0}, {1} frame", [
-      level,
-      context.tr(AvatarDisc.frameNameForLevel(level)),
-    ]),
+    label: context.tr("Edit profile"),
     child: ExcludeSemantics(
       child: Pressable(
-        onTap: () => showAvatarSheet(context),
+        onTap: () => showEditProfileSheet(context),
         scale: 0.94,
-        child: AvatarDisc(user: user, size: 74, level: level, editable: true),
+        child: AvatarDisc(user: user, size: 74, level: level),
       ),
     ),
   );

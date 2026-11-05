@@ -7,8 +7,10 @@ import '../../../app/shell/app_shell.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
+import 'avatar_sheet.dart';
 
-/// Opens the sheet that edits the display name.
+/// Opens the sheet that edits the profile: the avatar and the display name,
+/// in one place.
 ///
 /// A function rather than a bare widget so the caller never has to know how
 /// the sheet is presented — the profile screen only decides *when*.
@@ -80,6 +82,25 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               Text(
                 context.tr("Edit profile"),
                 style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: Gap.lg),
+              // The avatar is part of the profile, so it is changed from the
+              // same sheet as the name. It follows the live profile, so a new
+              // photo or mark shows here the moment it is chosen.
+              Center(
+                child: AvatarDisc(
+                  user: ref.watch(userProvider),
+                  size: 88,
+                  level: ref.watch(statsProvider.select((s) => s.level)),
+                ),
+              ),
+              const SizedBox(height: Gap.sm),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => showAvatarSheet(context),
+                  icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                  label: Text(context.tr("Change your avatar")),
+                ),
               ),
               const SizedBox(height: Gap.lg),
               _FieldLabel(text: context.tr("Display name")),
