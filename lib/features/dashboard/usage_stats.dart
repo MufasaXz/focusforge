@@ -451,7 +451,9 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
             child: Text(context.tr("Screen time could not be read right now.")),
           ),
           data: (days) {
-            final index = _day.difference(monday).inDays.clamp(0, 6);
+            // By weekday, not elapsed time: a week with a 23-hour day in it
+            // puts the days after it under 24 hours times their index.
+            final index = (_day.weekday - DateTime.monday).clamp(0, 6);
             // Minutes per app for the shown span.
             final span = <String, int>{};
             for (final (i, day) in days.indexed) {
