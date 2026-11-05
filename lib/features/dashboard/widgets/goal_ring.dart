@@ -59,6 +59,12 @@ class GoalRing extends StatelessWidget {
                       stroke: stroke,
                       colors: GoalRingPalette.forBrightness(brightness),
                       track: cs.surfaceContainerHighest,
+                      // From the ink rather than the track: on a pure-black
+                      // screen the track is #1A1A1A, and markers drawn in it
+                      // vanished.
+                      tick: cs.onSurfaceVariant.withValues(
+                        alpha: brightness == Brightness.dark ? 0.38 : 0.32,
+                      ),
                     ),
                   ),
                 ),
@@ -78,12 +84,14 @@ class _GoalRingPainter extends CustomPainter {
     required this.stroke,
     required this.colors,
     required this.track,
+    required this.tick,
   });
 
   final double value;
   final double stroke;
   final List<Color> colors;
   final Color track;
+  final Color tick;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -99,19 +107,10 @@ class _GoalRingPainter extends CustomPainter {
         center + direction * (radius - stroke - (i % 4 == 0 ? 6 : 3)),
         center + direction * (radius - stroke),
         Paint()
-          ..color = track
+          ..color = tick
           ..strokeWidth = i % 4 == 0 ? 1.6 : 1,
       );
     }
-    canvas.drawCircle(
-      center + const Offset(0, 2),
-      radius,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke + 2
-        ..color = Colors.black.withValues(alpha: .06)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
-    );
     canvas.drawCircle(
       center,
       radius,
@@ -164,6 +163,7 @@ class _GoalRingPainter extends CustomPainter {
       old.value != value ||
       old.stroke != stroke ||
       old.track != track ||
+      old.tick != tick ||
       !listEquals(old.colors, colors);
 }
 
