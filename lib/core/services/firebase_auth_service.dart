@@ -928,13 +928,20 @@ class FirebaseAuthService extends AuthService {
     if (!ok) throw const AuthException(AuthFailure.invalidEmail);
   }
 
+  @visibleForTesting
+  static String nameFromEmail(String email) => _nameFromEmail(email);
+
   static String _nameFromEmail(String email) {
     final local = email.split('@').first.replaceAll(RegExp(r'[._\-]+'), ' ');
-    return local
+    final name = local
         .split(' ')
         .where((w) => w.isNotEmpty)
         .map((w) => w[0].toUpperCase() + w.substring(1))
         .join(' ');
+    // The board and groups reject a name over 60 characters, and a local part
+    // can run to 64. Cut it the way `UserNotifier.setDisplayName` cuts a typed
+    // one, or every board publish and group join would be refused.
+    return name.length > 60 ? name.substring(0, 60).trim() : name;
   }
 
   /// Runs a Firebase call, translating every [FirebaseAuthException] into the
