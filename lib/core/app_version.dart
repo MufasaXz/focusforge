@@ -5,4 +5,4 @@
 /// places that display it — the About screen, the profile's About row and the
 /// licences page — used to hold their own copies, which is how the readouts
 /// drifted a release behind the build.
-const kAppVersion = '1.0.5';
+const kAppVersion = '1.0.6';
