@@ -221,11 +221,17 @@ final usageClassifierProvider = Provider<UsageClassifier>((ref) {
 /// Midnight at the start of [day].
 DateTime dayStart(DateTime day) => DateTime(day.year, day.month, day.day);
 
+/// Midnight [days] calendar days after [day]'s, or before it when negative.
+///
+/// Counted on the calendar, not in 24-hour steps: a daylight-saving day is 23
+/// or 25 hours long, and a fixed step from midnight lands at 23:00 or 01:00,
+/// on the wrong date or on the same one again.
+DateTime addDays(DateTime day, int days) =>
+    DateTime(day.year, day.month, day.day + days);
+
 /// The Monday that starts [day]'s week.
-DateTime weekStart(DateTime day) {
-  final start = dayStart(day);
-  return start.subtract(Duration(days: start.weekday - DateTime.monday));
-}
+DateTime weekStart(DateTime day) =>
+    addDays(day, -(day.weekday - DateTime.monday));
 
 /// Foreground minutes per package for one calendar day, up to now for today.
 ///
@@ -239,7 +245,7 @@ final dayUsageProvider = FutureProvider.family<Map<String, int>, DateTime>((
   final start = dayStart(day);
   final now = DateTime.now();
   if (start.isAfter(now)) return const {};
-  final end = start.add(const Duration(days: 1));
+  final end = addDays(start, 1);
   return AppCatalog.usageBetween(start, end.isAfter(now) ? now : end);
 });
 
@@ -249,7 +255,7 @@ final weekUsageProvider =
       final start = weekStart(monday);
       return Future.wait([
         for (var i = 0; i < 7; i++)
-          ref.watch(dayUsageProvider(start.add(Duration(days: i))).future),
+          ref.watch(dayUsageProvider(addDays(start, i)).future),
       ]);
     });
 

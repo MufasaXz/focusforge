@@ -114,7 +114,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
     final myIndex = board.indexWhere((entry) => entry.isMe);
     final now = DateTime.now();
     final monday = DateTime(now.year, now.month, now.day - now.weekday + 1);
-    final sunday = monday.add(const Duration(days: 6));
+    // A calendar step: six 24-hour days can land on Saturday across a
+    // daylight-saving change.
+    final sunday = DateTime(monday.year, monday.month, monday.day + 6);
     final dates = MaterialLocalizations.of(context);
 
     return AppPage(

@@ -287,7 +287,7 @@ class ScreenTimeOverview extends ConsumerWidget {
         builder: (_) => UsageStatsScreen(
           initialDay: day == null
               ? null
-              : weekStart(now).add(Duration(days: day)),
+              : addDays(weekStart(now), day),
         ),
       ),
     );
@@ -399,7 +399,7 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
 
   void _move(int direction) {
     setState(() {
-      _day = dayStart(_day.add(Duration(days: direction * (_weekly ? 7 : 1))));
+      _day = addDays(_day, direction * (_weekly ? 7 : 1));
       if (_day.isAfter(_today)) _day = _today;
     });
   }
@@ -409,7 +409,7 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
         MaterialLocalizations.of(context).formatShortMonthDay(d);
     if (_weekly) {
       final start = weekStart(_day);
-      final end = start.add(const Duration(days: 6));
+      final end = addDays(start, 6);
       return '${short(start)} – ${short(end)}';
     }
     final full = MaterialLocalizations.of(context).formatMediumDate(_day);
@@ -424,7 +424,7 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
     final monday = weekStart(_day);
     final week = ref.watch(weekUsageProvider(monday));
     final previous = _weekly
-        ? ref.watch(weekUsageProvider(monday.subtract(const Duration(days: 7))))
+        ? ref.watch(weekUsageProvider(addDays(monday, -7)))
         : null;
     final classifier = ref.watch(usageClassifierProvider);
     final query = _search.text.trim().toLowerCase();
@@ -590,7 +590,7 @@ class _UsageStatsScreenState extends ConsumerState<UsageStatsScreen>
                   onDayTap: _weekly
                       ? null
                       : (i) {
-                          final day = monday.add(Duration(days: i));
+                          final day = addDays(monday, i);
                           if (!day.isAfter(_today)) setState(() => _day = day);
                         },
                 ),
