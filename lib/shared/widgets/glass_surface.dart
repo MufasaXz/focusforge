@@ -24,13 +24,16 @@ class GlassBackdrop extends StatelessWidget {
               : LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                  // By day the wash ends on the page's own tone rather than
+                  // the lighter card tone, so the lower half of a screen does
+                  // not brighten back towards the glare.
                   colors: [
                     cs.surface,
                     Color.alphaBlend(
-                      cs.primary.withValues(alpha: dark ? 0.055 : 0.045),
+                      cs.primary.withValues(alpha: dark ? 0.055 : 0.035),
                       cs.surface,
                     ),
-                    cs.surfaceContainerLow,
+                    dark ? cs.surfaceContainerLow : cs.surface,
                   ],
                 ),
         ),
@@ -114,8 +117,12 @@ class GlassCard extends StatelessWidget {
           shadows: black
               ? const []
               : [
+                  // By day the shadow takes the ink's own hue, so it reads as
+                  // the page's shade rather than as grey dirt under the card.
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: dark ? 0.20 : 0.045),
+                    color: dark
+                        ? Colors.black.withValues(alpha: 0.20)
+                        : cs.onSurface.withValues(alpha: 0.07),
                     blurRadius: 22,
                     offset: const Offset(0, 8),
                   ),
@@ -133,20 +140,23 @@ class GlassCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                  // By day the sheen is a breath, not a coat of white: the
+                  // card is already the lighter surface, and more white is
+                  // the glare the day theme exists to avoid.
                   colors: [
                     Color.alphaBlend(
-                      Colors.white.withValues(alpha: dark ? 0.065 : 0.52),
+                      Colors.white.withValues(alpha: dark ? 0.065 : 0.18),
                       tint,
-                    ).withValues(alpha: black ? 1 : 0.78),
-                    tint.withValues(alpha: black ? 1 : 0.62),
+                    ).withValues(alpha: black ? 1 : (dark ? 0.78 : 0.94)),
+                    tint.withValues(alpha: black ? 1 : (dark ? 0.62 : 0.88)),
                   ],
                 ),
               ),
               child: CustomPaint(
                 foregroundPainter: _GlassEdge(
                   shape: edge,
-                  top: Colors.white.withValues(alpha: dark ? 0.16 : 0.88),
-                  bottom: cs.outlineVariant.withValues(alpha: 0.30),
+                  top: Colors.white.withValues(alpha: dark ? 0.16 : 0.70),
+                  bottom: cs.outlineVariant.withValues(alpha: dark ? 0.30 : 0.55),
                 ),
                 child: Material(type: MaterialType.transparency, child: child),
               ),

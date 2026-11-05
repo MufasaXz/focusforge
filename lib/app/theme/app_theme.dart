@@ -28,7 +28,9 @@ class AppTheme {
       seedColor: palette.seedFor(brightness),
       brightness: brightness,
     );
-    cs = _studioSurfaces(cs, brightness);
+    cs = brightness == Brightness.dark
+        ? _studioSurfaces(cs)
+        : _daylightSurfaces(cs, palette.seedFor(brightness));
     if (amoled && brightness == Brightness.dark) cs = _trueBlack(cs);
 
     return ThemeData(
@@ -224,20 +226,44 @@ class AppTheme {
     );
   }
 
-  // Neutral surfaces preserve the glass material across accent palettes.
-  static ColorScheme _studioSurfaces(ColorScheme cs, Brightness brightness) {
-    final dark = brightness == Brightness.dark;
+  // Warm charcoal at night, shared by every accent palette.
+  static ColorScheme _studioSurfaces(ColorScheme cs) => cs.copyWith(
+    surface: const Color(0xFF131110),
+    surfaceContainerLowest: const Color(0xFF0F0E0D),
+    surfaceContainerLow: const Color(0xFF1D1B19),
+    surfaceContainer: const Color(0xFF242220),
+    surfaceContainerHigh: const Color(0xFF2C2926),
+    surfaceContainerHighest: const Color(0xFF383431),
+    onSurface: const Color(0xFFF3EFE7),
+    onSurfaceVariant: const Color(0xFFBFB8AC),
+    outline: const Color(0xFF7D766B),
+    outlineVariant: const Color(0xFF423D36),
+  );
+
+  /// Daylight surfaces: paper in daylight rather than a lit panel.
+  ///
+  /// The page sits a clear step below white and cards a step above it, so a
+  /// full screen of the app no longer glares, while a card still lifts off
+  /// the page by tone alone. Every surface takes the accent palette's hue at a
+  /// whisper of chroma: Parchment reads as warm stone, Tide as cool slate, and
+  /// the surfaces always belong to the accent on top of them. The chroma stays
+  /// low enough that no palette turns cream, pink or mint.
+  static ColorScheme _daylightSurfaces(ColorScheme cs, Color seed) {
+    final hue = mcu.Hct.fromInt(seed.toARGB32()).hue;
+    final paper = mcu.TonalPalette.of(hue, 2);
+    final ink = mcu.TonalPalette.of(hue, 5);
+    Color tone(mcu.TonalPalette palette, int t) => Color(palette.get(t));
     return cs.copyWith(
-      surface: Color(dark ? 0xFF131110 : 0xFFF6F7F9),
-      surfaceContainerLowest: Color(dark ? 0xFF0F0E0D : 0xFFFFFFFF),
-      surfaceContainerLow: Color(dark ? 0xFF1D1B19 : 0xFFFFFFFF),
-      surfaceContainer: Color(dark ? 0xFF242220 : 0xFFEEF0F4),
-      surfaceContainerHigh: Color(dark ? 0xFF2C2926 : 0xFFE7EAF0),
-      surfaceContainerHighest: Color(dark ? 0xFF383431 : 0xFFDEE2E9),
-      onSurface: Color(dark ? 0xFFF3EFE7 : 0xFF252B35),
-      onSurfaceVariant: Color(dark ? 0xFFBFb8AC : 0xFF606977),
-      outline: Color(dark ? 0xFF7d766b : 0xFF8993A1),
-      outlineVariant: Color(dark ? 0xFF423d36 : 0xFFD2D8E0),
+      surface: tone(paper, 92),
+      surfaceContainerLowest: tone(paper, 98),
+      surfaceContainerLow: tone(paper, 96),
+      surfaceContainer: tone(paper, 90),
+      surfaceContainerHigh: tone(paper, 88),
+      surfaceContainerHighest: tone(paper, 85),
+      onSurface: tone(ink, 14),
+      onSurfaceVariant: tone(ink, 38),
+      outline: tone(ink, 55),
+      outlineVariant: tone(ink, 82),
     );
   }
 
