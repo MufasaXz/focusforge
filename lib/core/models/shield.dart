@@ -216,6 +216,14 @@ class StrictModeConfig {
     );
   }
 
+  /// Whether a window is open at [now].
+  ///
+  /// [enabled] alone is not that: it stays set after the window runs out,
+  /// while the engine stops enforcing at [endsAt].
+  bool isActiveAt(DateTime now) => endsAt?.isAfter(now) ?? false;
+
+  bool get isActive => isActiveAt(DateTime.now());
+
   StrictModeConfig copyWith({
     bool? enabled,
     int? enabledAtMillis,

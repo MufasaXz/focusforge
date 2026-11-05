@@ -34,6 +34,8 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final config = ref.watch(strictModeProvider);
+    // The length of a running window is part of the commitment.
+    final locked = config.isActive;
     final hours = _draggingHours ?? config.durationMinutes / 60;
 
     return AppPage(
@@ -100,8 +102,10 @@ class _StrictModeScreenState extends ConsumerState<StrictModeScreen> {
                         // 31 steps of 15 minutes covers the full 15m–8h range.
                         divisions: 31,
                         label: _formatWindow(hours),
-                        onChanged: (v) => setState(() => _draggingHours = v),
-                        onChangeEnd: _commitDuration,
+                        onChanged: locked
+                            ? null
+                            : (v) => setState(() => _draggingHours = v),
+                        onChangeEnd: locked ? null : _commitDuration,
                       ),
                     ),
                     Row(

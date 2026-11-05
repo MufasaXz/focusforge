@@ -398,7 +398,11 @@ class StrictModeNotifier extends Notifier<StrictModeConfig> {
     await _persist();
   }
 
+  /// A running window keeps its length. Its end is counted from the length,
+  /// so shortening it would end the commitment at once, without the phrase
+  /// and the cooldown the emergency unlock asks for.
   Future<void> setDuration(int minutes) async {
+    if (state.isActive) return;
     state = state.copyWith(durationMinutes: minutes);
     await _persist();
   }
