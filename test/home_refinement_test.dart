@@ -127,8 +127,7 @@ void main() {
         findsNothing,
       );
       expect(find.text("Today's subjects"), findsNothing);
-      await tester.scrollUntilVisible(find.text('Subject breakdown'), 200);
-      expect(find.text('Subject breakdown'), findsOneWidget);
+      expect(find.text('Subject breakdown'), findsNothing);
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },

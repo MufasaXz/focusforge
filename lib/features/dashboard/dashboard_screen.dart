@@ -27,7 +27,6 @@ import 'widgets/goal_ring.dart';
 import 'widgets/session_shortcut.dart';
 import 'widgets/study_week.dart';
 import 'widgets/usage_access_card.dart';
-import 'widgets/subject_breakdown.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
@@ -92,7 +91,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final user = ref.watch(userProvider);
     final stats = ref.watch(statsProvider);
     final sessions = ref.watch(sessionsProvider);
-    final subjects = ref.watch(subjectsProvider);
     final goal = ref.watch(activeFocusGoalProvider);
     // Derived from the session log, not read from the stats aggregate: a
     // streak is a fact about dates and the aggregate carries none.
@@ -204,24 +202,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ];
 
-        final right = <Widget>[
-          if (sessions.any(
-            (session) =>
-                session.completed && session.subjectId.trim().isNotEmpty,
-          )) ...[
-            const SizedBox(height: Gap.xl),
-            SectionHeader(
-              title: context.tr("Subject breakdown"),
-              icon: Icons.donut_large_rounded,
-            ),
-            GlassCard(
-              child: Padding(
-                padding: const EdgeInsets.all(Gap.lg),
-                child: SubjectBreakdown(subjects: subjects),
-              ),
-            ),
-          ],
-        ];
 
         return CoachMarks(
           spots: spots,
@@ -253,10 +233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
-                                    children: _staggered([
-                                      ...left,
-                                      ...right,
-                                    ], from: 1),
+                                    children: _staggered(left, from: 1),
                                   ),
                                 ),
                                 const SizedBox(width: Gap.xl),
@@ -266,7 +243,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         CrossAxisAlignment.stretch,
                                     children: _staggered(
                                       history,
-                                      from: 1 + left.length + right.length,
+                                      from: 1 + left.length,
                                     ),
                                   ),
                                 ),
@@ -281,7 +258,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Stagger(index: 0, child: greeting),
                           const SizedBox(height: Gap.xl),
-                          ..._staggered([...left, ...history, ...right]),
+                          ..._staggered([...left, ...history]),
                         ],
                       ),
               ),

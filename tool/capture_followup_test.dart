@@ -161,11 +161,11 @@ void main() {
       container.read(routerProvider).go('/dashboard');
       await capture('home-${mode.name}');
       await tester.scrollUntilVisible(
-        find.text('Subject breakdown'),
+        find.text('This week'),
         180,
         scrollable: find.byType(Scrollable).first,
       );
-      await capture('breakdown-${mode.name}');
+      await capture('week-${mode.name}');
       container.read(routerProvider).go('/profile/leaderboard');
       await capture('leaderboard-${mode.name}');
       container.read(routerProvider).go('/focus');

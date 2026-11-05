@@ -13,7 +13,7 @@ import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/dashboard_screen.dart';
-import 'package:focusforge/features/dashboard/widgets/subject_breakdown.dart';
+import 'package:focusforge/features/dashboard/widgets/study_week.dart';
 import 'package:focusforge/features/profile/profile_screen.dart';
 import 'package:focusforge/features/profile/widgets/avatar_sheet.dart';
 
@@ -84,49 +84,35 @@ void main() {
         ),
       );
 
-  testWidgets('Home waits for an explicitly assigned completed session', (
-    tester,
-  ) async {
+  testWidgets('Home shows the week once a block is finished', (tester) async {
     tester.view.physicalSize = const Size(800, 1280);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final value = container();
     await tester.pumpWidget(host(value, const DashboardScreen()));
     await tester.pumpAndSettle();
-    expect(find.byType(SubjectBreakdown), findsNothing);
-    for (final assigned in [false, true]) {
+    expect(find.byType(StudyWeekOverview), findsNothing);
+    for (final completed in [false, true]) {
       value.read(sessionsProvider.notifier).hydrate([
         FocusSession(
-          id: 'unassigned',
-          subjectId: '',
-          startedAt: DateTime.now(),
-          minutes: 25,
-        ).toJson(),
-        FocusSession(
-          id: 'abandoned',
+          id: 'block',
           subjectId: 'math',
           startedAt: DateTime.now(),
-          minutes: 5,
-          completed: false,
+          minutes: 25,
+          completed: completed,
         ).toJson(),
-        if (assigned)
-          FocusSession(
-            id: 'assigned',
-            subjectId: 'math',
-            startedAt: DateTime.now(),
-            minutes: 25,
-          ).toJson(),
       ]);
       await tester.pumpAndSettle();
-      // ListView builds lazily; reach the bottom before checking the card.
+      // ListView builds lazily; reach the bottom before checking the chart.
       final scroll = tester
           .state<ScrollableState>(find.byType(Scrollable).first)
           .position;
       scroll.jumpTo(scroll.maxScrollExtent);
       await tester.pumpAndSettle();
       expect(
-        find.byType(SubjectBreakdown),
-        assigned ? findsOneWidget : findsNothing,
+        find.byType(StudyWeekOverview),
+        completed ? findsOneWidget : findsNothing,
+        reason: 'an abandoned block is not study time',
       );
       expect(tester.takeException(), isNull);
     }
