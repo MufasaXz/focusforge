@@ -462,6 +462,9 @@ class _DailyOverview extends ConsumerWidget {
               value: progress,
               size: 224,
               stroke: 16,
+              // Every five focused minutes, and every finished block, the
+              // ring celebrates the step it has just taken.
+              milestone: minutesToday ~/ 5,
               semanticLabel: context.tr(
                 "Focus goal, {0} of {1}, {2} percent of goal",
                 [
@@ -484,11 +487,32 @@ class _DailyOverview extends ConsumerWidget {
                     ],
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(
-                        formatMinutes(minutesToday),
-                        style: tt.displayMedium?.copyWith(
-                          fontSize: 34,
-                          letterSpacing: -1.2,
+                      // The figure rolls up as it changes, so a new minute
+                      // reads as progress rather than as a flicker.
+                      child: AnimatedSwitcher(
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : Motion.emphasizedDuration,
+                        switchInCurve: Motion.emphasized,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, .35),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            ),
+                        child: Text(
+                          formatMinutes(minutesToday),
+                          key: ValueKey<int>(minutesToday),
+                          style: tt.displayMedium?.copyWith(
+                            fontSize: 34,
+                            letterSpacing: -1.2,
+                          ),
                         ),
                       ),
                     ),
