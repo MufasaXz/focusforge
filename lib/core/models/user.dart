@@ -283,23 +283,50 @@ class UserProfile {
     'createdAt': createdAt?.millisecondsSinceEpoch,
   };
 
+  // Every field is guarded rather than cast: this runs inside bootstrap, where
+  // one malformed entry must not abort the launch.
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
-    uid: j['uid'] as String? ?? '',
-    displayName: j['displayName'] as String? ?? '',
+    uid: _stringOr(j['uid'], ''),
+    displayName: _stringOr(j['displayName'], ''),
     focusIntention: FocusIntention.fromName(j['focusIntention']),
-    timezone: j['timezone'] as String? ?? 'UTC',
-    onboardingComplete: j['onboardingComplete'] as bool? ?? false,
-    isAnonymous: j['isAnonymous'] as bool? ?? true,
-    // Guarded rather than cast: this runs inside bootstrap, where one
-    // malformed entry must not abort the launch.
+    timezone: _stringOr(j['timezone'], 'UTC'),
+    onboardingComplete: _boolOr(j['onboardingComplete'], false),
+    isAnonymous: _boolOr(j['isAnonymous'], true),
     avatarIcon: j['avatarIcon'] is String ? j['avatarIcon'] as String : null,
     avatarColor: j['avatarColor'] is int ? j['avatarColor'] as int : null,
     avatarPhoto: ProfilePhoto.valid(j['avatarPhoto']),
-    dailyGoalMinutes: j['dailyGoalMinutes'] as int? ?? 180,
-    createdAt: j['createdAt'] == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(j['createdAt'] as int),
+    dailyGoalMinutes: _intOr(j['dailyGoalMinutes'], 180),
+    createdAt: _dateOrNull(j['createdAt']),
   );
+}
+
+// -- Persisted-JSON readers --------------------------------------------------
+//
+// The profile and the stats are decoded during bootstrap, before the first
+// frame, and the stats also arrive from a cloud backup. These read one field
+// without ever throwing. `jsonDecode('1e999')` yields infinity, and `toInt`
+// throws on a non-finite double, so finiteness is part of "readable".
+
+int _intOr(Object? value, int fallback) =>
+    value is num && value.isFinite ? value.toInt() : fallback;
+
+String _stringOr(Object? value, String fallback) =>
+    value is String ? value : fallback;
+
+bool _boolOr(Object? value, bool fallback) => value is bool ? value : fallback;
+
+List<String> _strings(Object? value) => value is List
+    ? value.whereType<String>().toList(growable: false)
+    : const [];
+
+DateTime? _dateOrNull(Object? value) {
+  if (value is! num || !value.isFinite) return null;
+  try {
+    return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  } on ArgumentError {
+    // Outside the range DateTime can represent: treat it as unknown.
+    return null;
+  }
 }
 
 /// Totals and level — everything the Profile hero card needs.
@@ -379,15 +406,15 @@ class GamificationStats {
 
   factory GamificationStats.fromJson(Map<String, dynamic> j) =>
       GamificationStats(
-        xp: j['xp'] as int? ?? 0,
-        level: j['level'] as int? ?? 1,
-        totalFocusHours: (j['totalFocusHours'] as num?)?.toDouble() ?? 0,
-        totalSessions: j['totalSessions'] as int? ?? 0,
-        badges: (j['badges'] as List?)?.cast<String>() ?? const [],
-        creditedSessionIds:
-            (j['creditedSessionIds'] as List?)?.whereType<String>().toList(
-              growable: false,
-            ) ??
-            const [],
+        xp: _intOr(j['xp'], 0),
+        level: _intOr(j['level'], 1),
+        totalFocusHours:
+            j['totalFocusHours'] is num &&
+                (j['totalFocusHours'] as num).isFinite
+            ? (j['totalFocusHours'] as num).toDouble()
+            : 0,
+        totalSessions: _intOr(j['totalSessions'], 0),
+        badges: _strings(j['badges']),
+        creditedSessionIds: _strings(j['creditedSessionIds']),
       ).withXp(0);
 }

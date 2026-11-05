@@ -281,6 +281,86 @@ void main() {
     });
   });
 
+  group('GamificationStats.fromJson', () {
+    test('every field survives null, wrong-typed and container values', () {
+      const fields = [
+        'xp',
+        'level',
+        'totalFocusHours',
+        'totalSessions',
+        'badges',
+        'creditedSessionIds',
+      ];
+      for (final field in fields) {
+        for (final value in _malformed) {
+          expect(
+            () {
+              final stats = GamificationStats.fromJson({field: value});
+              // The lists are read later; reading them must not throw either.
+              stats.badges.toList();
+              stats.creditedSessionIds.toList();
+            },
+            returnsNormally,
+            reason: 'GamificationStats.fromJson({$field: $value})',
+          );
+        }
+      }
+    });
+
+    test('a list of mixed entries keeps only the strings', () {
+      final stats = GamificationStats.fromJson({
+        'badges': ['first_focus', 3, null],
+        'creditedSessionIds': ['s-1', 2],
+      });
+      expect(stats.badges, ['first_focus']);
+      expect(stats.creditedSessionIds, ['s-1']);
+    });
+
+    test('a written value decodes back to the same totals', () {
+      final written = const GamificationStats()
+          .withXp(140)
+          .copyWith(totalSessions: 7, totalFocusHours: 3.5);
+      final read = GamificationStats.fromJson(
+        jsonDecode(jsonEncode(written.toJson())) as Map<String, dynamic>,
+      );
+      expect(read.level, written.level);
+      expect(read.xp, written.xp);
+      expect(read.totalSessions, 7);
+      expect(read.totalFocusHours, 3.5);
+    });
+  });
+
+  group('UserProfile.fromJson', () {
+    test('every field survives null, wrong-typed and container values', () {
+      const fields = [
+        'uid',
+        'displayName',
+        'focusIntention',
+        'timezone',
+        'onboardingComplete',
+        'isAnonymous',
+        'dailyGoalMinutes',
+        'createdAt',
+      ];
+      for (final field in fields) {
+        for (final value in _malformed) {
+          expect(
+            () => UserProfile.fromJson({field: value}),
+            returnsNormally,
+            reason: 'UserProfile.fromJson({$field: $value})',
+          );
+        }
+      }
+    });
+
+    test('an out-of-range creation time is dropped', () {
+      expect(
+        UserProfile.fromJson({'createdAt': 9007199254740991}).createdAt,
+        isNull,
+      );
+    });
+  });
+
   group('FocusSession.fromJson', () {
     test('an empty map degrades to an epoch session', () {
       final session = FocusSession.fromJson(const {});
