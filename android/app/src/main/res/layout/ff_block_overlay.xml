@@ -7,8 +7,8 @@
   ColorScheme. The colours are the same roles, defined in values/ and
   values-night/ so the two brightnesses stay in step with the rest of the app.
 
-  A pause, not an error page: the blocked app's icon rests in the middle with a
-  slow breath behind it (animated by BlockOverlayRoot, still when the system
+  A pause, not an error page: the blocked app's own icon, in no tile or badge
+  of ours, rests in the middle with a slow breath behind it (animated by BlockOverlayRoot, still when the system
   turns animation off), the message under it, and the two actions in thumb
   reach at the bottom. The filled action gets the user out of the app; the
   tonal one leads to the breathing pause before any way back in. There is no
@@ -89,31 +89,13 @@
                     android:alpha="0.18"
                     android:background="@drawable/ff_block_halo" />
 
-                <FrameLayout
-                    android:layout_width="116dp"
-                    android:layout_height="116dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/ff_block_icon_surface">
-
-                    <ImageView
-                        android:id="@+id/ff_block_icon"
-                        android:layout_width="68dp"
-                        android:layout_height="68dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="@null"
-                        android:scaleType="fitCenter" />
-                </FrameLayout>
-
                 <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:id="@+id/ff_block_icon"
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
                     android:layout_gravity="center"
-                    android:layout_marginStart="50dp"
-                    android:layout_marginTop="50dp"
-                    android:background="@drawable/ff_block_badge"
                     android:contentDescription="@null"
-                    android:padding="9dp"
-                    android:src="@drawable/ff_block_pause" />
+                    android:scaleType="fitCenter" />
             </FrameLayout>
 
             <TextView
