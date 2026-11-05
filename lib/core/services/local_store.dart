@@ -234,6 +234,7 @@ class StoreKeys {
   static const whitelistTiers = 'shield.whitelist';
   static const youtubeRules = 'shield.youtube';
   static const strictMode = 'shield.strict';
+
   /// Whether the user agreed to the app-list disclosure. Read before the
   /// installed-app list or per-app usage is ever queried; see
   /// `appListConsentProvider`.
@@ -250,6 +251,7 @@ class StoreKeys {
   static const achievementAliases = 'achievements.aliases';
   static const ambientVolumes = 'audio.volumes';
   static const ambientActive = 'audio.active';
+  static const assistant = 'assistant.memory';
   static const dailyGoal = 'goal.daily';
   static const dailyGoalDays = 'goal.days';
   static const presets = 'focus.presets';

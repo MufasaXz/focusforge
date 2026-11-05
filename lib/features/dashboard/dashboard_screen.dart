@@ -21,6 +21,7 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/tonal_panel.dart';
+import '../assistant/home/pip_dock.dart';
 import '../onboarding/coach_marks.dart';
 import 'widgets/daily_goal_sheet.dart';
 import 'widgets/goal_ring.dart';
@@ -202,65 +203,66 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ];
 
-
-        return CoachMarks(
-          spots: spots,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: wide && history.isNotEmpty
-                    ? Layout.readable * 2 + Gap.xl
-                    : Layout.readable,
-              ),
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                color: cs.primary,
-                backgroundColor: cs.surface,
-                child: wide && history.isNotEmpty
-                    ? SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: _padding(context),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+        return PipDock(
+          child: CoachMarks(
+            spots: spots,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: wide && history.isNotEmpty
+                      ? Layout.readable * 2 + Gap.xl
+                      : Layout.readable,
+                ),
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  color: cs.primary,
+                  backgroundColor: cs.surface,
+                  child: wide && history.isNotEmpty
+                      ? SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: _padding(context),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Stagger(index: 0, child: greeting),
+                              const SizedBox(height: Gap.xl),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: _staggered(left, from: 1),
+                                    ),
+                                  ),
+                                  const SizedBox(width: Gap.xl),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: _staggered(
+                                        history,
+                                        from: 1 + left.length,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: _padding(context),
                           children: [
                             Stagger(index: 0, child: greeting),
                             const SizedBox(height: Gap.xl),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: _staggered(left, from: 1),
-                                  ),
-                                ),
-                                const SizedBox(width: Gap.xl),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: _staggered(
-                                      history,
-                                      from: 1 + left.length,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            ..._staggered([...left, ...history]),
                           ],
                         ),
-                      )
-                    : ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: _padding(context),
-                        children: [
-                          Stagger(index: 0, child: greeting),
-                          const SizedBox(height: Gap.xl),
-                          ..._staggered([...left, ...history]),
-                        ],
-                      ),
+                ),
               ),
             ),
           ),
@@ -274,7 +276,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     Gap.lg + 4,
     MediaQuery.paddingOf(context).top + Gap.lg,
     Gap.lg + 4,
-    kNavBarClearance,
+    // Room for the last card to rise above Pip, who stands on the bar.
+    kNavBarClearance + PipDock.clearance,
   );
 
   List<Widget> _staggered(List<Widget> children, {int from = 0}) => [
@@ -472,17 +475,16 @@ class _DailyOverview extends ConsumerWidget {
                             : Motion.emphasizedDuration,
                         switchInCurve: Motion.emphasized,
                         switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, .35),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
-                              ),
-                            ),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, .35),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        ),
                         child: Text(
                           formatMinutes(minutesToday),
                           key: ValueKey<int>(minutesToday),

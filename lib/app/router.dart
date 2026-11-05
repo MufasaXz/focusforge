@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/providers/app_providers.dart';
+import '../features/assistant/brain/assistant_models.dart';
+import '../features/assistant/chat/chat_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/focus/focus_screen.dart';
 import '../features/onboarding/auth_screen.dart';
@@ -41,6 +43,7 @@ class AppRoutes {
   static const auth = 'auth';
   static const verifyEmail = 'verify-email';
   static const breathGate = 'breath-gate';
+  static const assistant = 'assistant';
 
   static const groups = 'groups';
   static const achievements = 'achievements';
@@ -61,6 +64,7 @@ class AppRoutes {
     auth: '/auth',
     verifyEmail: '/verify-email',
     breathGate: '/breath-gate',
+    assistant: '/assistant',
     groups: '/profile/groups',
     achievements: '/profile/achievements',
     leaderboard: '/profile/leaderboard',
@@ -155,6 +159,39 @@ final routerProvider = Provider<GoRouter>((ref) {
                 : BreathGateArgs(appName: context.tr("That app")),
           );
         },
+      ),
+
+      // -- Pip, the study buddy (above the tabs) ------------------------------
+      GoRoute(
+        path: '/assistant',
+        name: AppRoutes.assistant,
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          child: AssistantChatScreen(
+            initial: state.extra is AssistantAction
+                ? state.extra as AssistantAction
+                : null,
+          ),
+          transitionDuration: const Duration(milliseconds: 320),
+          reverseTransitionDuration: const Duration(milliseconds: 200),
+          // The chat grows out of the corner Pip stands in.
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            if (MediaQuery.disableAnimationsOf(context)) return child;
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                alignment: Alignment.bottomRight,
+                scale: Tween<double>(begin: 0.92, end: 1).animate(curved),
+                child: child,
+              ),
+            );
+          },
+        ),
       ),
 
       // -- The four tabs -----------------------------------------------------
