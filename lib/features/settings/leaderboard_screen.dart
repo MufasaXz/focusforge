@@ -228,7 +228,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                               indent: Gap.lg,
                               endIndent: Gap.lg,
                             ),
-                          _BoardRowTile(rank: i + 1, entry: board[i]),
+                          _BoardRowTile(
+                            rank: i + 1,
+                            entry: board[i],
+                            leader: board.first.hours,
+                          ),
                         ],
                       ] else
                         for (var i = 0; i < board.length; i++) ...[
@@ -238,7 +242,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
                               indent: Gap.lg,
                               endIndent: Gap.lg,
                             ),
-                          _BoardRowTile(rank: i + 1, entry: board[i]),
+                          _BoardRowTile(
+                            rank: i + 1,
+                            entry: board[i],
+                            leader: board.first.hours,
+                          ),
                         ],
                     ],
                   ],
@@ -259,13 +267,30 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen>
   }
 }
 
+/// The medal colours: gold, silver and bronze, pulled into the live theme.
+///
+/// They are categorical, like a subject's hue — they say "first", "second"
+/// and "third" — so they are harmonised rather than turned into scheme roles.
+Color _medal(int rank, ColorScheme cs) => harmonize(switch (rank) {
+  1 => const Color(0xFFC9A227),
+  2 => const Color(0xFF9AA5B1),
+  _ => const Color(0xFFB87333),
+}, cs.primary);
+
 /// One row of the board. The user's own row is the one that has to be findable
-/// at a glance, so it is the only one that gets a gold outline.
+/// at a glance, so it is the only one with an outline, in the theme's primary.
 class _BoardRowTile extends StatelessWidget {
-  const _BoardRowTile({required this.rank, required this.entry});
+  const _BoardRowTile({
+    required this.rank,
+    required this.entry,
+    required this.leader,
+  });
 
   final int rank;
   final LeaderboardEntry entry;
+
+  /// The leader's hours, which every row's bar is measured against.
+  final double leader;
 
   @override
   Widget build(BuildContext context) {
@@ -274,70 +299,62 @@ class _BoardRowTile extends StatelessWidget {
     final compact =
         MediaQuery.sizeOf(context).width < 360 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
-    final foreground = cs.onSurface;
     final muted = cs.onSurfaceVariant;
     final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
     final level = entry.level == null
         ? context.tr("Level unavailable")
         : context.tr("Level {0}", [entry.level]);
-    final medal = switch (rank) {
-      1 => harmonize(const Color(0xFFB8860B), cs.primary),
-      2 => cs.secondary,
-      3 => cs.tertiary,
-      _ => cs.onSurfaceVariant,
-    };
+    final medal = rank <= 3 ? _medal(rank, cs) : null;
+    final share = leader <= 0 ? 0.0 : (entry.hours / leader).clamp(0.0, 1.0);
 
     return ListTile(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.item),
         side: entry.isMe
-            ? BorderSide(color: const Color(0xFFD6AD43), width: 1.5)
+            ? BorderSide(color: cs.primary, width: 1.5)
             : BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: Gap.md,
         vertical: Gap.sm,
       ),
-      tileColor: entry.isMe
-          ? cs.surfaceContainerLow
-          : rank == 1
-          ? Color.alphaBlend(
-              cs.primary.withValues(alpha: .04),
-              cs.surfaceContainerLow,
-            )
-          : null,
+      tileColor: entry.isMe ? cs.surfaceContainerLow : null,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Semantics(
             label: context.tr("Rank {0}", [rank]),
             excludeSemantics: true,
-            child: Container(
-              width: compact ? 32 : 38,
+            child: SizedBox(
+              width: compact ? 30 : 34,
               height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: rank <= 3 ? medal.withValues(alpha: .12) : null,
-                borderRadius: BorderRadius.circular(Radii.tile),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (rank <= 3 && !compact)
-                    Icon(
-                      Icons.workspace_premium_rounded,
-                      size: 15,
-                      color: medal,
-                    ),
-                  Text(
-                    '$rank',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: rank <= 3 ? medal : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
+              child: Center(
+                child: medal == null
+                    ? Text(
+                        '$rank',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: muted,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      )
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: medal.withValues(alpha: .18),
+                          border: Border.all(color: medal, width: 1.5),
+                        ),
+                        child: Text(
+                          '$rank',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
               ),
             ),
           ),
@@ -367,37 +384,36 @@ class _BoardRowTile extends StatelessWidget {
           ],
         ],
       ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      title: Wrap(
+        spacing: Gap.sm,
+        runSpacing: Gap.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
             entry.name,
             maxLines: compact ? 2 : 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleSmall?.copyWith(
-              color: foreground,
+              color: cs.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
           if (entry.isMe)
-            Padding(
-              padding: const EdgeInsets.only(top: Gap.xs),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: cs.primary,
-                  borderRadius: BorderRadius.circular(Radii.pill),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Gap.sm,
+                  vertical: 2,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.sm,
-                    vertical: 2,
-                  ),
-                  child: Text(
-                    context.tr("You"),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.onPrimary,
-                    ),
+                child: Text(
+                  context.tr("You"),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -414,56 +430,83 @@ class _BoardRowTile extends StatelessWidget {
               level,
               style: theme.textTheme.labelMedium?.copyWith(color: muted),
             ),
+            // Narrow rows have no trailing column, so the hours get a line.
             if (compact)
               Text(
                 formatHoursShort(entry.hours),
                 style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
+            const SizedBox(height: Gap.sm),
+            // The week against the leader's, as a thin bar: how far behind
+            // is a length, read faster than a difference of two numbers.
+            ExcludeSemantics(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.pill),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: share),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.deliberate,
+                  curve: Motion.emphasized,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    value: value,
+                    minHeight: 4,
+                    color: entry.isMe
+                        ? cs.primary
+                        : (medal ?? cs.onSurfaceVariant.withValues(alpha: .5)),
+                    backgroundColor: cs.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
       trailing: compact
           ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formatHoursShort(entry.hours),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: foreground,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
+          : Text(
+              formatHoursShort(entry.hours),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
     );
   }
 }
 
-/// The top three, on a stage: first place raised and centred, second and
-/// third a step down on either side. A leaderboard with three identical rows
-/// at the top reads as a list that happens to be sorted; a podium reads as a
-/// finish. Fewer than three entries simply take the seats that exist.
+/// The top three on a stage: three risers, first place raised and centred,
+/// second and third a step down on either side, each with its rank on the
+/// riser and its person standing on top. A leaderboard with three identical
+/// rows at the top reads as a list that happens to be sorted; a podium reads
+/// as a finish.
 class _Podium extends StatelessWidget {
   const _Podium({required this.entries});
 
   /// The leaders, already ordered — index 0 is first place.
   final List<LeaderboardEntry> entries;
 
+  /// Riser heights by place: first, second, third.
+  static const _heights = [92.0, 68.0, 52.0];
+
   @override
   Widget build(BuildContext context) {
-    // Order the columns 2nd, 1st, 3rd so the winner sits in the middle, and
-    // pull the seats that are not there from either end.
-    final order = <int?>[1, 0, 2];
+    // Order the columns 2nd, 1st, 3rd so the winner sits in the middle.
+    const order = [1, 0, 2];
     return Padding(
-      padding: const EdgeInsets.only(top: Gap.md, bottom: Gap.sm),
+      padding: const EdgeInsets.fromLTRB(Gap.xs, Gap.lg, Gap.xs, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           for (final i in order)
             Expanded(
-              child: i != null && i < entries.length
-                  ? _PodiumSeat(rank: i + 1, entry: entries[i])
+              child: i < entries.length
+                  ? _PodiumSeat(
+                      rank: i + 1,
+                      entry: entries[i],
+                      riser: _heights[i],
+                    )
                   : const SizedBox.shrink(),
             ),
         ],
@@ -472,113 +515,164 @@ class _Podium extends StatelessWidget {
   }
 }
 
-/// One podium seat: the avatar on its riser, the name and hours beneath.
+/// One podium seat: the person on top, the riser with its rank beneath.
 class _PodiumSeat extends StatelessWidget {
-  const _PodiumSeat({required this.rank, required this.entry});
+  const _PodiumSeat({
+    required this.rank,
+    required this.entry,
+    required this.riser,
+  });
 
   final int rank;
   final LeaderboardEntry entry;
+  final double riser;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
-    final medal = switch (rank) {
-      1 => harmonize(const Color(0xFFB8860B), cs.primary),
-      2 => cs.secondary,
-      _ => cs.tertiary,
-    };
+    final medal = _medal(rank, cs);
     final winner = rank == 1;
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: medal,
-                  width: winner ? 3 : 2,
-                ),
-                boxShadow: winner
-                    ? [
-                        BoxShadow(
-                          color: medal.withValues(alpha: 0.45),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
+    // The risers grow from the floor, third first and the winner last, so
+    // the stage builds up to first place.
+    final grow = reduce
+        ? Duration.zero
+        : Duration(
+            milliseconds:
+                560 +
+                (rank == 1
+                    ? 260
+                    : rank == 2
+                    ? 130
+                    : 0),
+          );
+
+    return Semantics(
+      label: context.tr("Rank {0}", [rank]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (winner)
+            Icon(Icons.emoji_events_rounded, size: 22, color: medal)
+          else
+            const SizedBox(height: 22),
+          const SizedBox(height: Gap.xs),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: medal, width: winner ? 3 : 2),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
               child: CircleAvatar(
-                radius: winner ? 34 : 26,
+                radius: winner ? 32 : 25,
                 foregroundImage: photoBytes == null
                     ? null
                     : MemoryImage(photoBytes),
                 onForegroundImageError: photoBytes == null ? null : (_, _) {},
-                backgroundColor:
-                    entry.isMe ? cs.primary : cs.surfaceContainerHighest,
-                foregroundColor:
-                    entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
+                backgroundColor: entry.isMe
+                    ? cs.primary
+                    : cs.surfaceContainerHighest,
+                foregroundColor: entry.isMe
+                    ? cs.onPrimary
+                    : cs.onSurfaceVariant,
                 child: Text(
                   entry.initials,
                   style: (winner ? tt.titleMedium : tt.titleSmall)?.copyWith(
                     color: entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
-            // The medal hangs off the bottom of the ring like a real one.
-            Positioned(
-              bottom: winner ? -6 : -5,
-              child: Container(
-                width: winner ? 26 : 21,
-                height: winner ? 26 : 21,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: medal,
-                  border: Border.all(color: cs.surface, width: 2),
+          ),
+          const SizedBox(height: Gap.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.xs),
+            child: Text(
+              entry.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: (winner ? tt.titleSmall : tt.labelLarge)?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            formatHoursShort(entry.hours),
+            style: tt.labelMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          // The user's own seat says so in a pill of its own, so a long
+          // name can never truncate it away.
+          if (entry.isMe) ...[
+            const SizedBox(height: Gap.xs),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Gap.sm,
+                  vertical: 1,
                 ),
-                alignment: Alignment.center,
                 child: Text(
-                  '$rank',
+                  context.tr("You"),
                   style: tt.labelSmall?.copyWith(
-                    color: cs.surface,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: Gap.lg),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.xs),
-          child: Text(
-            entry.isMe ? '${entry.name} · You' : entry.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: (winner ? tt.titleSmall : tt.labelLarge)?.copyWith(
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: Gap.sm),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: grow,
+            curve: Motion.emphasized,
+            builder: (context, t, _) => Container(
+              height: riser * t,
+              margin: const EdgeInsets.symmetric(horizontal: Gap.xs),
+              alignment: Alignment.topCenter,
+              decoration: BoxDecoration(
+                color: Color.alphaBlend(
+                  medal.withValues(alpha: .16),
+                  cs.surfaceContainerHigh,
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(Radii.tile),
+                ),
+                border: Border(top: BorderSide(color: medal, width: 3)),
+              ),
+              child: t < .5
+                  ? null
+                  : Opacity(
+                      opacity: ((t - .5) * 2).clamp(0.0, 1.0),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: Gap.sm),
+                        child: Text(
+                          '$rank',
+                          style: tt.headlineSmall?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
             ),
           ),
-        ),
-        Text(
-          formatHoursShort(entry.hours),
-          style: tt.labelMedium?.copyWith(
-            color: medal,
-            fontWeight: FontWeight.w700,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -817,10 +911,24 @@ class _WeekCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      standing == null ? '—' : '#$standing',
-                      style: Theme.of(context).textTheme.displaySmall
-                          ?.copyWith(color: cs.primary),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // A place on the podium wears its medal here too.
+                        if (standing != null && standing! <= 3) ...[
+                          Icon(
+                            Icons.workspace_premium_rounded,
+                            size: 28,
+                            color: _medal(standing!, cs),
+                          ),
+                          const SizedBox(width: Gap.xs),
+                        ],
+                        Text(
+                          standing == null ? '—' : '#$standing',
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(color: cs.primary),
+                        ),
+                      ],
                     ),
                     Text(
                       context.tr("your standing"),
@@ -854,11 +962,21 @@ class _WeekCard extends StatelessWidget {
             Semantics(
               label: context.tr("This week against last week"),
               value: context.tr("{0} percent", [(progress * 100).round()]),
-              child: LinearProgressIndicator(
-                value: progress,
-                color: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
-                minHeight: 6,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.pill),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.deliberate,
+                  curve: Motion.emphasized,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    value: value,
+                    color: cs.primary,
+                    backgroundColor: cs.surfaceContainerHighest,
+                    minHeight: 8,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: Gap.sm),
