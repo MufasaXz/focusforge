@@ -1311,5 +1311,8 @@
   "Group {0} as": "Classer {0} dans",
   "Grouped by Shield rules and the app's type": "Selon les règles Shield et le type d’appli",
   "Your choice is kept on this phone and used in every chart.": "Votre choix reste sur ce téléphone et sert dans tous les graphiques.",
-  "This week": "Cette semaine"
+  "This week": "Cette semaine",
+  "Tap anywhere to pause": "Appuyez n'importe où pour mettre en pause",
+  "Tap anywhere to resume": "Appuyez n'importe où pour reprendre",
+  "Tap anywhere to start": "Appuyez n'importe où pour démarrer"
 }

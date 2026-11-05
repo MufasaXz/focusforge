@@ -1311,5 +1311,8 @@
   "Group {0} as": "Віднести {0} до групи",
   "Grouped by Shield rules and the app's type": "За правилами Shield і типом застосунку",
   "Your choice is kept on this phone and used in every chart.": "Ваш вибір зберігається на цьому телефоні й використовується в усіх графіках.",
-  "This week": "Цей тиждень"
+  "This week": "Цей тиждень",
+  "Tap anywhere to pause": "Торкніться будь-де, щоб призупинити",
+  "Tap anywhere to resume": "Торкніться будь-де, щоб продовжити",
+  "Tap anywhere to start": "Торкніться будь-де, щоб почати"
 }

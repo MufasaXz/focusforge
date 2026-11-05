@@ -1311,5 +1311,8 @@
   "Group {0} as": "{0} 분류",
   "Grouped by Shield rules and the app's type": "Shield 규칙과 앱 유형에 따라",
   "Your choice is kept on this phone and used in every chart.": "선택한 내용은 이 휴대전화에 저장되며 모든 차트에 사용됩니다.",
-  "This week": "이번 주"
+  "This week": "이번 주",
+  "Tap anywhere to pause": "일시 정지하려면 아무 곳이나 탭하세요.",
+  "Tap anywhere to resume": "재개하려면 아무 곳이나 탭하세요.",
+  "Tap anywhere to start": "시작하려면 아무 곳이나 탭하세요."
 }

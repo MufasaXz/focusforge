@@ -1311,5 +1311,8 @@
   "Group {0} as": "{0} uygulamasını şöyle grupla",
   "Grouped by Shield rules and the app's type": "Shield kurallarına ve uygulama türüne göre",
   "Your choice is kept on this phone and used in every chart.": "Seçimin bu telefonda kalır ve her grafikte kullanılır.",
-  "This week": "Bu hafta"
+  "This week": "Bu hafta",
+  "Tap anywhere to pause": "Duraklatmak için herhangi bir yere dokunun",
+  "Tap anywhere to resume": "Devam etmek için herhangi bir yere dokunun",
+  "Tap anywhere to start": "Başlatmak için herhangi bir yere dokunun"
 }

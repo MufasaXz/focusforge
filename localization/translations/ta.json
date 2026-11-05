@@ -1311,5 +1311,8 @@
   "Group {0} as": "{0}-ஐ இப்படி வகைப்படுத்து",
   "Grouped by Shield rules and the app's type": "Shield விதிகள் மற்றும் ஆப் வகையின்படி",
   "Your choice is kept on this phone and used in every chart.": "உங்கள் தேர்வு இந்த ஃபோனிலேயே இருக்கும், எல்லா வரைபடங்களிலும் பயன்படும்.",
-  "This week": "இந்த வாரம்"
+  "This week": "இந்த வாரம்",
+  "Tap anywhere to pause": "இடைநிறுத்த எங்கும் தட்டவும்",
+  "Tap anywhere to resume": "தொடர எங்கும் தட்டவும்",
+  "Tap anywhere to start": "தொடங்க எங்கும் தட்டவும்"
 }

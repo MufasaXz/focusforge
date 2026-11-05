@@ -1311,5 +1311,8 @@
   "Group {0} as": "จัด {0} เป็น",
   "Grouped by Shield rules and the app's type": "ตามกฎ Shield และประเภทแอป",
   "Your choice is kept on this phone and used in every chart.": "ตัวเลือกของคุณเก็บไว้ในโทรศัพท์เครื่องนี้และใช้ในทุกแผนภูมิ",
-  "This week": "สัปดาห์นี้"
+  "This week": "สัปดาห์นี้",
+  "Tap anywhere to pause": "แตะที่ใดก็ได้เพื่อหยุดชั่วคราว",
+  "Tap anywhere to resume": "แตะที่ใดก็ได้เพื่อทำต่อ",
+  "Tap anywhere to start": "แตะที่ใดก็ได้เพื่อเริ่ม"
 }

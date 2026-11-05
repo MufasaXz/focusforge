@@ -1311,5 +1311,8 @@
   "Group {0} as": "Kelompokkan {0} sebagai",
   "Grouped by Shield rules and the app's type": "Menurut aturan Shield dan jenis aplikasi",
   "Your choice is kept on this phone and used in every chart.": "Pilihanmu disimpan di ponsel ini dan dipakai di semua grafik.",
-  "This week": "Minggu ini"
+  "This week": "Minggu ini",
+  "Tap anywhere to pause": "Ketuk di mana saja untuk menjeda",
+  "Tap anywhere to resume": "Ketuk di mana saja untuk melanjutkan",
+  "Tap anywhere to start": "Ketuk di mana saja untuk memulai"
 }

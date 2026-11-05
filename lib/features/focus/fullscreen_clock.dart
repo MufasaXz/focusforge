@@ -8,7 +8,6 @@ import '../../app/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/study_providers.dart';
-import '../../core/utils/format.dart';
 import '../../shared/widgets/pressable.dart';
 import 'widgets/clock_faces.dart';
 
@@ -52,6 +51,11 @@ Future<void> showFullscreenClock(BuildContext context) {
 /// arrangement — and because the app pins no orientation of its own, turning
 /// the device simply rebuilds it. Nothing here counts: the clock reads the
 /// engine, so it cannot drift from the timer behind it.
+///
+/// The whole screen is the play/pause control, because a clock propped on a
+/// desk is reached for with a fingertip, not aimed at. Leaving takes the close
+/// button in the corner (or the system back gesture), so a tap meant to pause
+/// can never throw the user out of the screen.
 class FullscreenClock extends ConsumerStatefulWidget {
   const FullscreenClock({super.key});
 
@@ -59,7 +63,15 @@ class FullscreenClock extends ConsumerStatefulWidget {
   ConsumerState<FullscreenClock> createState() => _FullscreenClockState();
 }
 
-class _FullscreenClockState extends ConsumerState<FullscreenClock> {
+class _FullscreenClockState extends ConsumerState<FullscreenClock>
+    with SingleTickerProviderStateMixin {
+  /// The glyph that answers a tap: it grows out of the centre and fades.
+  late final AnimationController _flash = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
+  );
+  bool _flashPlaying = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +83,7 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
 
   @override
   void dispose() {
+    _flash.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // An empty list is "no preference", which is where the rest of the app
     // leaves orientation — not portrait, and not a lock the user did not ask
@@ -79,17 +92,31 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
     super.dispose();
   }
 
+  void _toggle() {
+    final timer = ref.read(timerProvider.notifier);
+    final willRun = !ref.read(timerProvider).running;
+    timer.toggle();
+    HapticFeedback.selectionClick();
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    setState(() => _flashPlaying = willRun);
+    _flash.forward(from: 0);
+  }
+
+  void _close() => Navigator.of(context).pop();
+
   @override
   Widget build(BuildContext context) {
     final timer = ref.watch(timerProvider);
     final face = ref.watch(clockFaceProvider);
-    final preset = ref.watch(presetsProvider)[timer.presetIndex];
+    final presets = ref.watch(presetsProvider);
+    final preset = presets[timer.presetIndex.clamp(0, presets.length - 1)];
     final subject = ref
         .watch(subjectsProvider)
         .where((s) => s.id == timer.subjectId)
         .firstOrNull;
 
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final accent = switch (timer.phase) {
       TimerPhase.focus => cs.primary,
       TimerPhase.shortBreak => cs.tertiary,
@@ -99,8 +126,9 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
     // left on for an hour, and a tint over black is exactly what the setting
     // exists to avoid.
     final amoled =
-        Theme.of(context).brightness == Brightness.dark &&
+        theme.brightness == Brightness.dark &&
         ref.watch(themeSettingsProvider).amoled;
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
     final size = MediaQuery.sizeOf(context);
     // Everything scales off the shorter side, so landscape is not a portrait
@@ -118,6 +146,15 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
         : timer.phase.isBreak
         ? 1 - timer.progressFor(preset)
         : timer.progressFor(preset);
+    final retro = face == ClockFace.retro;
+    // A paused segment that has already begun resumes; one that has not
+    // begun starts.
+    final begun = timer.remaining < timer.plannedDuration(preset);
+    final hint = timer.running
+        ? context.tr("Tap anywhere to pause")
+        : begun
+        ? context.tr("Tap anywhere to resume")
+        : context.tr("Tap anywhere to start");
 
     return Scaffold(
       backgroundColor: amoled ? const Color(0xFF000000) : cs.surface,
@@ -149,135 +186,204 @@ class _FullscreenClockState extends ConsumerState<FullscreenClock> {
               ),
             ),
           ),
-          // Tap anywhere to leave, the way a full-screen clock on a phone
-          // works — the close button is there for anyone who does not know
-          // that.
+          // The whole screen starts and pauses the clock.
           Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).pop(),
+            child: Semantics(
+              button: true,
+              label: hint,
+              onTap: _toggle,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggle,
+              ),
             ),
           ),
           SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: landscape ? side * 0.10 : Gap.xl,
-                vertical: Gap.lg,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(),
-                  // The figures get the room: everything else on this screen
-                  // is a caption.
-                  SizedBox(
-                    width: size.width,
-                    height: face == ClockFace.retro
-                        ? side * (landscape ? 0.64 : 0.82)
-                        : side * (landscape ? 0.42 : 0.34),
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: hiddenTime
-                          ? Text(
-                              context.tr("Time stays hidden"),
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(color: accent),
-                            )
-                          : ClockDisplay(
-                              remaining: timer.remaining,
-                              face: face,
-                              accent: accent,
-                              height: side * 0.30,
-                              progress: timer.progressFor(preset),
-                              phaseLabel: timer.phase == TimerPhase.focus
-                                  ? context.tr("FOCUS")
-                                  : context.tr("BREAK"),
-                            ),
+            child: IgnorePointer(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: landscape ? side * 0.08 : Gap.md,
+                  vertical: Gap.lg,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Spacer(),
+                    // The figures get the room: everything else on this
+                    // screen is a caption. A paused clock dims, so the state
+                    // reads from across the room too.
+                    AnimatedOpacity(
+                      opacity: !timer.running && begun && !hiddenTime ? 0.62 : 1,
+                      duration: reduce ? Duration.zero : Motion.base,
+                      child: SizedBox(
+                        width: size.width,
+                        height: retro
+                            ? side * (landscape ? 0.80 : 0.96)
+                            : side * (landscape ? 0.50 : 0.42),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: hiddenTime
+                              ? Text(
+                                  context.tr("Time stays hidden"),
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(color: accent),
+                                )
+                              : ClockDisplay(
+                                  remaining: timer.remaining,
+                                  face: face,
+                                  accent: accent,
+                                  height: side * 0.30,
+                                  progress: timer.progressFor(preset),
+                                  phaseLabel: timer.phase == TimerPhase.focus
+                                      ? context.tr("FOCUS")
+                                      : context.tr("BREAK"),
+                                ),
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: side * 0.05),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: accent,
-                        ),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Text(
-                        context.tr(timer.phase.label),
-                        style: Theme.of(context).textTheme.titleSmall
-                            ?.copyWith(color: accent, letterSpacing: 0.6),
-                      ),
-                      if (subject != null) ...[
+                    SizedBox(height: side * 0.05),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (timer.running || !begun)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent,
+                            ),
+                          )
+                        else
+                          Icon(Icons.pause_rounded, size: 16, color: accent),
+                        const SizedBox(width: Gap.sm),
                         Text(
-                          '  ·  ',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                        Flexible(
-                          child: Text(
-                            subject.name,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          context.tr(timer.phase.label),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: accent,
+                            letterSpacing: 0.6,
                           ),
                         ),
+                        // The subject when the block has one, and nothing
+                        // when it does not.
+                        if (subject != null) ...[
+                          Text(
+                            '  ·  ',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              subject.name,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  Text(
-                    hiddenTime
-                        ? (timer.running
-                              ? context.tr("Stay with your subject")
-                              : context.tr("Ready when you are"))
-                        : timer.running
-                        ? context.tr("{0} — {1} left", [
-                            timer.phase.isBreak ? 'Resting' : 'Focusing',
-                            formatClock(timer.remaining),
-                          ])
-                        : context.tr("Paused at {0}", [
-                            formatClock(timer.remaining),
-                          ]),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const Spacer(),
-                  Text(
-                    context.tr("Tap anywhere to close"),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
-                  ),
-                ],
+                    if (hiddenTime) ...[
+                      const SizedBox(height: Gap.sm),
+                      Text(
+                        timer.running
+                            ? context.tr("Stay with your subject")
+                            : context.tr("Ready when you are"),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    Text(
+                      hint,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // The answer to a tap: a play or pause glyph that grows out of the
+          // centre and fades, so the tap is felt even before the dial moves.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: _flash,
+                  builder: (context, _) {
+                    final t = _flash.value;
+                    if (!_flash.isAnimating || t <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Opacity(
+                      opacity: (1 - Curves.easeInCubic.transform(t)) * .92,
+                      child: Transform.scale(
+                        scale: 0.86 + 0.34 * Curves.easeOutCubic.transform(t),
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: cs.surfaceContainerHighest.withValues(
+                              alpha: .86,
+                            ),
+                          ),
+                          child: Icon(
+                            _flashPlaying
+                                ? Icons.play_arrow_rounded
+                                : Icons.pause_rounded,
+                            size: 48,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
           SafeArea(
             child: Align(
-              alignment: Alignment.topRight,
-              child: Semantics(
-                button: true,
-                label: context.tr("Close the full-screen clock"),
-                onTap: () => Navigator.of(context).pop(),
-                child: ExcludeSemantics(
-                  child: Pressable(
-                    scale: 0.85,
-                    onTap: () => Navigator.of(context).pop(),
-                    child: SizedBox(
-                      width: 56,
-                      height: 56,
-                      child: Center(
-                        child: Icon(
-                          Icons.close_fullscreen_rounded,
-                          size: 22,
-                          color: cs.onSurfaceVariant,
+              alignment: AlignmentDirectional.topEnd,
+              child: Padding(
+                padding: const EdgeInsets.all(Gap.sm),
+                child: Semantics(
+                  button: true,
+                  label: context.tr("Close the full-screen clock"),
+                  onTap: _close,
+                  child: ExcludeSemantics(
+                    child: Pressable(
+                      scale: 0.88,
+                      onTap: _close,
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: cs.surfaceContainerHigh.withValues(
+                                alpha: .9,
+                              ),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: .6),
+                              ),
+                            ),
+                            child: SizedBox.square(
+                              dimension: 40,
+                              child: Icon(
+                                Icons.close_fullscreen_rounded,
+                                size: 20,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),

@@ -1311,5 +1311,8 @@
   "Group {0} as": "{0}-কে এই দলে রাখুন",
   "Grouped by Shield rules and the app's type": "Shield নিয়ম ও অ্যাপের ধরন অনুযায়ী",
   "Your choice is kept on this phone and used in every chart.": "আপনার পছন্দ এই ফোনেই থাকে এবং প্রতিটি চার্টে ব্যবহার হয়।",
-  "This week": "এই সপ্তাহ"
+  "This week": "এই সপ্তাহ",
+  "Tap anywhere to pause": "থামাতে যে কোনো জায়গায় আলতো চাপুন",
+  "Tap anywhere to resume": "আবার শুরু করতে যে কোনো জায়গায় আলতো চাপুন",
+  "Tap anywhere to start": "শুরু করতে যে কোনো জায়গায় আলতো চাপুন"
 }
