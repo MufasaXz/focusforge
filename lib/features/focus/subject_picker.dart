@@ -41,11 +41,9 @@ class SubjectPicker extends ConsumerWidget {
           children: [
             Text(
               context.tr("Studying"),
-              style: tt.labelSmall?.copyWith(
+              style: tt.labelMedium?.copyWith(
                 color: cs.onSurfaceVariant,
-                letterSpacing: 1.0,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(width: Gap.sm),
@@ -54,12 +52,11 @@ class SubjectPicker extends ConsumerWidget {
             Expanded(
               child: Text(
                 selected == null ? context.tr("Not tagged") : selected.name,
-                style: tt.labelSmall?.copyWith(
-                  fontSize: 11.5,
+                style: tt.labelLarge?.copyWith(
                   color: selected == null
                       ? cs.onSurfaceVariant
                       : harmonize(selected.color, cs.primary),
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -73,7 +70,7 @@ class SubjectPicker extends ConsumerWidget {
           child: SizedBox(
             // The pill stays 32dp; transparent padding makes its hit target
             // 48dp without increasing the visual weight of the tag row.
-            height: (MediaQuery.textScalerOf(context).scale(11.5) + 24).clamp(
+            height: (MediaQuery.textScalerOf(context).scale(13) + 28).clamp(
               48.0,
               double.infinity,
             ),
@@ -148,7 +145,7 @@ class _SubjectChip extends StatelessWidget {
                 ? Duration.zero
                 : Motion.base,
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
+            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.pill),
               color: selected
@@ -169,29 +166,32 @@ class _SubjectChip extends StatelessWidget {
               children: [
                 // The dot is the subject's identity in every other view — the
                 // breakdown, the day sheet — so it leads here too.
-                Container(
-                  width: 6,
-                  height: 6,
+                AnimatedContainer(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : Motion.base,
+                  curve: Curves.easeOutBack,
+                  width: selected ? 10 : 8,
+                  height: selected ? 10 : 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: harmonize(subject.color, cs.primary),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: Gap.sm),
                 Text(
                   subject.name,
-                  style: tt.labelSmall?.copyWith(
-                    fontSize: 11.5,
+                  style: tt.labelLarge?.copyWith(
                     color: selected ? cs.onSurface : cs.onSurfaceVariant,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
                 if (subject.minutesToday > 0) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: Gap.sm),
                   Text(
                     context.tr("{0}m", [subject.minutesToday]),
-                    style: tt.labelSmall?.copyWith(
-                      fontSize: 10,
+                    style: tt.labelMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
                       color: selected
                           ? harmonize(subject.color, cs.primary)
                           : cs.onSurfaceVariant.withValues(alpha: 0.8),
@@ -232,16 +232,15 @@ class _AddChip extends StatelessWidget {
             radius: Radii.pill,
             color: cs.outline,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.sm + 2),
+              padding: const EdgeInsets.symmetric(horizontal: Gap.md),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.tune_rounded, size: 14, color: cs.primary),
-                  const SizedBox(width: Gap.xs + 1),
+                  Icon(Icons.tune_rounded, size: 16, color: cs.primary),
+                  const SizedBox(width: Gap.xs + 2),
                   Text(
                     label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 11.5,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: cs.primary,
                     ),
