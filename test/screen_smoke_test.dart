@@ -215,7 +215,8 @@ void main() {
         findsOneWidget,
         reason: 'a rule with no row is a restriction the user cannot turn off',
       );
-      expect(find.text('System'), findsOneWidget);
+      // An app is listed by its name alone, preinstalled or not.
+      expect(find.text('System'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

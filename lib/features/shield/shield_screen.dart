@@ -1086,21 +1086,11 @@ class _AppRuleRow extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            row.name,
-                            style: tt.bodyLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (row.isSystem) ...[
-                          const SizedBox(width: Gap.sm),
-                          _Tag(label: context.tr("System")),
-                        ],
-                      ],
+                    Text(
+                      row.name,
+                      style: tt.bodyLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1172,7 +1162,7 @@ class _AppRuleRow extends ConsumerWidget {
       null when row.usedMinutes > 0 => tr("{0} today", [
         formatMinutes(row.usedMinutes),
       ]),
-      null => row.isSystem ? tr("System app") : tr("Open — not restricted"),
+      null => tr("Open — not restricted"),
     };
   }
 
@@ -1188,33 +1178,6 @@ class _AppRuleRow extends ConsumerWidget {
       WhitelistTier.alwaysAllowed => tr("{0}, never closed", [row.name]),
       null => tr("{0}, not restricted", [row.name]),
     };
-  }
-}
-
-/// A small factual tag — "System", and nothing that is not a fact.
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(Radii.pill),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: cs.onSurfaceVariant,
-          fontSize: 10,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
   }
 }
 
