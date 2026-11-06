@@ -1,0 +1,23 @@
+// Pip's AI proxy on Cloudflare Workers (free plan).
+// Secrets are set with `wrangler secret put`, never written here:
+//   GEMINI_API_KEY  Google AI Studio key (primary model)
+//   GROQ_API_KEY    Groq key (fallback model)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pip-ai-backend",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "focusforge-1edf7",
+    "GEMINI_MODEL": "gemini-flash-lite-latest",
+    "GROQ_MODEL": "openai/gpt-oss-20b"
+  },
+  // Counted per Cloudflare location, which is close enough for a quota guard.
+  "ratelimits": [
+    { "name": "PER_USER_LIMIT", "namespace_id": "4101", "simple": { "limit": 6, "period": 60 } },
+    { "name": "ALL_USERS_LIMIT", "namespace_id": "4102", "simple": { "limit": 300, "period": 60 } }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "pip-ai-backend",
+  "private": true,
+  "type": "module",
+  "description": "Pip's AI proxy for FocusForge: Firebase sign-in, rate limits, Gemini with Groq fallback.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.158.0"
+  }
+}
