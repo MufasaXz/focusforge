@@ -227,9 +227,6 @@ void main() {
       ]) {
         await shield.addInstalledApp(packageId: id, name: name, tier: tier);
       }
-      container
-          .read(youtubeRulesProvider.notifier)
-          .hydrate(const YoutubeRules(shorts: true).toJson());
     }
     container
         .read(statsProvider.notifier)
@@ -303,6 +300,11 @@ void main() {
         final name = route.replaceAll('/', '-');
         await capture('$name-$label');
         if (_storeScale != null && route == 'shield') {
+          // The YouTube page shows Shorts blocked; the Apps page is shot first
+          // so its summary card stays short.
+          container
+              .read(youtubeRulesProvider.notifier)
+              .hydrate(const YoutubeRules(shorts: true).toJson());
           await tester.tap(
             find.descendant(
               of: find.byWidgetPredicate((w) => w is AppSegmentedControl),
@@ -311,6 +313,9 @@ void main() {
           );
           await tester.pump(const Duration(milliseconds: 400));
           await capture('shield-youtube-$label');
+          container
+              .read(youtubeRulesProvider.notifier)
+              .hydrate(YoutubeRules.off.toJson());
         }
         if (_storeScale != null && route == 'dashboard') {
           await tester.ensureVisible(find.text('This week').first);

@@ -672,6 +672,11 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                     ].indexed)
                       ChoiceChip(
                         label: Text(label),
+                        // Narrow side padding keeps all four on one row of
+                        // a 390 dp phone; the tap target stays 48 dp tall.
+                        labelPadding: const EdgeInsets.symmetric(
+                          horizontal: Gap.xs,
+                        ),
                         selected: _filter == index,
                         onSelected: (_) => setState(() => _filter = index),
                       ),
