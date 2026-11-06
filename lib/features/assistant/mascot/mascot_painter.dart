@@ -13,16 +13,24 @@ import 'mascot_rig.dart';
 /// The body is the brand orange — the Ember palette's seed — pulled toward the
 /// theme's primary with [harmonize], the same treatment a subject colour gets.
 /// Every other colour is a tone of that one hue, so Pip sits in Parchment,
-/// Tide or AMOLED without looking pasted on.
+/// Tide or AMOLED without looking pasted on. The head is the brightest part;
+/// the arms, body, ears and legs step down in tone below it.
 @immutable
 class MascotColors {
   const MascotColors({
     required this.body,
     required this.bodyLight,
     required this.bodyDeep,
+    required this.headLow,
+    required this.torso,
+    required this.torsoLow,
+    required this.arm,
+    required this.armShade,
     required this.limb,
     required this.foot,
+    required this.footShade,
     required this.face,
+    required this.handRim,
     required this.pupil,
     required this.blush,
     required this.pocket,
@@ -47,25 +55,56 @@ class MascotColors {
     );
     return MascotColors(
       body: base,
-      bodyLight: tone(hct.tone + 7),
+      bodyLight: tone(hct.tone + 5),
       bodyDeep: tone(hct.tone - 10),
+      headLow: tone(hct.tone - 4),
+      torso: tone(hct.tone - 5),
+      torsoLow: tone(hct.tone - 17),
+      arm: tone(hct.tone - 6),
+      armShade: tone(hct.tone - 14),
       limb: tone(hct.tone - 13),
-      foot: tone(hct.tone - 19),
+      foot: tone(hct.tone - 21),
+      footShade: tone(hct.tone - 27),
       face: tone(99, chroma: 3),
+      handRim: tone(hct.tone - 12, chroma: hct.chroma * 0.45),
       pupil: tone(15, chroma: 18),
-      blush: tone(76, chroma: 54, hueShift: 8).withValues(alpha: 0.55),
-      pocket: tone(97, chroma: 7),
-      shadow: cs.shadow.withValues(alpha: dark ? 0.42 : 0.14),
+      blush: tone(76, chroma: 54, hueShift: 8).withValues(alpha: 0.72),
+      pocket: tone(99, chroma: 2),
+      shadow: cs.shadow.withValues(alpha: dark ? 0.5 : 0.2),
       ink: cs.onSurfaceVariant,
     );
   }
 
+  /// The head's middle tone, and the colour that names Pip elsewhere.
   final Color body;
+
+  /// The top of the head, and the antenna's light while Pip thinks.
   final Color bodyLight;
   final Color bodyDeep;
+
+  /// The bottom of the head.
+  final Color headLow;
+
+  /// The body, from just under the head ([torso]) to its base ([torsoLow]).
+  final Color torso;
+  final Color torsoLow;
+
+  /// An arm's side toward the light, and its underside.
+  final Color arm;
+  final Color armShade;
+
+  /// Ears and the antenna's stem.
   final Color limb;
+
+  /// Legs, and the shade under the body and on the soles.
   final Color foot;
+  final Color footShade;
+
+  /// The face ring, eye, hands and antenna bulb.
   final Color face;
+
+  /// The outline round each hand.
+  final Color handRim;
   final Color pupil;
   final Color blush;
   final Color pocket;
@@ -76,9 +115,16 @@ class MascotColors {
     body,
     bodyLight,
     bodyDeep,
+    headLow,
+    torso,
+    torsoLow,
+    arm,
+    armShade,
     limb,
     foot,
+    footShade,
     face,
+    handRim,
     pupil,
     blush,
     pocket,
@@ -99,8 +145,8 @@ class MascotColors {
 }
 
 /// Draws Pip from the logo's shapes: the app icon's rounded square for a head,
-/// the open ring for a face and the ring's dot for an eye, with a pocket on
-/// the belly.
+/// the open ring for a face and the ring's dot for an eye, on a soft round
+/// body with a pocket, arms that grow out from behind it and short legs.
 ///
 /// Coordinates are in the units of the 1024-wide source drawing, so the
 /// numbers here match the published artwork one for one.
@@ -164,15 +210,7 @@ class MascotPainter extends CustomPainter {
     final walked = p.shiftX * fullBox.width;
 
     // Contact shadow: smaller while Pip is in the air.
-    final air = (lift / 60).clamp(0.0, 0.6);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(512 + walked, 860),
-        width: 236 * (1 - air),
-        height: 22 * (1 - air),
-      ),
-      Paint()..color = colors.shadow,
-    );
+    _floorShadow(canvas, walked, (lift / 60).clamp(0.0, 0.6), p.sit);
 
     canvas.save();
     // A step to the side, in a wiggle or a weight shift.
@@ -182,14 +220,17 @@ class MascotPainter extends CustomPainter {
     canvas.scale(1 + 0.05 * p.squash, 1 - 0.07 * p.squash);
     canvas.translate(-512, -858 - lift);
 
-    if (p.sit < 0.98) _standingFeet(canvas, 1 - p.sit, p.step);
+    if (p.sit < 0.98) _standingLegs(canvas, 1 - p.sit, p.step);
 
+    // The arms grow from the shoulders, tucked under the head, and lie over
+    // the body's upper sides.
     canvas.save();
     canvas.translate(0, bodyY);
     _body(canvas);
+    final hands = _arms(canvas, p);
     canvas.restore();
 
-    if (p.sit > 0.02) _seatedFeet(canvas, p.sit, p.kick);
+    if (p.sit > 0.02) _seatedLegs(canvas, p.sit, p.kick);
 
     canvas.save();
     canvas.translate(0, headY);
@@ -197,9 +238,12 @@ class MascotPainter extends CustomPainter {
     _head(canvas, p);
     canvas.restore();
 
+    // Hands last, so a raised hand stays in front of the head.
     canvas.save();
     canvas.translate(0, bodyY);
-    _arms(canvas, p);
+    for (final hand in hands) {
+      _hand(canvas, hand);
+    }
     canvas.restore();
 
     canvas.restore();
@@ -215,129 +259,244 @@ class MascotPainter extends CustomPainter {
     canvas.translate(-_neck.dx, -_neck.dy);
   }
 
-  void _standingFeet(Canvas canvas, double opacity, double step) {
-    final paint = Paint()..color = colors.foot.withValues(alpha: opacity);
-    // A step lifts one foot at a time: the left on positive, the right on
-    // negative.
+  /// A soft pool of shade under Pip, wider while it sits with its legs out.
+  void _floorShadow(Canvas canvas, double x, double air, double sit) {
+    final radius = (124 + 70 * sit) * (1 - air);
+    canvas.save();
+    canvas.translate(512 + x, 860);
+    canvas.scale(1, 0.12);
+    canvas.drawCircle(
+      Offset.zero,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [colors.shadow, colors.shadow.withValues(alpha: 0)],
+          stops: const [0.45, 1],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: radius)),
+    );
+    canvas.restore();
+  }
+
+  void _standingLegs(Canvas canvas, double opacity, double step) {
+    // A step lifts one leg at a time: the left on positive, the right on
+    // negative. Each leg is in shade where it meets the body.
     for (final (double x, double lift) in [
       (436.0, 24.0 * math.max(0.0, step)),
-      (526.0, 24.0 * math.max(0.0, -step)),
+      (528.0, 24.0 * math.max(0.0, -step)),
     ]) {
+      final leg = Rect.fromLTWH(x, 790 - lift, 60, 68);
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, 812 - lift, 62, 46),
-          const Radius.circular(22),
+        RRect.fromRectAndCorners(
+          leg,
+          topLeft: const Radius.circular(12),
+          topRight: const Radius.circular(12),
+          bottomLeft: const Radius.circular(26),
+          bottomRight: const Radius.circular(26),
         ),
-        paint,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colors.footShade.withValues(alpha: opacity),
+              colors.foot.withValues(alpha: opacity),
+            ],
+            stops: const [0.4, 0.75],
+          ).createShader(leg),
       );
     }
   }
 
-  void _seatedFeet(Canvas canvas, double opacity, double kick) {
-    final paint = Paint()..color = colors.foot.withValues(alpha: opacity);
-    // A kick lifts one foot as the other drops, like legs swinging off a
+  void _seatedLegs(Canvas canvas, double opacity, double kick) {
+    // Sitting, the legs reach forward and out with the soles toward us. A
+    // kick lifts one foot as the other drops, like legs swinging off a
     // ledge.
-    for (final (x, angle) in [(440.0, -0.32 - kick), (584.0, 0.32 - kick)]) {
+    for (final side in const [-1.0, 1.0]) {
+      final hip = Offset(512 + side * 56, 846);
       canvas.save();
-      canvas.translate(x, 848);
-      canvas.rotate(angle);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset.zero, width: 62, height: 34),
-          const Radius.circular(17),
-        ),
-        paint,
+      canvas.translate(hip.dx, hip.dy);
+      canvas.rotate(-kick);
+      canvas.translate(-hip.dx, -hip.dy);
+      final knee = Offset(512 + side * 124, 836);
+      canvas.drawLine(
+        hip,
+        knee,
+        Paint()
+          ..color = colors.foot.withValues(alpha: opacity)
+          ..strokeWidth = 50
+          ..strokeCap = StrokeCap.round,
       );
+      // The foot turned up, its sole facing out: a rim round a darker pad.
+      final sole = Offset(512 + side * 152, 820);
+      canvas.save();
+      canvas.translate(sole.dx, sole.dy);
+      canvas.rotate(side * 0.3);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: 76, height: 90),
+        Paint()..color = colors.torsoLow.withValues(alpha: opacity),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(0, 5), width: 56, height: 70),
+        Paint()..color = colors.footShade.withValues(alpha: opacity),
+      );
+      canvas.restore();
       canvas.restore();
     }
   }
 
+  /// The body: a soft bean, narrower under the head and round at the base.
+  static final Path _torso = Path()
+    ..moveTo(512, 626)
+    ..lineTo(566, 626)
+    ..cubicTo(596, 626, 618, 640, 620, 668)
+    ..cubicTo(622, 694, 632, 712, 631, 748)
+    ..cubicTo(630, 792, 588, 816, 512, 816)
+    ..cubicTo(436, 816, 394, 792, 393, 748)
+    ..cubicTo(392, 712, 402, 694, 404, 668)
+    ..cubicTo(406, 640, 428, 626, 458, 626)
+    ..close();
+
+  /// The pocket: a half-moon with its opening along the top.
+  static final Path _pocket = Path()
+    ..moveTo(448, 718)
+    ..lineTo(576, 718)
+    ..quadraticBezierTo(584, 718, 584, 726)
+    ..cubicTo(584, 758, 552, 780, 512, 780)
+    ..cubicTo(472, 780, 440, 758, 440, 726)
+    ..quadraticBezierTo(440, 718, 448, 718)
+    ..close();
+
   void _body(Canvas canvas) {
-    const rect = Rect.fromLTWH(396, 628, 232, 200);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(78)),
+    const bounds = Rect.fromLTRB(393, 626, 631, 816);
+    canvas.drawPath(
+      _torso,
+      Paint()
+        ..shader = LinearGradient(
+          begin: const Alignment(-0.45, -1),
+          end: const Alignment(0.45, 1),
+          colors: [colors.torso, colors.torsoLow],
+        ).createShader(bounds),
+    );
+    // The head's shade on the body, just below it.
+    canvas.save();
+    canvas.clipPath(_torso);
+    const neck = Rect.fromLTRB(393, 640, 631, 676);
+    canvas.drawRect(
+      neck,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [colors.body, colors.bodyDeep],
-        ).createShader(rect),
+          colors: [
+            colors.footShade.withValues(alpha: 0.45),
+            colors.footShade.withValues(alpha: 0),
+          ],
+        ).createShader(neck),
     );
+    canvas.restore();
 
-    // The pocket: a half-moon with its opening along the top.
-    final pocket = Path()
-      ..moveTo(440, 716)
-      ..lineTo(584, 716)
-      ..arcToPoint(
-        const Offset(440, 716),
-        radius: const Radius.elliptical(72, 66),
-      );
-    canvas.drawPath(pocket, Paint()..color = colors.pocket);
-    canvas.drawLine(
-      const Offset(442, 716),
-      const Offset(582, 716),
+    const pocket = Rect.fromLTRB(440, 718, 584, 780);
+    canvas.drawPath(_pocket, Paint()..color = colors.pocket);
+    // A little shade inside the opening, so the pocket reads as a pocket.
+    canvas.save();
+    canvas.clipPath(_pocket);
+    canvas.drawRect(
+      pocket,
       Paint()
-        ..color = colors.limb
-        ..strokeWidth = 9
-        ..strokeCap = StrokeCap.round,
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colors.handRim.withValues(alpha: 0.32),
+            colors.handRim.withValues(alpha: 0),
+          ],
+          stops: const [0, 0.32],
+        ).createShader(pocket),
     );
+    canvas.restore();
   }
 
-  void _arms(Canvas canvas, MascotPose p) {
-    final stroke = Paint()
-      ..color = colors.limb
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 30
-      ..strokeCap = StrokeCap.round;
-    final hand = Paint()..color = colors.face;
+  /// Draws both arms and returns where their hands go.
+  List<Offset> _arms(Canvas canvas, MascotPose p) {
     final hands = <Offset>[];
     for (final side in const [-1.0, 1.0]) {
-      final angle = side < 0 ? p.leftArm : p.rightArm;
+      final raised = _smooth(0.9, 2.1, side < 0 ? p.leftArm : p.rightArm);
+      // A hanging arm swings a little wide of the body, so it shows from
+      // shoulder to hand; a raised one reaches clear of the head.
+      final angle = (side < 0 ? p.leftArm : p.rightArm) + 0.1 * (1 - raised);
       final shoulder = side < 0 ? _shoulders[0] : _shoulders[1];
-      // A raised arm reaches a little further, clear of the head.
-      final reach = lerpDouble(86, 124, _smooth(0.9, 2.1, angle))!;
-      Offset along(double a, double length) =>
-          shoulder + Offset(side * math.sin(a) * length, math.cos(a) * length);
-      final end = along(angle, reach);
-      final bend = along(angle + 0.28, reach * 0.55);
+      final reach = lerpDouble(106, 126, raised)!;
+      var hand =
+          shoulder +
+          Offset(side * math.sin(angle) * reach, math.cos(angle) * reach);
+      // Sitting, a resting hand lies on top of its foot.
+      hand = Offset.lerp(
+        hand,
+        Offset(512 + side * 152, 738),
+        p.sit * (1 - raised),
+      )!;
+      // The arm starts under the head and bows outward on its way to the
+      // hand, like an elbow.
+      final root = Offset(512 + side * 80, 636);
+      final along = hand - root;
+      var bow = Offset(-along.dy, along.dx) / along.distance;
+      if (side * bow.dx + 0.5 * bow.dy < 0) bow = -bow;
+      final bend = (root + hand) / 2 + bow * (along.distance * 0.16);
+      final shade = Paint()..color = colors.armShade;
+      canvas.drawPath(_taper(root, bend, hand, 46, 36), shade);
+      // A round shoulder, in case a tilted head uncovers the arm's top.
+      canvas.drawCircle(root, 23, shade);
       canvas.drawPath(
-        Path()
-          ..moveTo(shoulder.dx, shoulder.dy)
-          ..quadraticBezierTo(bend.dx, bend.dy, end.dx, end.dy),
-        stroke,
+        _taper(root, bend, hand, 36, 28).shift(const Offset(-2.5, -3)),
+        Paint()..color = colors.arm,
       );
-      hands.add(end);
+      hands.add(hand);
     }
-    // Shoulder sockets over the arms' roots, so each arm comes out of the
-    // body rather than lying on top of it.
-    for (final shoulder in _shoulders) {
-      _socket(canvas, shoulder);
-    }
-    for (final end in hands) {
-      canvas.drawCircle(end, 23, hand);
-    }
+    return hands;
   }
 
   static const _shoulders = [Offset(410, 698), Offset(614, 698)];
 
-  /// A round joint in the body's own colour at [at], with a soft seam on
-  /// its outer side.
-  void _socket(Canvas canvas, Offset at) {
-    // The body's gradient runs top to bottom; match it at this height.
-    final t = ((at.dy - 628) / 200).clamp(0.0, 1.0);
-    final fill = Color.lerp(colors.body, colors.bodyDeep, t)!;
-    canvas.drawCircle(at, 24, Paint()..color = fill);
-    final outward = at.dx < 512 ? math.pi : 0.0;
-    canvas.drawArc(
-      Rect.fromCircle(center: at, radius: 24),
-      outward - 1.0,
-      2.0,
-      false,
+  /// A tube along the curve from [a] through [c] to [b], [from] wide at [a]
+  /// and [to] wide at [b]. Its ends hide under the head and the hand.
+  static Path _taper(Offset a, Offset c, Offset b, double from, double to) {
+    const steps = 14;
+    final left = <Offset>[];
+    final right = <Offset>[];
+    for (var i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final u = 1 - t;
+      final point = a * (u * u) + c * (2 * u * t) + b * (t * t);
+      final tangent = (c - a) * (2 * u) + (b - c) * (2 * t);
+      final length = math.max(tangent.distance, 1e-6);
+      final normal = Offset(-tangent.dy, tangent.dx) / length;
+      final half = lerpDouble(from, to, t)! / 2;
+      left.add(point + normal * half);
+      right.add(point - normal * half);
+    }
+    return Path()..addPolygon([...left, ...right.reversed], true);
+  }
+
+  /// A white hand with a soft rim, a little shaded away from the light.
+  void _hand(Canvas canvas, Offset at) {
+    const radius = 31.0;
+    canvas.drawCircle(
+      at,
+      radius,
       Paint()
-        ..color = colors.limb.withValues(alpha: 0.55)
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.4),
+          colors: [colors.face, Color.lerp(colors.face, colors.handRim, 0.22)!],
+          stops: const [0.5, 1],
+        ).createShader(Rect.fromCircle(center: at, radius: radius)),
+    );
+    canvas.drawCircle(
+      at,
+      radius,
+      Paint()
+        ..color = colors.handRim
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
+        ..strokeWidth = 6,
     );
   }
 
@@ -368,7 +527,7 @@ class MascotPainter extends CustomPainter {
       Paint()
         ..color = colors.limb
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 13
+        ..strokeWidth = 11
         ..strokeCap = StrokeCap.round,
     );
     const bulb = Offset(536, 170);
@@ -390,7 +549,7 @@ class MascotPainter extends CustomPainter {
     );
     canvas.restore();
 
-    // Head: the app icon's rounded square.
+    // Head: the app icon's rounded square, lit from above.
     const head = Rect.fromLTWH(290, 244, 444, 400);
     canvas.drawRRect(
       RRect.fromRectAndRadius(head, const Radius.circular(112)),
@@ -398,7 +557,8 @@ class MascotPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [colors.bodyLight, colors.body],
+          colors: [colors.bodyLight, colors.body, colors.headLow],
+          stops: const [0, 0.5, 1],
         ).createShader(head),
     );
     final shine = Paint()..color = colors.face.withValues(alpha: 0.22);
@@ -412,33 +572,33 @@ class MascotPainter extends CustomPainter {
     canvas.restore();
     canvas.drawCircle(const Offset(436, 282), 8, shine);
 
-    // Face: the logo's open ring.
+    // Face: the logo's open ring, its lower half softening into the face.
+    const ring = Offset(512, 452);
     canvas.drawPath(
       Path()..addArc(
-        Rect.fromCircle(center: const Offset(512, 452), radius: 122),
+        Rect.fromCircle(center: ring, radius: 122),
         -57 * math.pi / 180,
         294 * math.pi / 180,
       ),
       Paint()
-        ..color = colors.face
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colors.face,
+            colors.face,
+            colors.face.withValues(alpha: 0.5),
+          ],
+          stops: const [0, 0.5, 1],
+        ).createShader(Rect.fromCircle(center: ring, radius: 136))
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 28
+        ..strokeWidth = 31
         ..strokeCap = StrokeCap.round,
     );
 
     _eye(canvas, p);
     _mouth(canvas, p);
-
-    final blush = Paint()
-      ..color = colors.blush.withValues(
-        alpha: (colors.blush.a + 0.25 * p.squint).clamp(0.0, 1.0),
-      );
-    for (final x in const [346.0, 678.0]) {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(x, 548), width: 60, height: 34),
-        blush,
-      );
-    }
+    _blush(canvas, p);
   }
 
   void _eye(Canvas canvas, MascotPose p) {
@@ -470,12 +630,21 @@ class MascotPainter extends CustomPainter {
       return;
     }
 
-    final grow = 6 * p.surprise;
+    final white = 54 + 6 * p.surprise;
     canvas.save();
     canvas.translate(_eyeCentre.dx, _eyeCentre.dy);
     canvas.scale(1, 1 - closed);
     canvas.translate(-_eyeCentre.dx, -_eyeCentre.dy);
-    canvas.drawCircle(_eyeCentre, 54 + grow, Paint()..color = colors.face);
+    canvas.drawCircle(
+      _eyeCentre,
+      white,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.3, -0.35),
+          colors: [colors.face, Color.lerp(colors.face, colors.handRim, 0.12)!],
+          stops: const [0.6, 1],
+        ).createShader(Rect.fromCircle(center: _eyeCentre, radius: white)),
+    );
     final pupil = Offset(516 + 15 * p.lookX, 444 + 13 * p.lookY);
     canvas.drawCircle(
       pupil,
@@ -528,6 +697,26 @@ class MascotPainter extends CustomPainter {
         ..strokeWidth = 8
         ..strokeCap = StrokeCap.round,
     );
+  }
+
+  /// Rosy cheeks that fade into the face, a little warmer when Pip smiles.
+  void _blush(Canvas canvas, MascotPose p) {
+    final tint = colors.blush.withValues(
+      alpha: (colors.blush.a + 0.25 * p.squint).clamp(0.0, 1.0),
+    );
+    const radius = 36.0;
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [tint, tint.withValues(alpha: 0)],
+        stops: const [0.35, 1],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: radius));
+    for (final x in const [346.0, 678.0]) {
+      canvas.save();
+      canvas.translate(x, 548);
+      canvas.scale(1, 0.55);
+      canvas.drawCircle(Offset.zero, radius, paint);
+      canvas.restore();
+    }
   }
 
   /// Three rising dots, like a thought taking shape.
