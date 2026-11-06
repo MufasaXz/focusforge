@@ -489,7 +489,8 @@ void main() {
     await tester.tap(find.text('Incorrect or misleading advice'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Report'));
-    await tester.pumpAndSettle();
+    // The report is saved and sent before the thanks shows.
+    await wait(tester, 1);
 
     expect(backend.reports.single.$1, 'incorrect');
     expect(backend.reports.single.$2, 'An answer to report.');
