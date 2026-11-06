@@ -71,6 +71,16 @@ android {
             ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         }
     }
+
+    // Native libraries are stored compressed. The universal APK people
+    // sideload carries three ABIs (about 77 MB uncompressed, which put the
+    // file near 90 MB); compressed it stays well under 85 MB, and Android
+    // unpacks only the phone's own ABI when installing.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 // The delivered file says what it is — `focusforge-1.0.0.apk`, not
