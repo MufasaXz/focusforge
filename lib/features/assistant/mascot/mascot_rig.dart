@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -28,6 +29,8 @@ class MascotPose {
     this.thinkPhase = 0,
     this.antenna = 0,
     this.breath = 0,
+    this.sway = 0,
+    this.headLag = 0,
     this.zPuff = -1,
   });
 
@@ -48,6 +51,12 @@ class MascotPose {
   final double thinkPhase;
   final double antenna;
   final double breath;
+
+  /// The antenna's swing in radians, trailing the head's movements.
+  final double sway;
+
+  /// How far the head trails the body, in units down, during a hop.
+  final double headLag;
 
   /// Progress of the current sleeping "z", or −1 when none is drifting.
   final double zPuff;
@@ -132,6 +141,9 @@ class MascotRig extends ChangeNotifier {
   final _rightArm = _Spring(restArm, stiffness: 160, ratio: 0.62);
   final _think = _Spring(0, stiffness: 140, ratio: 0.9);
 
+  /// The antenna: light and loosely damped, so it wobbles after a move.
+  final _sway = _Spring(0, stiffness: 70, ratio: 0.3);
+
   final _blink = _Clip();
   final _wave = _Clip();
   final _hop = _Clip();
@@ -152,6 +164,7 @@ class MascotRig extends ChangeNotifier {
     _leftArm,
     _rightArm,
     _think,
+    _sway,
   ];
   Iterable<_Clip> get _clips => [
     _blink,
@@ -175,6 +188,7 @@ class MascotRig extends ChangeNotifier {
   bool _sleeping = false;
   bool _thinking = false;
   bool _disposed = false;
+  bool _landed = true;
 
   bool get sitting => _sitting;
   bool get sleeping => _sleeping;
@@ -248,6 +262,11 @@ class MascotRig extends ChangeNotifier {
         spring.step(step);
       }
     }
+    // The landing jolts the antenna once.
+    if (!_landed && _hop.start >= 0 && _clock - _hop.start >= _landAt) {
+      _landed = true;
+      _kick(-2.2);
+    }
     // A wave and a cheer hold their arms up only while they play.
     if (!_wave.activeAt(_clock) && _rightArm.target == waveArm) {
       _rightArm.target = _armRest;
@@ -266,11 +285,28 @@ class MascotRig extends ChangeNotifier {
 
   double get _armRest => _sleeping ? 0.3 : (_sitting ? 0.38 : restArm);
 
+  /// Sets the antenna swinging; it settles on its own.
+  void _kick(double velocity) {
+    if (_reduceMotion) return;
+    _sway.velocity += velocity;
+  }
+
+  // A hop: a crouch, the jump, then a squash on landing. A startled hop
+  // skips the crouch.
+  double get _crouch => _startle.activeAt(_hop.start) ? 0 : 0.16;
+  double get _airEnd => _crouch + 0.56;
+  double get _landAt => _hop.length * _airEnd;
+
+  void _playHop(double seconds) {
+    _hop.play(_clock, seconds);
+    _landed = false;
+  }
+
   // -- Gestures ---------------------------------------------------------------
 
   void blink() {
     if (_sleeping || _reduceMotion) return;
-    _blink.play(_clock, 0.17);
+    _blink.play(_clock, 0.19);
     _run();
   }
 
@@ -289,9 +325,10 @@ class MascotRig extends ChangeNotifier {
   /// A quick hop with a squint, for a tap or a finished task.
   void cheer() {
     if (_sleeping || _reduceMotion) return;
-    _hop.play(_clock, 0.58);
-    _squint.play(_clock, 0.9);
-    _cheer.play(_clock, 0.62);
+    _playHop(0.74);
+    _squint.play(_clock, 0.95);
+    _cheer.play(_clock, 0.74);
+    _kick(1.4);
     _leftArm.target = 2.3;
     _rightArm.target = 2.3;
     _run();
@@ -320,6 +357,7 @@ class MascotRig extends ChangeNotifier {
 
   void lookAt(double x, double y) {
     if (_sleeping) return;
+    _kick((_lookX.target - x.clamp(-1.0, 1.0)) * 0.9);
     _lookX.target = x.clamp(-1.0, 1.0);
     _lookY.target = y.clamp(-1.0, 1.0);
     _run();
@@ -343,6 +381,7 @@ class MascotRig extends ChangeNotifier {
     _thinking = value;
     _think.target = value ? 1 : 0;
     _tilt.target = value ? -0.07 : (_sleeping ? 0.09 : 0);
+    _kick(value ? 0.8 : -0.6);
     if (!_sleeping) {
       _rightArm.target = value ? 1.15 : _armRest;
       if (value) {
@@ -402,7 +441,8 @@ class MascotRig extends ChangeNotifier {
     _puff.stop();
     if (!_reduceMotion) {
       _startle.play(_clock, 0.7);
-      _hop.play(_clock, 0.45);
+      _playHop(0.5);
+      _kick(2.6);
     }
     _run();
   }
@@ -414,52 +454,77 @@ class MascotRig extends ChangeNotifier {
 
     var blink = 0.0;
     if (_blink.activeAt(now)) {
+      // Lids drop fast and lift a little slower, both eased.
       final d = now - _blink.start;
-      blink = d < 0.06 ? d / 0.06 : 1 - (d - 0.06) / 0.11;
+      blink = d < 0.07
+          ? Curves.easeIn.transform(d / 0.07)
+          : 1 - Curves.easeOutCubic.transform(((d - 0.07) / 0.12).clamp(0, 1));
     }
 
     var rightArm = _rightArm.value;
+    var tilt = _tilt.value;
     if (_wave.activeAt(now)) {
       final d = now - _wave.start;
-      final envelope =
-          math.min(d / 0.2, 1.0) * math.min((_wave.length - d) / 0.25, 1.0);
+      final envelope = _smooth(d / 0.25) * _smooth((_wave.length - d) / 0.3);
       rightArm += math.sin(2 * math.pi * 2.6 * d) * 0.3 * envelope;
+      // The head sways along, at half the hand's beat.
+      tilt += math.sin(2 * math.pi * 1.3 * d) * 0.035 * envelope;
     }
 
     var hop = 0.0;
     var squash = 0.0;
+    var headLag = 0.0;
     if (_hop.activeAt(now)) {
-      final d = now - _hop.start;
-      final air = _hop.length * 0.72;
+      final p = _hop.progressAt(now);
       final height = _startle.activeAt(now) ? 18.0 : 42.0;
-      if (d < air) {
-        hop = height * math.sin(math.pi * d / air);
+      final crouch = _crouch;
+      final airEnd = _airEnd;
+      if (p < crouch) {
+        // Anticipation: a quick crouch before the jump.
+        squash = 0.45 * Curves.easeOut.transform(p / crouch);
+      } else if (p < airEnd) {
+        final u = (p - crouch) / (airEnd - crouch);
+        hop = height * 4 * u * (1 - u);
+        // Out of the crouch into a stretch, round at the top, a slight
+        // stretch again on the way down.
+        squash = u < 0.14
+            ? _lerp(crouch > 0 ? 0.45 : 0, -0.28, _smooth(u / 0.14))
+            : u < 0.5
+            ? -0.28 * (1 - _smooth((u - 0.14) / 0.36))
+            : -0.1 * math.sin(math.pi * (u - 0.5) / 0.5);
+        // The head trails the body: low on the way up, high on the way down.
+        headLag = 0.12 * height * math.sin(2 * math.pi * u);
       } else {
-        squash = math.sin(math.pi * (d - air) / (_hop.length - air));
+        final v = (p - airEnd) / (1 - airEnd);
+        // Landing: squash, a small rebound, settle.
+        squash = v < 0.45
+            ? 0.6 * math.sin(math.pi * v / 0.45)
+            : -0.1 * math.sin(math.pi * (v - 0.45) / 0.55);
+        headLag = 6 * math.sin(math.pi * v) * (1 - v);
       }
     }
 
     var mouth = 0.0;
     if (_talk.activeAt(now)) {
       final d = now - _talk.start;
-      final envelope = math.min((_talk.length - d) / 0.15, 1.0);
+      final envelope = _smooth((_talk.length - d) / 0.18);
       mouth = (0.5 - 0.5 * math.cos(2 * math.pi * 4.2 * d)) * envelope;
     }
 
     var squint = 0.0;
-    if (_squint.activeAt(now)) {
-      squint = math.sin(math.pi * _squint.progressAt(now));
-    }
+    if (_squint.activeAt(now)) squint = _bell(_squint.progressAt(now));
 
     var surprise = 0.0;
     if (_startle.activeAt(now)) {
-      surprise = math.sin(math.pi * _startle.progressAt(now));
+      // Startled at once, calm again slowly.
+      final p = _startle.progressAt(now);
+      surprise = p < 0.18
+          ? Curves.easeOutCubic.transform(p / 0.18)
+          : 1 - _smooth((p - 0.18) / 0.82);
     }
 
     var breath = 0.0;
-    if (_breath.activeAt(now)) {
-      breath = math.sin(math.pi * _breath.progressAt(now));
-    }
+    if (_breath.activeAt(now)) breath = _bell(_breath.progressAt(now));
 
     var antenna = 0.0;
     if (_antenna.activeAt(now)) {
@@ -478,7 +543,7 @@ class MascotRig extends ChangeNotifier {
       lookY: _lookY.value,
       leftArm: _leftArm.value,
       rightArm: rightArm,
-      tilt: _tilt.value,
+      tilt: tilt,
       hop: hop,
       squash: squash,
       mouth: mouth,
@@ -487,9 +552,22 @@ class MascotRig extends ChangeNotifier {
       thinkPhase: _reduceMotion ? 1 : (now * 0.9) % 1,
       antenna: antenna,
       breath: breath,
+      sway: _sway.value.clamp(-0.45, 0.45),
+      headLag: headLag,
       zPuff: _puff.activeAt(now)
           ? _puff.progressAt(now)
           : (_reduceMotion && _sleeping ? 0.45 : -1),
     );
   }
+
+  /// 0 to 1 with no speed at either end.
+  static double _smooth(double t) {
+    final x = t.clamp(0.0, 1.0);
+    return x * x * (3 - 2 * x);
+  }
+
+  /// Up and back down over 0–1, starting and ending at rest.
+  static double _bell(double t) => 0.5 - 0.5 * math.cos(2 * math.pi * t);
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
 }

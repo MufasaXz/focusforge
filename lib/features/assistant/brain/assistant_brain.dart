@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/services/ai_backend_service.dart';
 import '../mascot/mascot.dart' show kBuddyName;
 import 'assistant_models.dart';
 import 'exam_guide.dart';
@@ -453,6 +454,8 @@ class AssistantBrain {
     Act.unknown => AssistantReply(const [
       Say(Copy('I didn’t quite get that. Here’s what I can help with:')),
     ], suggestions: defaults(s)),
+    Act.aiAllow ||
+    Act.aiDecline ||
     Act.usageAccess ||
     Act.appList ||
     Act.openShield ||
@@ -1287,6 +1290,118 @@ class AssistantBrain {
     ),
     Say.card(GoalCard(currentMinutes: s.goalMinutes)),
   ]);
+
+  // -- Online answers ---------------------------------------------------------
+
+  /// Whether a typed message is better answered by the online model.
+  ///
+  /// Things Pip does — lock, start, set a goal — and small talk always stay on
+  /// the phone, so they work offline and instantly. A short request for a
+  /// report, a plan or an exam card is answered here too. Anything Pip does
+  /// not recognise, and any longer, more nuanced question, goes online.
+  bool wantsOnline(String text, AssistantAction local) {
+    switch (local.act) {
+      case Act.unknown:
+        return true;
+      case Act.lock ||
+          Act.focusNow ||
+          Act.goal ||
+          Act.goalSet ||
+          Act.greet ||
+          Act.thanks ||
+          Act.bye ||
+          Act.help ||
+          Act.intro:
+        return false;
+      default:
+        final words = normalize(text).split(' ').where((w) => w.isNotEmpty);
+        return words.length >= 7;
+    }
+  }
+
+  /// The one-time question before anything is sent online.
+  AssistantReply aiConsentAsk() => const AssistantReply([
+    Say(
+      Copy(
+        'When you’re online, I can answer study questions with AI: Google Gemini, or Groq when Gemini is busy. I’d send your question, our last few messages and a short study summary: subjects, minutes, streak, exam and today’s top distracting apps. Never your name or email. Allow it?',
+      ),
+    ),
+    Say.card(
+      ActionCard([
+        Suggestion(
+          Copy('Allow'),
+          Icons.check_rounded,
+          AssistantAction(Act.aiAllow),
+        ),
+        Suggestion(
+          Copy('Keep it on this phone'),
+          Icons.phone_android_rounded,
+          AssistantAction(Act.aiDecline),
+        ),
+      ]),
+    ),
+  ]);
+
+  /// What Pip says when an online answer fails.
+  Copy aiNote(AiFailure failure) => switch (failure) {
+    AiFailure.signedOut => const Copy(
+      'Sign in with your account and I can answer your study questions when you’re online. Here’s what I can do on this phone.',
+    ),
+    AiFailure.rateLimited => const Copy(
+      'That’s a lot of questions in a minute. Give me a moment, then ask again.',
+    ),
+    AiFailure.dailyLimit => const Copy(
+      'I’ve answered a lot today. Let’s pick this up tomorrow.',
+    ),
+    AiFailure.blocked => const Copy(
+      'I can’t help with that one. Let’s get back to your studies.',
+    ),
+    AiFailure.invalid => const Copy(
+      'I couldn’t read that. Try saying it another way.',
+    ),
+    AiFailure.unavailable ||
+    AiFailure.timeout ||
+    AiFailure.notReady => const Copy(
+      'I can’t reach my online brain right now, so here’s what I can do on this phone.',
+    ),
+  };
+
+  /// Whether the phone should still answer after an online failure.
+  bool fallsBackLocally(AiFailure failure) => switch (failure) {
+    AiFailure.unavailable ||
+    AiFailure.timeout ||
+    AiFailure.notReady ||
+    AiFailure.signedOut => true,
+    _ => false,
+  };
+
+  /// The study summary sent with an online question: numbers and names of
+  /// subjects, never the user's name or email.
+  Map<String, dynamic> aiContext(StudySnapshot s) {
+    final exam = examById(s.memory.examId);
+    final days = s.daysToExam;
+    return {
+      'exam': ?exam?.name,
+      'daysToExam': ?days,
+      'todayMinutes': s.todayMinutes,
+      'goalMinutes': s.goalMinutes,
+      'weekMinutes': s.weekMinutes,
+      'lastWeekSameDaysMinutes': s.lastWeekSpanMinutes,
+      'streak': s.streak,
+      'localHour': s.now.hour,
+      'subjects': [
+        for (final t in s.subjects.take(8))
+          {
+            'name': t.name,
+            'thisWeekMinutes': t.thisWeek,
+            'lastWeekSameDaysMinutes': t.lastWeekSpan,
+          },
+      ],
+      if (s.usageReady) 'distractingMinutesToday': s.distractingMinutes,
+      if (s.usageReady)
+        'topDistractingApps': [for (final a in s.distracting.take(3)) a.name],
+    };
+  }
 
   // -- Home -------------------------------------------------------------------
 

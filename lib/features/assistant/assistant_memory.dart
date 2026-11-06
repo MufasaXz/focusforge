@@ -14,6 +14,8 @@ class AssistantMemory {
     this.lastTipAt,
     this.introduced = false,
     this.quiet = false,
+    this.aiConsent,
+    this.remindersOff = false,
   });
 
   /// The exam the user is preparing for, from the exam guide.
@@ -33,6 +35,12 @@ class AssistantMemory {
   /// Whether Pip keeps its tips to itself on the home screen.
   final bool quiet;
 
+  /// Whether the user agreed to online answers: null until asked.
+  final bool? aiConsent;
+
+  /// Whether the user turned Pip's evening reminders off.
+  final bool remindersOff;
+
   AssistantMemory copyWith({
     String? examId,
     DateTime? examDate,
@@ -40,6 +48,8 @@ class AssistantMemory {
     DateTime? lastTipAt,
     bool? introduced,
     bool? quiet,
+    bool? aiConsent,
+    bool? remindersOff,
   }) => AssistantMemory(
     examId: examId ?? this.examId,
     examDate: examDate ?? this.examDate,
@@ -47,6 +57,8 @@ class AssistantMemory {
     lastTipAt: lastTipAt ?? this.lastTipAt,
     introduced: introduced ?? this.introduced,
     quiet: quiet ?? this.quiet,
+    aiConsent: aiConsent ?? this.aiConsent,
+    remindersOff: remindersOff ?? this.remindersOff,
   );
 
   Map<String, dynamic> toJson() => {
@@ -56,6 +68,8 @@ class AssistantMemory {
     'lastTipAt': ?lastTipAt?.millisecondsSinceEpoch,
     'introduced': introduced,
     'quiet': quiet,
+    'aiConsent': ?aiConsent,
+    'remindersOff': remindersOff,
   };
 
   /// Reads a stored map, ignoring any field of the wrong type.
@@ -71,6 +85,8 @@ class AssistantMemory {
       lastTipAt: tip is int ? DateTime.fromMillisecondsSinceEpoch(tip) : null,
       introduced: json['introduced'] == true,
       quiet: json['quiet'] == true,
+      aiConsent: json['aiConsent'] is bool ? json['aiConsent'] as bool : null,
+      remindersOff: json['remindersOff'] == true,
     );
   }
 }
@@ -101,6 +117,12 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   Future<void> markIntroduced() => _save(state.copyWith(introduced: true));
 
   Future<void> setQuiet(bool quiet) => _save(state.copyWith(quiet: quiet));
+
+  Future<void> setAiConsent(bool allowed) =>
+      _save(state.copyWith(aiConsent: allowed));
+
+  Future<void> setRemindersOff(bool off) =>
+      _save(state.copyWith(remindersOff: off));
 }
 
 final assistantMemoryProvider =

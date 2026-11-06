@@ -16,6 +16,7 @@ import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/native_shield_service.dart';
+import '../../features/assistant/nudges/pip_nudges.dart';
 import '../../features/shield/breath_gate.dart';
 import '../router.dart';
 import '../theme/app_theme.dart';
@@ -69,7 +70,17 @@ class _AppShellState extends ConsumerState<AppShell>
     WidgetsBinding.instance.addObserver(this);
     // A cold start can be a launch the block screen sent us: "open it anyway"
     // brings the app up so the pause can be shown.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBlockedLaunch());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkBlockedLaunch());
+      _syncPipNudge();
+    });
+  }
+
+  /// Moves Pip's evening reminder to match today's study, so a day already
+  /// studied is never nagged about.
+  void _syncPipNudge() {
+    if (!mounted) return;
+    unawaited(PipNudges.sync(ref.read, AppStrings.of(context)));
   }
 
   @override
@@ -84,6 +95,7 @@ class _AppShellState extends ConsumerState<AppShell>
   /// counter that has been standing still.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) _syncPipNudge();
     if (state == AppLifecycleState.resumed) {
       ref.read(timerProvider.notifier).sync();
       ref.read(focusCalendarDateProvider.notifier).refresh();

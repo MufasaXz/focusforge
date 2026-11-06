@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/models/focus_goal.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
+import '../../../core/services/ai_backend_service.dart';
 import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
@@ -25,6 +29,8 @@ class ChatEntry {
     this.copy,
     this.text,
     this.card,
+    this.online = false,
+    this.at,
   });
 
   final int id;
@@ -34,6 +40,12 @@ class ChatEntry {
   /// What the user typed, shown exactly as typed.
   final String? text;
   final ChatCard? card;
+
+  /// Whether Pip's line came from the online model.
+  final bool online;
+
+  /// When the line was added, so only new lines animate in.
+  final DateTime? at;
 }
 
 @immutable
@@ -42,6 +54,7 @@ class ChatState {
     this.entries = const [],
     this.status = ChatStatus.idle,
     this.step,
+    this.trail = const [],
     this.suggestions = const [],
     this.lastActive,
     this.goTo,
@@ -53,6 +66,9 @@ class ChatState {
 
   /// What Pip is working out, while it thinks.
   final Copy? step;
+
+  /// The steps already done in this think, oldest first.
+  final List<Copy> trail;
   final List<Suggestion> suggestions;
   final DateTime? lastActive;
   final ChatDestination? goTo;
@@ -67,6 +83,7 @@ class ChatState {
     ChatStatus? status,
     Copy? step,
     bool clearStep = false,
+    List<Copy>? trail,
     List<Suggestion>? suggestions,
     DateTime? lastActive,
     ChatDestination? goTo,
@@ -76,6 +93,7 @@ class ChatState {
     entries: entries ?? this.entries,
     status: status ?? this.status,
     step: clearStep ? null : (step ?? this.step),
+    trail: clearStep ? const [] : (trail ?? this.trail),
     suggestions: suggestions ?? this.suggestions,
     lastActive: lastActive ?? this.lastActive,
     goTo: clearGoTo ? null : (goTo ?? this.goTo),
@@ -95,6 +113,12 @@ class ChatController extends Notifier<ChatState> {
   int _ids = 0;
   int _generation = 0;
   int _turn = 0;
+
+  /// A question held while the user answers the online-answers question.
+  String? _pending;
+
+  /// Whether this conversation has already suggested signing in.
+  bool _suggestedSignIn = false;
 
   /// Shorter pauses when the system asks for less motion.
   bool fast = false;
@@ -119,8 +143,98 @@ class ChatController extends Notifier<ChatState> {
     final said = text.trim();
     if (said.isEmpty) return;
     _add(ChatEntry(id: _ids++, fromPip: false, text: said));
-    await run(brain.parse(said));
+    final local = brain.parse(said);
+    if (!brain.wantsOnline(said, local)) return run(local);
+
+    // Online answers need a signed-in account, the backend and the user's
+    // say-so. Without any of them the phone answers, as it always can.
+    final consent = ref.read(assistantMemoryProvider).aiConsent;
+    if (consent == false) return run(local);
+    final backend = ref.read(aiBackendProvider);
+    if (ref.read(accountUidProvider) == null) {
+      if (!_suggestedSignIn) {
+        _suggestedSignIn = true;
+        await say(AssistantReply([Say(brain.aiNote(AiFailure.signedOut))]));
+      }
+      return run(local);
+    }
+    if (backend == null) return run(local);
+    if (consent == null) {
+      _pending = said;
+      return say(brain.aiConsentAsk());
+    }
+    return _askOnline(said, local, backend);
   }
+
+  /// Asks the online model, then falls back to the phone if it cannot.
+  Future<void> _askOnline(
+    String said,
+    AssistantAction local,
+    AiBackend backend,
+  ) async {
+    final generation = ++_generation;
+    final history = _history();
+    const reading = Copy('Reading your sessions…');
+    state = state.copyWith(
+      suggestions: const [],
+      status: ChatStatus.thinking,
+      step: reading,
+      trail: const [],
+    );
+    final snapshot = await StudySnapshot.gather(ref.read);
+    await _pause(fast ? 60 : 380);
+    if (generation != _generation) return;
+    state = state.copyWith(step: const Copy('Thinking…'), trail: [reading]);
+    try {
+      final reply = await backend.askAiAssistant(
+        userMessage: said,
+        extraContext: brain.aiContext(snapshot),
+        history: history,
+        locale: _locale().languageCode,
+      );
+      if (generation != _generation) return;
+      await say(
+        AssistantReply([
+          Say(Copy.raw(reply), online: true),
+        ], suggestions: brain.defaults(snapshot)),
+        generation: generation,
+      );
+    } on AiBackendException catch (error) {
+      if (generation != _generation) return;
+      final phoneAnswers =
+          brain.fallsBackLocally(error.failure) && local.act != Act.unknown;
+      await say(
+        AssistantReply([
+          Say(brain.aiNote(error.failure)),
+        ], suggestions: phoneAnswers ? const [] : brain.defaults(snapshot)),
+        generation: generation,
+      );
+      if (phoneAnswers && generation == _generation) await run(local);
+    }
+  }
+
+  /// The last few lines of the conversation, oldest first, without the
+  /// message being asked now.
+  List<Map<String, String>> _history() {
+    final strings = AppStrings(_locale());
+    final lines = state.entries.toList();
+    if (lines.isNotEmpty && !lines.last.fromPip) lines.removeLast();
+    final turns = <Map<String, String>>[
+      for (final entry in lines)
+        if (entry.card == null)
+          if ((entry.text ?? entry.copy?.resolve(strings)) case final text?
+              when text.trim().isNotEmpty)
+            {'role': entry.fromPip ? 'pip' : 'user', 'text': text},
+    ];
+    return turns.length > 8 ? turns.sublist(turns.length - 8) : turns;
+  }
+
+  static ui.Locale _locale() =>
+      AppStrings.resolve(ui.PlatformDispatcher.instance.locales);
+
+  /// Turns online answers on or off from the chat menu.
+  Future<void> setOnlineAnswers(bool allowed) =>
+      ref.read(assistantMemoryProvider.notifier).setAiConsent(allowed);
 
   Future<void> choose(Suggestion suggestion) async {
     _add(ChatEntry(id: _ids++, fromPip: false, copy: suggestion.label));
@@ -141,14 +255,44 @@ class ChatController extends Notifier<ChatState> {
         if (minutes != null) await _saveGoal(minutes);
       case Act.intro:
         await memory.markIntroduced();
+      case Act.aiAllow:
+        await memory.setAiConsent(true);
+        final question = _pending;
+        _pending = null;
+        final backend = ref.read(aiBackendProvider);
+        if (question != null && backend != null) {
+          return _askOnline(question, brain.parse(question), backend);
+        }
+      case Act.aiDecline:
+        await memory.setAiConsent(false);
+        final question = _pending;
+        _pending = null;
+        await say(
+          const AssistantReply([
+            Say(
+              Copy(
+                'Okay, I’ll keep everything on this phone. You can change this from the menu.',
+              ),
+            ),
+          ]),
+          generation: generation,
+        );
+        if (question != null && generation == _generation) {
+          return run(brain.parse(question));
+        }
+        return;
       default:
         break;
     }
 
     final steps = brain.thinkingFor(action.act);
-    for (final step in steps) {
+    for (final (index, step) in steps.indexed) {
       if (generation != _generation) return;
-      state = state.copyWith(status: ChatStatus.thinking, step: step);
+      state = state.copyWith(
+        status: ChatStatus.thinking,
+        step: step,
+        trail: steps.sublist(0, index),
+      );
       await _pause(fast ? 120 : 620);
     }
     if (steps.isEmpty) {
@@ -181,9 +325,17 @@ class ChatController extends Notifier<ChatState> {
       await _pause(_typingMs(item));
       if (current != _generation) return;
       _add(
-        ChatEntry(id: _ids++, fromPip: true, copy: item.copy, card: item.card),
+        ChatEntry(
+          id: _ids++,
+          fromPip: true,
+          copy: item.copy,
+          card: item.card,
+          online: item.online,
+          at: DateTime.now(),
+        ),
       );
-      await _pause(fast ? 30 : 140);
+      // Let the line finish writing itself in before the next one starts.
+      await _pause(fast ? 30 : 140 + _writeInMs(item));
     }
     if (current != _generation) return;
     state = state.copyWith(
@@ -285,8 +437,17 @@ class ChatController extends Notifier<ChatState> {
   int _typingMs(Say item) {
     if (fast) return 90;
     if (item.card != null) return 650;
+    // Online answers were already waited for; the line writes itself in.
+    if (item.online) return 320;
     final length = item.copy?.key.length ?? 24;
-    return (360 + length * 12).clamp(420, 1400);
+    return (300 + length * 6).clamp(380, 900);
+  }
+
+  /// How long a new line takes to write itself in on screen.
+  static int _writeInMs(Say item) {
+    final copy = item.copy;
+    if (copy == null) return 0;
+    return (copy.key.length * 14).clamp(260, 1500);
   }
 
   Future<void> _pause(int milliseconds) =>

@@ -25,6 +25,7 @@ import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/services/ai_backend_service.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
@@ -67,6 +68,8 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
+        aiBackendProvider.overrideWithValue(const _FakeBackend()),
+        accountUidProvider.overrideWithValue('capture-user'),
         shieldServiceProvider.overrideWithValue(engine),
         appBlockingSupportedProvider.overrideWithValue(true),
         appListConsentProvider.overrideWith(() => AppListConsentNotifier(true)),
@@ -310,13 +313,53 @@ void main() {
         container.read(chatProvider.notifier).clear();
         await frames(const Duration(milliseconds: 100));
         unawaited(container.read(chatProvider.notifier).run(action));
-        await frames(const Duration(seconds: 7));
+        if (name == 'report') {
+          await frames(const Duration(milliseconds: 900));
+          await capture('chat-thinking-$label');
+          await frames(const Duration(milliseconds: 1250));
+          await capture('chat-writein-$label');
+          await frames(const Duration(milliseconds: 4850));
+        } else {
+          await frames(const Duration(seconds: 7));
+        }
         await capture('chat-$name-$label');
       }
+      container.read(chatProvider.notifier).clear();
+      await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+      await frames(const Duration(milliseconds: 100));
+      unawaited(
+        container
+            .read(chatProvider.notifier)
+            .send('I have not studied this week, what should I do tonight?'),
+      );
+      await frames(const Duration(milliseconds: 700));
+      await capture('chat-online-thinking-$label');
+      await frames(const Duration(milliseconds: 2050));
+      await capture('chat-online-writein-$label');
+      await frames(const Duration(seconds: 4));
+      await capture('chat-online-$label');
       container.read(routerProvider).go('/dashboard');
       await frames(const Duration(milliseconds: 600));
     }
     await tester.pumpWidget(const SizedBox.shrink());
     debugDisableShadows = true;
   });
+}
+
+/// Answers like the online model would, after a short wait.
+class _FakeBackend implements AiBackend {
+  const _FakeBackend();
+
+  @override
+  Future<String> askAiAssistant({
+    required String userMessage,
+    Map<String, dynamic>? extraContext,
+    List<Map<String, String>> history = const [],
+    String locale = 'en',
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 1400));
+    return 'Start small tonight: one 40 minute block of Physics. Pick your '
+        'weakest chapter, skim the notes, then solve ten questions. Tap Start '
+        'a block below when you are ready.';
+  }
 }

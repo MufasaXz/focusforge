@@ -158,7 +158,7 @@ class MascotPainter extends CustomPainter {
     final lift = p.hop;
     final sitDrop = 30 * p.sit;
     final bodyY = sitDrop - 3 * p.breath;
-    final headY = sitDrop - 6 * p.breath;
+    final headY = sitDrop - 6 * p.breath + p.headLag;
 
     // Contact shadow: smaller while Pip is in the air.
     final air = (lift / 60).clamp(0.0, 0.6);
@@ -311,7 +311,12 @@ class MascotPainter extends CustomPainter {
       );
     }
 
-    // Antenna, with a ring that pulses out while Pip is thinking.
+    // Antenna, with a ring that pulses out while Pip is thinking. It swings
+    // from its base, trailing the head.
+    canvas.save();
+    canvas.translate(512, 250);
+    canvas.rotate(p.sway);
+    canvas.translate(-512, -250);
     canvas.drawPath(
       Path()
         ..moveTo(512, 250)
@@ -339,6 +344,7 @@ class MascotPainter extends CustomPainter {
       Paint()
         ..color = Color.lerp(colors.face, colors.bodyLight, p.antenna * 0.7)!,
     );
+    canvas.restore();
 
     // Head: the app icon's rounded square.
     const head = Rect.fromLTWH(290, 244, 444, 400);

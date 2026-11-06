@@ -21,6 +21,7 @@ import '../home/pip_dock.dart' show TypingDots;
 import '../mascot/mascot.dart';
 import '../mascot/mascot_life.dart';
 import '../mascot/mascot_rig.dart';
+import '../nudges/pip_nudges.dart';
 import 'chat_cards.dart';
 import 'chat_controller.dart';
 
@@ -174,6 +175,12 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     });
   }
 
+  Future<void> _setReminders({required bool off}) async {
+    final strings = AppStrings.of(context);
+    await ref.read(assistantMemoryProvider.notifier).setRemindersOff(off);
+    await PipNudges.sync(ref.read, strings);
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider);
@@ -199,6 +206,12 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
       ChatStatus.idle => context.tr('Your study buddy'),
     };
     final quiet = ref.watch(assistantMemoryProvider.select((m) => m.quiet));
+    final online = ref.watch(
+      assistantMemoryProvider.select((m) => m.aiConsent == true),
+    );
+    final remindersOff = ref.watch(
+      assistantMemoryProvider.select((m) => m.remindersOff),
+    );
     final entries = chat.entries;
 
     return Scaffold(
@@ -245,6 +258,10 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
               if (value == 0) {
                 _chat.clear();
                 unawaited(_chat.open());
+              } else if (value == 2) {
+                unawaited(_chat.setOnlineAnswers(!online));
+              } else if (value == 3) {
+                unawaited(_setReminders(off: !remindersOff));
               } else {
                 unawaited(
                   ref.read(assistantMemoryProvider.notifier).setQuiet(!quiet),
@@ -254,6 +271,14 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
             itemBuilder: (context) => [
               PopupMenuItem(value: 0, child: Text(context.tr('Clear chat'))),
               PopupMenuItem(
+                value: 2,
+                child: Text(
+                  online
+                      ? context.tr('Keep answers on this phone')
+                      : context.tr('Answer with AI when online'),
+                ),
+              ),
+              PopupMenuItem(
                 value: 1,
                 child: Text(
                   quiet
@@ -261,6 +286,15 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                       : context.tr('Pause tips on Home'),
                 ),
               ),
+              if (PipNudges.supported)
+                PopupMenuItem(
+                  value: 3,
+                  child: Text(
+                    remindersOff
+                        ? context.tr('Turn on evening reminders')
+                        : context.tr('Pause evening reminders'),
+                  ),
+                ),
             ],
           ),
         ],
@@ -284,7 +318,12 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                   itemBuilder: (context, index) {
                     if (index == 0) return _Welcome(rig: _hero);
                     if (index == entries.length + 1) {
-                      return _Working(status: chat.status, step: chat.step);
+                      return _Working(
+                        status: chat.status,
+                        step: chat.step,
+                        trail: chat.trail,
+                        continues: entries.isNotEmpty && entries.last.fromPip,
+                      );
                     }
                     final entry = entries[index - 1];
                     final first =
@@ -438,27 +477,34 @@ class _EntryView extends StatelessWidget {
     final top = first ? Gap.md : Gap.xs;
 
     if (!entry.fromPip) {
+      final said = entry.text ?? entry.copy?.of(context) ?? '';
       return Padding(
         padding: EdgeInsets.only(top: top, left: width * 0.16),
         child: Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: cs.primary,
-              borderRadius: const BorderRadiusDirectional.only(
-                topStart: Radius.circular(20),
-                topEnd: Radius.circular(20),
-                bottomStart: Radius.circular(20),
-                bottomEnd: Radius.circular(6),
+          child: _CopyOnHold(
+            text: said,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: const BorderRadiusDirectional.only(
+                  topStart: Radius.circular(20),
+                  topEnd: Radius.circular(20),
+                  bottomStart: Radius.circular(20),
+                  bottomEnd: Radius.circular(6),
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text(
-                entry.text ?? entry.copy?.of(context) ?? '',
-                style: tt.bodyLarge?.copyWith(
-                  color: cs.onPrimary,
-                  height: 1.35,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Text(
+                  said,
+                  style: tt.bodyLarge?.copyWith(
+                    color: cs.onPrimary,
+                    height: 1.35,
+                  ),
                 ),
               ),
             ),
@@ -480,24 +526,7 @@ class _EntryView extends StatelessWidget {
       ExamCard() => ExamCardView(card: card),
       GoalCard() => GoalCardView(card: card, onPick: onGoal),
       ActionCard() => ActionCardView(card: card, onAction: onAction),
-      null => DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadiusDirectional.only(
-            topStart: Radius.circular(first ? 6 : 20),
-            topEnd: const Radius.circular(20),
-            bottomStart: const Radius.circular(20),
-            bottomEnd: const Radius.circular(20),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text(
-            entry.copy?.of(context) ?? '',
-            style: tt.bodyLarge?.copyWith(color: cs.onSurface, height: 1.4),
-          ),
-        ),
-      ),
+      null => _PipLine(entry: entry, first: first),
     };
 
     return Padding(
@@ -517,56 +546,309 @@ class _EntryView extends StatelessWidget {
   }
 }
 
-/// Pip at work: the step it is on, or dots while it types.
-class _Working extends StatelessWidget {
-  const _Working({required this.status, required this.step});
+/// Pip's speech bubble shape: the first line of a turn points at its head.
+BorderRadiusDirectional _pipBubble({required bool first}) =>
+    BorderRadiusDirectional.only(
+      topStart: Radius.circular(first ? 6 : 20),
+      topEnd: const Radius.circular(20),
+      bottomStart: const Radius.circular(20),
+      bottomEnd: const Radius.circular(20),
+    );
 
-  final ChatStatus status;
-  final Copy? step;
+/// One line of Pip's, written in as it arrives, with a note when it came
+/// from the online model. Hold to copy.
+class _PipLine extends StatelessWidget {
+  const _PipLine({required this.entry, required this.first});
+
+  final ChatEntry entry;
+  final bool first;
+
+  /// Lines older than this were already seen and appear whole.
+  static const _fresh = Duration(seconds: 3);
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final text = entry.copy?.of(context) ?? '';
+    final at = entry.at;
+    final fresh =
+        at != null &&
+        DateTime.now().difference(at) < _fresh &&
+        !MediaQuery.disableAnimationsOf(context);
+    final bubble = _CopyOnHold(
+      text: text,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: _pipBubble(first: first),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: _WriteIn(
+            text: text,
+            animate: fresh,
+            style: tt.bodyLarge?.copyWith(color: cs.onSurface, height: 1.4),
+          ),
+        ),
+      ),
+    );
+    if (!entry.online) return bubble;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        bubble,
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 6, top: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_done_outlined,
+                size: 14,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: Gap.xs),
+              Text(
+                context.tr('Answered online'),
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Writes [text] in from start to end, the way a reply streams in.
+///
+/// The whole text is laid out from the first frame and the unwritten part is
+/// clear, so the bubble never changes size and nothing below it jumps. Screen
+/// readers get the whole line at once.
+class _WriteIn extends StatefulWidget {
+  const _WriteIn({required this.text, required this.animate, this.style});
+
+  final String text;
+  final bool animate;
+  final TextStyle? style;
+
+  @override
+  State<_WriteIn> createState() => _WriteInState();
+}
+
+class _WriteInState extends State<_WriteIn>
+    with SingleTickerProviderStateMixin {
+  /// Code-unit offsets of each character boundary, so a frame never splits
+  /// a character (an emoji, a Devanagari cluster) in two.
+  late List<int> _bounds;
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounds = _boundsOf(widget.text);
+    final count = _bounds.length - 1;
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: (count * 14).clamp(260, 1500)),
+      value: widget.animate ? 0 : 1,
+    );
+    if (widget.animate) unawaited(_controller.forward());
+  }
+
+  @override
+  void didUpdateWidget(_WriteIn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _bounds = _boundsOf(widget.text);
+      _controller.value = 1;
+    }
+  }
+
+  static List<int> _boundsOf(String text) {
+    final bounds = [0];
+    var offset = 0;
+    for (final char in text.characters) {
+      offset += char.length;
+      bounds.add(offset);
+    }
+    return bounds;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final style = widget.style ?? DefaultTextStyle.of(context).style;
+    final color = style.color ?? Theme.of(context).colorScheme.onSurface;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final text = widget.text;
+        if (_controller.isCompleted) return Text(text, style: style);
+        final count = _bounds.length - 1;
+        final shown = (_controller.value * count).floor();
+        // A few characters ahead of the pen come in half-inked.
+        final soft = (shown + 6).clamp(0, count);
+        return Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: text.substring(0, _bounds[shown])),
+              TextSpan(
+                text: text.substring(_bounds[shown], _bounds[soft]),
+                style: TextStyle(color: color.withValues(alpha: 0.35)),
+              ),
+              TextSpan(
+                text: text.substring(_bounds[soft]),
+                style: TextStyle(color: color.withValues(alpha: 0)),
+              ),
+            ],
+          ),
+          style: style,
+        );
+      },
+    );
+  }
+}
+
+/// Copies [text] when the bubble is held.
+class _CopyOnHold extends StatelessWidget {
+  const _CopyOnHold({required this.text, required this.child});
+
+  final String text;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    onLongPressHint: context.tr('Copy message'),
+    child: GestureDetector(
+      onLongPress: text.isEmpty
+          ? null
+          : () {
+              unawaited(Clipboard.setData(ClipboardData(text: text)));
+              unawaited(HapticFeedback.selectionClick());
+              ScaffoldMessenger.maybeOf(context)
+                ?..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(content: Text(context.tr('Message copied.'))),
+                );
+            },
+      child: child,
+    ),
+  );
+}
+
+/// Pip at work: the steps it has done, the one it is on, then dots while it
+/// types. Its head thinks beside the bubble.
+class _Working extends StatelessWidget {
+  const _Working({
+    required this.status,
+    required this.step,
+    this.trail = const [],
+    this.continues = false,
+  });
+
+  final ChatStatus status;
+  final Copy? step;
+  final List<Copy> trail;
+
+  /// Whether Pip already has a line just above, so this continues its turn
+  /// without a second head.
+  final bool continues;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     if (status == ChatStatus.idle) return const SizedBox(height: Gap.sm);
     final thinking = status == ChatStatus.thinking;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final current = step?.of(context) ?? context.tr('Thinking…');
+    final muted = tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant);
+
     return Padding(
-      padding: const EdgeInsets.only(top: Gap.sm),
+      padding: EdgeInsets.only(top: continues ? Gap.xs : Gap.md),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(width: _avatarSize + Gap.sm),
+          SizedBox(
+            width: _avatarSize,
+            child: continues ? null : _ThinkingAvatar(thinking: thinking),
+          ),
+          const SizedBox(width: Gap.sm),
           Flexible(
             child: Semantics(
               liveRegion: true,
               label: thinking
-                  ? (step?.of(context) ?? context.tr('Thinking…'))
+                  ? current
                   : context.tr('{0} is typing', [kBuddyName]),
               excludeSemantics: true,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
+              child: AnimatedSize(
+                duration: reduce ? Duration.zero : Motion.quick,
+                curve: Curves.easeOutCubic,
+                alignment: AlignmentDirectional.topStart,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHigh,
+                    borderRadius: _pipBubble(first: !continues),
                   ),
-                  child: thinking
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const ExpressiveLoadingIndicator(size: 18),
-                            const SizedBox(width: Gap.sm),
-                            Flexible(
-                              child: Text(
-                                step?.of(context) ?? context.tr('Thinking…'),
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: cs.onSurfaceVariant),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: !thinking
+                        ? const TypingDots()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final done in trail)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: Gap.sm,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 18,
+                                        color: cs.primary,
+                                      ),
+                                      const SizedBox(width: Gap.sm),
+                                      Flexible(
+                                        child: Text(
+                                          done.of(context),
+                                          style: muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const ExpressiveLoadingIndicator(size: 18),
+                                  const SizedBox(width: Gap.sm),
+                                  Flexible(
+                                    child: _Shimmer(
+                                      key: ValueKey(current),
+                                      text: current,
+                                      style: tt.bodyMedium,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        )
-                      : const TypingDots(),
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ),
@@ -574,6 +856,116 @@ class _Working extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Pip's head beside the thinking bubble, eyes up while it thinks.
+class _ThinkingAvatar extends StatefulWidget {
+  const _ThinkingAvatar({required this.thinking});
+
+  final bool thinking;
+
+  @override
+  State<_ThinkingAvatar> createState() => _ThinkingAvatarState();
+}
+
+class _ThinkingAvatarState extends State<_ThinkingAvatar> {
+  final _rig = MascotRig();
+
+  @override
+  void initState() {
+    super.initState();
+    _rig.thinking = widget.thinking;
+  }
+
+  @override
+  void didUpdateWidget(_ThinkingAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _rig.thinking = widget.thinking;
+    if (oldWidget.thinking && !widget.thinking) _rig.talk(seconds: 0.6);
+  }
+
+  @override
+  void dispose() {
+    _rig.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Mascot(rig: _rig, width: _avatarSize, headOnly: true),
+  );
+}
+
+/// The step Pip is on, with a light passing across it while it works. Still
+/// with reduce motion on. Lives only as long as the step, so it always ends.
+class _Shimmer extends StatefulWidget {
+  const _Shimmer({super.key, required this.text, this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  State<_Shimmer> createState() => _ShimmerState();
+}
+
+class _ShimmerState extends State<_Shimmer>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      unawaited(_controller.repeat());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final text = Text(
+      widget.text,
+      style: widget.style?.copyWith(color: cs.onSurfaceVariant),
+    );
+    if (MediaQuery.disableAnimationsOf(context)) return text;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (bounds) => LinearGradient(
+          colors: [cs.onSurfaceVariant, cs.primary, cs.onSurfaceVariant],
+          stops: const [0.35, 0.5, 0.65],
+          transform: _Slide(_controller.value * 2 - 1),
+        ).createShader(bounds),
+        child: child,
+      ),
+      child: text,
+    );
+  }
+}
+
+/// Moves a gradient sideways by [fraction] of the box's width.
+class _Slide extends GradientTransform {
+  const _Slide(this.fraction);
+
+  final double fraction;
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final sign = textDirection == TextDirection.rtl ? -1 : 1;
+    return Matrix4.translationValues(sign * fraction * bounds.width, 0, 0);
   }
 }
 

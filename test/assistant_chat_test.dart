@@ -4,7 +4,9 @@
 // a chip carries its request in any language; a typed "lock instagram" finds
 // the app and, on one tap, puts it in Shield's focus tier; a plan saved as
 // today's goal counts what is already done; "start a block" starts the timer
-// on the plan's first subject.
+// on the plan's first subject. A longer question goes online only after the
+// user agrees and only for a signed-in account, carries no name, and falls
+// back to the phone's answer when the network fails.
 //
 // WHY IT MATTERS: these are the moments the assistant does real work. A lock
 // that only says "locked", or a plan that drops the morning's study from the
@@ -28,6 +30,7 @@ import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/services/ai_backend_service.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
@@ -49,7 +52,11 @@ void main() {
 
   setUp(() async => store.clearAll());
 
-  Future<ProviderContainer> pumpChat(WidgetTester tester) async {
+  Future<ProviderContainer> pumpChat(
+    WidgetTester tester, {
+    AiBackend? backend,
+    String? uid,
+  }) async {
     tester.view.physicalSize = const Size(420, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -58,6 +65,8 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
+        aiBackendProvider.overrideWithValue(backend),
+        accountUidProvider.overrideWithValue(uid),
         shieldServiceProvider.overrideWithValue(engine),
         appBlockingSupportedProvider.overrideWithValue(true),
         appListConsentProvider.overrideWith(() => AppListConsentNotifier(true)),
@@ -222,4 +231,130 @@ void main() {
       container.read(timerProvider.notifier).reset();
     },
   );
+
+  const question = 'I have not studied this week, what should I do tonight?';
+
+  Future<void> ask(WidgetTester tester, String text) async {
+    await tester.enterText(find.byType(TextField), text);
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await wait(tester);
+  }
+
+  testWidgets('a long question goes online once the user agrees', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(
+      reply: 'One 40 minute block of Physics tonight. Start small.',
+    );
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await wait(tester);
+
+    await ask(tester, question);
+    expect(backend.questions, isEmpty);
+    expect(
+      find.textContaining('Google Gemini, or Groq', findRichText: true),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(find.text('Allow'));
+    await tester.tap(find.text('Allow'));
+    await wait(tester);
+
+    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
+    expect(backend.questions, [question]);
+    expect(
+      find.text('One 40 minute block of Physics tonight. Start small.'),
+      findsOneWidget,
+    );
+    expect(find.text('Answered online'), findsOneWidget);
+    // The study summary carries numbers, never who the user is.
+    expect(jsonOf(backend.contexts.single), isNot(contains('Rivera')));
+    expect(backend.histories.single, isNotEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('offline, Pip says so and the phone answers', (tester) async {
+    final backend = _FakeBackend(failure: AiFailure.unavailable);
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+    await wait(tester);
+
+    await ask(tester, 'can you please make a study plan for me today');
+    expect(backend.questions, hasLength(1));
+    expect(
+      find.textContaining('can’t reach my online brain', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text('Save as today’s goal'), findsOneWidget);
+    expect(find.text('Answered online'), findsNothing);
+  });
+
+  testWidgets('a guest gets one sign-in note and the phone’s answers', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(reply: 'unused');
+    final container = await pumpChat(tester, backend: backend);
+    await wait(tester);
+
+    await ask(tester, question);
+    await ask(tester, 'what should I study first tomorrow morning then?');
+    expect(backend.questions, isEmpty);
+    final notes = container
+        .read(chatProvider)
+        .entries
+        .where(
+          (e) => e.copy?.key.startsWith('Sign in with your account') ?? false,
+        );
+    expect(notes, hasLength(1));
+    // The phone still answered both questions.
+    expect(
+      container.read(chatProvider).entries.where((e) => e.fromPip).length,
+      greaterThan(3),
+    );
+  });
+
+  testWidgets('after “keep it on this phone” nothing goes online', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(reply: 'unused');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await wait(tester);
+
+    await ask(tester, question);
+    await tester.ensureVisible(find.text('Keep it on this phone'));
+    await tester.tap(find.text('Keep it on this phone'));
+    await wait(tester);
+    await ask(tester, 'what should I study first tomorrow morning then?');
+
+    expect(container.read(assistantMemoryProvider).aiConsent, isFalse);
+    expect(backend.questions, isEmpty);
+  });
+}
+
+String jsonOf(Object? value) => '$value';
+
+/// Answers or fails like the online backend, recording what it was sent.
+class _FakeBackend implements AiBackend {
+  _FakeBackend({this.reply, this.failure});
+
+  final String? reply;
+  final AiFailure? failure;
+  final questions = <String>[];
+  final contexts = <Map<String, dynamic>?>[];
+  final histories = <List<Map<String, String>>>[];
+
+  @override
+  Future<String> askAiAssistant({
+    required String userMessage,
+    Map<String, dynamic>? extraContext,
+    List<Map<String, String>> history = const [],
+    String locale = 'en',
+  }) async {
+    questions.add(userMessage);
+    contexts.add(extraContext);
+    histories.add(history);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (failure case final failure?) throw AiBackendException(failure);
+    return reply!;
+  }
 }

@@ -75,7 +75,7 @@ class MascotLife {
 
   void _breathe() {
     if (!rig.sleeping && !rig.thinking) rig.breathe();
-    _later(6000, 10000, _breathe);
+    _later(4500, 7500, _breathe);
   }
 
   void _puff() {

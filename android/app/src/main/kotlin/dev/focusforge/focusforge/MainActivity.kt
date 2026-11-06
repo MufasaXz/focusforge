@@ -1,18 +1,19 @@
 package dev.focusforge.focusforge
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
-import dev.focusforge.focusforge.widgets.FocusWidget
-import dev.focusforge.focusforge.widgets.FocusLiveActivity
-import android.content.res.Configuration
-import io.flutter.plugin.common.MethodChannel
+import dev.focusforge.focusforge.assistant.PipNudges
 import dev.focusforge.focusforge.shield.AppBlockingService
 import dev.focusforge.focusforge.shield.ShieldBridge
+import dev.focusforge.focusforge.widgets.FocusLiveActivity
+import dev.focusforge.focusforge.widgets.FocusWidget
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * The app's single activity.
@@ -74,6 +75,27 @@ class MainActivity : FlutterActivity() {
             applicationContext,
             flutterEngine.dartExecutor.binaryMessenger,
         ).also { it.attach() }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.focusforge/pip").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "schedule" -> {
+                    val at = call.argument<Number>("at")?.toLong()
+                    val title = call.argument<String>("title")
+                    val body = call.argument<String>("body")
+                    if (at == null || title.isNullOrBlank() || body.isNullOrBlank()) {
+                        result.error("bad_args", "at, title and body are required", null)
+                    } else {
+                        PipNudges.schedule(applicationContext, at, title, body)
+                        result.success(null)
+                    }
+                }
+                "cancel" -> {
+                    PipNudges.cancel(applicationContext)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "focusforge/widgets").setMethodCallHandler { call, result ->
             when (call.method) {
