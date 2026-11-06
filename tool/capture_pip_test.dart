@@ -224,9 +224,6 @@ void main() {
       'sit',
       'sleep',
       'head',
-      'read',
-      'walk',
-      'slip',
       'yawn',
       'wiggle',
       'tilt',
@@ -268,9 +265,6 @@ void main() {
           ),
         ),
       );
-      rigs['slip']!.slip(edge: 0.7);
-      rigs['walk']!.walk();
-      rigs['read']!.reading = true;
       rigs['sit']!.sitDown();
       rigs['swing']!.sitDown();
       rigs['sleep']!.fallAsleep();

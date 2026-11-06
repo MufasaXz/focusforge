@@ -31,14 +31,9 @@ class MascotPose {
     this.breath = 0,
     this.sway = 0,
     this.headLag = 0,
-    this.read = 0,
-    this.page = -1,
     this.shiftX = 0,
-    this.dropY = 0,
-    this.lean = 0,
     this.step = 0,
     this.kick = 0,
-    this.roll = 0,
     this.zPuff = -1,
   });
 
@@ -66,27 +61,14 @@ class MascotPose {
   /// How far the head trails the body, in units down, during a hop.
   final double headLag;
 
-  /// How far the book is up, 0–1, and a page's turn from right to left
-  /// (0–1), or −1 when no page is turning.
-  final double read;
-  final double page;
-
-  /// Where Pip has walked to, in its own widths (negative is left), and how
-  /// far it has dropped below the floor, in its own heights.
+  /// How far Pip has stepped aside, in its own widths (negative is left).
   final double shiftX;
-  final double dropY;
 
-  /// The whole figure's tilt in radians, pivoting on its right foot.
-  final double lean;
-
-  /// The walking step, −1 to 1: positive lifts the left foot.
+  /// A step, −1 to 1: positive lifts the left foot.
   final double step;
 
   /// Seated feet swinging, in radians: positive lifts the left foot.
   final double kick;
-
-  /// A lean into a walk, in radians, pivoting between the feet.
-  final double roll;
 
   /// Progress of the current sleeping "z", or −1 when none is drifting.
   final double zPuff;
@@ -162,9 +144,6 @@ class MascotRig extends ChangeNotifier {
   /// The left arm out toward a speech bubble.
   static const double presentArm = 1.45;
 
-  /// Both hands at the lower corners of an open book held at the chest.
-  static const double readArm = 0.48;
-
   final _sit = _Spring(0, stiffness: 90, ratio: 0.75);
   final _sleep = _Spring(0, stiffness: 50, ratio: 1);
   final _lookX = _Spring(0, stiffness: 320, ratio: 0.9);
@@ -176,7 +155,6 @@ class MascotRig extends ChangeNotifier {
 
   /// The antenna: light and loosely damped, so it wobbles after a move.
   final _sway = _Spring(0, stiffness: 70, ratio: 0.3);
-  final _read = _Spring(0, stiffness: 110, ratio: 0.85);
 
   final _blink = _Clip();
   final _wave = _Clip();
@@ -188,16 +166,12 @@ class MascotRig extends ChangeNotifier {
   final _antenna = _Clip();
   final _cheer = _Clip();
   final _puff = _Clip();
-  final _page = _Clip();
-  final _walk = _Clip();
-  final _slip = _Clip();
   final _yawn = _Clip();
   final _wiggle = _Clip();
   final _curious = _Clip();
   final _shift = _Clip();
   final _swing = _Clip();
   final _nod = _Clip();
-  final _scan = _Clip();
 
   Iterable<_Spring> get _springs => [
     _sit,
@@ -209,7 +183,6 @@ class MascotRig extends ChangeNotifier {
     _rightArm,
     _think,
     _sway,
-    _read,
   ];
   Iterable<_Clip> get _clips => [
     _blink,
@@ -222,16 +195,12 @@ class MascotRig extends ChangeNotifier {
     _antenna,
     _cheer,
     _puff,
-    _page,
-    _walk,
-    _slip,
     _yawn,
     _wiggle,
     _curious,
     _shift,
     _swing,
     _nod,
-    _scan,
   ];
 
   Ticker? _ticker;
@@ -244,16 +213,12 @@ class MascotRig extends ChangeNotifier {
   bool _thinking = false;
   bool _disposed = false;
   bool _landed = true;
-  bool _reading = false;
-  double _walkDistance = 0;
-  double _edge = 0.3;
   double _curiousSide = 1;
   double _shiftSide = 1;
 
   bool get sitting => _sitting;
   bool get sleeping => _sleeping;
   bool get thinking => _thinking;
-  bool get reading => _reading;
   bool get presenting => _presenting;
 
   /// True while a small idle gesture plays, so another waits its turn.
@@ -263,9 +228,6 @@ class MascotRig extends ChangeNotifier {
       _curious.activeAt(_clock) ||
       _shift.activeAt(_clock) ||
       _swing.activeAt(_clock);
-
-  /// True while Pip is off its spot: walking, or slipping and climbing back.
-  bool get wandering => _walk.activeAt(_clock) || _slip.activeAt(_clock);
 
   /// True while a frame is being asked for. Exposed for tests.
   bool get moving => _ticker?.isActive ?? false;
@@ -438,20 +400,6 @@ class MascotRig extends ChangeNotifier {
 
   void lookAhead() => lookAt(0, 0);
 
-  /// Holds an open book and reads it, eyes down, until set false.
-  set reading(bool value) {
-    if (_reading == value || (value && _sleeping)) return;
-    _reading = value;
-    _read.target = value ? 1 : 0;
-    if (!_thinking) {
-      _leftArm.target = value ? readArm : (_presenting ? presentArm : _armRest);
-      _rightArm.target = value ? readArm : _armRest;
-      _lookX.target = 0;
-      _lookY.target = value ? 0.55 : 0;
-    }
-    _run();
-  }
-
   /// A slow yawn with a stretch, arms up: before a nap, or on waking.
   void yawn() {
     if (_sleeping || _reduceMotion) return;
@@ -462,7 +410,7 @@ class MascotRig extends ChangeNotifier {
 
   /// A happy little shimmy, eyes smiling, for good news.
   void wiggle() {
-    if (_sleeping || _reduceMotion || wandering) return;
+    if (_sleeping || _reduceMotion) return;
     _wiggle.play(_clock, 1.3);
     _run();
   }
@@ -479,7 +427,7 @@ class MascotRig extends ChangeNotifier {
 
   /// Shifts its weight from one foot to the other while it stands about.
   void shiftWeight([double side = 1]) {
-    if (_sleeping || _sitting || _reduceMotion || wandering) return;
+    if (_sleeping || _sitting || _reduceMotion) return;
     _shiftSide = side < 0 ? -1 : 1;
     _shift.play(_clock, 2.6);
     _run();
@@ -499,47 +447,11 @@ class MascotRig extends ChangeNotifier {
     _run();
   }
 
-  /// Reads three lines: the eye runs along each and darts back.
-  void readLines() {
-    if (!_reading || _sleeping || _reduceMotion) return;
-    _scan.play(_clock, 2.6);
-    _run();
-  }
-
-  /// Turns one page of the book.
-  void flipPage() {
-    if (!_reading || _sleeping || _reduceMotion) return;
-    _page.play(_clock, 0.7);
-    _kick(0.4);
-    _run();
-  }
-
-  /// A short stroll along the bar and back, [distance] of its own widths
-  /// (negative is left).
-  void walk({double distance = -0.9, double seconds = 4.4}) {
-    if (_sleeping || _sitting || _reduceMotion || wandering) return;
-    reading = false;
-    _walkDistance = distance;
-    _walk.play(_clock, seconds);
-    _run();
-  }
-
-  /// Walks [edge] of its widths to the end of the bar, slips off, hangs on,
-  /// climbs back up and walks home.
-  void slip({double edge = 0.35}) {
-    if (_sleeping || _sitting || _reduceMotion || wandering) return;
-    reading = false;
-    _edge = edge;
-    _slip.play(_clock, 3.8);
-    _run();
-  }
-
   // -- States -----------------------------------------------------------------
 
   /// Points the left arm toward a speech bubble on Pip's left.
   set presenting(bool value) {
     if (_presenting == value) return;
-    if (value) reading = false;
     _presenting = value;
     if (_sleeping) return;
     _leftArm.target = value ? presentArm : _armRest;
@@ -587,9 +499,6 @@ class MascotRig extends ChangeNotifier {
 
   void fallAsleep() {
     if (_sleeping) return;
-    reading = false;
-    _walk.stop();
-    _slip.stop();
     _sitting = true;
     _sleeping = true;
     _thinking = false;
@@ -678,91 +587,10 @@ class MascotRig extends ChangeNotifier {
     }
 
     var shiftX = 0.0;
-    var dropY = 0.0;
-    var lean = 0.0;
     var step = 0.0;
     var armsUp = 0.0;
-    var alarm = 0.0;
-    var roll = 0.0;
-    var armSwing = 0.0;
     var lookShift = 0.0;
 
-    /// One leg of a walk, [progress] 0–1 of [distance] widths in direction
-    /// [dir]. The steps follow the ground covered, so feet never slide, and
-    /// land on the last one.
-    void stride(double progress, double distance, double dir) {
-      final halfSteps = math.max(2, (distance.abs() * 6).round());
-      final phase = math.pi * halfSteps * progress;
-      final swing = math.sin(phase);
-      final going = _bell(progress.clamp(0.0, 1.0) / 2 + 0.25);
-      step = swing;
-      // The body rises over each planted foot and dips between steps.
-      hop += 6 * swing.abs() * going;
-      // Leaning into the walk, arms swinging against the legs, eyes ahead.
-      roll += 0.05 * dir * going;
-      armSwing = 0.24 * swing;
-      lookShift += 0.55 * dir * going;
-      tilt += 0.02 * swing;
-    }
-
-    if (_walk.activeAt(now)) {
-      // Out, a pause to look around, and back.
-      final p = _walk.progressAt(now);
-      final out = _smooth(p / 0.45);
-      final back = _smooth((p - 0.55) / 0.45);
-      shiftX = _walkDistance * (out - back);
-      final away = _walkDistance.sign;
-      if (p < 0.45) {
-        stride(out, _walkDistance, away);
-      } else if (p > 0.55) {
-        stride(back, _walkDistance, -away);
-      } else {
-        final look = _bell((p - 0.45) / 0.1);
-        tilt += 0.08 * look * away;
-        lookShift += 0.7 * away * look;
-      }
-    }
-    if (_slip.activeAt(now)) {
-      final p = _slip.progressAt(now);
-      final t = now - _slip.start;
-      final edge = _edge;
-      if (p < 0.2) {
-        // Strolls to the end of the bar.
-        shiftX = edge * _smooth(p / 0.2);
-        stride(_smooth(p / 0.2), edge, 1);
-      } else if (p < 0.3) {
-        // A foot goes over: a tip, arms flung up, eyes wide.
-        final u = (p - 0.2) / 0.1;
-        shiftX = edge + 0.08 * _smooth(u);
-        lean = 0.55 * _smooth(u);
-        armsUp = _smooth(u);
-        alarm = Curves.easeOutCubic.transform(u);
-      } else if (p < 0.4) {
-        // Drops, catching the edge with both hands.
-        final u = (p - 0.3) / 0.1;
-        shiftX = edge + 0.08;
-        lean = _lerp(0.55, 0.12, _smooth(u));
-        dropY = 0.42 * Curves.easeIn.transform(u);
-        armsUp = 1;
-        alarm = 1;
-      } else if (p < 0.8) {
-        // Climbs back up in two pulls, feet kicking.
-        final u = (p - 0.4) / 0.4;
-        final pulls =
-            0.5 * _smooth(u / 0.42) + 0.5 * _smooth((u - 0.55) / 0.42);
-        shiftX = edge + 0.08 * (1 - _smooth(u));
-        dropY = 0.42 * (1 - pulls);
-        lean = 0.12 * (1 - _smooth(u));
-        armsUp = 1 - _smooth((u - 0.82) / 0.18);
-        alarm = 1 - _smooth(u);
-        step = math.sin(2 * math.pi * 3 * t) * (1 - _smooth((u - 0.6) / 0.4));
-      } else {
-        // Dusts off and walks home.
-        final u = (p - 0.8) / 0.2;
-        shiftX = edge * (1 - _smooth(u));
-        stride(_smooth(u), edge, -1);
-      }
-    }
     var yawning = 0.0;
     var kick = 0.0;
     var happy = 0.0;
@@ -799,13 +627,6 @@ class MascotRig extends ChangeNotifier {
       kick =
           0.3 * math.sin(2 * math.pi * 1.4 * t) * _bell(_swing.progressAt(now));
     }
-    if (_scan.activeAt(now)) {
-      // Along a line, then a quick dart back to the start of the next.
-      final line = (_scan.progressAt(now) * 3) % 1;
-      lookShift += line < 0.82
-          ? _lerp(-0.35, 0.35, _smooth(line / 0.82))
-          : _lerp(0.35, -0.35, _smooth((line - 0.82) / 0.18));
-    }
     if (_nod.activeAt(now)) {
       final t = now - _nod.start;
       headLag +=
@@ -813,8 +634,8 @@ class MascotRig extends ChangeNotifier {
           (0.5 - 0.5 * math.cos(2 * math.pi * 2.2 * t)) *
           _bell(_nod.progressAt(now));
     }
-    final leftArm = _lerp(_leftArm.value + armSwing, 2.5, armsUp);
-    rightArm = _lerp(rightArm - armSwing, 2.5, armsUp);
+    final leftArm = _lerp(_leftArm.value, 2.5, armsUp);
+    rightArm = _lerp(rightArm, 2.5, armsUp);
 
     var mouth = 0.0;
     if (_talk.activeAt(now)) {
@@ -836,7 +657,6 @@ class MascotRig extends ChangeNotifier {
           ? Curves.easeOutCubic.transform(p / 0.18)
           : 1 - _smooth((p - 0.18) / 0.82);
     }
-    surprise = math.max(surprise, alarm);
     squint = math.max(squint, math.max(happy, 0.8 * yawning));
 
     var breath = 0.0;
@@ -868,16 +688,11 @@ class MascotRig extends ChangeNotifier {
       thinkPhase: _reduceMotion ? 1 : (now * 0.9) % 1,
       antenna: antenna,
       breath: breath,
-      sway: (_sway.value - 0.6 * lean).clamp(-0.45, 0.45),
+      sway: _sway.value.clamp(-0.45, 0.45),
       headLag: headLag,
-      read: _read.value.clamp(0.0, 1.0),
-      page: _page.activeAt(now) ? _smooth(_page.progressAt(now)) : -1,
       shiftX: shiftX,
-      dropY: dropY,
-      lean: lean,
       step: step.clamp(-1.0, 1.0),
       kick: kick,
-      roll: roll,
       zPuff: _puff.activeAt(now)
           ? _puff.progressAt(now)
           : (_reduceMotion && _sleeping ? 0.45 : -1),

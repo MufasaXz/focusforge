@@ -47,8 +47,6 @@ class PipDock extends ConsumerStatefulWidget {
 }
 
 class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
-  static const _wanderAfter = Duration(seconds: 9);
-  static const _readAfter = Duration(seconds: 42);
   static const _sitAfter = Duration(seconds: 20);
   static const _thinkAfter = Duration(seconds: 36);
   static const _yawnAfter = Duration(seconds: 61);
@@ -255,26 +253,20 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     // does not come back to a Pip that "slept" while nobody was looking.
     var quiet = Duration.zero;
     var thought = false;
-    var wandered = false;
-    var readTried = false;
     var yawned = false;
     void next() {
       _idle = Timer(const Duration(seconds: 1), () {
         if (!mounted || !_active) return;
         quiet += const Duration(seconds: 1);
         if (ref.read(timerProvider).running) {
-          // Studying with the user: Pip sits with a book and stays awake.
-          if (_bubble == null && !_rig.wandering) {
-            if (!_rig.sitting) _rig.sitDown();
-            _rig.reading = true;
-          }
+          // Keeping the user company while they study: sitting, awake.
+          if (_bubble == null && !_rig.sitting) _rig.sitDown();
           next();
           return;
         }
         if (quiet >= _yawnAfter && !yawned && !_rig.sleeping) {
           // A yawn and a stretch, then the nap.
           yawned = true;
-          _rig.reading = false;
           _rig.yawn();
         }
         if (quiet >= _sleepAfter) {
@@ -295,32 +287,8 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
             _rig.thinking = false;
             _maybeTip();
           });
-        } else if (quiet >= _sitAfter &&
-            !_rig.sitting &&
-            !_rig.wandering &&
-            _bubble == null) {
+        } else if (quiet >= _sitAfter && !_rig.sitting && _bubble == null) {
           _rig.sitDown();
-        } else if (quiet >= _readAfter &&
-            !readTried &&
-            _rig.sitting &&
-            _bubble == null) {
-          // Now and then a book comes out before the nap.
-          readTried = true;
-          if (_random.nextDouble() < 0.55) _rig.reading = true;
-        } else if (quiet >= _wanderAfter &&
-            !wandered &&
-            !_rig.sitting &&
-            _bubble == null) {
-          // Now and then a stroll along the bar, and rarely a slip off its
-          // end and a climb back up.
-          wandered = true;
-          final roll = _random.nextDouble();
-          final edge = _edgeWidths();
-          if (roll < 0.12 && edge != null) {
-            _rig.slip(edge: edge);
-          } else if (roll < 0.45) {
-            _rig.walk();
-          }
         }
         next();
       });
@@ -329,19 +297,8 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     next();
   }
 
-  /// How far, in Pip's widths, its right foot is from the end of the nav
-  /// pill, or null where there is no pill to slip off (the side rail).
-  double? _edgeWidths() {
-    final media = MediaQuery.of(context);
-    if (media.size.width >= AppShell.railBreakpoint) return null;
-    // The pill ends 16 dp from the screen's edge and Pip stands 38 dp in;
-    // its right foot is 36% of its width in from its right side.
-    return 0.36 + (38 - 16) / PipDock.width;
-  }
-
   /// Any touch or scroll on the home screen.
   void _poke() {
-    _rig.reading = false;
     if (_rig.sleeping) {
       _rig.wake();
       _after(const Duration(milliseconds: 650), _rig.standUp);

@@ -28,7 +28,6 @@ class MascotColors {
     required this.pocket,
     required this.shadow,
     required this.ink,
-    required this.book,
   });
 
   factory MascotColors.of(ThemeData theme) {
@@ -58,9 +57,6 @@ class MascotColors {
       pocket: tone(97, chroma: 7),
       shadow: cs.shadow.withValues(alpha: dark ? 0.42 : 0.14),
       ink: cs.onSurfaceVariant,
-      // The book's cover: the body's hue turned to its complement, so it
-      // reads as a separate object without leaving Pip's palette.
-      book: tone(dark ? 60 : 44, chroma: 40, hueShift: 180),
     );
   }
 
@@ -75,7 +71,6 @@ class MascotColors {
   final Color pocket;
   final Color shadow;
   final Color ink;
-  final Color book;
 
   List<Color> get _all => [
     body,
@@ -89,7 +84,6 @@ class MascotColors {
     pocket,
     shadow,
     ink,
-    book,
   ];
 
   @override
@@ -169,37 +163,20 @@ class MascotPainter extends CustomPainter {
     final headY = sitDrop - 6 * p.breath + p.headLag;
     final walked = p.shiftX * fullBox.width;
 
-    // Contact shadow: smaller while Pip is in the air, gone while it hangs
-    // off the edge.
-    final air = math.max(
-      (lift / 60).clamp(0.0, 0.6),
-      (p.dropY * 3).clamp(0.0, 1.0),
+    // Contact shadow: smaller while Pip is in the air.
+    final air = (lift / 60).clamp(0.0, 0.6);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(512 + walked, 860),
+        width: 236 * (1 - air),
+        height: 22 * (1 - air),
+      ),
+      Paint()..color = colors.shadow,
     );
-    if (air < 1) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(512 + walked, 860),
-          width: 236 * (1 - air),
-          height: 22 * (1 - air),
-        ),
-        Paint()..color = colors.shadow,
-      );
-    }
 
     canvas.save();
-    // Walking along the bar, dropping off its end, and the tip of a slip,
-    // which pivots on the right foot.
-    canvas.translate(walked, p.dropY * fullBox.height);
-    if (p.roll != 0) {
-      canvas.translate(512, 858);
-      canvas.rotate(p.roll);
-      canvas.translate(-512, -858);
-    }
-    if (p.lean != 0) {
-      canvas.translate(590, 858);
-      canvas.rotate(p.lean);
-      canvas.translate(-590, -858);
-    }
+    // A step to the side, in a wiggle or a weight shift.
+    canvas.translate(walked, 0);
     // Squash on landing, anchored at the floor.
     canvas.translate(512, 858);
     canvas.scale(1 + 0.05 * p.squash, 1 - 0.07 * p.squash);
@@ -289,16 +266,16 @@ class MascotPainter extends CustomPainter {
 
     // The pocket: a half-moon with its opening along the top.
     final pocket = Path()
-      ..moveTo(458, 708)
-      ..lineTo(566, 708)
+      ..moveTo(440, 716)
+      ..lineTo(584, 716)
       ..arcToPoint(
-        const Offset(458, 708),
-        radius: const Radius.elliptical(54, 50),
+        const Offset(440, 716),
+        radius: const Radius.elliptical(72, 66),
       );
     canvas.drawPath(pocket, Paint()..color = colors.pocket);
     canvas.drawLine(
-      const Offset(460, 708),
-      const Offset(564, 708),
+      const Offset(442, 716),
+      const Offset(582, 716),
       Paint()
         ..color = colors.limb
         ..strokeWidth = 9
@@ -316,7 +293,7 @@ class MascotPainter extends CustomPainter {
     final hands = <Offset>[];
     for (final side in const [-1.0, 1.0]) {
       final angle = side < 0 ? p.leftArm : p.rightArm;
-      final shoulder = Offset(side < 0 ? 404 : 620, 694);
+      final shoulder = side < 0 ? _shoulders[0] : _shoulders[1];
       // A raised arm reaches a little further, clear of the head.
       final reach = lerpDouble(86, 124, _smooth(0.9, 2.1, angle))!;
       Offset along(double a, double length) =>
@@ -331,130 +308,37 @@ class MascotPainter extends CustomPainter {
       );
       hands.add(end);
     }
-    // The book sits between the arms, under the hands that hold it.
-    if (p.read > 0.01) _book(canvas, p);
+    // Shoulder sockets over the arms' roots, so each arm comes out of the
+    // body rather than lying on top of it.
+    for (final shoulder in _shoulders) {
+      _socket(canvas, shoulder);
+    }
     for (final end in hands) {
       canvas.drawCircle(end, 23, hand);
     }
   }
 
-  /// An open book held up at the chest, tipped toward Pip: a cover, two
-  /// pages that curve up from the spine, the edges of the pages beneath, a
-  /// few lines of text and, now and then, a page turning over.
-  void _book(Canvas canvas, MascotPose p) {
-    final t = p.read;
-    canvas.save();
-    canvas.translate(512, 712);
-    canvas.scale(0.55 + 0.45 * t);
-    // Tipped toward Pip, the far (top) edge reads a little narrower.
-    const top = -60.0;
-    const bottom = 62.0;
-    const topHalf = 130.0;
-    const bottomHalf = 150.0;
-    final cover = colors.book.withValues(alpha: t);
-    final edges = Color.lerp(
-      colors.pocket,
-      colors.ink,
-      0.22,
-    )!.withValues(alpha: t);
-    final paper = colors.pocket.withValues(alpha: t);
-    final ink = colors.ink.withValues(alpha: 0.32 * t);
+  static const _shoulders = [Offset(410, 698), Offset(614, 698)];
 
-    // The cover, a little larger than the pages, its corners rounded.
-    final coverShape = Path()
-      ..moveTo(-topHalf - 10, top - 4)
-      ..quadraticBezierTo(-topHalf * 0.45, top - 18, 0, top + 4)
-      ..quadraticBezierTo(topHalf * 0.45, top - 18, topHalf + 10, top - 4)
-      ..lineTo(bottomHalf + 12, bottom + 12)
-      ..quadraticBezierTo(bottomHalf * 0.45, bottom + 2, 0, bottom + 20)
-      ..quadraticBezierTo(
-        -bottomHalf * 0.45,
-        bottom + 2,
-        -bottomHalf - 12,
-        bottom + 12,
-      )
-      ..close();
-    canvas.drawPath(
-      coverShape,
+  /// A round joint in the body's own colour at [at], with a soft seam on
+  /// its outer side.
+  void _socket(Canvas canvas, Offset at) {
+    // The body's gradient runs top to bottom; match it at this height.
+    final t = ((at.dy - 628) / 200).clamp(0.0, 1.0);
+    final fill = Color.lerp(colors.body, colors.bodyDeep, t)!;
+    canvas.drawCircle(at, 24, Paint()..color = fill);
+    final outward = at.dx < 512 ? math.pi : 0.0;
+    canvas.drawArc(
+      Rect.fromCircle(center: at, radius: 24),
+      outward - 1.0,
+      2.0,
+      false,
       Paint()
-        ..color = cover
+        ..color = colors.limb.withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 12
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
     );
-    canvas.drawPath(coverShape, Paint()..color = cover);
-
-    // The pages underneath, seen as two thin bands along the bottom edge.
-    for (final drop in const [8.0, 4.0]) {
-      for (final side in const [-1.0, 1.0]) {
-        canvas.drawPath(
-          Path()
-            ..moveTo(0, bottom + 6 + drop)
-            ..quadraticBezierTo(
-              side * bottomHalf * 0.45,
-              bottom - 4 + drop,
-              side * (bottomHalf + 2),
-              bottom + drop - 2,
-            ),
-          Paint()
-            ..color = edges
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3,
-        );
-      }
-    }
-
-    Path page(double side) => Path()
-      ..moveTo(0, top + 8)
-      ..quadraticBezierTo(side * topHalf * 0.45, top - 10, side * topHalf, top)
-      ..lineTo(side * bottomHalf, bottom)
-      ..quadraticBezierTo(side * bottomHalf * 0.45, bottom - 8, 0, bottom + 8)
-      ..close();
-    for (final side in const [-1.0, 1.0]) {
-      canvas.drawPath(page(side), Paint()..color = paper);
-      // A soft fold where the page meets the spine.
-      canvas.drawPath(
-        Path()
-          ..moveTo(0, top + 8)
-          ..quadraticBezierTo(side * 16, top + 4, side * 22, top + 6)
-          ..lineTo(side * 24, bottom - 2)
-          ..quadraticBezierTo(side * 14, bottom + 2, 0, bottom + 8)
-          ..close(),
-        Paint()..color = edges.withValues(alpha: 0.35 * t),
-      );
-      // Lines of text, following the curve of the page.
-      for (var i = 0; i < 5; i++) {
-        final y = top + 22.0 + i * 18;
-        final end = i == 4 ? 70.0 : 108.0 - (i.isOdd ? 8 : 0);
-        canvas.drawPath(
-          Path()
-            ..moveTo(side * 32, y + 2)
-            ..quadraticBezierTo(side * 70, y - 3, side * end, y),
-          Paint()
-            ..color = ink
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 5
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-    }
-    if (p.page >= 0) {
-      // A page lifting off the right side and laying itself down on the
-      // left, foreshortened as it passes over the spine.
-      canvas.save();
-      canvas.translate(0, -14 * math.sin(math.pi * p.page));
-      canvas.scale(math.cos(math.pi * p.page), 1);
-      canvas.drawPath(page(1), Paint()..color = paper);
-      canvas.drawPath(
-        page(1),
-        Paint()
-          ..color = edges
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3,
-      );
-      canvas.restore();
-    }
-    canvas.restore();
   }
 
   void _head(Canvas canvas, MascotPose p) {

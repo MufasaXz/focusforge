@@ -29,7 +29,6 @@ class MascotLife {
     _later(6000, 12000, _glance);
     _later(4000, 9000, _breathe);
     _later(2400, 2800, _puff);
-    _later(3500, 6000, _turnPage);
     _later(5000, 9000, _fidget);
   }
 
@@ -63,7 +62,7 @@ class MascotLife {
   }
 
   void _glance() {
-    if (!rig.sleeping && !rig.thinking && !rig.reading && !holdGaze) {
+    if (!rig.sleeping && !rig.thinking && !holdGaze) {
       rig.lookAt(
         _random.nextDouble() * 1.6 - 0.8,
         _random.nextDouble() * 0.9 - 0.4,
@@ -86,9 +85,7 @@ class MascotLife {
     final free =
         !rig.sleeping &&
         !rig.thinking &&
-        !rig.reading &&
         !rig.presenting &&
-        !rig.wandering &&
         !rig.fidgeting &&
         !holdGaze;
     if (free) {
@@ -103,18 +100,6 @@ class MascotLife {
       }
     }
     _later(6000, 11000, _fidget);
-  }
-
-  /// While reading: a few lines read, now and then a page turned.
-  void _turnPage() {
-    if (rig.reading) {
-      if (_random.nextDouble() < 0.7) {
-        rig.readLines();
-      } else {
-        rig.flipPage();
-      }
-    }
-    _later(3200, 5200, _turnPage);
   }
 
   void _puff() {
