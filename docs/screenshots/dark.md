@@ -11,7 +11,7 @@ A quiet workspace for late-night study.
 
 <img src="gallery-dark.png" width="900" alt="FocusForge Dark mode: Home, Shield, Focus and You">
 
-<sub>Version 1.0.4 · Build 2029 · Captured on a physical device from the maintainer's own account.</sub>
+<sub>Version 1.0.6 · Flutter widget render with demo data, in the website's phone frame.</sub>
 
 </div>
 
@@ -42,6 +42,6 @@ This is the app's real Start transition captured from Flutter, and it remains a 
 
 </details>
 
-These four are physical-device captures of the 1.0.4 build, taken from the maintainer's own account and published deliberately, so the name and the totals on them are real. Only the phone border and the rounded screen clipping are added. [Screenshot provenance and reproduction](README.md).
+These four are Flutter widget renders with demo data: Alex Morgan, the study totals and the app list are made up for the screenshots. They sit in the same phone frame as the website. [Screenshot provenance and reproduction](README.md).
 
 [← Back to FocusForge](../../README.md) · [Explore Day](day.md)
