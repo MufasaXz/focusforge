@@ -28,6 +28,7 @@ class MascotColors {
     required this.pocket,
     required this.shadow,
     required this.ink,
+    required this.book,
   });
 
   factory MascotColors.of(ThemeData theme) {
@@ -57,6 +58,9 @@ class MascotColors {
       pocket: tone(97, chroma: 7),
       shadow: cs.shadow.withValues(alpha: dark ? 0.42 : 0.14),
       ink: cs.onSurfaceVariant,
+      // The book's cover: the body's hue turned to its complement, so it
+      // reads as a separate object without leaving Pip's palette.
+      book: tone(dark ? 60 : 44, chroma: 40, hueShift: 180),
     );
   }
 
@@ -71,6 +75,7 @@ class MascotColors {
   final Color pocket;
   final Color shadow;
   final Color ink;
+  final Color book;
 
   List<Color> get _all => [
     body,
@@ -84,6 +89,7 @@ class MascotColors {
     pocket,
     shadow,
     ink,
+    book,
   ];
 
   @override
@@ -159,25 +165,40 @@ class MascotPainter extends CustomPainter {
     final sitDrop = 30 * p.sit;
     final bodyY = sitDrop - 3 * p.breath;
     final headY = sitDrop - 6 * p.breath + p.headLag;
+    final walked = p.shiftX * fullBox.width;
 
-    // Contact shadow: smaller while Pip is in the air.
-    final air = (lift / 60).clamp(0.0, 0.6);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: const Offset(512, 860),
-        width: 236 * (1 - air),
-        height: 22 * (1 - air),
-      ),
-      Paint()..color = colors.shadow,
+    // Contact shadow: smaller while Pip is in the air, gone while it hangs
+    // off the edge.
+    final air = math.max(
+      (lift / 60).clamp(0.0, 0.6),
+      (p.dropY * 3).clamp(0.0, 1.0),
     );
+    if (air < 1) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(512 + walked, 860),
+          width: 236 * (1 - air),
+          height: 22 * (1 - air),
+        ),
+        Paint()..color = colors.shadow,
+      );
+    }
 
     canvas.save();
+    // Walking along the bar, dropping off its end, and the tip of a slip,
+    // which pivots on the right foot.
+    canvas.translate(walked, p.dropY * fullBox.height);
+    if (p.lean != 0) {
+      canvas.translate(590, 858);
+      canvas.rotate(p.lean);
+      canvas.translate(-590, -858);
+    }
     // Squash on landing, anchored at the floor.
     canvas.translate(512, 858);
     canvas.scale(1 + 0.05 * p.squash, 1 - 0.07 * p.squash);
     canvas.translate(-512, -858 - lift);
 
-    if (p.sit < 0.98) _standingFeet(canvas, 1 - p.sit);
+    if (p.sit < 0.98) _standingFeet(canvas, 1 - p.sit, p.step);
 
     canvas.save();
     canvas.translate(0, bodyY);
@@ -210,12 +231,17 @@ class MascotPainter extends CustomPainter {
     canvas.translate(-_neck.dx, -_neck.dy);
   }
 
-  void _standingFeet(Canvas canvas, double opacity) {
+  void _standingFeet(Canvas canvas, double opacity, double step) {
     final paint = Paint()..color = colors.foot.withValues(alpha: opacity);
-    for (final x in const [436.0, 526.0]) {
+    // A step lifts one foot at a time: the left on positive, the right on
+    // negative.
+    for (final (double x, double lift) in [
+      (436.0, 16.0 * math.max(0.0, step)),
+      (526.0, 16.0 * math.max(0.0, -step)),
+    ]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, 812, 62, 46),
+          Rect.fromLTWH(x, 812 - lift, 62, 46),
           const Radius.circular(22),
         ),
         paint,
@@ -278,6 +304,7 @@ class MascotPainter extends CustomPainter {
       ..strokeWidth = 30
       ..strokeCap = StrokeCap.round;
     final hand = Paint()..color = colors.face;
+    final hands = <Offset>[];
     for (final side in const [-1.0, 1.0]) {
       final angle = side < 0 ? p.leftArm : p.rightArm;
       final shoulder = Offset(side < 0 ? 404 : 620, 694);
@@ -293,8 +320,84 @@ class MascotPainter extends CustomPainter {
           ..quadraticBezierTo(bend.dx, bend.dy, end.dx, end.dy),
         stroke,
       );
+      hands.add(end);
+    }
+    // The book sits between the arms, under the hands that hold it.
+    if (p.read > 0.01) _book(canvas, p);
+    for (final end in hands) {
       canvas.drawCircle(end, 23, hand);
     }
+  }
+
+  /// An open book held in front of the body, with lines of text and, now
+  /// and then, a page turning from right to left.
+  void _book(Canvas canvas, MascotPose p) {
+    final t = p.read;
+    canvas.save();
+    canvas.translate(512, 774);
+    canvas.scale(0.6 + 0.4 * t);
+    final cover = Paint()
+      ..color = colors.book.withValues(alpha: t)
+      ..strokeJoin = StrokeJoin.round;
+    final paper = Paint()..color = colors.pocket.withValues(alpha: t);
+    final line = Paint()
+      ..color = colors.ink.withValues(alpha: 0.3 * t)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    final shape = Path()
+      ..moveTo(-142, -50)
+      ..lineTo(0, -38)
+      ..lineTo(142, -50)
+      ..lineTo(142, 58)
+      ..lineTo(0, 70)
+      ..lineTo(-142, 58)
+      ..close();
+    canvas.drawPath(shape, cover);
+    canvas.drawPath(
+      shape,
+      cover
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14,
+    );
+    Path page(double side) => Path()
+      ..moveTo(0, -32)
+      ..lineTo(side * 128, -43)
+      ..lineTo(side * 128, 48)
+      ..lineTo(0, 58)
+      ..close();
+    for (final side in const [-1.0, 1.0]) {
+      canvas.drawPath(page(side), paper);
+      for (var i = 0; i < 4; i++) {
+        final y = -16.0 + i * 18;
+        canvas.drawLine(
+          Offset(side * 18, y + 1),
+          Offset(side * (i == 3 ? 70 : 110), y - (i == 3 ? 5 : 9)),
+          line,
+        );
+      }
+    }
+    if (p.page >= 0) {
+      // A turning page, foreshortened as it swings over the spine.
+      canvas.save();
+      canvas.scale(math.cos(math.pi * p.page), 1);
+      canvas.drawPath(page(1), paper);
+      canvas.drawPath(
+        page(1),
+        Paint()
+          ..color = colors.ink.withValues(alpha: 0.18 * t)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+      canvas.restore();
+    }
+    canvas.drawLine(
+      const Offset(0, -34),
+      const Offset(0, 60),
+      Paint()
+        ..color = colors.ink.withValues(alpha: 0.25 * t)
+        ..strokeWidth = 4,
+    );
+    canvas.restore();
   }
 
   void _head(Canvas canvas, MascotPose p) {

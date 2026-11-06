@@ -29,6 +29,7 @@ class MascotLife {
     _later(6000, 12000, _glance);
     _later(4000, 9000, _breathe);
     _later(2400, 2800, _puff);
+    _later(3500, 6000, _turnPage);
   }
 
   void stop() {
@@ -61,7 +62,7 @@ class MascotLife {
   }
 
   void _glance() {
-    if (!rig.sleeping && !rig.thinking && !holdGaze) {
+    if (!rig.sleeping && !rig.thinking && !rig.reading && !holdGaze) {
       rig.lookAt(
         _random.nextDouble() * 1.6 - 0.8,
         _random.nextDouble() * 0.9 - 0.4,
@@ -76,6 +77,11 @@ class MascotLife {
   void _breathe() {
     if (!rig.sleeping && !rig.thinking) rig.breathe();
     _later(4500, 7500, _breathe);
+  }
+
+  void _turnPage() {
+    if (rig.reading) rig.flipPage();
+    _later(3500, 6500, _turnPage);
   }
 
   void _puff() {
