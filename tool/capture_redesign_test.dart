@@ -65,6 +65,10 @@ void main() {
     debugDisableShadows = false;
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    // Store screenshots: room for a status bar and gesture bar, rendered big.
+    if (_storeScale != null) {
+      tester.view.padding = const FakeViewPadding(top: 40, bottom: 20);
+    }
     addTearDown(tester.view.reset);
     final manifest =
         jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
@@ -174,23 +178,44 @@ void main() {
           weekTarget: 6,
         ).toJson()..['icon'] = icon,
     ]);
-    final monday = DateTime(today.year, today.month, today.day - today.weekday + 1);
+    final monday = DateTime(
+      today.year,
+      today.month,
+      today.day - today.weekday + 1,
+    );
     final plan = <(int, String, int)>[
-      (0, 'math', 50), (0, 'physics', 25), (0, 'english', 25),
-      (1, 'math', 25), (1, 'history', 50),
-      (2, 'physics', 50), (2, 'math', 50), (2, 'english', 25),
-      (3, 'math', 25), (3, 'physics', 25),
-      (4, 'english', 50), (4, 'math', 50),
-      (5, 'history', 25), (5, 'math', 25),
+      (0, 'math', 50),
+      (0, 'physics', 25),
+      (0, 'english', 25),
+      (1, 'math', 25),
+      (1, 'history', 50),
+      (2, 'physics', 50),
+      (2, 'math', 50),
+      (2, 'english', 25),
+      (3, 'math', 25),
+      (3, 'physics', 25),
+      (4, 'english', 50),
+      (4, 'math', 50),
+      (5, 'history', 25),
+      (5, 'math', 25),
       (6, 'physics', 50),
     ];
     final sessions = [
       for (final (i, (day, subject, minutes)) in plan.indexed)
-        if (!DateTime(monday.year, monday.month, monday.day + day).isAfter(today))
+        if (!DateTime(
+          monday.year,
+          monday.month,
+          monday.day + day,
+        ).isAfter(today))
           FocusSession(
             id: 'review-$i',
             subjectId: subject,
-            startedAt: DateTime(monday.year, monday.month, monday.day + day, 8 + i % 5),
+            startedAt: DateTime(
+              monday.year,
+              monday.month,
+              monday.day + day,
+              8 + i % 5,
+            ),
             minutes: minutes,
           ),
     ];
@@ -233,7 +258,7 @@ void main() {
       final render =
           boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
-        final image = await render.toImage(pixelRatio: 1.5);
+        final image = await render.toImage(pixelRatio: _storeScale ?? 1.5);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         final file = File('build/redesign/$name.png');
         await file.parent.create(recursive: true);
@@ -291,3 +316,8 @@ void main() {
     debugDisableShadows = true;
   });
 }
+
+/// Set CAPTURE_SCALE (for example 3) to render store-listing screenshots.
+final double? _storeScale = double.tryParse(
+  Platform.environment['CAPTURE_SCALE'] ?? '',
+);

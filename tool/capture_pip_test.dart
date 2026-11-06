@@ -41,6 +41,10 @@ void main() {
     debugDisableShadows = false;
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    // Store screenshots: room for a status bar and gesture bar, rendered big.
+    if (_storeScale != null) {
+      tester.view.padding = const FakeViewPadding(top: 40, bottom: 20);
+    }
     addTearDown(tester.view.reset);
     final manifest =
         jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
@@ -197,7 +201,7 @@ void main() {
       final render =
           boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
-        final image = await render.toImage(pixelRatio: 2);
+        final image = await render.toImage(pixelRatio: _storeScale ?? 2);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         final file = File('build/pip/$name.png');
         await file.parent.create(recursive: true);
@@ -386,3 +390,8 @@ class _FakeBackend implements AiBackend {
     String? question,
   }) async {}
 }
+
+/// Set CAPTURE_SCALE (for example 3) to render store-listing screenshots.
+final double? _storeScale = double.tryParse(
+  Platform.environment['CAPTURE_SCALE'] ?? '',
+);
