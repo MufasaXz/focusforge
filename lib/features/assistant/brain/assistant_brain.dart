@@ -52,6 +52,10 @@ class AssistantBrain {
     if (_score(text, tokens, _boardWords) > 0) {
       return AssistantAction(Act.leaderboard, said: input);
     }
+    if (_score(text, tokens, _remindWords) == 0) {
+      final question = _studyQuestion(text, tokens, exam);
+      if (question != null) return question.copyWith(said: input);
+    }
     if (_score(text, tokens, _remindWords) > 0) {
       final request = ReminderRequest.parse(input, DateTime.now());
       final generic =
@@ -270,6 +274,137 @@ class AssistantBrain {
     'notifications',
     'alert',
     'yaad',
+  ];
+
+  /// "Top subject this month", "which subject did I study least", "monthly
+  /// performance", "how much did I study today", "custom plan for my
+  /// exam": questions about the user's own study, or null.
+  AssistantAction? _studyQuestion(
+    String text,
+    List<String> tokens,
+    String? exam,
+  ) {
+    final period = _period(text, tokens);
+    final most = _score(text, tokens, _mostWords) > 0;
+    final least = _score(text, tokens, _leastWords) > 0;
+    final aboutSubject =
+        _score(text, tokens, const ['subject', 'subjects', 'topic', 'topics']) >
+            0 ||
+        text.contains('studied most') ||
+        text.contains('study most') ||
+        text.contains('studied the most') ||
+        text.contains('studied least') ||
+        text.contains('study least');
+    if (aboutSubject && (most || least)) {
+      return AssistantAction(
+        Act.subjectStats,
+        arg: '${least && !most ? 'least' : 'top'}:${period ?? 'week'}',
+      );
+    }
+    final planning =
+        _score(text, tokens, _keywords[Act.plan]!) > 0 ||
+        _score(text, tokens, const [
+              'prepare',
+              'preparation',
+              'strategy',
+              'roadmap',
+            ]) >
+            0;
+    final examWords =
+        _score(text, tokens, const [
+          'exam',
+          'exams',
+          'test',
+          'paper',
+          'pariksha',
+        ]) >
+        0;
+    if (planning && examWords && exam == null) {
+      return const AssistantAction(Act.examPlan);
+    }
+    final howMuch =
+        _score(text, tokens, _keywords[Act.report]!) > 0 ||
+        _score(text, tokens, _amountWords) > 0;
+    if (howMuch && period != null && period != 'week') {
+      return AssistantAction(Act.periodStats, arg: period);
+    }
+    return null;
+  }
+
+  static String? _period(String text, List<String> tokens) {
+    if (_score(text, tokens, const ['today', 'todays', 'aaj']) > 0) {
+      return 'day';
+    }
+    if (_score(text, tokens, const [
+          'month',
+          'monthly',
+          'months',
+          'mahina',
+          'mahine',
+        ]) >
+        0) {
+      return 'month';
+    }
+    if (_score(text, tokens, const [
+          'week',
+          'weekly',
+          'weeks',
+          'hafta',
+          'hafte',
+        ]) >
+        0) {
+      return 'week';
+    }
+    if (_score(text, tokens, const [
+          'overall',
+          'all time',
+          'ever',
+          'so far',
+          'lifetime',
+          'total',
+        ]) >
+        0) {
+      return 'all';
+    }
+    return null;
+  }
+
+  static const _mostWords = [
+    'top',
+    'most',
+    'best',
+    'favourite',
+    'favorite',
+    'highest',
+    'max',
+    'maximum',
+    'strongest',
+    'zyada',
+    'jyada',
+    'sabse',
+  ];
+
+  static const _leastWords = [
+    'least',
+    'weakest',
+    'weak',
+    'lowest',
+    'worst',
+    'minimum',
+    'neglected',
+    'ignored',
+    'behind',
+    'kam',
+  ];
+
+  static const _amountWords = [
+    'how much',
+    'how many',
+    'hours',
+    'study time',
+    'studied',
+    'kitna',
+    'kitne',
   ];
 
   static const _boardWords = [
@@ -567,6 +702,9 @@ class AssistantBrain {
     ),
     Act.examReminder => _examReminder(s, notifications: action.value != 0),
     Act.leaderboard => _leaderboard(s),
+    Act.subjectStats => _subjectStats(s, action.arg ?? 'top:week'),
+    Act.periodStats => _periodStats(s, action.arg ?? 'week'),
+    Act.examPlan => examPlanReply(s, action.said),
     Act.reminders => remindersReply(s),
     Act.reminder || Act.reminderOff => remindersReply(s),
     Act.examReminderOff => AssistantReply(const [
@@ -593,6 +731,12 @@ class AssistantBrain {
       Copy('Comparing with last week…'),
     ],
     Act.distractions || Act.lock => const [Copy('Checking screen time…')],
+    Act.subjectStats ||
+    Act.periodStats => const [Copy('Reading your sessions…')],
+    Act.examPlan => const [
+      Copy('Reading your sessions…'),
+      Copy('Building your plan…'),
+    ],
     Act.exam || Act.examPick => const [Copy('Looking up the exam…')],
     _ => const [],
   };
@@ -1582,6 +1726,290 @@ class AssistantBrain {
         ],
       );
 
+  static Copy _periodName(String period) => switch (period) {
+    'day' => const Copy('today'),
+    'month' => const Copy('this month'),
+    'all' => const Copy('overall'),
+    _ => const Copy('this week'),
+  };
+
+  static int _minutesIn(SubjectTrend t, String period) => switch (period) {
+    'day' => t.today,
+    'month' => t.month,
+    'all' => t.total,
+    _ => t.thisWeek,
+  };
+
+  /// "Top subject this month", "which subject did I study least".
+  AssistantReply _subjectStats(StudySnapshot s, String arg) {
+    final [rank, period] = arg.split(':');
+    final when = _periodName(period);
+    final ranked = [...s.subjects]
+      ..sort((a, b) => _minutesIn(b, period).compareTo(_minutesIn(a, period)));
+    final total = ranked.fold(0, (sum, t) => sum + _minutesIn(t, period));
+    if (ranked.isEmpty || total == 0) {
+      return AssistantReply(
+        [
+          Say(Copy('No study logged {0} yet.', [when])),
+        ],
+        suggestions: [_startChip, _planChip],
+      );
+    }
+    if (rank == 'least') {
+      final last = ranked.last;
+      final minutes = _minutesIn(last, period);
+      return AssistantReply(
+        [
+          Say(
+            minutes == 0
+                ? Copy('{0} got no time {1}.', [Copy.raw(last.name), when])
+                : Copy('{0} got the least time {1}: {2}.', [
+                    Copy.raw(last.name),
+                    when,
+                    Minutes(minutes),
+                  ]),
+          ),
+        ],
+        suggestions: [
+          Suggestion(
+            Copy('Plan {0}', [Copy.raw(last.name)]),
+            Icons.event_note_rounded,
+            AssistantAction(Act.plan, arg: last.id),
+          ),
+          _timetableChip,
+        ],
+      );
+    }
+    final top = ranked.first;
+    final minutes = _minutesIn(top, period);
+    final next = ranked.length > 1 && _minutesIn(ranked[1], period) > 0
+        ? ranked[1]
+        : null;
+    return AssistantReply(
+      [
+        Say(
+          Copy('Your top subject {0} is {1}: {2}, {3}% of your study.', [
+            when,
+            Copy.raw(top.name),
+            Minutes(minutes),
+            Count((minutes * 100 / total).round()),
+          ]),
+        ),
+        if (next != null)
+          Say(
+            Copy('Next is {0} with {1}.', [
+              Copy.raw(next.name),
+              Minutes(_minutesIn(next, period)),
+            ]),
+          ),
+      ],
+      suggestions: [
+        Suggestion(
+          const Copy('Least studied'),
+          Icons.trending_down_rounded,
+          AssistantAction(Act.subjectStats, arg: 'least:$period'),
+        ),
+        _reportChip,
+      ],
+    );
+  }
+
+  /// "How much did I study today", "monthly performance", "total study".
+  AssistantReply _periodStats(StudySnapshot s, String period) {
+    if (period == 'week') return _report(s);
+    final topLine = _subjectStats(s, 'top:$period').says.first;
+    final lines = <Say>[];
+    switch (period) {
+      case 'day':
+        if (s.todayMinutes == 0) {
+          return AssistantReply(
+            const [
+              Say(
+                Copy('No study logged today yet. One block is a great start.'),
+              ),
+            ],
+            suggestions: [_startChip, _planChip],
+          );
+        }
+        lines.add(
+          Say(
+            Copy('Today: {0} in {1} sessions.', [
+              Minutes(s.todayMinutes),
+              Count(s.sessionsToday),
+            ]),
+          ),
+        );
+        if (s.goalMinutes > 0) {
+          lines.add(
+            Say(
+              Copy('That’s {0}% of today’s goal.', [
+                Count((s.todayMinutes * 100 / s.goalMinutes).round()),
+              ]),
+            ),
+          );
+        }
+      case 'month':
+        if (s.monthMinutes == 0) {
+          return AssistantReply(
+            const [
+              Say(
+                Copy(
+                  'No study logged this month yet. One block is a great start.',
+                ),
+              ),
+            ],
+            suggestions: [_startChip, _planChip],
+          );
+        }
+        lines.add(
+          Say(
+            Copy('This month: {0} over {1} days, about {2} on each.', [
+              Minutes(s.monthMinutes),
+              Count(s.monthDays),
+              Minutes(s.monthMinutes ~/ math.max(1, s.monthDays)),
+            ]),
+          ),
+        );
+        final change = s.monthMinutes - s.lastMonthSpanMinutes;
+        if (s.lastMonthSpanMinutes > 0 && change.abs() >= 30) {
+          lines.add(
+            Say(
+              change > 0
+                  ? Copy('That’s {0} more than this point last month.', [
+                      Minutes(change),
+                    ])
+                  : Copy('That’s {0} less than this point last month.', [
+                      Minutes(-change),
+                    ]),
+            ),
+          );
+        }
+      default:
+        if (s.totalMinutes == 0) {
+          return AssistantReply(
+            const [
+              Say(Copy('No study logged yet. One block is a great start.')),
+            ],
+            suggestions: [_startChip, _planChip],
+          );
+        }
+        lines.add(
+          Say(Copy('In all, you’ve studied {0}.', [Minutes(s.totalMinutes)])),
+        );
+    }
+    return AssistantReply(
+      [...lines, topLine],
+      suggestions: [
+        if (period != 'month')
+          const Suggestion(
+            Copy('This month'),
+            Icons.calendar_month_outlined,
+            AssistantAction(Act.periodStats, arg: 'month'),
+          ),
+        _reportChip,
+      ],
+    );
+  }
+
+  /// "Make a custom plan for my exam": a timetable for the nearest exam,
+  /// giving its subject the most time; the guide exam's plan when that is
+  /// the exam; or a question when Pip knows of none.
+  AssistantReply examPlanReply(StudySnapshot s, String? said) {
+    final today = DateTime(s.now.year, s.now.month, s.now.day);
+    final words = AssistantBrain.normalize(said ?? '').split(' ').toSet();
+    final upcoming = [
+      for (final r in s.memory.reminders)
+        if (r.exam && !r.day.isBefore(today)) r,
+    ]..sort((a, b) => a.at.compareTo(b.at));
+    final named = upcoming.where(
+      (r) => r.title
+          .toLowerCase()
+          .split(' ')
+          .any(
+            (w) => w.length >= 3 && !_examWord.contains(w) && words.contains(w),
+          ),
+    );
+    final target = named.firstOrNull ?? upcoming.firstOrNull;
+    if (target == null) {
+      final guide = examById(s.memory.examId);
+      if (guide != null) return _plan(s, 'exam:${guide.id}', 0);
+      return const AssistantReply(
+        [
+          Say(
+            Copy(
+              'Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.',
+            ),
+          ),
+        ],
+        suggestions: [_remindersChip],
+      );
+    }
+    final days = target.day.difference(today).inHours ~/ 24;
+    final title = Copy.raw(target.title);
+    if (days == 0) {
+      return AssistantReply([
+        Say(
+          Copy('{0} is today. Light revision only, you’ve got this.', [title]),
+        ),
+      ]);
+    }
+    final lowerTitle = target.title.toLowerCase();
+    final subject = s.subjects.where((t) {
+      final name = t.name.toLowerCase();
+      return lowerTitle.contains(name) ||
+          name
+              .split(' ')
+              .any(
+                (w) =>
+                    w.length >= 4 &&
+                    lowerTitle
+                        .split(' ')
+                        .any((x) => x.length >= 3 && w.startsWith(x)),
+              );
+    }).firstOrNull;
+    final base = timetableReply(s, said);
+    final card = base.says.last.card! as TimetableCard;
+    var timetable = card.timetable;
+    if (subject != null) {
+      // The exam's subject gets just over half of each day.
+      final share =
+          ((timetable.totalMinutes * 0.55) / Timetable.step).round() *
+          Timetable.step;
+      final others = [
+        for (final t in s.subjects)
+          if (t.id != subject.id) t.id,
+      ];
+      timetable = Timetable.plan(
+        totalMinutes: timetable.totalMinutes,
+        subjects: others,
+        asked: {subject.id: share},
+        startMinute: timetable.startMinute,
+        blockMinutes: timetable.blockMinutes,
+        breakMinutes: timetable.breakMinutes,
+      );
+    }
+    return AssistantReply([
+      Say(
+        subject == null
+            ? Copy(
+                '{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.',
+                [title, Count(days)],
+              )
+            : Copy(
+                '{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.',
+                [title, Count(days), Copy.raw(subject.name)],
+              ),
+      ),
+      Say.card(
+        TimetableCard(
+          timetable: timetable,
+          names: card.names,
+          colors: card.colors,
+        ),
+      ),
+    ], thinking: thinkingFor(Act.plan));
+  }
+
   /// When a new timetable starts: 5 PM, after school, or soon after now if
   /// the evening has already begun.
   static int defaultTimetableStart(DateTime now) {
@@ -1699,6 +2127,9 @@ class AssistantBrain {
         return true;
       case Act.lock ||
           Act.leaderboard ||
+          Act.subjectStats ||
+          Act.periodStats ||
+          Act.examPlan ||
           Act.reminder ||
           Act.reminders ||
           Act.reminderOff ||
@@ -1779,6 +2210,12 @@ class AssistantBrain {
 
   /// The study summary sent with an online question: numbers and names of
   /// subjects, never the user's name or email.
+  static String? _topSubject(StudySnapshot s) {
+    final ranked = s.subjects.where((t) => t.thisWeek > 0).toList()
+      ..sort((a, b) => b.thisWeek.compareTo(a.thisWeek));
+    return ranked.firstOrNull?.name;
+  }
+
   Map<String, dynamic> aiContext(StudySnapshot s) {
     final exam = examById(s.memory.examId);
     final days = s.daysToExam;
@@ -1799,9 +2236,10 @@ class AssistantBrain {
             'lastWeekSameDaysMinutes': t.lastWeekSpan,
           },
       ],
+      'topSubject': ?_topSubject(s),
+      // Screen time goes as one total. App names and packages stay on the
+      // phone: they say more about a person than their study does.
       if (s.usageReady) 'distractingMinutesToday': s.distractingMinutes,
-      if (s.usageReady)
-        'topDistractingApps': [for (final a in s.distracting.take(3)) a.name],
     };
   }
 

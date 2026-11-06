@@ -43,6 +43,10 @@ class StudySnapshot {
     this.subjects = const [],
     this.todayBySubject = const {},
     this.weekMinutes = 0,
+    this.monthMinutes = 0,
+    this.lastMonthSpanMinutes = 0,
+    this.monthDays = 0,
+    this.totalMinutes = 0,
     this.lastWeekSpanMinutes = 0,
     this.lastWeekMinutes = 0,
     this.dayparts = const [0, 0, 0, 0],
@@ -87,6 +91,13 @@ class StudySnapshot {
 
   /// Monday to now.
   final int weekMinutes;
+
+  /// This calendar month so far, last month up to the same day, the days
+  /// with any study this month, and everything ever logged.
+  final int monthMinutes;
+  final int lastMonthSpanMinutes;
+  final int monthDays;
+  final int totalMinutes;
 
   /// The same weekdays last week.
   final int lastWeekSpanMinutes;
@@ -247,12 +258,24 @@ class StudySnapshot {
     final lastMonday = addDays(monday, -7);
     final lastSpanEnd = addDays(lastMonday, today.weekday);
     final fourWeeks = addDays(today, -27);
+    final monthStart = DateTime(today.year, today.month);
+    final lastMonthStart = DateTime(today.year, today.month - 1);
+    // Last month up to the same day of the month, capped at its length.
+    final lastMonthSpanEnd = DateTime(
+      today.year,
+      today.month - 1,
+      math.min(today.day + 1, DateTime(today.year, today.month, 0).day + 1),
+    );
 
     final thisWeek = <String, int>{};
     final lastSpan = <String, int>{};
     final todayBy = <String, int>{};
+    final monthBy = <String, int>{};
+    final totalBy = <String, int>{};
+    final monthDays = <int>{};
     final dayparts = [0, 0, 0, 0];
     var week = 0, lastWeekSpan = 0, lastWeek = 0, sessionsToday = 0;
+    var month = 0, lastMonthSpan = 0, total = 0;
     for (final s in sessions) {
       if (!s.completed) continue;
       final at = s.startedAt;
@@ -273,6 +296,14 @@ class StudySnapshot {
         sessionsToday++;
       }
       if (within(fourWeeks, tomorrow)) dayparts[_daypart(at.hour)] += m;
+      if (within(monthStart, tomorrow)) {
+        monthBy.update(s.subjectId, (v) => v + m, ifAbsent: () => m);
+        monthDays.add(at.day);
+        month += m;
+      }
+      if (within(lastMonthStart, lastMonthSpanEnd)) lastMonthSpan += m;
+      totalBy.update(s.subjectId, (v) => v + m, ifAbsent: () => m);
+      total += m;
     }
 
     final trends = [
@@ -284,6 +315,8 @@ class StudySnapshot {
           thisWeek: thisWeek[subject.id] ?? 0,
           lastWeekSpan: lastSpan[subject.id] ?? 0,
           today: todayBy[subject.id] ?? 0,
+          month: monthBy[subject.id] ?? 0,
+          total: totalBy[subject.id] ?? 0,
           weekTarget: (subject.weekTarget * 60).round(),
         ),
     ];
@@ -343,6 +376,10 @@ class StudySnapshot {
       subjects: trends,
       todayBySubject: todayBy,
       weekMinutes: week,
+      monthMinutes: month,
+      lastMonthSpanMinutes: lastMonthSpan,
+      monthDays: monthDays.length,
+      totalMinutes: total,
       lastWeekSpanMinutes: lastWeekSpan,
       lastWeekMinutes: lastWeek,
       dayparts: dayparts,

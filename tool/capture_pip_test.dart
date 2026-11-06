@@ -378,4 +378,11 @@ class _FakeBackend implements AiBackend {
         'weakest chapter, skim the notes, then solve ten questions. Tap Start '
         'a block below when you are ready.';
   }
+
+  @override
+  Future<void> reportReply({
+    required String reply,
+    required String reason,
+    String? question,
+  }) async {}
 }

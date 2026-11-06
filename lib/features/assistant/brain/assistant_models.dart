@@ -142,6 +142,11 @@ enum Act {
   reminderOff,
   leaderboard,
 
+  // Questions about the user's own study, for a period.
+  subjectStats,
+  periodStats,
+  examPlan,
+
   // Answers to the one-time question about online answers.
   aiAllow,
   aiDecline,
@@ -159,6 +164,9 @@ enum Act {
 @immutable
 class AssistantAction {
   const AssistantAction(this.act, {this.arg, this.value, this.said});
+
+  AssistantAction copyWith({String? said}) =>
+      AssistantAction(act, arg: arg, value: value, said: said ?? this.said);
 
   final Act act;
 
@@ -205,6 +213,8 @@ class SubjectTrend {
     required this.thisWeek,
     required this.lastWeekSpan,
     required this.today,
+    this.month = 0,
+    this.total = 0,
     this.weekTarget = 0,
   });
 
@@ -218,6 +228,10 @@ class SubjectTrend {
   /// Minutes over the same weekdays last week.
   final int lastWeekSpan;
   final int today;
+
+  /// Minutes this calendar month, and in all time.
+  final int month;
+  final int total;
 
   /// The subject's weekly target in minutes, or 0 when it has none.
   final int weekTarget;

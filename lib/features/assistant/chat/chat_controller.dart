@@ -12,6 +12,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/services/ai_backend_service.dart';
+import '../../../core/services/local_store.dart';
 import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
@@ -174,6 +175,7 @@ class ChatController extends Notifier<ChatState> {
       _pending = said;
       return say(brain.aiConsentAsk());
     }
+    if (!_claimOnlineAnswer()) return _outOfEnergy(local);
     return _askOnline(said, local, backend);
   }
 
@@ -222,6 +224,90 @@ class ChatController extends Notifier<ChatState> {
       );
       if (phoneAnswers && generation == _generation) await run(local);
     }
+  }
+
+  /// Online answers each user gets a day, counted on the phone. The phone's
+  /// own answers have no limit.
+  static const onlineAnswersPerDay = 5;
+
+  /// Takes one of today's online answers, or false when they are used up.
+  bool _claimOnlineAnswer() {
+    final store = ref.read(localStoreProvider);
+    final now = DateTime.now();
+    final today = '${now.year}-${now.month}-${now.day}';
+    final day = store.getMap(StoreKeys.assistantAiDay);
+    final used = day?['day'] == today && day?['count'] is int
+        ? day!['count'] as int
+        : 0;
+    if (used >= onlineAnswersPerDay) return false;
+    unawaited(
+      store.setMap(StoreKeys.assistantAiDay, {
+        'day': today,
+        'count': used + 1,
+        if (day?['day'] == today && day?['told'] == true) 'told': true,
+      }),
+    );
+    return true;
+  }
+
+  /// Says once a day that the online answers are used up, then answers on
+  /// the phone as usual.
+  Future<void> _outOfEnergy(AssistantAction local) async {
+    final store = ref.read(localStoreProvider);
+    final day = {...?store.getMap(StoreKeys.assistantAiDay)};
+    if (day['told'] != true) {
+      day['told'] = true;
+      unawaited(store.setMap(StoreKeys.assistantAiDay, day));
+      await say(
+        const AssistantReply([
+          Say(
+            Copy(
+              'Daily Pip energy used up! Focus on your study block and come back tomorrow.',
+            ),
+          ),
+        ]),
+      );
+    }
+    if (local.act != Act.unknown) return run(local);
+  }
+
+  /// Sends a report of Pip's online answer in entry [entryId] for review,
+  /// and keeps a copy on the phone. True once the report is on its way.
+  Future<bool> report(int entryId, String reason) async {
+    final entries = state.entries;
+    final index = entries.indexWhere((e) => e.id == entryId);
+    if (index < 0) return false;
+    final strings = AppStrings(_locale());
+    final reply = entries[index].copy?.resolve(strings) ?? '';
+    final question = entries
+        .take(index)
+        .lastWhere((e) => !e.fromPip, orElse: () => entries[index])
+        .text;
+    final store = ref.read(localStoreProvider);
+    final kept = store.getMap(StoreKeys.assistantReports)?['items'];
+    await store.setMap(StoreKeys.assistantReports, {
+      'items': [
+        if (kept is List) ...kept.take(49),
+        {
+          'reason': reason,
+          'reply': reply,
+          'question': ?question,
+          'at': DateTime.now().toIso8601String(),
+        },
+      ],
+    });
+    final backend = ref.read(aiBackendProvider);
+    if (backend == null) return true;
+    try {
+      await backend.reportReply(
+        reply: reply,
+        reason: reason,
+        question: question,
+      );
+    } on AiBackendException {
+      // Kept on the phone; the copy there is enough to show it was flagged.
+    }
+    return true;
   }
 
   /// The last few lines of the conversation, oldest first, without the

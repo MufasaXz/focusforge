@@ -8,7 +8,6 @@ export const LIMITS = Object.freeze({
   historyTurns: 8,
   historyChars: 500,
   subjects: 8,
-  apps: 3,
   nameChars: 40,
   replyChars: 900,
 });
@@ -68,13 +67,9 @@ export function parseContext(raw) {
       .filter((s) => s.name);
     if (subjects.length) context.subjects = subjects;
   }
-  if (Array.isArray(raw.topDistractingApps)) {
-    const apps = raw.topDistractingApps
-      .slice(0, LIMITS.apps)
-      .map((name) => cleanText(name, LIMITS.nameChars))
-      .filter(Boolean);
-    if (apps.length) context.topDistractingApps = apps;
-  }
+  // Only totals about apps: never their names or packages.
+  const top = cleanText(raw.topSubject, LIMITS.nameChars);
+  if (top) context.topSubject = top;
   return context;
 }
 
@@ -117,10 +112,10 @@ export const HEAVY_TASK_REPLY =
   'I am Pip, designed only for quick study planning and motivation. Let’s focus on your current study block.';
 
 export const SYSTEM_PROMPT = [
-  'You are Pip, a lightweight, disciplined and concise study assistant inside the FocusForge study app, talking with one student.',
-  'Only help with study goals, focus blocks, breaking a schedule down, exam preparation habits and quick motivation.',
-  `Refuse heavy tasks: do not write long essays, solve complex multi-step coding problems, generate full question papers or keep up long general chit-chat. For those, reply exactly: "${HEAVY_TASK_REPLY}"`,
-  'Keep every reply to two or three short sentences and at most 80 words, in plain text with no markdown, lists, headings or emoji.',
+  'You are Pip, a disciplined and concise academic coach inside the FocusForge study app, talking with one student.',
+  'Only help with study goals, Pomodoro focus blocks, revision plans and nudges, exam preparation habits and calm, stoic motivation.',
+  `Refuse at once anything outside that: debugging or writing code, long essays, solutions to exam papers or homework, full question papers and non-academic chit-chat. For those, reply exactly: "${HEAVY_TASK_REPLY}"`,
+  'Keep every reply to two or three punchy sentences and at most 80 words, in plain text with no markdown, lists, headings or emoji.',
   'Be specific and practical. Use the study summary when it helps, and never invent numbers that are not in it.',
   'You know Indian entrance and board exams, including JEE Main and Advanced, NEET-UG, UPSC CSE, CAT, GATE, CUET-UG, CLAT, NDA and the CBSE, ICSE and state boards. Patterns and dates change every year, so point to the official notice for exact rules and dates.',
   'Encourage, never shame. Give no medical, legal or financial advice beyond everyday study habits. If the student mentions self-harm or a crisis, gently urge them to talk to someone they trust or a local helpline right away.',
@@ -227,4 +222,21 @@ export function readGroqReply(body) {
   const text = typeof choice.message?.content === 'string' ? choice.message.content.trim() : '';
   if (!text) return choice.finish_reason === 'content_filter' ? {blocked: true} : {empty: true};
   return {text: tidyReply(text)};
+}
+
+/** Why a user can report an answer. */
+export const REPORT_REASONS = Object.freeze(['harmful', 'hate', 'incorrect']);
+
+/**
+ * Validates a report of one answer: the reason, the answer and the question
+ * it answered, each bounded. Throws [InputError] when it is unusable.
+ */
+export function parseReport(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new InputError('Send a report.');
+  }
+  if (!REPORT_REASONS.includes(data.reason)) throw new InputError('Unknown reason.');
+  const reply = cleanText(data.reply, LIMITS.replyChars);
+  if (!reply) throw new InputError('Nothing to report.');
+  return {reason: data.reason, reply, question: cleanText(data.question, LIMITS.messageChars)};
 }

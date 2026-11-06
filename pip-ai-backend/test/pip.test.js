@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 
 import {
   HEAVY_TASK_REPLY,
+  parseReport,
   InputError,
   LIMITS,
   SYSTEM_PROMPT,
@@ -62,7 +63,9 @@ test('only known study fields survive, each bounded', () => {
       {name: '', thisWeekMinutes: 10},
       ...Array.from({length: 20}, (_, i) => ({name: `S${i}`})),
     ],
-    topDistractingApps: ['Instagram', 'YouTube', 'Snapchat', 'X', 'Reddit'],
+    topSubject: 'Physics',
+    topDistractingApps: ['Instagram', 'YouTube'],
+    distractingMinutesToday: 75,
   });
   assert.equal(context.exam, 'NEET-UG');
   assert.equal(context.daysToExam, 40);
@@ -72,7 +75,10 @@ test('only known study fields survive, each bounded', () => {
   assert.equal(context.email, undefined);
   assert.deepEqual(context.subjects[0], {name: 'Biology', thisWeekMinutes: 120, lastWeekSameDaysMinutes: 200});
   assert.ok(context.subjects.length <= LIMITS.subjects);
-  assert.deepEqual(context.topDistractingApps, ['Instagram', 'YouTube', 'Snapchat']);
+  // App names never reach the model; only the minutes do.
+  assert.equal(context.topDistractingApps, undefined);
+  assert.equal(context.distractingMinutesToday, 75);
+  assert.equal(context.topSubject, 'Physics');
   assert.deepEqual(parseContext('nope'), {});
   assert.deepEqual(parseContext([1, 2]), {});
 });
@@ -163,4 +169,21 @@ test('blocked and empty replies are told apart', () => {
   });
   assert.deepEqual(readGroqReply({choices: [{message: {content: null}, finish_reason: 'length'}]}), {empty: true});
   assert.deepEqual(readGroqReply({}), {empty: true});
+});
+
+test('a report needs a known reason and the answer it is about', () => {
+  assert.deepEqual(parseReport({reason: 'incorrect', reply: ' Wrong date. ', question: 'when is neet'}), {
+    reason: 'incorrect',
+    reply: 'Wrong date.',
+    question: 'when is neet',
+  });
+  assert.throws(() => parseReport({reason: 'boring', reply: 'x'}), InputError);
+  assert.throws(() => parseReport({reason: 'hate', reply: '  '}), InputError);
+  assert.throws(() => parseReport(null), InputError);
+});
+
+test('the rules keep Pip a short academic coach', () => {
+  assert.match(SYSTEM_PROMPT, /academic coach/);
+  assert.match(SYSTEM_PROMPT, /debugging or writing code/);
+  assert.match(SYSTEM_PROMPT, /exam papers/);
 });

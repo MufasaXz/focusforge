@@ -252,6 +252,8 @@ class StoreKeys {
   static const ambientVolumes = 'audio.volumes';
   static const ambientActive = 'audio.active';
   static const assistant = 'assistant.memory';
+  static const assistantAiDay = 'assistant.aiDay';
+  static const assistantReports = 'assistant.reports';
   static const dailyGoal = 'goal.daily';
   static const dailyGoalDays = 'goal.days';
   static const presets = 'focus.presets';

@@ -20,6 +20,11 @@ function limiter(allowed = true) {
   return {keys, limit: async ({key}) => (keys.push(key), {success: allowed})};
 }
 
+function store() {
+  const items = new Map();
+  return {items, put: async (key, value, options) => items.set(key, {value, options})};
+}
+
 function env(overrides = {}) {
   return {
     FIREBASE_PROJECT_ID: PROJECT,
@@ -29,6 +34,7 @@ function env(overrides = {}) {
     GROQ_MODEL: 'openai/gpt-oss-20b',
     PER_USER_LIMIT: limiter(),
     ALL_USERS_LIMIT: limiter(),
+    REPORTS: store(),
     ...overrides,
   };
 }
@@ -47,8 +53,8 @@ function providers({gemini = () => geminiOk('Gemini says hi.'), groq = () => gro
   });
 }
 
-async function ask(body, {token, headers = {}, method = 'POST', vars = env(), fetchImpl = providers()} = {}) {
-  const request = new Request(URL, {
+async function ask(body, {token, headers = {}, method = 'POST', vars = env(), fetchImpl = providers(), path = ''} = {}) {
+  const request = new Request(URL + path, {
     method,
     headers: {
       'content-type': 'application/json',
@@ -170,4 +176,24 @@ test('when both providers fail the app gets a code it can map', async () => {
 
   const noKeys = await ask({message: 'hi'}, {vars: env({GEMINI_API_KEY: '', GROQ_API_KEY: ''})});
   assert.equal(noKeys.status, 503);
+});
+
+test('a signed-in report is kept for review, and nothing else is asked', async () => {
+  const vars = env();
+  const fetchImpl = providers();
+  const result = await ask(
+    {reason: 'harmful', reply: 'Some answer.', question: 'hi'},
+    {vars, fetchImpl, path: 'report'},
+  );
+  assert.equal(result.status, 200);
+  const [[key, {value, options}]] = [...vars.REPORTS.items];
+  assert.match(key, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(JSON.parse(value).reason, 'harmful');
+  assert.equal(JSON.parse(value).uid, 'user-123');
+  assert.equal(options.expirationTtl, 90 * 24 * 60 * 60);
+  assert.ok(fetchImpl.calls.every((c) => !c.url.includes('generativelanguage')));
+
+  assert.equal((await ask({reason: 'x', reply: 'y'}, {vars, path: 'report'})).status, 400);
+  assert.equal((await ask({reason: 'hate', reply: 'y'}, {vars, path: 'report', token: null})).status, 401);
+  assert.equal((await ask({}, {vars, path: 'elsewhere'})).status, 404);
 });

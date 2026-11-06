@@ -55,7 +55,18 @@ abstract interface class AiBackend {
     List<Map<String, String>> history = const [],
     String locale = 'en',
   });
+
+  /// Sends a user's report of [reply] for review. [reason] is one of
+  /// [reportReasons]. Throws [AiBackendException] when it cannot be sent.
+  Future<void> reportReply({
+    required String reply,
+    required String reason,
+    String? question,
+  });
 }
+
+/// Why an answer can be reported, as the worker accepts them.
+const reportReasons = ['harmful', 'hate', 'incorrect'];
 
 /// Returns the signed-in user's Firebase ID token, or null when signed out.
 typedef IdTokenSource = Future<String?> Function();
@@ -146,6 +157,44 @@ class AiBackendService implements AiBackend {
       failureFor(response.statusCode, body),
       'HTTP ${response.statusCode} ${body['error'] ?? ''}'.trim(),
     );
+  }
+
+  @override
+  Future<void> reportReply({
+    required String reply,
+    required String reason,
+    String? question,
+  }) async {
+    final token = await _idToken().catchError((_) => null);
+    if (token == null || token.isEmpty) {
+      throw const AiBackendException(AiFailure.signedOut);
+    }
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            endpoint.resolve('report'),
+            headers: {
+              'authorization': 'Bearer $token',
+              'content-type': 'application/json',
+            },
+            body: jsonEncode({
+              'reason': reason,
+              'reply': reply,
+              'question': ?question,
+            }),
+          )
+          .timeout(timeout);
+    } on TimeoutException {
+      throw const AiBackendException(AiFailure.timeout);
+    } catch (error) {
+      throw AiBackendException(AiFailure.unavailable, '$error');
+    }
+    if (response.statusCode != 200) {
+      throw AiBackendException(
+        failureFor(response.statusCode, _decode(response.body)),
+      );
+    }
   }
 
   static Map<String, Object?> _decode(String text) {

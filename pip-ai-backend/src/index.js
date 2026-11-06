@@ -15,6 +15,7 @@ import {
   LIMITS,
   buildGeminiRequest,
   buildGroqRequest,
+  parseReport,
   parseRequest,
   readGeminiReply,
   readGroqReply,
@@ -115,7 +116,8 @@ export async function answer(request, env, fetchImpl = fetch) {
 
 async function handle(request, env, fetchImpl) {
   if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: CORS});
-  if (new URL(request.url).pathname !== '/') return json(404, {error: 'not-found'});
+  const path = new URL(request.url).pathname;
+  if (path !== '/' && path !== '/report') return json(404, {error: 'not-found'});
   if (request.method !== 'POST') return json(405, {error: 'method-not-allowed'}, {allow: 'POST, OPTIONS'});
 
   const bearer = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
@@ -132,6 +134,7 @@ async function handle(request, env, fetchImpl) {
   }
   const raw = await request.text();
   if (raw.length > LIMITS.bodyBytes) return json(413, {error: 'invalid-argument'});
+  if (path === '/report') return report(raw, uid, env);
   let parsed;
   try {
     parsed = parseRequest(JSON.parse(raw));
@@ -160,6 +163,36 @@ async function handle(request, env, fetchImpl) {
   return result.timedOut
     ? json(504, {error: 'deadline-exceeded'})
     : json(503, {error: 'unavailable'}, {'retry-after': '30'});
+}
+
+/** How long a report is kept for review. */
+const REPORT_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+/**
+ * Keeps a user's report of an answer for review, as Google Play asks of
+ * apps with generated content. Stored in KV for 90 days under a key that
+ * sorts by time; review with `wrangler kv key list --binding REPORTS`.
+ */
+async function report(raw, uid, env) {
+  let parsed;
+  try {
+    parsed = parseReport(JSON.parse(raw));
+  } catch (error) {
+    if (error instanceof SyntaxError || error instanceof InputError) {
+      return json(400, {error: 'invalid-argument'});
+    }
+    throw error;
+  }
+  const limit = await env.PER_USER_LIMIT.limit({key: `report:${uid}`});
+  if (!limit.success) return json(429, {error: 'resource-exhausted', window: 'minute'});
+  const at = new Date().toISOString();
+  await env.REPORTS.put(
+    `${at}:${crypto.randomUUID()}`,
+    JSON.stringify({...parsed, uid, at}),
+    {expirationTtl: REPORT_TTL_SECONDS},
+  );
+  console.log(JSON.stringify({event: 'reported', reason: parsed.reason}));
+  return json(200, {ok: true});
 }
 
 export default {

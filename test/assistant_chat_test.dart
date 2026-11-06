@@ -451,6 +451,57 @@ void main() {
     );
     expect(find.text('Open leaderboard'), findsOneWidget);
   });
+  testWidgets('five online answers a day, then the phone answers', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(reply: 'Online answer.');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+    await wait(tester);
+
+    for (var i = 0; i < ChatController.onlineAnswersPerDay + 2; i++) {
+      await ask(tester, 'please tell me one good way to revise physics');
+    }
+    expect(backend.questions, hasLength(ChatController.onlineAnswersPerDay));
+    final energy = container
+        .read(chatProvider)
+        .entries
+        .where(
+          (e) => e.copy?.key.startsWith('Daily Pip energy used up!') ?? false,
+        );
+    expect(energy, hasLength(1));
+  });
+
+  testWidgets('an online answer can be reported, and the study summary '
+      'names no apps', (tester) async {
+    final backend = _FakeBackend(reply: 'An answer to report.');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+    await wait(tester);
+    expect(find.textContaining('Pip is an AI study assistant'), findsOneWidget);
+
+    await ask(tester, question);
+    expect(backend.contexts.single!.containsKey('topDistractingApps'), isFalse);
+    expect(backend.contexts.single!['distractingMinutesToday'], 48);
+
+    await tester.tap(find.byTooltip('Report this answer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Incorrect or misleading advice'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Report'));
+    await tester.pumpAndSettle();
+
+    expect(backend.reports.single.$1, 'incorrect');
+    expect(backend.reports.single.$2, 'An answer to report.');
+    expect(backend.reports.single.$3, question);
+    expect(find.text('Thanks. This answer will be reviewed.'), findsOneWidget);
+    final kept =
+        container
+                .read(localStoreProvider)
+                .getMap(StoreKeys.assistantReports)!['items']
+            as List;
+    expect(kept.single['reason'], 'incorrect');
+  });
 }
 
 String jsonOf(Object? value) => '$value';
@@ -479,6 +530,15 @@ class _FakeBackend implements AiBackend {
     if (failure case final failure?) throw AiBackendException(failure);
     return reply!;
   }
+
+  @override
+  Future<void> reportReply({
+    required String reply,
+    required String reason,
+    String? question,
+  }) async => reports.add((reason, reply, question));
+
+  final reports = <(String, String, String?)>[];
 }
 
 /// A phone that has not let FocusForge notify.
