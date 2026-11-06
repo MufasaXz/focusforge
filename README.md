@@ -9,34 +9,24 @@
 
 FocusForge helps you block distractions, build a study routine, and keep track of the effort that turns into progress.
 
+**Now live on Google Play.**
+
 <p>
-  <a href="https://www.focus-forge.in/get-on-play"><img src="docs/readme/play-store.png" width="216" height="84" alt="Get on Play Store"></a>
+  <a href="https://play.google.com/store/apps/details?id=dev.focusforge.focusforge"><img src="docs/readme/play-store.png" width="216" height="84" alt="Get it on Google Play"></a>
   <a href="https://github.com/MufasaXz/focusforge/releases/latest"><img src="docs/readme/github.svg" width="216" height="84" alt="Get on GitHub"></a>
 </p>
 
 **Free & open source** · No ads · No subscriptions
 
-<sub>Version 1.0.0 · Android 7.0+ · MIT licensed</sub>
+<sub>Version 1.0.6 · Android 7.0+ · MIT licensed</sub>
 
 <br>
 
 ### A quieter space to do your best work.
 
-<p>
-  <a href="docs/screenshots/day.md"><img src="docs/readme/day.svg" width="140" height="42" alt="Open Day gallery"></a>
-  <a href="docs/screenshots/dark.md"><img src="docs/readme/dark.svg" width="140" height="42" alt="Open Dark gallery"></a>
-</p>
+<img src="docs/screenshots/store/row-1.webp" width="900" alt="FocusForge screenshots: Deep focus, one block at a time; Watch every subject add up; Block the apps that pull you away">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/gallery-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/gallery-day.png">
-  <img src="docs/screenshots/gallery-day.png" width="900" alt="FocusForge Home, Shield, Focus and You screens">
-</picture>
-
-<sub>A theme-aware preview. Choose Day or Dark to open either gallery.</sub>
-
-<br>
-<sub>Dark is a device capture of the 1.0.4 build; Day is a widget render with demo data. Both sit in illustrative phone frames. <a href="docs/screenshots/README.md">How the screenshots were made</a>.</sub>
+<img src="docs/screenshots/store/row-2.webp" width="900" alt="FocusForge screenshots: Keep YouTube for lectures; Meet Pip, your study buddy; Climb the weekly leaderboard">
 
 </div>
 
@@ -75,11 +65,9 @@ The timer also works without an account. Optional study groups and the weekly le
 
 ## Your next focused session starts here.
 
-1. **[Get on Play Store](https://www.focus-forge.in/get-on-play)** by following the closed-test steps, or **[get the APK on GitHub](https://github.com/MufasaXz/focusforge/releases/latest)**.
+1. **[Get it on Google Play](https://play.google.com/store/apps/details?id=dev.focusforge.focusforge)**, or **[get the APK on GitHub](https://github.com/MufasaXz/focusforge/releases/latest)**. The two are signed differently, so uninstall one before installing the other.
 2. **Choose your subjects and a daily goal.** Continue without an account, or link one for private profile backup and optional shared features.
 3. **Start your clock.** Enable the permissions for Shield when you want to block distractions.
-
-Want to help bring FocusForge to Google Play? We’re looking for **50+ testers**. [Join the closed test](https://www.focus-forge.in/get-on-play), stay opted in and keep the app installed for 14 consecutive days, use it for 1–5 minutes daily, and share honest feedback.
 
 Need help installing an APK? Follow the [installation guide](docs/play-protect.md).
 

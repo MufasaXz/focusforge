@@ -11,7 +11,7 @@ A light workspace for your next focused session.
 
 <img src="gallery-day.png" width="900" alt="FocusForge Day mode: Home, Shield, Focus and You">
 
-<sub>Version 1.0.3 · Build 2019 · Flutter widget render with fictional demo data.</sub>
+<sub>Version 1.0.6 · Flutter widget render with demo data, in the website's phone frame.</sub>
 
 </div>
 
@@ -33,6 +33,6 @@ Select a screen to open its original app render.
 
 <p align="center"><strong>Focus</strong> · One session at a time &nbsp; / &nbsp; <strong>You</strong> · Make it yours</p>
 
-The screenshots use real app widgets, bundled fonts, and fictional local fixtures. Phone borders are illustrative; these are not physical-device captures. [Screenshot provenance and reproduction](README.md).
+The screenshots use real app widgets, bundled fonts and made-up demo data, in the same phone frame as the website. They are not physical-device captures. [Screenshot provenance and reproduction](README.md).
 
 [← Back to FocusForge](../../README.md) · [Explore Dark](dark.md)
