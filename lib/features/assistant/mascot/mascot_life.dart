@@ -30,6 +30,7 @@ class MascotLife {
     _later(4000, 9000, _breathe);
     _later(2400, 2800, _puff);
     _later(3500, 6000, _turnPage);
+    _later(5000, 9000, _fidget);
   }
 
   void stop() {
@@ -79,9 +80,41 @@ class MascotLife {
     _later(4500, 7500, _breathe);
   }
 
+  /// The small things a little one does when nothing is happening: shift
+  /// from foot to foot, tilt its head at something, swing its feet.
+  void _fidget() {
+    final free =
+        !rig.sleeping &&
+        !rig.thinking &&
+        !rig.reading &&
+        !rig.presenting &&
+        !rig.wandering &&
+        !rig.fidgeting &&
+        !holdGaze;
+    if (free) {
+      final roll = _random.nextDouble();
+      final side = _random.nextBool() ? 1.0 : -1.0;
+      if (rig.sitting) {
+        if (roll < 0.6) rig.swingFeet();
+      } else if (roll < 0.45) {
+        rig.shiftWeight(side);
+      } else if (roll < 0.7) {
+        rig.tiltCurious(side);
+      }
+    }
+    _later(6000, 11000, _fidget);
+  }
+
+  /// While reading: a few lines read, now and then a page turned.
   void _turnPage() {
-    if (rig.reading) rig.flipPage();
-    _later(3500, 6500, _turnPage);
+    if (rig.reading) {
+      if (_random.nextDouble() < 0.7) {
+        rig.readLines();
+      } else {
+        rig.flipPage();
+      }
+    }
+    _later(3200, 5200, _turnPage);
   }
 
   void _puff() {

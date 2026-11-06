@@ -1,7 +1,10 @@
 // Pip's walk, slip and book.
 //
-// WHAT INVARIANT: a walk goes out and comes back, a slip drops Pip below the
-// bar and climbs it back up, and reading raises a book and turns its pages;
+// WHAT INVARIANT: a walk goes out and comes back with its feet stepping in
+// time with the ground covered, a slip drops Pip below the bar and climbs it
+// back up, reading raises a book, runs the eye along lines and turns pages,
+// and the little gestures (a yawn, a wiggle, a curious tilt, a weight shift,
+// swinging feet, a nod) play once;
 // each of them comes to rest so the frame scheduler goes quiet, sleep puts
 // the book away, and with reduce motion Pip neither walks nor slips.
 //
@@ -93,5 +96,61 @@ void main() {
     expect(rig.wandering, isFalse);
     expect(rig.pose.shiftX, 0);
     expect(rig.pose.dropY, 0);
+  });
+
+  testWidgets('a walk lands on both feet, leaning the way it goes', (
+    tester,
+  ) async {
+    final rig = await pumpPip(tester);
+    rig.walk(distance: -1, seconds: 4);
+    await play(tester, 900);
+    expect(rig.pose.roll, lessThan(0));
+    expect(rig.pose.lookX, lessThan(0));
+    // The pause halfway: both feet down.
+    await play(tester, 1100);
+    expect(rig.pose.step.abs(), lessThan(0.05));
+    await tester.pumpAndSettle();
+    expect(rig.pose.roll, 0);
+  });
+
+  testWidgets('every small gesture plays once and comes to rest', (
+    tester,
+  ) async {
+    final rig = await pumpPip(tester);
+    rig.yawn();
+    await play(tester, 900);
+    expect(rig.pose.mouth, greaterThan(1));
+    await tester.pumpAndSettle();
+
+    rig.wiggle();
+    await play(tester, 600);
+    expect(rig.pose.squint, greaterThan(0.5));
+    await tester.pumpAndSettle();
+
+    rig.tiltCurious(-1);
+    await play(tester, 700);
+    expect(rig.pose.tilt, lessThan(-0.1));
+    await tester.pumpAndSettle();
+
+    rig.shiftWeight();
+    rig.nod();
+    await tester.pumpAndSettle();
+
+    rig.sitDown();
+    rig.swingFeet();
+    await play(tester, 400);
+    expect(rig.pose.kick, isNot(0));
+    rig.reading = true;
+    rig.readLines();
+    await tester.pumpAndSettle();
+    expect(rig.moving, isFalse);
+    expect(rig.pose.kick, 0);
+
+    rig.reduceMotion = true;
+    rig.yawn();
+    rig.wiggle();
+    rig.swingFeet();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(rig.fidgeting, isFalse);
   });
 }
