@@ -5,4 +5,12 @@
 /// places that display it — the About screen, the profile's About row and the
 /// licences page — used to hold their own copies, which is how the readouts
 /// drifted a release behind the build.
-const kAppVersion = '1.0.0';
+///
+/// Google Play counts its own versions from 1.0.0, while GitHub releases carry
+/// on from 1.0.5. A GitHub build passes its number with
+/// `--build-name=1.0.6 --dart-define=APP_VERSION=1.0.6`; a Play build passes
+/// nothing and shows pubspec's version.
+const kAppVersion = String.fromEnvironment(
+  'APP_VERSION',
+  defaultValue: '1.0.0',
+);
