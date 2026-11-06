@@ -30,7 +30,9 @@ import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/leaderboard_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/core/models/shield.dart';
 import 'package:focusforge/features/dashboard/usage_stats.dart';
+import 'package:focusforge/shared/widgets/app_segmented_control.dart';
 import 'package:focusforge/features/focus/fullscreen_clock.dart';
 
 class _Board implements LeaderboardService {
@@ -93,6 +95,14 @@ void main() {
     Map<String, int> usageFor(DateTime day) {
       final i = day.weekday;
       if (day.isAfter(today)) return const {};
+      if (_storeScale != null) {
+        return {
+          'com.instagram.android': 35 + i * 8,
+          'com.google.android.youtube': 20 + (i * 11) % 40,
+          'com.whatsapp': 25 + (i * 7) % 20,
+          'com.snapchat.android': 10 + i * 4,
+        };
+      }
       return {
         'com.example.social': 40 + i * 9,
         'com.example.video': 25 + (i * 13) % 50,
@@ -107,28 +117,7 @@ void main() {
         shieldServiceProvider.overrideWithValue(engine),
         appListConsentProvider.overrideWith(() => AppListConsentNotifier(true)),
         installedAppsProvider.overrideWith(
-          (ref) async => const [
-            InstalledApp(
-              packageId: 'com.example.social',
-              name: 'Social',
-              isSystem: false,
-            ),
-            InstalledApp(
-              packageId: 'com.example.video',
-              name: 'Video',
-              isSystem: false,
-            ),
-            InstalledApp(
-              packageId: 'com.example.reader',
-              name: 'Reader',
-              isSystem: false,
-            ),
-            InstalledApp(
-              packageId: 'com.example.notes',
-              name: 'Notes',
-              isSystem: false,
-            ),
-          ],
+          (ref) async => _storeScale != null ? _storeApps : _reviewApps,
         ),
         appUsageTodayProvider.overrideWith((ref) async => usageFor(today)),
         dayUsageProvider.overrideWith((ref, day) async => usageFor(day)),
@@ -167,8 +156,12 @@ void main() {
       for (final (id, name, icon, color) in [
         ('math', 'Mathematics', 'calculate', SubjectPalette.math),
         ('physics', 'Physics', 'science', SubjectPalette.physics),
-        ('english', 'English', 'translate', SubjectPalette.english),
-        ('history', 'History', 'history_edu', SubjectPalette.history),
+        if (_storeScale != null)
+          ('chem', 'Chemistry', 'science', SubjectPalette.chemistry)
+        else ...[
+          ('english', 'English', 'translate', SubjectPalette.english),
+          ('history', 'History', 'history_edu', SubjectPalette.history),
+        ],
       ])
         Subject(
           id: id,
@@ -183,23 +176,25 @@ void main() {
       today.month,
       today.day - today.weekday + 1,
     );
-    final plan = <(int, String, int)>[
-      (0, 'math', 50),
-      (0, 'physics', 25),
-      (0, 'english', 25),
-      (1, 'math', 25),
-      (1, 'history', 50),
-      (2, 'physics', 50),
-      (2, 'math', 50),
-      (2, 'english', 25),
-      (3, 'math', 25),
-      (3, 'physics', 25),
-      (4, 'english', 50),
-      (4, 'math', 50),
-      (5, 'history', 25),
-      (5, 'math', 25),
-      (6, 'physics', 50),
-    ];
+    final plan = _storeScale != null
+        ? _storePlan
+        : <(int, String, int)>[
+            (0, 'math', 50),
+            (0, 'physics', 25),
+            (0, 'english', 25),
+            (1, 'math', 25),
+            (1, 'history', 50),
+            (2, 'physics', 50),
+            (2, 'math', 50),
+            (2, 'english', 25),
+            (3, 'math', 25),
+            (3, 'physics', 25),
+            (4, 'english', 50),
+            (4, 'math', 50),
+            (5, 'history', 25),
+            (5, 'math', 25),
+            (6, 'physics', 50),
+          ];
     final sessions = [
       for (final (i, (day, subject, minutes)) in plan.indexed)
         if (!DateTime(
@@ -222,6 +217,20 @@ void main() {
     container
         .read(sessionsProvider.notifier)
         .hydrate(sessions.map((session) => session.toJson()).toList());
+    if (_storeScale != null) {
+      // A Shield with real work in it: two apps blocked, one for focus only.
+      final shield = container.read(whitelistProvider.notifier);
+      for (final (id, name, tier) in [
+        ('com.instagram.android', 'Instagram', WhitelistTier.blocked),
+        ('com.snapchat.android', 'Snapchat', WhitelistTier.blocked),
+        ('com.google.android.youtube', 'YouTube', WhitelistTier.focusOnly),
+      ]) {
+        await shield.addInstalledApp(packageId: id, name: name, tier: tier);
+      }
+      container
+          .read(youtubeRulesProvider.notifier)
+          .hydrate(const YoutubeRules(shorts: true).toJson());
+    }
     container
         .read(statsProvider.notifier)
         .hydrate(
@@ -293,6 +302,23 @@ void main() {
         }
         final name = route.replaceAll('/', '-');
         await capture('$name-$label');
+        if (_storeScale != null && route == 'shield') {
+          await tester.tap(
+            find.descendant(
+              of: find.byWidgetPredicate((w) => w is AppSegmentedControl),
+              matching: find.text('YouTube'),
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 400));
+          await capture('shield-youtube-$label');
+        }
+        if (_storeScale != null && route == 'dashboard') {
+          await tester.ensureVisible(find.text('This week').first);
+          final week = find.text('This week').first;
+          await Scrollable.ensureVisible(tester.element(week), alignment: 0.04);
+          await tester.pump(const Duration(milliseconds: 400));
+          await capture('dashboard-week-$label');
+        }
         if (route == 'dashboard') {
           final list = find.byType(Scrollable).first;
           final state = tester.state<ScrollableState>(list);
@@ -321,3 +347,61 @@ void main() {
 final double? _storeScale = double.tryParse(
   Platform.environment['CAPTURE_SCALE'] ?? '',
 );
+
+const _reviewApps = [
+  InstalledApp(
+    packageId: 'com.example.social',
+    name: 'Social',
+    isSystem: false,
+  ),
+  InstalledApp(packageId: 'com.example.video', name: 'Video', isSystem: false),
+  InstalledApp(
+    packageId: 'com.example.reader',
+    name: 'Reader',
+    isSystem: false,
+  ),
+  InstalledApp(packageId: 'com.example.notes', name: 'Notes', isSystem: false),
+];
+
+/// Store screenshots show the apps students actually ask to block.
+const _storeApps = [
+  InstalledApp(
+    packageId: 'com.instagram.android',
+    name: 'Instagram',
+    isSystem: false,
+  ),
+  InstalledApp(
+    packageId: 'com.google.android.youtube',
+    name: 'YouTube',
+    isSystem: false,
+  ),
+  InstalledApp(packageId: 'com.whatsapp', name: 'WhatsApp', isSystem: false),
+  InstalledApp(
+    packageId: 'com.snapchat.android',
+    name: 'Snapchat',
+    isSystem: false,
+  ),
+];
+
+/// A full student week in three subjects: (day from Monday, subject, minutes).
+const _storePlan = <(int, String, int)>[
+  (0, 'math', 75),
+  (0, 'physics', 50),
+  (0, 'chem', 45),
+  (1, 'physics', 90),
+  (1, 'math', 50),
+  (1, 'chem', 25),
+  (2, 'chem', 75),
+  (2, 'math', 75),
+  (2, 'physics', 25),
+  (3, 'math', 100),
+  (3, 'physics', 45),
+  (3, 'chem', 40),
+  (4, 'physics', 60),
+  (4, 'chem', 50),
+  (4, 'math', 50),
+  (5, 'math', 50),
+  (5, 'chem', 50),
+  (6, 'physics', 40),
+  (6, 'math', 25),
+];
