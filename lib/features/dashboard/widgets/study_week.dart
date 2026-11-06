@@ -42,6 +42,7 @@ class WeekStudy {
     required this.monday,
     required this.days,
     required this.subjects,
+    this.recentPeak = 0,
   });
 
   final DateTime monday;
@@ -51,6 +52,13 @@ class WeekStudy {
 
   /// Every subject studied this week, busiest first.
   final List<WeekSubject> subjects;
+
+  /// The busiest of the [recentDays] days before today, in minutes, even
+  /// when they fall in last week. Sizes the chart to how much the user
+  /// usually studies, so a fresh Monday is not drawn on a 2-hour scale.
+  final int recentPeak;
+
+  static const recentDays = 4;
 
   int get total => subjects.fold(0, (sum, s) => sum + s.minutes);
 }
@@ -74,14 +82,20 @@ final weekStudyProvider = Provider<WeekStudy>((ref) {
   final days = List.generate(7, (_) => <String, int>{});
   final totals = <String, int>{};
   final labels = <String, String>{};
+  final recentStart = DateTime(
+    today.year,
+    today.month,
+    today.day - WeekStudy.recentDays,
+  );
+  final recent = <DateTime, int>{};
   for (final session in ref.watch(sessionsProvider)) {
     final at = session.startedAt;
-    if (!session.completed ||
-        session.minutes <= 0 ||
-        at.isBefore(monday) ||
-        !at.isBefore(next)) {
-      continue;
+    if (!session.completed || session.minutes <= 0) continue;
+    if (!at.isBefore(recentStart) && at.isBefore(today)) {
+      final date = DateTime(at.year, at.month, at.day);
+      recent[date] = (recent[date] ?? 0) + session.minutes;
     }
+    if (at.isBefore(monday) || !at.isBefore(next)) continue;
     final id = session.subjectId;
     final day = days[at.weekday - DateTime.monday];
     day[id] = (day[id] ?? 0) + session.minutes;
@@ -98,8 +112,21 @@ final weekStudyProvider = Provider<WeekStudy>((ref) {
         color: catalogue[id]?.color,
       ),
   ]..sort((a, b) => b.minutes.compareTo(a.minutes));
-  return WeekStudy(monday: monday, days: days, subjects: subjects);
+  return WeekStudy(
+    monday: monday,
+    days: days,
+    subjects: subjects,
+    recentPeak: recent.values.fold(0, (a, b) => a > b ? a : b),
+  );
 });
+
+/// The top of the week chart's scale, in whole hours, for a busiest day of
+/// [busiestMinutes]: rounded up to an even number, two at least, so the
+/// middle line always lands on a whole hour (0h · 2h · 4h, 0h · 3h · 6h).
+int weekScaleHours(int busiestMinutes) {
+  final hours = ((busiestMinutes / 60).ceil() + 1) ~/ 2 * 2;
+  return hours < 2 ? 2 : hours;
+}
 
 /// This week's focus on Home: the total, the days by subject, and the three
 /// subjects that took the most of it.
@@ -223,10 +250,8 @@ class StudyWeekChart extends StatelessWidget {
     final totals = [
       for (final stack in stacks) stack.fold(0, (sum, part) => sum + part.$2),
     ];
-    final busiest = totals.fold(0, (a, b) => a > b ? a : b);
-    // The scale rounds up to whole even hours, two at least.
-    final topHours = ((busiest / 60).ceil() + 1) ~/ 2 * 2;
-    final top = (topHours < 2 ? 2 : topHours) * 60;
+    final busiest = totals.fold(week.recentPeak, (a, b) => a > b ? a : b);
+    final top = weekScaleHours(busiest) * 60;
     final labelStyle = theme.textTheme.labelSmall?.copyWith(
       color: cs.onSurfaceVariant,
     );

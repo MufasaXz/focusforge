@@ -2,7 +2,9 @@
 //
 // WHAT INVARIANT: the week is Monday-aligned, counts completed focus only,
 // ranks subjects by their minutes, names the top three side by side and folds
-// every other subject into the bars without naming it.
+// every other subject into the bars without naming it. Its scale is a whole
+// even number of hours sized to the busiest of this week and the last four
+// days, so a quiet Monday keeps the scale of a busy weekend.
 //
 // WHY IT MATTERS: Home's chart answers "what did I study this week". A block
 // from last week, an abandoned block or a fourth subject in the legend would
@@ -16,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/widgets/study_week.dart';
@@ -84,14 +87,58 @@ void main() {
         90,
         completed: false,
       ).toJson(),
-      block(
-        'g',
-        'history',
-        at.subtract(const Duration(days: 3)),
-        120,
-      ).toJson(),
+      block('g', 'history', at.subtract(const Duration(days: 3)), 120).toJson(),
     ]);
   }
+
+  test('the chart scale is a whole even number of hours, two at least', () {
+    expect(
+      [
+        for (final m in [0, 60, 120, 121, 240, 241, 360, 450, 600, 721])
+          weekScaleHours(m),
+      ],
+      [2, 2, 2, 4, 4, 6, 6, 8, 10, 14],
+    );
+  });
+
+  test('the scale remembers the last four days, even across the week', () {
+    final container = freshContainer();
+    final today = container.read(focusCalendarDateProvider);
+    DateTime daysAgo(int n, [int hour = 9]) =>
+        DateTime(today.year, today.month, today.day - n, hour);
+    container.read(sessionsProvider.notifier).hydrate([
+      block('old', 'math', daysAgo(5), 600).toJson(),
+      block('a', 'math', daysAgo(3), 200).toJson(),
+      block('b', 'math', daysAgo(2), 200).toJson(),
+      block('c', 'physics', daysAgo(2, 15), 150).toJson(),
+      block('quit', 'math', daysAgo(1), 500, completed: false).toJson(),
+    ]);
+
+    expect(container.read(weekStudyProvider).recentPeak, 350);
+  });
+
+  testWidgets('a quiet start to the week keeps the recent scale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StudyWeekChart(
+            week: WeekStudy(
+              monday: monday,
+              days: List.generate(7, (_) => const <String, int>{}),
+              subjects: const [],
+              recentPeak: 330,
+            ),
+            named: const [],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('6h'), findsOneWidget);
+    expect(find.text('3h'), findsOneWidget);
+    expect(find.text('0h'), findsOneWidget);
+  });
 
   test('the week ranks subjects by their completed minutes', () {
     final container = freshContainer();
@@ -100,12 +147,10 @@ void main() {
     final week = container.read(weekStudyProvider);
 
     expect(week.monday, monday);
-    expect([for (final s in week.subjects) s.id], [
-      'math',
-      'physics',
-      'english',
-      'history',
-    ]);
+    expect(
+      [for (final s in week.subjects) s.id],
+      ['math', 'physics', 'english', 'history'],
+    );
     expect([for (final s in week.subjects) s.minutes], [75, 50, 40, 10]);
     expect(week.total, 175);
     expect(week.days.first['math'], 75);
