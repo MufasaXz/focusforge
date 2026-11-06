@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "اول آزمون و تاریخش را بگویید، مثل “physics test on 25 Nov”، تا برایش برنامه بریزم.",
   "{0} is today. Light revision only, you’ve got this.": "{0} امروز است. فقط مرور سبک، از پسش برمی‌آیید.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{1} روز تا {0} مانده است. این برنامهٔ روزانه برای آمادگی است. تغییرش دهید و ذخیره کنید.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{1} روز تا {0} مانده است. این برنامهٔ روزانه بیشترین وقت را به {2} می‌دهد. تغییرش دهید و ذخیره کنید."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{1} روز تا {0} مانده است. این برنامهٔ روزانه بیشترین وقت را به {2} می‌دهد. تغییرش دهید و ذخیره کنید.",
+  "How long a break do you want between study sessions? Pick it on the card.": "بین جلسه‌های مطالعه چقدر استراحت می‌خواهید؟ روی کارت انتخاب کنید.",
+  "Break between sessions": "استراحت بین جلسه‌ها"
 }

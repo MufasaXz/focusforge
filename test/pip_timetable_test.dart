@@ -153,6 +153,13 @@ void main() {
       );
       expect(b.total, 300);
       expect(b.asked, isEmpty);
+      final rest = Timetable.parseHours(
+        'physics 2 hours and a 15 min break between sessions',
+        names,
+      );
+      expect(rest.asked, {'physics': 120});
+      expect(rest.breakMinutes, 15);
+      expect(rest.total, isNull);
       final c = Timetable.parseHours('timetable please', names);
       expect(c.total, isNull);
       expect(c.asked, isEmpty);

@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "Hãy cho mình biết kỳ thi và ngày thi trước, như “physics test on 25 Nov”, rồi mình lập kế hoạch.",
   "{0} is today. Light revision only, you’ve got this.": "{0} là hôm nay. Chỉ ôn nhẹ thôi, bạn làm được.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "Còn {1} ngày nữa là {0}. Đây là kế hoạch hằng ngày để chuẩn bị. Thay đổi rồi lưu lại.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "Còn {1} ngày nữa là {0}. Kế hoạch hằng ngày này dành nhiều thời gian nhất cho {2}. Thay đổi rồi lưu lại."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "Còn {1} ngày nữa là {0}. Kế hoạch hằng ngày này dành nhiều thời gian nhất cho {2}. Thay đổi rồi lưu lại.",
+  "How long a break do you want between study sessions? Pick it on the card.": "Bạn muốn nghỉ bao lâu giữa các phiên học? Chọn trên thẻ.",
+  "Break between sessions": "Nghỉ giữa các phiên"
 }

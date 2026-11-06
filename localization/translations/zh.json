@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "先告诉我考试和日期，比如“physics test on 25 Nov”，我再来规划。",
   "{0} is today. Light revision only, you’ve got this.": "{0}就在今天。轻松复习就好，你一定行。",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "距离{0}还有{1}天。这是备考的每日计划，改好后保存。",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "距离{0}还有{1}天。这份每日计划给{2}最多时间，改好后保存。"
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "距离{0}还有{1}天。这份每日计划给{2}最多时间，改好后保存。",
+  "How long a break do you want between study sessions? Pick it on the card.": "每段学习之间想休息多久？在卡片上选择。",
+  "Break between sessions": "学习时段间休息"
 }

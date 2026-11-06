@@ -47,6 +47,9 @@ class Timetable {
     this.remind = true,
   }) : subjectMinutes = Map.unmodifiable(subjectMinutes);
 
+  /// Break lengths the card offers between blocks.
+  static const breakChoices = [5, 10, 15, 20];
+
   /// What one tap on a subject's − or + changes.
   static const step = 30;
 
@@ -228,7 +231,7 @@ class Timetable {
   /// [names] maps each subject id to its name. A duration in the same part of
   /// the sentence as a subject's name is that subject's; one alone is the
   /// day's total.
-  static ({int? total, Map<String, int> asked}) parseHours(
+  static ({int? total, Map<String, int> asked, int? breakMinutes}) parseHours(
     String said,
     Map<String, String> names,
   ) {
@@ -236,9 +239,15 @@ class Timetable {
     final parts = text.split(RegExp(r'[,;/&\n]|\band\b|\baur\b|\bthen\b'));
     final asked = <String, int>{};
     int? total;
+    int? rest;
     for (final part in parts) {
       final minutes = _duration(part);
       if (minutes == null) continue;
+      // "10 min break", "15 minute gap": the pause between blocks.
+      if (RegExp(r'\b(break|breaks|rest|gap|pause|chutti)\b').hasMatch(part)) {
+        rest ??= minutes.clamp(0, 30);
+        continue;
+      }
       final id = _subjectIn(part, names);
       if (id != null) {
         asked[id] = (asked[id] ?? 0) + minutes;
@@ -246,7 +255,7 @@ class Timetable {
         total ??= minutes;
       }
     }
-    return (total: total, asked: asked);
+    return (total: total, asked: asked, breakMinutes: rest);
   }
 
   static final _hours = RegExp(

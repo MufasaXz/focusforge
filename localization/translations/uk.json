@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "Спершу назвіть іспит і дату, наприклад «physics test on 25 Nov», і я складу план.",
   "{0} is today. Light revision only, you’ve got this.": "{0} сьогодні. Лише легке повторення — у вас вийде.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "До {0} залишилося днів: {1}. Ось денний план підготовки. Змініть і збережіть.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "До {0} залишилося днів: {1}. У цьому плані найбільше часу має {2}. Змініть і збережіть."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "До {0} залишилося днів: {1}. У цьому плані найбільше часу має {2}. Змініть і збережіть.",
+  "How long a break do you want between study sessions? Pick it on the card.": "Яка перерва потрібна між навчальними сесіями? Виберіть її на картці.",
+  "Break between sessions": "Перерва між сесіями"
 }

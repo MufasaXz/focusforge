@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "Beritahu saya peperiksaan dan tarikhnya dahulu, seperti “physics test on 25 Nov”, kemudian saya rancang.",
   "{0} is today. Light revision only, you’ve got this.": "{0} hari ini. Ulang kaji ringan sahaja, anda boleh.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0} lagi {1} hari. Ini pelan harian untuk bersedia. Tukar, kemudian simpan.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} lagi {1} hari. Pelan harian ini memberi {2} masa paling banyak. Tukar, kemudian simpan."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} lagi {1} hari. Pelan harian ini memberi {2} masa paling banyak. Tukar, kemudian simpan.",
+  "How long a break do you want between study sessions? Pick it on the card.": "Berapa lama rehat yang anda mahu antara sesi belajar? Pilih pada kad.",
+  "Break between sessions": "Rehat antara sesi"
 }

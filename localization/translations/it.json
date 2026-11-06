@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "Dimmi prima l’esame e la data, come “physics test on 25 Nov”, e lo pianificherò.",
   "{0} is today. Light revision only, you’ve got this.": "{0} è oggi. Solo un ripasso leggero, ce la fai.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "Mancano {1} giorni a {0}. Ecco un piano giornaliero per prepararti. Modificalo, poi salva.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "Mancano {1} giorni a {0}. Questo piano giornaliero dà più tempo a {2}. Modificalo, poi salva."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "Mancano {1} giorni a {0}. Questo piano giornaliero dà più tempo a {2}. Modificalo, poi salva.",
+  "How long a break do you want between study sessions? Pick it on the card.": "Quanta pausa vuoi tra una sessione di studio e l’altra? Sceglila sulla scheda.",
+  "Break between sessions": "Pausa tra le sessioni"
 }

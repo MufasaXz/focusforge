@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "ముందు పరీక్ష, దాని తేదీ చెప్పండి, ఉదా. “physics test on 25 Nov”, తర్వాత ప్లాన్ చేస్తాను.",
   "{0} is today. Light revision only, you’ve got this.": "{0} ఈరోజే. తేలికపాటి రివిజన్ మాత్రమే, మీరు చేయగలరు.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0}కి ఇంకా {1} రోజులు. సిద్ధం కావడానికి ఇదిగో రోజువారీ ప్లాన్. మార్చి సేవ్ చేయండి.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0}కి ఇంకా {1} రోజులు. ఈ రోజువారీ ప్లాన్ {2}కి ఎక్కువ సమయం ఇస్తుంది. మార్చి సేవ్ చేయండి."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0}కి ఇంకా {1} రోజులు. ఈ రోజువారీ ప్లాన్ {2}కి ఎక్కువ సమయం ఇస్తుంది. మార్చి సేవ్ చేయండి.",
+  "How long a break do you want between study sessions? Pick it on the card.": "చదువు సెషన్ల మధ్య ఎంత విరామం కావాలి? కార్డ్‌లో ఎంచుకోండి.",
+  "Break between sessions": "సెషన్ల మధ్య విరామం"
 }

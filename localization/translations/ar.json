@@ -1604,5 +1604,7 @@
   "Tell me the exam and its date first, like “physics test on 25 Nov”, and I’ll plan for it.": "أخبرني أولًا بالامتحان وتاريخه، مثل “physics test on 25 Nov”، وسأخطط له.",
   "{0} is today. Light revision only, you’ve got this.": "{0} اليوم. مراجعة خفيفة فقط، ستنجح.",
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "بقي {1} يومًا على {0}. إليك خطة يومية للاستعداد. عدّلها ثم احفظها.",
-  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "بقي {1} يومًا على {0}. تمنح هذه الخطة اليومية {2} أكبر وقت. عدّلها ثم احفظها."
+  "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "بقي {1} يومًا على {0}. تمنح هذه الخطة اليومية {2} أكبر وقت. عدّلها ثم احفظها.",
+  "How long a break do you want between study sessions? Pick it on the card.": "كم تريد أن تكون الاستراحة بين جلسات الدراسة؟ اخترها من البطاقة.",
+  "Break between sessions": "الاستراحة بين الجلسات"
 }

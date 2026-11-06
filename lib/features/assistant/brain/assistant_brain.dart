@@ -1535,10 +1535,15 @@ class AssistantBrain {
     final names = {for (final t in s.subjects) t.id: t.name};
     final parsed = Timetable.parseHours(said ?? '', names);
     final saved = s.memory.timetable;
-    final asked = parsed.total != null || parsed.asked.isNotEmpty;
+    final asked =
+        parsed.total != null ||
+        parsed.asked.isNotEmpty ||
+        parsed.breakMinutes != null;
     final Timetable timetable;
     if (saved != null && !asked) {
       timetable = saved;
+    } else if (saved != null && parsed.total == null && parsed.asked.isEmpty) {
+      timetable = saved.copyWith(breakMinutes: parsed.breakMinutes);
     } else {
       // Subjects falling behind last week come first, then the least studied.
       final order = [...s.subjects]
@@ -1555,7 +1560,10 @@ class AssistantBrain {
         asked: parsed.asked,
         startMinute: saved?.startMinute ?? defaultTimetableStart(s.now),
         blockMinutes: s.blockMinutes.clamp(25, 90),
-        breakMinutes: s.breakMinutes.clamp(5, 20),
+        breakMinutes:
+            parsed.breakMinutes ??
+            saved?.breakMinutes ??
+            s.breakMinutes.clamp(5, 20),
       );
     }
     return AssistantReply([
@@ -1567,6 +1575,12 @@ class AssistantBrain {
                 [Minutes(timetable.totalMinutes)],
               ),
       ),
+      if (parsed.breakMinutes == null)
+        const Say(
+          Copy(
+            'How long a break do you want between study sessions? Pick it on the card.',
+          ),
+        ),
       Say.card(
         TimetableCard(
           timetable: timetable,

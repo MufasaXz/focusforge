@@ -712,6 +712,20 @@ class _TimetableCardViewState extends State<TimetableCardView> {
           ]),
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
+        _Subhead(context.tr('Break between sessions')),
+        Wrap(
+          spacing: Gap.sm,
+          runSpacing: Gap.xs,
+          children: [
+            for (final minutesOff in Timetable.breakChoices)
+              ChoiceChip(
+                label: Text(minutes(minutesOff)),
+                selected: _draft.breakMinutes == minutesOff,
+                onSelected: (_) =>
+                    _change(_draft.copyWith(breakMinutes: minutesOff)),
+              ),
+          ],
+        ),
         _Subhead(context.tr('Your day')),
         for (final slot in _draft.slots)
           Padding(
