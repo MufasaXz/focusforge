@@ -79,18 +79,20 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.focusforge/pip").setMethodCallHandler { call, result ->
             when (call.method) {
                 "schedule" -> {
-                    val at = call.argument<Number>("at")?.toLong()
-                    val title = call.argument<String>("title")
-                    val body = call.argument<String>("body")
-                    if (at == null || title.isNullOrBlank() || body.isNullOrBlank()) {
-                        result.error("bad_args", "at, title and body are required", null)
-                    } else {
-                        PipNudges.schedule(applicationContext, at, title, body)
-                        result.success(null)
+                    val items = call.argument<List<Map<String, Any?>>>("items")
+                    val reminders = items.orEmpty().mapNotNull { item ->
+                        val id = (item["id"] as? Number)?.toInt()
+                        val at = (item["at"] as? Number)?.toLong()
+                        val title = item["title"] as? String
+                        val body = item["body"] as? String
+                        val stale = (item["stale"] as? Number)?.toLong() ?: 3 * 60 * 60 * 1000L
+                        if (id == null || at == null || title.isNullOrBlank() || body.isNullOrBlank()) {
+                            null
+                        } else {
+                            PipNudges.Reminder(id, at, title, body, stale)
+                        }
                     }
-                }
-                "cancel" -> {
-                    PipNudges.cancel(applicationContext)
+                    PipNudges.schedule(applicationContext, reminders)
                     result.success(null)
                 }
                 else -> result.notImplemented()

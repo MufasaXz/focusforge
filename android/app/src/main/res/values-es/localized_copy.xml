@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">Elige un canal de estudio reconocido.</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">FocusForge comprueba los identificadores de pantalla de YouTube sólo cuando habilitas Shorts o filtros de feeds, para distinguir estas pantallas de los vídeos normales. Las comprobaciones de pantalla permanecen en su dispositivo y no se retienen ni se cargan. Mientras una pausa de YouTube es visible, los nombres de los paquetes de la ventana de la aplicación se verifican solo para cerrar la pausa cuando sale; El contenido de otras aplicaciones no se inspecciona. No lee mensajes, contraseñas ni texto que escribas. Las decisiones de pausa y sus tiempos se guardan solo en este dispositivo para obtener información de Shield. El acceso es opcional y se puede desactivar en la configuración de Android. Los límites normales de las aplicaciones utilizan el acceso de uso y Dibujar sobre otras aplicaciones; el temporizador de enfoque funciona sin ninguno de estos.</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Recordatorios de Pip</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">Un empujón de Pip los días que no has estudiado</string>
   <string name="ff_copy_08b041935798" formatted="false">Tú</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">Recordatorios de estudio de Pip para tu horario, tu examen y los días sin estudiar</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">Cortometrajes de YouTube y filtros de feeds opcionales.</string>
   <string name="ff_block_back" formatted="false">Volver a lo que importa</string>
   <string name="ff_block_anyway" formatted="false">Pausa y respira</string>

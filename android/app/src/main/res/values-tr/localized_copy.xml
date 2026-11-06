@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">Tanınmış bir çalışma kanalı seçin.</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">FocusForge, YouTube ekran tanımlayıcılarını yalnızca Kısa Videoları veya yayın filtrelerini etkinleştirdiğinizde, bu ekranları sıradan videolardan ayırmak için kontrol eder. Ekran kontrolleri cihazınızda kalır ve saklanmaz veya yüklenmez. YouTube duraklaması görünürken, uygulama penceresi paket adları yalnızca siz ayrıldığınızda duraklatmayı kapatmak için kontrol edilir; diğer uygulamaların içerikleri incelenmez. Yazdığınız mesajları, şifreleri veya metinleri okumaz. Duraklatma kararları ve süreleri, Kalkan analizleri için yalnızca bu cihaza kaydedilir. Erişim isteğe bağlıdır ve Android Ayarları\'ndan kapatılabilir. Normal uygulama sınırları, Kullanım erişimini ve Çizim\'i diğer uygulamalar üzerinden kullanır; odak zamanlayıcısı bunların hiçbiri olmadan çalışır.</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Pip hatırlatıcıları</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">Çalışmadığınız günlerde Pip’ten küçük bir hatırlatma</string>
   <string name="ff_copy_08b041935798" formatted="false">Sen</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">Ders programınız, sınavınız ve çalışılmayan günler için Pip’ten hatırlatmalar</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">İsteğe bağlı YouTube Shorts ve yayın filtreleri.</string>
   <string name="ff_block_back" formatted="false">Önemli olana geri dön</string>
   <string name="ff_block_anyway" formatted="false">Duraklatın ve nefes alın</string>

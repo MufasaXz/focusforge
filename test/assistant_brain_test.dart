@@ -307,7 +307,7 @@ void main() {
       );
     });
 
-    test('a quiet day with the goal in hand has nothing to nag about', () {
+    test('a quiet day with the goal in hand brings praise, not nagging', () {
       final tips = brain.homeTips(
         snapshot(
           todayMinutes: 60,
@@ -316,7 +316,10 @@ void main() {
           memory: const AssistantMemory(examId: 'cat'),
         ),
       );
-      expect(tips, isEmpty);
+      expect([for (final tip in tips) tip.copy.key], [
+        'You’re doing great: {0} of focus today.',
+        'Want a study timetable for your day?',
+      ]);
     });
   });
 }

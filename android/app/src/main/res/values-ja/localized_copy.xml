@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">認知された学習チャンネルを選択してください。</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">FocusForge は、ショート動画またはフィード フィルタを有効にした場合にのみ YouTube 画面識別子をチェックして、これらの画面を通常の動画と区別します。画面チェックはデバイス上に残り、保持またはアップロードされません。 YouTube の一時停止が表示されている間、アプリケーション ウィンドウのパッケージ名は、終了時に一時停止を閉じるためにのみチェックされます。他のアプリのコンテンツは検査されません。メッセージ、パスワード、または入力したテキストは読み取られません。一時停止の決定とその時間は、Shield の洞察のためにこのデバイスにのみ保存されます。アクセスはオプションであり、Android の設定でオフにすることができます。通常のアプリの境界は、使用状況アクセスを使用し、他のアプリの上に描画します。フォーカス タイマーはこれらが何もなくても機能します。</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Pipのリマインダー</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">勉強していない日にPipから届くひと声</string>
   <string name="ff_copy_08b041935798" formatted="false">自分</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">時間割、試験、勉強していない日のためのPipからのリマインダー</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">オプションの YouTube ショートとフィード フィルター。</string>
   <string name="ff_block_back" formatted="false">重要なことに戻る</string>
   <string name="ff_block_anyway" formatted="false">立ち止まって深呼吸してください</string>

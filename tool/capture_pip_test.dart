@@ -224,6 +224,9 @@ void main() {
       'sit',
       'sleep',
       'head',
+      'read',
+      'walk',
+      'slip',
     ];
     for (final MapEntry(key: label, value: theme) in themes.entries) {
       final rigs = {for (final pose in poses) pose: MascotRig()};
@@ -261,6 +264,9 @@ void main() {
           ),
         ),
       );
+      rigs['slip']!.slip(edge: 0.7);
+      rigs['walk']!.walk();
+      rigs['read']!.reading = true;
       rigs['sit']!.sitDown();
       rigs['sleep']!.fallAsleep();
       rigs['look']!.lookAt(-0.9, 0.35);
@@ -309,6 +315,13 @@ void main() {
         ('plan', const AssistantAction(Act.plan)),
         ('lock', const AssistantAction(Act.distractions)),
         ('exam', const AssistantAction(Act.exam, arg: 'jee-main')),
+        (
+          'timetable',
+          const AssistantAction(
+            Act.timetable,
+            said: 'physics 2 hours and biology 1 hour, 4 hours a day',
+          ),
+        ),
       ]) {
         container.read(chatProvider.notifier).clear();
         await frames(const Duration(milliseconds: 100));

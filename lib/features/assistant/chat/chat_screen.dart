@@ -17,9 +17,11 @@ import '../../../shared/widgets/expressive_loading_indicator.dart';
 import '../../shield/shield_access.dart';
 import '../assistant_memory.dart';
 import '../brain/assistant_models.dart';
+import '../brain/timetable.dart';
 import '../home/pip_dock.dart' show TypingDots;
 import '../mascot/mascot.dart';
 import '../mascot/mascot_life.dart';
+import '../mascot/mascot_painter.dart' show MascotColors;
 import '../mascot/mascot_rig.dart';
 import '../nudges/pip_nudges.dart';
 import 'chat_cards.dart';
@@ -341,6 +343,10 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                             unawaited(_chat.startBlock(subject)),
                         onSave: (plan) =>
                             unawaited(_chat.savePlan(entry.id, plan)),
+                        onSaveTimetable: (timetable) =>
+                            unawaited(_chat.saveTimetable(entry.id, timetable)),
+                        onUseTimetable: (timetable) =>
+                            unawaited(_chat.useTimetableToday(timetable)),
                         onGoal: (minutes) => unawaited(
                           _chat.choose(
                             Suggestion(
@@ -457,6 +463,8 @@ class _EntryView extends StatelessWidget {
     required this.onLock,
     required this.onStart,
     required this.onSave,
+    required this.onSaveTimetable,
+    required this.onUseTimetable,
     required this.onGoal,
   });
 
@@ -467,6 +475,8 @@ class _EntryView extends StatelessWidget {
   final Future<void> Function(List<AppMinutes>, bool) onLock;
   final ValueChanged<String?> onStart;
   final ValueChanged<PlanCard> onSave;
+  final ValueChanged<Timetable> onSaveTimetable;
+  final ValueChanged<Timetable> onUseTimetable;
   final ValueChanged<int> onGoal;
 
   @override
@@ -525,6 +535,12 @@ class _EntryView extends StatelessWidget {
       LockCard() => LockCardView(card: card, onLock: onLock),
       ExamCard() => ExamCardView(card: card),
       GoalCard() => GoalCardView(card: card, onPick: onGoal),
+      TimetableCard() => TimetableCardView(
+        card: card,
+        saved: saved,
+        onSave: onSaveTimetable,
+        onUseToday: onUseTimetable,
+      ),
       ActionCard() => ActionCardView(card: card, onAction: onAction),
       null => _PipLine(entry: entry, first: first),
     };
@@ -555,8 +571,7 @@ BorderRadiusDirectional _pipBubble({required bool first}) =>
       bottomEnd: const Radius.circular(20),
     );
 
-/// One line of Pip's, written in as it arrives, with a note when it came
-/// from the online model. Hold to copy.
+/// One line of Pip's, written in as it arrives. Hold to copy.
 class _PipLine extends StatelessWidget {
   const _PipLine({required this.entry, required this.first});
 
@@ -593,32 +608,7 @@ class _PipLine extends StatelessWidget {
         ),
       ),
     );
-    if (!entry.online) return bubble;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        bubble,
-        Padding(
-          padding: const EdgeInsetsDirectional.only(start: 6, top: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.cloud_done_outlined,
-                size: 14,
-                color: cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: Gap.xs),
-              Text(
-                context.tr('Answered online'),
-                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return bubble;
   }
 }
 
@@ -1018,6 +1008,7 @@ class _Composer extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final canSend = controller.text.trim().isNotEmpty;
+    final pip = MascotColors.of(Theme.of(context));
     return SafeArea(
       top: false,
       child: Padding(
@@ -1056,9 +1047,17 @@ class _Composer extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Gap.sm),
+            // Pip's own orange with a white arrow, the same in light and
+            // dark themes, rather than the pale primary of a dark scheme.
             IconButton.filled(
               onPressed: canSend ? onSend : null,
               tooltip: context.tr('Send'),
+              style: IconButton.styleFrom(
+                backgroundColor: pip.bodyDeep,
+                foregroundColor: pip.face,
+                disabledBackgroundColor: cs.onSurface.withValues(alpha: .12),
+                disabledForegroundColor: cs.onSurface.withValues(alpha: .38),
+              ),
               icon: const Icon(Icons.arrow_upward_rounded),
             ),
           ],

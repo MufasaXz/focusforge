@@ -91,8 +91,8 @@ object DeviceStrings {
         "Choose a recognized study channel." to R.string.ff_copy_ada49350069b,
         "FocusForge checks YouTube screen identifiers only when you enable Shorts or feed filters, to distinguish these screens from ordinary videos. Screen checks stay on your device and are not retained or uploaded. While a YouTube pause is visible, application window package names are checked only to close the pause when you leave; other apps’ contents are not inspected. It does not read messages, passwords or text you type. Pause decisions and their times are saved only on this device for Shield insights. Access is optional and can be turned off in Android Settings. Normal app boundaries use Usage access and Draw over other apps; the focus timer works without any of these." to R.string.ff_copy_60d50f8362bc,
         "Pip’s reminders" to R.string.ff_copy_bd0c865a242a,
-        "A study nudge from Pip on days you have not studied" to R.string.ff_copy_ede61e5e13a0,
         "You" to R.string.ff_copy_08b041935798,
+        "Study reminders from Pip for your timetable, your exam and days without study" to R.string.ff_copy_982f515c0e10,
         "Optional YouTube Shorts and feed filters." to R.string.ff_copy_ae65b32f89c1,
     )
     private val slot = Regex("\\{(\\d+)\\}")

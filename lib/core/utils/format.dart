@@ -90,6 +90,15 @@ String formatWeekday(DateTime date, {ui.Locale? locale}) {
   return DateFormat.EEEE(_strings(locale).locale.languageCode).format(date);
 }
 
+/// A time of day, [minuteOfDay] minutes after midnight, the way the phone's
+/// language writes it: 5:00 PM, 17:00.
+String formatTimeOfDay(int minuteOfDay, {ui.Locale? locale}) {
+  _ensureDateData();
+  final minute = minuteOfDay % (24 * 60);
+  return DateFormat.jm(_strings(locale).locale.languageCode)
+      .format(DateTime(2000, 1, 1, minute ~/ 60, minute % 60));
+}
+
 String formatShortDate(DateTime date, {ui.Locale? locale}) {
   _ensureDateData();
   return DateFormat.yMMMd(_strings(locale).locale.languageCode).format(date);

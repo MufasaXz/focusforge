@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/models/focus_goal.dart';
+import '../../../core/models/study.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
@@ -14,6 +16,8 @@ import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/study_snapshot.dart';
+import '../brain/timetable.dart';
+import '../nudges/pip_nudges.dart';
 
 enum ChatStatus { idle, thinking, typing }
 
@@ -119,6 +123,9 @@ class ChatController extends Notifier<ChatState> {
 
   /// Whether this conversation has already suggested signing in.
   bool _suggestedSignIn = false;
+
+  /// Whether the user asked for exam reminders before Pip knew the date.
+  bool _pendingExamReminder = false;
 
   /// Shorter pauses when the system asks for less motion.
   bool fast = false;
@@ -255,6 +262,31 @@ class ChatController extends Notifier<ChatState> {
         if (minutes != null) await _saveGoal(minutes);
       case Act.intro:
         await memory.markIntroduced();
+      case Act.timetable when action.arg == 'today':
+        final saved = ref.read(assistantMemoryProvider).timetable;
+        if (saved != null) return useTimetableToday(saved);
+      case Act.timetableOff:
+        await memory.setTimetable(null);
+        _syncReminders();
+      case Act.examReminderOff:
+        _pendingExamReminder = false;
+        await memory.setExamReminders(false);
+        _syncReminders();
+      case Act.examReminder:
+        final snapshot = StudySnapshot.capture(ref.read);
+        final dated =
+            (snapshot.daysToExam ?? -1) >= 0 && snapshot.memory.examId != null;
+        _pendingExamReminder = !dated;
+        if (dated) {
+          await memory.setExamReminders(true);
+          final allowed = await _allowNotifications();
+          _syncReminders();
+          if (generation != _generation) return;
+          return _reply(
+            AssistantAction(Act.examReminder, value: allowed ? 1 : 0),
+            generation,
+          );
+        }
       case Act.aiAllow:
         await memory.setAiConsent(true);
         final question = _pending;
@@ -285,6 +317,11 @@ class ChatController extends Notifier<ChatState> {
         break;
     }
 
+    await _reply(action, generation);
+  }
+
+  /// Thinks, reads the user's data and answers [action].
+  Future<void> _reply(AssistantAction action, int generation) async {
     final steps = brain.thinkingFor(action.act);
     for (final (index, step) in steps.indexed) {
       if (generation != _generation) return;
@@ -395,11 +432,122 @@ class ChatController extends Notifier<ChatState> {
     );
   }
 
-  /// Saves the exam date the user picked, then counts down to it.
+  /// Saves the exam date the user picked, then counts down to it, or sets
+  /// the reminders the user asked for before Pip knew the date.
   Future<void> setExamDate(DateTime date) async {
     await ref.read(assistantMemoryProvider.notifier).setExamDate(date);
-    await run(const AssistantAction(Act.examDate));
+    _syncReminders();
+    await run(
+      AssistantAction(_pendingExamReminder ? Act.examReminder : Act.examDate),
+    );
   }
+
+  /// Saves [timetable] from the card in entry [entryId], and its daily
+  /// reminder if the user wants one.
+  Future<void> saveTimetable(int entryId, Timetable timetable) async {
+    await ref.read(assistantMemoryProvider.notifier).setTimetable(timetable);
+    final allowed = timetable.remind && await _allowNotifications();
+    _syncReminders();
+    state = state.copyWith(savedPlans: {...state.savedPlans, entryId});
+    final start = Clock(timetable.effectiveStart);
+    await say(
+      AssistantReply(
+        [
+          Say(
+            !timetable.remind
+                ? const Copy('Saved. Ask me any time to change it.')
+                : allowed
+                ? Copy('Saved. I’ll remind you just before {0} each day.', [
+                    start,
+                  ])
+                : Copy(
+                    'Saved. Notifications are off for FocusForge, so I’ll remind you on Home at {0} instead.',
+                    [start],
+                  ),
+          ),
+        ],
+        suggestions: [
+          Suggestion(
+            const Copy('Use it as today’s focus plan'),
+            Icons.playlist_add_check_rounded,
+            AssistantAction(Act.timetable, arg: 'today'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Turns [timetable] into today's focus plan: a custom plan with its block
+  /// length on the timer, and today's goal split by its subjects.
+  Future<void> useTimetableToday(Timetable timetable) async {
+    final strings = AppStrings(_locale());
+    final total = timetable.totalMinutes.clamp(15, FocusGoalPlan.maxMinutes);
+    await ref
+        .read(planLibraryProvider.notifier)
+        .save(
+          CustomPlan(
+            id: timetablePlanId,
+            name: strings.text('Pip’s timetable'),
+            goalMinutes: total,
+            focusMinutes: timetable.blockMinutes,
+          ),
+        );
+    final timer = ref.read(timerProvider.notifier);
+    final running = ref.read(timerProvider).running;
+    if (!running) {
+      final index = ref
+          .read(presetsProvider)
+          .indexWhere((preset) => preset.key == timetablePlanId);
+      if (index >= 0) await timer.setPreset(index);
+      final first = timetable.slots.firstOrNull?.subjectId ?? '';
+      if (first.isNotEmpty) timer.setSubject(first);
+    }
+    final tagged = {
+      for (final MapEntry(key: id, value: minutes)
+          in timetable.subjectMinutes.entries)
+        if (id.isNotEmpty) id: minutes,
+    };
+    final exact = tagged.values.fold(0, (a, b) => a + b) == total;
+    await ref
+        .read(focusGoalPlannerProvider.notifier)
+        .save(
+          FocusGoalPlan(
+            scope: FocusGoalScope.day,
+            date: ref.read(focusCalendarDateProvider),
+            totalMinutes: total,
+            subjectMinutes: exact ? tagged : const {},
+          ),
+        );
+    await say(
+      AssistantReply(
+        [
+          Say(
+            Copy(
+              'Done. Today’s focus plan follows your timetable: {0} in {1} blocks, and your goal ring shows each subject.',
+              [Minutes(total), Minutes(timetable.blockMinutes)],
+            ),
+          ),
+        ],
+        suggestions: const [
+          Suggestion(
+            Copy('Start a block'),
+            Icons.play_arrow_rounded,
+            AssistantAction(Act.focusNow),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The plan library id of the plan made from Pip's timetable.
+  static const timetablePlanId = 'pip-timetable';
+
+  Future<bool> _allowNotifications() =>
+      ref.read(pipNotificationAccessProvider).request();
+
+  /// Hands the reminders to the phone without holding up the reply.
+  void _syncReminders() =>
+      unawaited(PipNudges.sync(ref.read, AppStrings(_locale())));
 
   void clearGoTo() => state = state.copyWith(clearGoTo: true);
 

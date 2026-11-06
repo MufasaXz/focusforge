@@ -17,57 +17,59 @@ import android.os.Build
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
 import dev.focusforge.focusforge.localization.DeviceStrings
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 
 /**
- * Pip's reminder: at most one pending notification, written and timed by the
- * app, shown as a message from Pip with its head as the sender's picture.
+ * Pip's reminders: the evening nudge, the exam countdown and the timetable's
+ * daily call, each shown as a message from Pip with its head as the sender's
+ * picture.
  *
- * The app decides whether and when to remind, in the user's language, and
- * moves or cancels the reminder whenever the user studies. This side only
- * keeps the words until the alarm and survives reboots.
+ * The app decides whether, when and what to remind, in the user's language,
+ * and hands over the whole list whenever it changes. This side keeps the
+ * list until each alarm and survives reboots.
  */
 object PipNudges {
     private const val CHANNEL = "pip_reminders"
     private const val PREFS = "pip_nudges"
-    private const val KEY_AT = "at"
-    private const val KEY_TITLE = "title"
-    private const val KEY_BODY = "body"
-    private const val NOTIFICATION_ID = 4107
+    private const val KEY_ITEMS = "items"
+    private const val EXTRA_ID = "pip_reminder_id"
+    private const val NOTIFICATION_BASE = 4100
 
-    /** A reminder this late (the phone was off all evening) is dropped. */
-    private const val STALE_MS = 3 * 60 * 60 * 1000L
+    data class Reminder(
+        val id: Int,
+        val at: Long,
+        val title: String,
+        val body: String,
+        /** How late it may still go out, if the phone was off at [at]. */
+        val staleMs: Long,
+    )
 
-    fun schedule(context: Context, atMillis: Long, title: String, body: String) {
-        prefs(context).edit()
-            .putLong(KEY_AT, atMillis)
-            .putString(KEY_TITLE, title)
-            .putString(KEY_BODY, body)
-            .apply()
-        arm(context, atMillis)
+    /** Replaces every pending reminder with [reminders]. */
+    fun schedule(context: Context, reminders: List<Reminder>) {
+        val alarms = context.getSystemService(AlarmManager::class.java)
+        for (old in load(context)) alarms?.cancel(alarm(context, old.id))
+        save(context, reminders)
+        for (reminder in reminders) arm(context, reminder.id, reminder.at)
     }
 
-    fun cancel(context: Context) {
-        prefs(context).edit().clear().apply()
-        context.getSystemService(AlarmManager::class.java)?.cancel(alarm(context))
-    }
-
-    /** Alarms do not survive a reboot or an app update, so a pending one is set again. */
+    /** Alarms do not survive a reboot or an app update, so pending ones are set again. */
     fun rearm(context: Context) {
-        val at = prefs(context).getLong(KEY_AT, 0L)
-        if (at <= 0L) return
         val now = System.currentTimeMillis()
-        if (now - at > STALE_MS) return cancel(context)
-        arm(context, maxOf(at, now + 60_000L))
+        val live = load(context).filter { now - it.at <= it.staleMs }
+        save(context, live)
+        for (reminder in live) arm(context, reminder.id, maxOf(reminder.at, now + 60_000L))
     }
 
-    internal fun post(context: Context) {
-        val stored = prefs(context)
-        val at = stored.getLong(KEY_AT, 0L)
-        val title = stored.getString(KEY_TITLE, null)
-        val body = stored.getString(KEY_BODY, null)
-        stored.edit().clear().apply()
-        if (title.isNullOrBlank() || body.isNullOrBlank()) return
-        if (System.currentTimeMillis() - at > STALE_MS) return
+    internal fun post(context: Context, id: Int) {
+        val pending = load(context)
+        val reminder = pending.firstOrNull { it.id == id } ?: return
+        save(context, pending.filter { it.id != id })
+        if (System.currentTimeMillis() - reminder.at > reminder.staleMs) return
+        val title = reminder.title
+        val body = reminder.body
+        if (title.isBlank() || body.isBlank()) return
 
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (!canNotify(context, manager)) return
@@ -77,14 +79,14 @@ object PipNudges {
                 DeviceStrings.text(context, "Pip’s reminders"),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = DeviceStrings.text(context, "A study nudge from Pip on days you have not studied")
+                description = DeviceStrings.text(context, "Study reminders from Pip for your timetable, your exam and days without study")
             },
         )
 
         val head = BitmapFactory.decodeResource(context.resources, R.drawable.pip_head)
         val open = PendingIntent.getActivity(
             context,
-            NOTIFICATION_ID,
+            NOTIFICATION_BASE + id,
             Intent(context, MainActivity::class.java).apply {
                 putExtra("open_dashboard", true)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -115,7 +117,7 @@ object PipNudges {
         } else {
             builder.setStyle(Notification.BigTextStyle().bigText("$title\n$body"))
         }
-        manager.notify(NOTIFICATION_ID, builder.build())
+        manager.notify(NOTIFICATION_BASE + id, builder.build())
     }
 
     private fun canNotify(context: Context, manager: NotificationManager): Boolean {
@@ -125,19 +127,56 @@ object PipNudges {
             PackageManager.PERMISSION_GRANTED
     }
 
-    private fun arm(context: Context, atMillis: Long) {
+    private fun arm(context: Context, id: Int, atMillis: Long) {
         // Inexact on purpose: a reminder a few minutes late is fine, and an
         // inexact alarm needs no exact-alarm permission.
         context.getSystemService(AlarmManager::class.java)
-            ?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, alarm(context))
+            ?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, alarm(context, id))
     }
 
-    private fun alarm(context: Context): PendingIntent = PendingIntent.getBroadcast(
+    private fun alarm(context: Context, id: Int): PendingIntent = PendingIntent.getBroadcast(
         context,
-        NOTIFICATION_ID,
-        Intent(context, PipNudgeReceiver::class.java),
+        NOTIFICATION_BASE + id,
+        Intent(context, PipNudgeReceiver::class.java).putExtra(EXTRA_ID, id),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
+
+    internal fun idOf(intent: Intent?): Int? =
+        intent?.takeIf { it.hasExtra(EXTRA_ID) }?.getIntExtra(EXTRA_ID, 0)
+
+    private fun load(context: Context): List<Reminder> {
+        val raw = prefs(context).getString(KEY_ITEMS, null) ?: return emptyList()
+        return try {
+            val array = JSONArray(raw)
+            List(array.length()) { i ->
+                val item = array.getJSONObject(i)
+                Reminder(
+                    id = item.getInt("id"),
+                    at = item.getLong("at"),
+                    title = item.getString("title"),
+                    body = item.getString("body"),
+                    staleMs = item.getLong("stale"),
+                )
+            }
+        } catch (_: JSONException) {
+            emptyList()
+        }
+    }
+
+    private fun save(context: Context, reminders: List<Reminder>) {
+        val array = JSONArray()
+        for (reminder in reminders) {
+            array.put(
+                JSONObject()
+                    .put("id", reminder.id)
+                    .put("at", reminder.at)
+                    .put("title", reminder.title)
+                    .put("body", reminder.body)
+                    .put("stale", reminder.staleMs),
+            )
+        }
+        prefs(context).edit().putString(KEY_ITEMS, array.toString()).apply()
+    }
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -146,6 +185,7 @@ object PipNudges {
 /** Fires Pip's reminder when its alarm goes off. */
 class PipNudgeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        PipNudges.post(context.applicationContext)
+        val id = PipNudges.idOf(intent) ?: return
+        PipNudges.post(context.applicationContext, id)
     }
 }

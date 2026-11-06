@@ -7,6 +7,7 @@ import '../../../shared/widgets/icon_badge.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/exam_guide.dart';
+import '../brain/timetable.dart';
 
 /// The frame every card in the chat shares: a tonal panel with a titled
 /// badge, so a report and a plan read as one family.
@@ -565,4 +566,210 @@ class ActionCardView extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// A timetable to shape before saving: the start time, each subject's
+/// hours, and whether Pip should remind the user when it starts.
+class TimetableCardView extends StatefulWidget {
+  const TimetableCardView({
+    super.key,
+    required this.card,
+    required this.saved,
+    required this.onSave,
+    required this.onUseToday,
+  });
+
+  final TimetableCard card;
+  final bool saved;
+  final ValueChanged<Timetable> onSave;
+  final ValueChanged<Timetable> onUseToday;
+
+  @override
+  State<TimetableCardView> createState() => _TimetableCardViewState();
+}
+
+class _TimetableCardViewState extends State<TimetableCardView> {
+  late Timetable _draft = widget.card.timetable;
+  bool _edited = false;
+
+  void _change(Timetable next) => setState(() {
+    _draft = next;
+    _edited = true;
+  });
+
+  String _name(BuildContext context, String id) =>
+      widget.card.names[id] ?? context.tr('Study');
+
+  Future<void> _pickStart() async {
+    final start = _draft.effectiveStart;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: start ~/ 60, minute: start % 60),
+    );
+    if (picked == null || !mounted) return;
+    _change(_draft.copyWith(startMinute: picked.hour * 60 + picked.minute));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final locale = Localizations.localeOf(context);
+    String minutes(int m) => formatMinutes(m, locale: locale);
+    String clock(int m) => formatTimeOfDay(m, locale: locale);
+    final saved = widget.saved && !_edited;
+    final missing = [
+      for (final id in widget.card.names.keys)
+        if (!_draft.subjectMinutes.containsKey(id)) id,
+    ];
+    final figures = const [FontFeature.tabularFigures()];
+
+    return _CardShell(
+      icon: Icons.view_timeline_outlined,
+      title: context.tr('Your timetable'),
+      children: [
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: ActionChip(
+            avatar: const Icon(Icons.schedule_rounded, size: 18),
+            label: Text(
+              context.tr('Starts at {0}', [clock(_draft.effectiveStart)]),
+            ),
+            onPressed: _pickStart,
+          ),
+        ),
+        const SizedBox(height: Gap.xs),
+        for (final MapEntry(key: id, value: m) in _draft.subjectMinutes.entries)
+          Row(
+            children: [
+              _Dot(widget.card.colors[id] ?? cs.onSurfaceVariant),
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Text(
+                  _name(context, id),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.bodyLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: context.tr('Less {0}', [_name(context, id)]),
+                onPressed: () => _change(_draft.adjust(id, -Timetable.step)),
+                icon: const Icon(Icons.remove_rounded),
+              ),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  minutes(m),
+                  textAlign: TextAlign.center,
+                  style: tt.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: figures,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: context.tr('More {0}', [_name(context, id)]),
+                onPressed: _draft.totalMinutes >= Timetable.maxTotal
+                    ? null
+                    : () => _change(_draft.adjust(id, Timetable.step)),
+                icon: const Icon(Icons.add_rounded),
+              ),
+            ],
+          ),
+        if (missing.isNotEmpty)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: PopupMenuButton<String>(
+              tooltip: context.tr('Add a subject'),
+              onSelected: (id) => _change(_draft.adjust(id, 60)),
+              itemBuilder: (context) => [
+                for (final id in missing)
+                  PopupMenuItem(value: id, child: Text(_name(context, id))),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: Gap.md),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded, color: cs.primary),
+                    const SizedBox(width: Gap.sm),
+                    Text(
+                      context.tr('Add a subject'),
+                      style: tt.labelLarge?.copyWith(color: cs.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        Text(
+          context.tr('{0} a day, in blocks of up to {1} with {2} breaks.', [
+            minutes(_draft.totalMinutes),
+            minutes(_draft.blockMinutes),
+            minutes(_draft.breakMinutes),
+          ]),
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        _Subhead(context.tr('Your day')),
+        for (final slot in _draft.slots)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 148,
+                  child: Text(
+                    '${clock(slot.start)} – ${clock(slot.end)}',
+                    style: tt.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontFeatures: figures,
+                    ),
+                  ),
+                ),
+                _Dot(widget.card.colors[slot.subjectId] ?? cs.onSurfaceVariant),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(
+                    _name(context, slot.subjectId),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _draft.remind,
+          onChanged: (on) => _change(_draft.copyWith(remind: on)),
+          title: Text(context.tr('Remind me when it starts')),
+        ),
+        Wrap(
+          spacing: Gap.sm,
+          runSpacing: Gap.sm,
+          children: [
+            FilledButton.icon(
+              onPressed: saved
+                  ? null
+                  : () {
+                      setState(() => _edited = false);
+                      widget.onSave(_draft);
+                    },
+              icon: Icon(saved ? Icons.check_rounded : Icons.save_outlined),
+              label: Text(
+                saved ? context.tr('Timetable saved') : context.tr('Save'),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => widget.onUseToday(_draft),
+              icon: const Icon(Icons.playlist_add_check_rounded),
+              label: Text(context.tr('Use as today’s focus plan')),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

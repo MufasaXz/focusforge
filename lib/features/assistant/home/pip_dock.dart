@@ -21,6 +21,7 @@ import '../mascot/mascot.dart';
 import '../mascot/mascot_life.dart';
 import '../mascot/mascot_painter.dart';
 import '../mascot/mascot_rig.dart';
+import '../nudges/pip_nudges.dart';
 
 /// Pip on the home screen, standing on the navigation pill.
 ///
@@ -46,6 +47,8 @@ class PipDock extends ConsumerStatefulWidget {
 }
 
 class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
+  static const _wanderAfter = Duration(seconds: 9);
+  static const _readAfter = Duration(seconds: 42);
   static const _sitAfter = Duration(seconds: 20);
   static const _thinkAfter = Duration(seconds: 36);
   static const _sleepAfter = Duration(seconds: 65);
@@ -54,6 +57,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
 
   final _rig = MascotRig();
   late final _life = MascotLife(_rig);
+  final _random = math.Random();
   final _brain = const AssistantBrain();
   final _mascotKey = GlobalKey();
   final _timers = <Timer>{};
@@ -150,16 +154,42 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     final coachPending =
         !(ref.read(localStoreProvider).getBool(StoreKeys.coachSeen) ?? false);
     final away = seen == null ? null : s.now.difference(seen);
-    if (!_quiet(s) &&
+    final greet =
+        !_quiet(s) &&
         !coachPending &&
-        (away == null || away >= _greetAfterAway)) {
+        (away == null || away >= _greetAfterAway);
+    unawaited(_speakHello(s, greet: greet));
+    unawaited(ref.read(assistantMemoryProvider.notifier).markSeen(s.now));
+    // The first place Pip sees, or a slip down the board, becomes the mark a
+    // climb is measured from. A climb keeps the old mark until Pip cheers it.
+    final rank = s.boardRank;
+    final last = s.memory.lastRank;
+    if (rank != null && (last == null || rank >= last)) {
+      unawaited(ref.read(assistantMemoryProvider.notifier).setLastRank(rank));
+    }
+  }
+
+  /// A reminder that is due goes first when the phone will not show it as a
+  /// notification; otherwise the greeting, when one is wanted.
+  Future<void> _speakHello(StudySnapshot s, {required bool greet}) async {
+    final due = _quiet(s) ? null : PipReminders.dueOnHome(s);
+    if (due != null && !await _canNotify()) {
+      if (!mounted) return;
+      unawaited(
+        ref.read(assistantMemoryProvider.notifier).markHomeReminder(s.now),
+      );
+      _after(const Duration(milliseconds: 500), () => _show(due));
+      return;
+    }
+    if (greet && mounted) {
       _after(
         const Duration(milliseconds: 500),
         () => _show(_brain.greeting(s)),
       );
     }
-    unawaited(ref.read(assistantMemoryProvider.notifier).markSeen(s.now));
   }
+
+  Future<bool> _canNotify() => ref.read(pipNotificationAccessProvider).check();
 
   bool _quiet(StudySnapshot s) =>
       s.memory.quiet || ref.read(timerProvider).running;
@@ -175,7 +205,13 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     if (tips.isEmpty) return;
     _tipShown = true;
     unawaited(ref.read(assistantMemoryProvider.notifier).markTipShown(s.now));
-    _show(tips.first);
+    // Thoughts take turns, so each visit can bring a different one.
+    final tip = tips[s.memory.tipTurn % tips.length];
+    final rank = s.boardRank;
+    if (rank != null && AssistantBrain.isClimb(tip)) {
+      unawaited(ref.read(assistantMemoryProvider.notifier).setLastRank(rank));
+    }
+    _show(tip);
   }
 
   void _show(BuddyPrompt prompt) {
@@ -216,10 +252,21 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     // does not come back to a Pip that "slept" while nobody was looking.
     var quiet = Duration.zero;
     var thought = false;
+    var wandered = false;
+    var readTried = false;
     void next() {
       _idle = Timer(const Duration(seconds: 1), () {
         if (!mounted || !_active) return;
         quiet += const Duration(seconds: 1);
+        if (ref.read(timerProvider).running) {
+          // Studying with the user: Pip sits with a book and stays awake.
+          if (_bubble == null && !_rig.wandering) {
+            if (!_rig.sitting) _rig.sitDown();
+            _rig.reading = true;
+          }
+          next();
+          return;
+        }
         if (quiet >= _sleepAfter) {
           if (!_rig.sleeping) {
             _hideBubble();
@@ -238,8 +285,32 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
             _rig.thinking = false;
             _maybeTip();
           });
-        } else if (quiet >= _sitAfter && !_rig.sitting && _bubble == null) {
+        } else if (quiet >= _sitAfter &&
+            !_rig.sitting &&
+            !_rig.wandering &&
+            _bubble == null) {
           _rig.sitDown();
+        } else if (quiet >= _readAfter &&
+            !readTried &&
+            _rig.sitting &&
+            _bubble == null) {
+          // Now and then a book comes out before the nap.
+          readTried = true;
+          if (_random.nextDouble() < 0.55) _rig.reading = true;
+        } else if (quiet >= _wanderAfter &&
+            !wandered &&
+            !_rig.sitting &&
+            _bubble == null) {
+          // Now and then a stroll along the bar, and rarely a slip off its
+          // end and a climb back up.
+          wandered = true;
+          final roll = _random.nextDouble();
+          final edge = _edgeWidths();
+          if (roll < 0.12 && edge != null) {
+            _rig.slip(edge: edge);
+          } else if (roll < 0.45) {
+            _rig.walk();
+          }
         }
         next();
       });
@@ -248,8 +319,19 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     next();
   }
 
+  /// How far, in Pip's widths, its right foot is from the end of the nav
+  /// pill, or null where there is no pill to slip off (the side rail).
+  double? _edgeWidths() {
+    final media = MediaQuery.of(context);
+    if (media.size.width >= AppShell.railBreakpoint) return null;
+    // The pill ends 16 dp from the screen's edge and Pip stands 38 dp in;
+    // its right foot is 36% of its width in from its right side.
+    return 0.36 + (38 - 16) / PipDock.width;
+  }
+
   /// Any touch or scroll on the home screen.
   void _poke() {
+    _rig.reading = false;
     if (_rig.sleeping) {
       _rig.wake();
       _after(const Duration(milliseconds: 650), _rig.standUp);

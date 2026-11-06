@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">Escolha um canal de estudo reconhecido.</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">FocusForge verifica os identificadores de tela do YouTube somente quando você ativa Shorts ou filtros de feed, para distinguir essas telas de vídeos comuns. As verificações de tela permanecem no seu dispositivo e não são retidas ou carregadas. Enquanto uma pausa do YouTube estiver visível, os nomes dos pacotes das janelas do aplicativo serão verificados apenas para fechar a pausa quando você sair; o conteúdo de outros aplicativos não é inspecionado. Ele não lê mensagens, senhas ou textos digitados. As decisões de pausa e seus tempos são salvos apenas neste dispositivo para insights do Shield. O acesso é opcional e pode ser desativado nas configurações do Android. Os limites normais do aplicativo usam acesso de uso e sorteio em relação a outros aplicativos; o temporizador de foco funciona sem nenhum desses.</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Lembretes do Pip</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">Um empurrão do Pip nos dias em que você não estudou</string>
   <string name="ff_copy_08b041935798" formatted="false">Você</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">Lembretes de estudo do Pip para seu horário, sua prova e dias sem estudo</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">Shorts opcionais do YouTube e filtros de feed.</string>
   <string name="ff_block_back" formatted="false">Voltar ao que importa</string>
   <string name="ff_block_anyway" formatted="false">Faça uma pausa e respire</string>

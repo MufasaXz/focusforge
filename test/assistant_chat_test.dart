@@ -39,6 +39,7 @@ import 'package:focusforge/features/assistant/brain/assistant_models.dart';
 import 'package:focusforge/features/assistant/brain/study_snapshot.dart';
 import 'package:focusforge/features/assistant/chat/chat_controller.dart';
 import 'package:focusforge/features/assistant/chat/chat_screen.dart';
+import 'package:focusforge/features/assistant/nudges/pip_nudges.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,9 @@ void main() {
       overrides: [
         localStoreProvider.overrideWithValue(store),
         aiBackendProvider.overrideWithValue(backend),
+        pipNotificationAccessProvider.overrideWithValue(
+          const _NoNotifications(),
+        ),
         accountUidProvider.overrideWithValue(uid),
         shieldServiceProvider.overrideWithValue(engine),
         appBlockingSupportedProvider.overrideWithValue(true),
@@ -252,7 +256,7 @@ void main() {
     await ask(tester, question);
     expect(backend.questions, isEmpty);
     expect(
-      find.textContaining('Google Gemini, or Groq', findRichText: true),
+      find.textContaining('smarter answers', findRichText: true),
       findsOneWidget,
     );
 
@@ -266,7 +270,6 @@ void main() {
       find.text('One 40 minute block of Physics tonight. Start small.'),
       findsOneWidget,
     );
-    expect(find.text('Answered online'), findsOneWidget);
     // The study summary carries numbers, never who the user is.
     expect(jsonOf(backend.contexts.single), isNot(contains('Rivera')));
     expect(backend.histories.single, isNotEmpty);
@@ -286,7 +289,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Save as today’s goal'), findsOneWidget);
-    expect(find.text('Answered online'), findsNothing);
   });
 
   testWidgets('a guest gets one sign-in note and the phone’s answers', (
@@ -329,6 +331,71 @@ void main() {
     expect(container.read(assistantMemoryProvider).aiConsent, isFalse);
     expect(backend.questions, isEmpty);
   });
+  testWidgets('a typed timetable is saved and becomes today’s focus plan', (
+    tester,
+  ) async {
+    final container = await pumpChat(tester);
+    await wait(tester);
+
+    await ask(tester, 'make a timetable: physics 2 hours, 3 hours a day');
+    expect(find.text('Your timetable'), findsOneWidget);
+
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await wait(tester);
+    final saved = container.read(assistantMemoryProvider).timetable!;
+    expect(saved.subjectMinutes['physics'], 120);
+    expect(saved.totalMinutes, 180);
+    // Tests cannot grant notifications, so the reminder moves to Home.
+    expect(
+      container
+          .read(chatProvider)
+          .entries
+          .any((e) => e.copy?.key.contains('remind you on Home') ?? false),
+      isTrue,
+    );
+
+    await tester.ensureVisible(find.text('Use as today’s focus plan'));
+    await tester.tap(find.text('Use as today’s focus plan'));
+    await wait(tester);
+    final plan = container
+        .read(planLibraryProvider)
+        .plans
+        .singleWhere((p) => p.id == ChatController.timetablePlanId);
+    expect(plan.goalMinutes, 180);
+    expect(plan.focusMinutes, saved.blockMinutes);
+    final today = container.read(focusGoalPlannerProvider).day!;
+    expect(today.totalMinutes, 180);
+    expect(container.read(timerProvider).subjectId, 'physics');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an exam reminder asks for the date first, then counts down', (
+    tester,
+  ) async {
+    final container = await pumpChat(tester);
+    await container.read(assistantMemoryProvider.notifier).setExam('neet-ug');
+    await wait(tester);
+
+    await ask(tester, 'remind me about my exam');
+    expect(container.read(assistantMemoryProvider).examReminders, isFalse);
+    expect(
+      find.textContaining('Pick the date', findRichText: true),
+      findsOneWidget,
+    );
+
+    final date = DateTime.now().add(const Duration(days: 40));
+    unawaited(container.read(chatProvider.notifier).setExamDate(date));
+    await wait(tester);
+    expect(container.read(assistantMemoryProvider).examReminders, isTrue);
+    expect(
+      find.textContaining('a month, two weeks', findRichText: true),
+      findsOneWidget,
+    );
+
+    await ask(tester, 'stop exam reminders');
+    expect(container.read(assistantMemoryProvider).examReminders, isFalse);
+  });
 }
 
 String jsonOf(Object? value) => '$value';
@@ -357,4 +424,15 @@ class _FakeBackend implements AiBackend {
     if (failure case final failure?) throw AiBackendException(failure);
     return reply!;
   }
+}
+
+/// A phone that has not let FocusForge notify.
+class _NoNotifications implements PipNotificationAccess {
+  const _NoNotifications();
+
+  @override
+  Future<bool> request() async => false;
+
+  @override
+  Future<bool> check() async => false;
 }

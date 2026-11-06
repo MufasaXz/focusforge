@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/utils/format.dart';
+import 'timetable.dart';
 
 /// A length of time, formatted for the reader's language when shown.
 @immutable
@@ -19,6 +20,20 @@ class Minutes {
 
 /// A whole number, written in the reader's digits when shown.
 @immutable
+/// A time of day for a [Copy], written the phone's way.
+@immutable
+class Clock {
+  const Clock(this.minuteOfDay);
+  final int minuteOfDay;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Clock && other.minuteOfDay == minuteOfDay;
+
+  @override
+  int get hashCode => minuteOfDay.hashCode;
+}
+
 class Count {
   const Count(this.value);
   final int value;
@@ -54,6 +69,7 @@ class Copy {
   static Object? _value(Object? arg, AppStrings strings) => switch (arg) {
     Copy() => arg.resolve(strings),
     Minutes() => formatMinutes(arg.value, locale: strings.locale),
+    Clock() => formatTimeOfDay(arg.minuteOfDay, locale: strings.locale),
     Count() => NumberFormat.decimalPattern(
       strings.locale.languageCode,
     ).format(arg.value),
@@ -100,6 +116,12 @@ enum Act {
   thanks,
   bye,
   unknown,
+
+  // Reminders and the timetable.
+  examReminder,
+  examReminderOff,
+  timetable,
+  timetableOff,
 
   // Answers to the one-time question about online answers.
   aiAllow,
@@ -267,6 +289,22 @@ class ExamCard extends ChatCard {
 
   final String examId;
   final bool isMine;
+}
+
+/// A timetable to adjust and save, with each subject's name.
+class TimetableCard extends ChatCard {
+  const TimetableCard({
+    required this.timetable,
+    required this.names,
+    this.colors = const {},
+  });
+
+  final Timetable timetable;
+
+  /// Subject names by id, for the subjects on the timetable and the others
+  /// the user can add.
+  final Map<String, String> names;
+  final Map<String, Color> colors;
 }
 
 class GoalCard extends ChatCard {

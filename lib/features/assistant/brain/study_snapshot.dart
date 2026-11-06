@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/shield_providers.dart';
+import '../../../core/providers/social_providers.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/providers/usage_providers.dart';
 import '../../../core/providers/usage_stats_providers.dart';
@@ -56,6 +57,7 @@ class StudySnapshot {
     this.lockedPackages = const {},
     this.memory = const AssistantMemory(),
     this.hasHistory = false,
+    this.boardRank,
   });
 
   final DateTime now;
@@ -111,6 +113,10 @@ class StudySnapshot {
   /// Whether this account has ever logged a session.
   final bool hasHistory;
 
+  /// The user's place on this week's leaderboard, 1 for the top, when they
+  /// chose to appear on it.
+  final int? boardRank;
+
   bool get usageReady => android && appListConsent && usageAccess;
 
   int get distractingMinutes =>
@@ -134,6 +140,12 @@ class StudySnapshot {
   }
 
   /// Reads what is already loaded, without waiting for the platform.
+  static int? _boardRank(Reader read) {
+    if (!read(boardOptInProvider)) return null;
+    final index = read(leaderboardProvider).indexWhere((e) => e.isMe);
+    return index < 0 ? null : index + 1;
+  }
+
   static StudySnapshot capture(Reader read, {DateTime? now}) => _build(
     read,
     now: now ?? DateTime.now(),
@@ -309,6 +321,7 @@ class StudySnapshot {
       },
       memory: read(assistantMemoryProvider),
       hasHistory: sessions.isNotEmpty,
+      boardRank: _boardRank(read),
     );
   }
 

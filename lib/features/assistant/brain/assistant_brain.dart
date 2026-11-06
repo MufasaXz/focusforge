@@ -7,6 +7,7 @@ import '../mascot/mascot.dart' show kBuddyName;
 import 'assistant_models.dart';
 import 'exam_guide.dart';
 import 'study_snapshot.dart';
+import 'timetable.dart';
 
 /// Pip's reasoning: what a message means, and what to say back.
 ///
@@ -40,6 +41,21 @@ class AssistantBrain {
     }
 
     final exam = detectExam(text);
+    final off = _score(text, tokens, _offWords) > 0;
+    if (_score(text, tokens, _timetableWords) > 0) {
+      return AssistantAction(
+        off ? Act.timetableOff : Act.timetable,
+        said: input,
+      );
+    }
+    if (_score(text, tokens, _remindWords) > 0 &&
+        (exam != null || _score(text, tokens, _keywords[Act.examAsk]!) > 0)) {
+      return AssistantAction(
+        off ? Act.examReminderOff : Act.examReminder,
+        arg: exam,
+        said: input,
+      );
+    }
     final scores = <Act, double>{
       for (final entry in _keywords.entries)
         entry.key: _score(text, tokens, entry.value),
@@ -200,6 +216,44 @@ class AssistantBrain {
     'meri',
     'ko',
   };
+
+  static const _timetableWords = [
+    'timetable',
+    'time table',
+    'timetables',
+    'schedule',
+    'routine',
+    'hours a day',
+    'hours per day',
+    'hours daily',
+    'hrs a day',
+    'ghante roz',
+    'roz ghante',
+  ];
+
+  static const _remindWords = [
+    'remind',
+    'reminder',
+    'reminders',
+    'notify',
+    'notification',
+    'notifications',
+    'alert',
+    'yaad',
+  ];
+
+  static const _offWords = [
+    'stop',
+    'cancel',
+    'delete',
+    'remove',
+    'disable',
+    'turn off',
+    'switch off',
+    'no more',
+    'band',
+    'hatao',
+  ];
 
   static const _keywords = <Act, List<String>>{
     Act.greet: [
@@ -454,6 +508,15 @@ class AssistantBrain {
     Act.unknown => AssistantReply(const [
       Say(Copy('I didn’t quite get that. Here’s what I can help with:')),
     ], suggestions: defaults(s)),
+    Act.timetable => timetableReply(s, action.said),
+    Act.timetableOff => AssistantReply(
+      const [Say(Copy('Timetable removed. I won’t remind you about it.'))],
+      suggestions: [_timetableChip, _planChip],
+    ),
+    Act.examReminder => _examReminder(s, notifications: action.value != 0),
+    Act.examReminderOff => AssistantReply(const [
+      Say(Copy('Okay, no more exam reminders.')),
+    ], suggestions: defaults(s)),
     Act.aiAllow ||
     Act.aiDecline ||
     Act.usageAccess ||
@@ -497,6 +560,16 @@ class AssistantBrain {
     Icons.lightbulb_outline_rounded,
     AssistantAction(Act.tip),
   );
+  static const _timetableChip = Suggestion(
+    Copy('Make a timetable'),
+    Icons.view_timeline_outlined,
+    AssistantAction(Act.timetable),
+  );
+  static const _examReminderChip = Suggestion(
+    Copy('Remind me before my exam'),
+    Icons.notifications_active_outlined,
+    AssistantAction(Act.examReminder),
+  );
   static const _distractionChip = Suggestion(
     Copy('What’s distracting me?'),
     Icons.phone_android_rounded,
@@ -516,6 +589,7 @@ class AssistantBrain {
   /// The everyday chips, adjusted to what this user has set up.
   List<Suggestion> defaults(StudySnapshot s) => [
     _planChip,
+    _timetableChip,
     _reportChip,
     _distractionChip,
     Suggestion(
@@ -1187,6 +1261,7 @@ class AssistantBrain {
         ),
       ],
       suggestions: [
+        if (!s.memory.examReminders && days > 0) _examReminderChip,
         Suggestion(
           const Copy('Plan for this exam'),
           Icons.event_note_rounded,
@@ -1195,6 +1270,119 @@ class AssistantBrain {
         _tipChip,
       ],
     );
+  }
+
+  /// The reply to "remind me about my exam": first the exam and its date if
+  /// Pip lacks them, then the countdown it set. [notifications] says whether
+  /// the phone lets Pip notify; without it the reminders show on Home.
+  AssistantReply _examReminder(StudySnapshot s, {required bool notifications}) {
+    final exam = examById(s.memory.examId);
+    if (exam == null) {
+      final ask = _examAsk(s);
+      return AssistantReply(const [
+        Say(Copy('Which exam should I remind you about?')),
+      ], suggestions: ask.suggestions);
+    }
+    final days = s.daysToExam;
+    if (days == null || days < 0) {
+      return AssistantReply(
+        [
+          Say(
+            Copy('When is {0}? Pick the date and I’ll remind you before it.', [
+              examTitle(exam),
+            ]),
+          ),
+        ],
+        suggestions: const [
+          Suggestion(
+            Copy('Set my exam date'),
+            Icons.event_rounded,
+            AssistantAction(Act.examDate),
+          ),
+        ],
+      );
+    }
+    return AssistantReply(
+      [
+        Say(
+          Copy(
+            'Done. I’ll remind you a month, two weeks, a week, three days and a day before {0}, and on the day.',
+            [examTitle(exam)],
+          ),
+        ),
+        if (!notifications)
+          const Say(
+            Copy(
+              'Notifications are off for FocusForge, so I’ll show these reminders on Home instead.',
+            ),
+          ),
+      ],
+      suggestions: [
+        Suggestion(
+          const Copy('Plan for this exam'),
+          Icons.event_note_rounded,
+          AssistantAction(Act.plan, arg: 'exam:${exam.id}'),
+        ),
+        _timetableChip,
+      ],
+    );
+  }
+
+  /// A timetable to adjust: the one saved, or a new one from the hours in
+  /// [said] ("6 hours a day", "physics 2 hours, maths 1 hour").
+  AssistantReply timetableReply(StudySnapshot s, String? said) {
+    final names = {for (final t in s.subjects) t.id: t.name};
+    final parsed = Timetable.parseHours(said ?? '', names);
+    final saved = s.memory.timetable;
+    final asked = parsed.total != null || parsed.asked.isNotEmpty;
+    final Timetable timetable;
+    if (saved != null && !asked) {
+      timetable = saved;
+    } else {
+      // Subjects falling behind last week come first, then the least studied.
+      final order = [...s.subjects]
+        ..sort((a, b) {
+          final byDelta = a.delta.compareTo(b.delta);
+          return byDelta != 0 ? byDelta : a.thisWeek.compareTo(b.thisWeek);
+        });
+      timetable = Timetable.plan(
+        totalMinutes:
+            parsed.total ??
+            saved?.totalMinutes ??
+            (s.defaultGoalMinutes >= 60 ? s.defaultGoalMinutes : 180),
+        subjects: [for (final t in order) t.id],
+        asked: parsed.asked,
+        startMinute: saved?.startMinute ?? defaultTimetableStart(s.now),
+        blockMinutes: s.blockMinutes.clamp(25, 90),
+        breakMinutes: s.breakMinutes.clamp(5, 20),
+      );
+    }
+    return AssistantReply([
+      Say(
+        saved != null && !asked
+            ? const Copy('Here’s your timetable. Change anything, then save.')
+            : Copy(
+                'Here’s a timetable for {0} a day. Change the hours or the start time, then save it.',
+                [Minutes(timetable.totalMinutes)],
+              ),
+      ),
+      Say.card(
+        TimetableCard(
+          timetable: timetable,
+          names: names,
+          colors: {for (final t in s.subjects) t.id: t.color},
+        ),
+      ),
+    ], thinking: thinkingFor(Act.plan));
+  }
+
+  /// When a new timetable starts: 5 PM, after school, or soon after now if
+  /// the evening has already begun.
+  static int defaultTimetableStart(DateTime now) {
+    final minute = now.hour * 60 + now.minute;
+    if (minute < 16 * 60) return 17 * 60;
+    final soon = ((minute + 15) / 30).ceil() * 30;
+    return soon.clamp(17 * 60, 21 * 60);
   }
 
   // -- Encouragement ----------------------------------------------------------
@@ -1304,6 +1492,10 @@ class AssistantBrain {
       case Act.unknown:
         return true;
       case Act.lock ||
+          Act.timetable ||
+          Act.timetableOff ||
+          Act.examReminder ||
+          Act.examReminderOff ||
           Act.focusNow ||
           Act.goal ||
           Act.goalSet ||
@@ -1323,7 +1515,7 @@ class AssistantBrain {
   AssistantReply aiConsentAsk() => const AssistantReply([
     Say(
       Copy(
-        'When you’re online, I can answer study questions with AI: Google Gemini, or Groq when Gemini is busy. I’d send your question, our last few messages and a short study summary: subjects, minutes, streak, exam and today’s top distracting apps. Never your name or email. Allow it?',
+        'When you’re online, I can give you smarter answers using an AI service. I’d share only your question, our last few messages and a short study summary. Never your name or email. Is that okay?',
       ),
     ),
     Say.card(
@@ -1437,6 +1629,9 @@ class AssistantBrain {
 
   /// Useful things Pip could say on the home screen, most useful first.
   ///
+  /// Whether [tip] cheers a climb up the leaderboard.
+  static bool isClimb(BuddyPrompt tip) => tip.copy.key.contains('leaderboard');
+
   /// Only real observations make the list; there is no filler tip. The home
   /// screen shows at most one of these, and rarely — see the dock.
   List<BuddyPrompt> homeTips(StudySnapshot s) {
@@ -1473,7 +1668,71 @@ class AssistantBrain {
         );
       }
     }
+    final rank = s.boardRank;
+    final lastRank = s.memory.lastRank;
+    if (rank != null && lastRank != null && rank < lastRank) {
+      tips.add(
+        BuddyPrompt(
+          rank == 1
+              ? const Copy('Wow, you’re now first on the leaderboard!')
+              : Copy('Wow, you climbed to #{0} on the leaderboard!', [
+                  Count(rank),
+                ]),
+          const AssistantAction(Act.report),
+        ),
+      );
+    }
     if (s.timerRunning) return tips;
+    if (s.todayMinutes >= 60 && s.remainingToGoal > 0) {
+      tips.add(
+        BuddyPrompt(
+          Copy('You’re doing great: {0} of focus today.', [
+            Minutes(s.todayMinutes),
+          ]),
+          const AssistantAction(Act.report),
+        ),
+      );
+    }
+    if (s.lastWeekSpanMinutes >= 60) {
+      final change = s.weekMinutes - s.lastWeekSpanMinutes;
+      if (change >= 30) {
+        tips.add(
+          BuddyPrompt(
+            Copy('This week is {0} ahead of last week. Nice work!', [
+              Minutes(change),
+            ]),
+            const AssistantAction(Act.report),
+          ),
+        );
+      } else if (change <= -30) {
+        tips.add(
+          BuddyPrompt(
+            Copy('This week is {0} behind last week. One block today helps.', [
+              Minutes(-change),
+            ]),
+            const AssistantAction(Act.focusNow),
+          ),
+        );
+      }
+    }
+    if (s.streak >= 3 && s.todayMinutes > 0) {
+      tips.add(
+        BuddyPrompt(
+          Copy('{0} days in a row. Keep it up!', [Count(s.streak)]),
+          const AssistantAction(Act.report),
+        ),
+      );
+    }
+    if (s.distractingMinutes >= 120) {
+      tips.add(
+        BuddyPrompt(
+          Copy('Distracting apps took {0} today. Time for a phone break?', [
+            Minutes(s.distractingMinutes),
+          ]),
+          const AssistantAction(Act.distractions),
+        ),
+      );
+    }
     if (s.goalMinutes == 0) {
       tips.add(
         const BuddyPrompt(
@@ -1530,6 +1789,26 @@ class AssistantBrain {
             Count(s.streak),
           ]),
           const AssistantAction(Act.focusNow),
+        ),
+      );
+    }
+    if (exam != null &&
+        days != null &&
+        days >= 1 &&
+        days <= 120 &&
+        !s.memory.examReminders) {
+      tips.add(
+        BuddyPrompt(
+          Copy('Want a reminder before {0}?', [examTitle(exam)]),
+          const AssistantAction(Act.examReminder),
+        ),
+      );
+    }
+    if (s.memory.timetable == null && s.hasHistory) {
+      tips.add(
+        const BuddyPrompt(
+          Copy('Want a study timetable for your day?'),
+          AssistantAction(Act.timetable),
         ),
       );
     }

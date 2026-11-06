@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/services/local_store.dart';
+import 'brain/timetable.dart';
 
 /// What Pip remembers between launches. Kept on the phone only.
 @immutable
@@ -16,6 +17,11 @@ class AssistantMemory {
     this.quiet = false,
     this.aiConsent,
     this.remindersOff = false,
+    this.examReminders = false,
+    this.timetable,
+    this.tipTurn = 0,
+    this.homeReminderOn,
+    this.lastRank,
   });
 
   /// The exam the user is preparing for, from the exam guide.
@@ -41,6 +47,22 @@ class AssistantMemory {
   /// Whether the user turned Pip's evening reminders off.
   final bool remindersOff;
 
+  /// Whether the user asked Pip to count down to the exam: notifications a
+  /// month, two weeks, a week, three days and a day before, and on the day.
+  final bool examReminders;
+
+  /// The daily timetable Pip made with the user, if any.
+  final Timetable? timetable;
+
+  /// How many tips Pip has offered, so its thoughts take turns.
+  final int tipTurn;
+
+  /// The day Pip last showed a due reminder on Home, so it says it once.
+  final DateTime? homeReminderOn;
+
+  /// The leaderboard place Pip last saw, so it can cheer a climb once.
+  final int? lastRank;
+
   AssistantMemory copyWith({
     String? examId,
     DateTime? examDate,
@@ -50,6 +72,12 @@ class AssistantMemory {
     bool? quiet,
     bool? aiConsent,
     bool? remindersOff,
+    bool? examReminders,
+    Timetable? timetable,
+    bool clearTimetable = false,
+    int? tipTurn,
+    DateTime? homeReminderOn,
+    int? lastRank,
   }) => AssistantMemory(
     examId: examId ?? this.examId,
     examDate: examDate ?? this.examDate,
@@ -59,6 +87,11 @@ class AssistantMemory {
     quiet: quiet ?? this.quiet,
     aiConsent: aiConsent ?? this.aiConsent,
     remindersOff: remindersOff ?? this.remindersOff,
+    examReminders: examReminders ?? this.examReminders,
+    timetable: clearTimetable ? null : (timetable ?? this.timetable),
+    tipTurn: tipTurn ?? this.tipTurn,
+    homeReminderOn: homeReminderOn ?? this.homeReminderOn,
+    lastRank: lastRank ?? this.lastRank,
   );
 
   Map<String, dynamic> toJson() => {
@@ -70,6 +103,11 @@ class AssistantMemory {
     'quiet': quiet,
     'aiConsent': ?aiConsent,
     'remindersOff': remindersOff,
+    'examReminders': examReminders,
+    'timetable': ?timetable?.toJson(),
+    'tipTurn': tipTurn,
+    'homeReminderOn': ?homeReminderOn?.toIso8601String(),
+    'lastRank': ?lastRank,
   };
 
   /// Reads a stored map, ignoring any field of the wrong type.
@@ -78,6 +116,7 @@ class AssistantMemory {
     final date = json['examDate'];
     final seen = json['lastSeen'];
     final tip = json['lastTipAt'];
+    final shown = json['homeReminderOn'];
     return AssistantMemory(
       examId: json['examId'] is String ? json['examId'] as String : null,
       examDate: date is String ? DateTime.tryParse(date) : null,
@@ -87,6 +126,11 @@ class AssistantMemory {
       quiet: json['quiet'] == true,
       aiConsent: json['aiConsent'] is bool ? json['aiConsent'] as bool : null,
       remindersOff: json['remindersOff'] == true,
+      examReminders: json['examReminders'] == true,
+      timetable: Timetable.fromJson(json['timetable']),
+      tipTurn: json['tipTurn'] is int ? json['tipTurn'] as int : 0,
+      homeReminderOn: shown is String ? DateTime.tryParse(shown) : null,
+      lastRank: json['lastRank'] is int ? json['lastRank'] as int : null,
     );
   }
 }
@@ -112,7 +156,7 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   Future<void> markSeen(DateTime at) => _save(state.copyWith(lastSeen: at));
 
   Future<void> markTipShown(DateTime at) =>
-      _save(state.copyWith(lastTipAt: at));
+      _save(state.copyWith(lastTipAt: at, tipTurn: state.tipTurn + 1));
 
   Future<void> markIntroduced() => _save(state.copyWith(introduced: true));
 
@@ -123,6 +167,19 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
 
   Future<void> setRemindersOff(bool off) =>
       _save(state.copyWith(remindersOff: off));
+
+  Future<void> setExamReminders(bool on) =>
+      _save(state.copyWith(examReminders: on));
+
+  Future<void> setTimetable(Timetable? timetable) => _save(
+    state.copyWith(timetable: timetable, clearTimetable: timetable == null),
+  );
+
+  Future<void> setLastRank(int rank) => _save(state.copyWith(lastRank: rank));
+
+  Future<void> markHomeReminder(DateTime day) => _save(
+    state.copyWith(homeReminderOn: DateTime(day.year, day.month, day.day)),
+  );
 }
 
 final assistantMemoryProvider =

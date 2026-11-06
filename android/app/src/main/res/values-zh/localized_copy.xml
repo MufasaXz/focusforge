@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">选择公认的学习渠道。</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">仅当您启用 Shorts 或 Feed 过滤器时，FocusForge 才会检查 YouTube 屏幕标识符，以将这些屏幕与普通视频区分开来。屏幕检查保留在您的设备上，不会保留或上传。虽然 YouTube 暂停可见，但仅检查应用程序窗口包名称以在您离开时关闭暂停；其他应用程序的内容不会被检查。它不会读取您输入的消息、密码或文本。暂停决策及其时间仅保存在此设备上，以供 Shield 洞察。访问是可选的，可以在 Android 设置中关闭。普通应用程序边界使用使用访问权限并在其他应用程序上绘制；焦点计时器无需这些即可工作。</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Pip 的提醒</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">在你没有学习的日子里，Pip 发来的学习提醒</string>
   <string name="ff_copy_08b041935798" formatted="false">我的</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">Pip 的学习提醒：你的课表、考试和没有学习的日子</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">可选的 YouTube Shorts 和 Feed 过滤器。</string>
   <string name="ff_block_back" formatted="false">回到重要的事情</string>
   <string name="ff_block_anyway" formatted="false">暂停并呼吸</string>

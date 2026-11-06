@@ -85,8 +85,8 @@
   <string name="ff_copy_ada49350069b" formatted="false">একটি স্বীকৃত অধ্যয়ন চ্যানেল চয়ন করুন.</string>
   <string name="ff_copy_60d50f8362bc" formatted="false">FocusForge শুধুমাত্র YouTube স্ক্রীন শনাক্তকারী পরীক্ষা করে যখন আপনি Shorts বা ফিল্ড ফিল্টার চালু করেন, এই স্ক্রীনগুলিকে সাধারণ ভিডিও থেকে আলাদা করতে। স্ক্রীন চেক আপনার ডিভাইসে থাকে এবং ধরে রাখা বা আপলোড করা হয় না। যখন একটি YouTube বিরতি দৃশ্যমান হয়, আপনি যখন চলে যান তখন শুধুমাত্র বিরতি বন্ধ করার জন্য অ্যাপ্লিকেশন উইন্ডো প্যাকেজের নামগুলি পরীক্ষা করা হয়; অন্যান্য অ্যাপের বিষয়বস্তু পরিদর্শন করা হয় না। এটি আপনার টাইপ করা বার্তা, পাসওয়ার্ড বা পাঠ্য পড়ে না। পজ সিদ্ধান্ত এবং তাদের সময় শুধুমাত্র শিল্ড ইনসাইটের জন্য এই ডিভাইসে সংরক্ষিত হয়। অ্যাক্সেস ঐচ্ছিক এবং Android সেটিংসে বন্ধ করা যেতে পারে। সাধারণ অ্যাপ্লিকেশন সীমানা ব্যবহার অ্যাক্সেস এবং অন্যান্য অ্যাপ্লিকেশনের উপর আঁকা; ফোকাস টাইমার এগুলোর কোনোটি ছাড়াই কাজ করে।</string>
   <string name="ff_copy_bd0c865a242a" formatted="false">Pip-এর রিমাইন্ডার</string>
-  <string name="ff_copy_ede61e5e13a0" formatted="false">যে দিন পড়েননি, সেদিন Pip-এর একটি ছোট তাগিদ</string>
   <string name="ff_copy_08b041935798" formatted="false">আপনি</string>
+  <string name="ff_copy_982f515c0e10" formatted="false">Pip-এর পড়ার রিমাইন্ডার: আপনার টাইমটেবিল, পরীক্ষা আর না পড়ার দিন</string>
   <string name="ff_copy_ae65b32f89c1" formatted="false">ঐচ্ছিক YouTube Shorts এবং ফিড ফিল্টার।</string>
   <string name="ff_block_back" formatted="false">কী গুরুত্বপূর্ণ সেদিকে ফিরে যান</string>
   <string name="ff_block_anyway" formatted="false">থামুন এবং শ্বাস নিন</string>
