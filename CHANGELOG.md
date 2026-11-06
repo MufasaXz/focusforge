@@ -1,28 +1,22 @@
 # Changelog
 
-## [1.0.6](https://github.com/MufasaXz/focusforge/releases/tag/1.0.6) — 2026-11-05 (build 2035)
+## [1.0.6](https://github.com/MufasaXz/focusforge/releases/tag/1.0.6) — 2026-11-06 (build 2035)
 
-- Pip, a study buddy, stands on Home's navigation bar. It waves hello once
-  per launch and offers a tip rarely: at most one a visit, never within three
-  hours of the last, and none once tips are paused. Left alone it sits,
-  thinks and falls asleep. Tapping it opens a chat that reports the week,
-  plans the rest of today's goal, locks distracting apps through Shield,
-  explains ten Indian entrance and board exams and counts down to yours. It
-  runs on the phone and speaks every bundled language.
+- FocusForge is now on [Google Play](https://play.google.com/store/apps/details?id=dev.focusforge.focusforge).
+- Pip, a study buddy, lives on Home. Ask it how your week went, which subject
+  leads, or where you stand on the leaderboard. It can plan a timetable with
+  the breaks you choose, remind you of an exam date and lock distracting apps
+  through Shield. Most answers come from the phone; with your permission, a
+  harder question can go online, up to five a day.
 - Swipe left or right to move between Home, Shield, Focus and You.
-- Home shows the week by subject and today's screen time; the subject
-  breakdown is gone.
-- Screen time is measured more closely: one app counts at a time, turning the
-  screen off or locking it ends a session, and an app already open at midnight
-  counts from midnight.
-- Shield's app list shows each app's name alone, without a System tag.
-- The block screen shows the blocked app's own icon, with no tile around it.
-- One Edit on the profile changes both the avatar and the name, and Level and
-  XP sit at either end of the progress bar.
-- The full-screen clock, profile header and leaderboard podium are redesigned,
+- Home shows this week's study by subject, on a chart that scales to your
+  hours, and today's screen time.
+- Screen time is measured the way the phone counts it.
+- The block screen, full-screen clock, profile and leaderboard are redesigned,
   and day mode is softer on the eyes.
-- Release builds are signed with a new key. A phone with an older FocusForge
-  install has to uninstall it before installing this one.
+- Builds are signed with a new key. Uninstall an older FocusForge before
+  installing this one. The Play Store and GitHub versions can't update each
+  other.
 
 ## [1.0.5](https://github.com/MufasaXz/focusforge/releases/tag/1.0.5) — 2026-11-03 (build 2034)
 
