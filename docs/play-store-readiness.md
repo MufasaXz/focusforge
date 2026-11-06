@@ -163,7 +163,7 @@ stored would conflict with the local pause history.
    Email/Google accounts with the final artifact, including a real inbox
    verification link. Follow [Firebase setup](firebase-setup.md). No Blaze
    upgrade is required.
-2. Deploy website privacy/deletion source to focusforgeorg.vercel.app. Pushing
+2. Deploy website privacy/deletion source to www.focus-forge.in. Pushing
    GitHub does not prove Vercel deployed. On October 14 the live privacy page
    still displayed October 11 and described parent sharing; the live deletion
    page still described incomplete historical cleanup. Source commit 2bc5d7b

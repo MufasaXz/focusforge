@@ -70,7 +70,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Privacy policy'));
     await tester.pumpAndSettle();
-    expect(browser.urls, ['https://focusforgeorg.vercel.app/privacy']);
+    expect(browser.urls, ['https://www.focus-forge.in/privacy']);
     expect(tester.takeException(), isNull);
   });
 
@@ -82,7 +82,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Privacy policy'));
     await tester.pumpAndSettle();
-    expect(browser.urls, ['https://focusforgeorg.vercel.app/privacy']);
+    expect(browser.urls, ['https://www.focus-forge.in/privacy']);
   });
 
   testWidgets('failed browser opening copies a usable policy link', (
@@ -110,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Privacy policy'));
     await tester.pumpAndSettle();
-    expect(copied, 'https://focusforgeorg.vercel.app/privacy');
+    expect(copied, 'https://www.focus-forge.in/privacy');
     expect(
       find.text(
         'Could not open a browser. Link copied; paste it into your browser.',

@@ -82,7 +82,7 @@ Future<void> reportCommunityContent(
   );
   final uri = Uri(
     scheme: 'mailto',
-    path: 'sudeepyadav7272@gmail.com',
+    path: 'focusforgehelp@gmail.com',
     query: context.tr("subject={0}&body={1}", [
       Uri.encodeComponent('FocusForge community report'),
       Uri.encodeComponent(body),
@@ -96,7 +96,7 @@ Future<void> reportCommunityContent(
         title: Text(context.tr("Send your report by email")),
         content: Text(
           context.tr(
-            "Email sudeepyadav7272@gmail.com with the displayed name, group and reason. No report has been sent yet.",
+            "Email focusforgehelp@gmail.com with the displayed name, group and reason. No report has been sent yet.",
           ),
         ),
         actions: [

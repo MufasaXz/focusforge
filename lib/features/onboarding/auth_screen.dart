@@ -502,7 +502,7 @@ class _OrDivider extends StatelessWidget {
 class _LegalLinks extends StatelessWidget {
   const _LegalLinks();
 
-  static const _termsUrl = 'https://focusforgeorg.vercel.app/terms';
+  static const _termsUrl = 'https://www.focus-forge.in/terms';
 
   @override
   Widget build(BuildContext context) {

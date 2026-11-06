@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const privacyPolicyUrl = 'https://focusforgeorg.vercel.app/privacy';
-const accountDeletionUrl = 'https://focusforgeorg.vercel.app/delete-account';
+const privacyPolicyUrl = 'https://www.focus-forge.in/privacy';
+const accountDeletionUrl = 'https://www.focus-forge.in/delete-account';
 
 /// Open the public policy directly; retain a usable link without a browser.
 Future<void> openPrivacyResource(BuildContext context, String url) async {

@@ -14,8 +14,7 @@ typedef PasswordResetMailer = Future<ResetMailResult> Function(String email);
 /// makes the one-time code with the Admin SDK and sends an email whose button
 /// opens the FocusForge reset page. It answers the same for addresses with and
 /// without an account.
-const passwordResetEndpoint =
-    'https://focusforgeorg.vercel.app/api/password-reset';
+const passwordResetEndpoint = 'https://www.focus-forge.in/api/password-reset';
 
 /// Posts [email] to [passwordResetEndpoint]. Any network failure, timeout or
 /// unexpected answer is [ResetMailResult.unavailable], which the caller treats
