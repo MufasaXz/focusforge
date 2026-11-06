@@ -80,7 +80,19 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     super.dispose();
   }
 
-  void _onInput() => setState(() {});
+  DateTime _lastNod = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Pip nods now and then while the user types, as if listening.
+  void _onInput() {
+    setState(() {});
+    final now = DateTime.now();
+    if (_input.text.trim().isEmpty ||
+        now.difference(_lastNod) < const Duration(milliseconds: 2400)) {
+      return;
+    }
+    _lastNod = now;
+    _avatar.nod();
+  }
 
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -123,6 +135,11 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
         GoRouter.maybeOf(context)?.go(AppRoutes.paths[AppRoutes.focus]!);
       case Act.examDate:
         await _pickExamDate();
+      case Act.reminderDate:
+        await _pickReminderDate();
+      case Act.openLeaderboard:
+        GoRouter.maybeOf(context)
+            ?.push(AppRoutes.paths[AppRoutes.leaderboard]!);
       default:
         await _chat.choose(suggestion);
     }
@@ -142,6 +159,19 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     );
     if (picked == null || !mounted) return;
     await _chat.setExamDate(picked);
+  }
+
+  Future<void> _pickReminderDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: today.add(const Duration(days: 1)),
+      firstDate: today,
+      lastDate: DateTime(today.year + 3, today.month, today.day),
+    );
+    if (picked == null || !mounted) return;
+    await _chat.setReminderDate(picked);
   }
 
   Future<void> _lock(List<AppMinutes> apps, bool allDay) async {
@@ -347,6 +377,8 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                             unawaited(_chat.saveTimetable(entry.id, timetable)),
                         onUseTimetable: (timetable) =>
                             unawaited(_chat.useTimetableToday(timetable)),
+                        onRemoveReminder: (id) =>
+                            unawaited(_chat.deleteReminder(id)),
                         onGoal: (minutes) => unawaited(
                           _chat.choose(
                             Suggestion(
@@ -465,6 +497,7 @@ class _EntryView extends StatelessWidget {
     required this.onSave,
     required this.onSaveTimetable,
     required this.onUseTimetable,
+    required this.onRemoveReminder,
     required this.onGoal,
   });
 
@@ -477,6 +510,7 @@ class _EntryView extends StatelessWidget {
   final ValueChanged<PlanCard> onSave;
   final ValueChanged<Timetable> onSaveTimetable;
   final ValueChanged<Timetable> onUseTimetable;
+  final ValueChanged<int> onRemoveReminder;
   final ValueChanged<int> onGoal;
 
   @override
@@ -535,6 +569,10 @@ class _EntryView extends StatelessWidget {
       LockCard() => LockCardView(card: card, onLock: onLock),
       ExamCard() => ExamCardView(card: card),
       GoalCard() => GoalCardView(card: card, onPick: onGoal),
+      RemindersCard() => RemindersCardView(
+        card: card,
+        onRemove: onRemoveReminder,
+      ),
       TimetableCard() => TimetableCardView(
         card: card,
         saved: saved,

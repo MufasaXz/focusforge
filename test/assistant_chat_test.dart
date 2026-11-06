@@ -396,6 +396,61 @@ void main() {
     await ask(tester, 'stop exam reminders');
     expect(container.read(assistantMemoryProvider).examReminders, isFalse);
   });
+  testWidgets('a dated reminder typed in chat is set, listed and removed', (
+    tester,
+  ) async {
+    final container = await pumpChat(tester);
+    await wait(tester);
+
+    await ask(tester, 'set reminder for bov 25 its my physics exam');
+    final set = container.read(assistantMemoryProvider).reminders.single;
+    expect(set.title, 'Physics exam');
+    expect(set.exam, isTrue);
+    expect([set.at.month, set.at.day], [11, 25]);
+    expect(
+      container
+          .read(chatProvider)
+          .entries
+          .any((e) => e.copy?.key.startsWith('Done. I’ll remind you') ?? false),
+      isTrue,
+    );
+
+    await ask(tester, 'show my reminders');
+    expect(find.text('Your reminders'), findsOneWidget);
+    await tester.ensureVisible(find.byTooltip('Remove reminder'));
+    await tester.tap(find.byTooltip('Remove reminder'));
+    await wait(tester, 2);
+    expect(container.read(assistantMemoryProvider).reminders, isEmpty);
+
+    await ask(tester, 'remind me about my chemistry test');
+    expect(container.read(assistantMemoryProvider).reminders, isEmpty);
+    unawaited(
+      container
+          .read(chatProvider.notifier)
+          .setReminderDate(DateTime.now().add(const Duration(days: 3))),
+    );
+    await wait(tester);
+    expect(
+      container.read(assistantMemoryProvider).reminders.single.title,
+      'Chemistry test',
+    );
+  });
+
+  testWidgets('“check my leaderboard position” gets a leaderboard answer', (
+    tester,
+  ) async {
+    final container = await pumpChat(tester);
+    await wait(tester);
+    await ask(tester, 'check my leaderboard position');
+    expect(
+      container
+          .read(chatProvider)
+          .entries
+          .any((e) => e.copy?.key.contains('leaderboard') ?? false),
+      isTrue,
+    );
+    expect(find.text('Open leaderboard'), findsOneWidget);
+  });
 }
 
 String jsonOf(Object? value) => '$value';

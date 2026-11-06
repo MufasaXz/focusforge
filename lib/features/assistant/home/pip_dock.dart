@@ -51,6 +51,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   static const _readAfter = Duration(seconds: 42);
   static const _sitAfter = Duration(seconds: 20);
   static const _thinkAfter = Duration(seconds: 36);
+  static const _yawnAfter = Duration(seconds: 61);
   static const _sleepAfter = Duration(seconds: 65);
   static const _tipCooldown = Duration(hours: 3);
   static const _greetAfterAway = Duration(minutes: 20);
@@ -160,6 +161,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
         (away == null || away >= _greetAfterAway);
     unawaited(_speakHello(s, greet: greet));
     unawaited(ref.read(assistantMemoryProvider.notifier).markSeen(s.now));
+    unawaited(ref.read(assistantMemoryProvider.notifier).pruneReminders(s.now));
     // The first place Pip sees, or a slip down the board, becomes the mark a
     // climb is measured from. A climb keeps the old mark until Pip cheers it.
     final rank = s.boardRank;
@@ -223,6 +225,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
       _typing = typing;
     });
     _rig.presenting = true;
+    if (prompt.happy) _rig.wiggle();
     if (typing) {
       _bubbleTimer = Timer(const Duration(milliseconds: 750), () {
         if (!mounted) return;
@@ -254,6 +257,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     var thought = false;
     var wandered = false;
     var readTried = false;
+    var yawned = false;
     void next() {
       _idle = Timer(const Duration(seconds: 1), () {
         if (!mounted || !_active) return;
@@ -266,6 +270,12 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
           }
           next();
           return;
+        }
+        if (quiet >= _yawnAfter && !yawned && !_rig.sleeping) {
+          // A yawn and a stretch, then the nap.
+          yawned = true;
+          _rig.reading = false;
+          _rig.yawn();
         }
         if (quiet >= _sleepAfter) {
           if (!_rig.sleeping) {
@@ -335,6 +345,10 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     if (_rig.sleeping) {
       _rig.wake();
       _after(const Duration(milliseconds: 650), _rig.standUp);
+      // Sometimes a stretch after waking, like a little one would.
+      if (_random.nextBool()) {
+        _after(const Duration(milliseconds: 1500), _rig.yawn);
+      }
     } else if (_rig.sitting) {
       _rig.standUp();
     }

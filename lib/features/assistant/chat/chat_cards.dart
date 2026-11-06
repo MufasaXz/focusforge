@@ -7,6 +7,7 @@ import '../../../shared/widgets/icon_badge.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/exam_guide.dart';
+import '../brain/reminders.dart';
 import '../brain/timetable.dart';
 
 /// The frame every card in the chat shares: a tonal panel with a titled
@@ -769,6 +770,84 @@ class _TimetableCardViewState extends State<TimetableCardView> {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// The user's reminders, soonest first, each with a button to remove it.
+class RemindersCardView extends StatefulWidget {
+  const RemindersCardView({
+    super.key,
+    required this.card,
+    required this.onRemove,
+  });
+
+  final RemindersCard card;
+  final ValueChanged<int> onRemove;
+
+  @override
+  State<RemindersCardView> createState() => _RemindersCardViewState();
+}
+
+class _RemindersCardViewState extends State<RemindersCardView> {
+  final _removed = <int>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final locale = Localizations.localeOf(context);
+    final left = [
+      for (final r in widget.card.reminders)
+        if (!_removed.contains(r.id)) r,
+    ];
+    return _CardShell(
+      icon: Icons.notifications_none_rounded,
+      title: context.tr('Your reminders'),
+      children: [
+        if (left.isEmpty)
+          Text(
+            context.tr('No reminders left.'),
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        for (final StudyReminder r in left)
+          Row(
+            children: [
+              Icon(
+                r.exam ? Icons.school_outlined : Icons.event_outlined,
+                size: 20,
+                color: cs.primary,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodyLarge,
+                    ),
+                    Text(
+                      '${formatDate(r.at, locale: locale)} · '
+                      '${formatTimeOfDay(r.at.hour * 60 + r.at.minute, locale: locale)}',
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: context.tr('Remove reminder'),
+                onPressed: () {
+                  setState(() => _removed.add(r.id));
+                  widget.onRemove(r.id);
+                },
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+            ],
+          ),
       ],
     );
   }

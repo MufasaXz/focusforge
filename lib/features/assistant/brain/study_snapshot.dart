@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,6 +59,10 @@ class StudySnapshot {
     this.memory = const AssistantMemory(),
     this.hasHistory = false,
     this.boardRank,
+    this.boardJoined = false,
+    this.boardMinutes = 0,
+    this.boardBehind,
+    this.boardSize = 0,
   });
 
   final DateTime now;
@@ -117,6 +122,18 @@ class StudySnapshot {
   /// chose to appear on it.
   final int? boardRank;
 
+  /// Whether the user chose to appear on the leaderboard.
+  final bool boardJoined;
+
+  /// The user's minutes on this week's board.
+  final int boardMinutes;
+
+  /// Minutes short of the person one place up, when there is one.
+  final int? boardBehind;
+
+  /// How many people are on this week's board.
+  final int boardSize;
+
   bool get usageReady => android && appListConsent && usageAccess;
 
   int get distractingMinutes =>
@@ -140,10 +157,33 @@ class StudySnapshot {
   }
 
   /// Reads what is already loaded, without waiting for the platform.
-  static int? _boardRank(Reader read) {
-    if (!read(boardOptInProvider)) return null;
-    final index = read(leaderboardProvider).indexWhere((e) => e.isMe);
-    return index < 0 ? null : index + 1;
+  static ({bool joined, int? rank, int minutes, int? behind, int size}) _board(
+    Reader read,
+  ) {
+    if (!read(boardOptInProvider)) {
+      return (joined: false, rank: null, minutes: 0, behind: null, size: 0);
+    }
+    final rows = read(leaderboardProvider);
+    final index = rows.indexWhere((e) => e.isMe);
+    if (index < 0) {
+      return (
+        joined: true,
+        rank: null,
+        minutes: 0,
+        behind: null,
+        size: rows.length,
+      );
+    }
+    final mine = (rows[index].hours * 60).round();
+    return (
+      joined: true,
+      rank: index + 1,
+      minutes: mine,
+      behind: index == 0
+          ? null
+          : math.max(1, (rows[index - 1].hours * 60).round() - mine),
+      size: rows.length,
+    );
   }
 
   static StudySnapshot capture(Reader read, {DateTime? now}) => _build(
@@ -287,6 +327,7 @@ class StudySnapshot {
       }
     }
 
+    final board = _board(read);
     return StudySnapshot(
       now: now,
       name: read(userProvider).firstName,
@@ -321,7 +362,11 @@ class StudySnapshot {
       },
       memory: read(assistantMemoryProvider),
       hasHistory: sessions.isNotEmpty,
-      boardRank: _boardRank(read),
+      boardRank: board.rank,
+      boardJoined: board.joined,
+      boardMinutes: board.minutes,
+      boardBehind: board.behind,
+      boardSize: board.size,
     );
   }
 

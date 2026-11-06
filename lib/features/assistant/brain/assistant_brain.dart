@@ -6,6 +6,7 @@ import '../../../core/services/ai_backend_service.dart';
 import '../mascot/mascot.dart' show kBuddyName;
 import 'assistant_models.dart';
 import 'exam_guide.dart';
+import 'reminders.dart';
 import 'study_snapshot.dart';
 import 'timetable.dart';
 
@@ -48,13 +49,42 @@ class AssistantBrain {
         said: input,
       );
     }
-    if (_score(text, tokens, _remindWords) > 0 &&
-        (exam != null || _score(text, tokens, _keywords[Act.examAsk]!) > 0)) {
-      return AssistantAction(
-        off ? Act.examReminderOff : Act.examReminder,
-        arg: exam,
-        said: input,
-      );
+    if (_score(text, tokens, _boardWords) > 0) {
+      return AssistantAction(Act.leaderboard, said: input);
+    }
+    if (_score(text, tokens, _remindWords) > 0) {
+      final request = ReminderRequest.parse(input, DateTime.now());
+      final generic =
+          request.title.isEmpty ||
+          const {'Exam', 'Exams', 'Exam date'}.contains(request.title);
+      if (_score(text, tokens, _listWords) > 0 && request.at == null) {
+        return AssistantAction(Act.reminders, said: input);
+      }
+      if (off) {
+        // What is left once the "stop", "turn off" and such are taken out.
+        final about = request.title
+            .toLowerCase()
+            .split(' ')
+            .where(
+              (w) =>
+                  w.isNotEmpty &&
+                  !_offWords.any((o) => o.split(' ').contains(w)),
+            )
+            .toSet();
+        final examOnly = about.isNotEmpty && about.every(_examWord.contains);
+        return AssistantAction(
+          exam != null || examOnly ? Act.examReminderOff : Act.reminderOff,
+          said: input,
+        );
+      }
+      // A named exam from the guide ("reminder for NEET") or just "my exam",
+      // with no date: the exam countdown, which knows or asks the date.
+      if (request.at == null &&
+          (exam != null ||
+              (generic && _score(text, tokens, _keywords[Act.examAsk]!) > 0))) {
+        return AssistantAction(Act.examReminder, arg: exam, said: input);
+      }
+      return AssistantAction(Act.reminder, said: input);
     }
     final scores = <Act, double>{
       for (final entry in _keywords.entries)
@@ -240,6 +270,28 @@ class AssistantBrain {
     'notifications',
     'alert',
     'yaad',
+  ];
+
+  static const _boardWords = [
+    'leaderboard',
+    'leader board',
+    'leaderboards',
+    'rank',
+    'ranking',
+    'rankings',
+    'position',
+    'standing',
+  ];
+
+  static const _examWord = {'exam', 'exams', 'pariksha'};
+
+  static const _listWords = [
+    'show',
+    'list',
+    'all',
+    'my reminders',
+    'which reminders',
+    'what reminders',
   ];
 
   static const _offWords = [
@@ -514,6 +566,9 @@ class AssistantBrain {
       suggestions: [_timetableChip, _planChip],
     ),
     Act.examReminder => _examReminder(s, notifications: action.value != 0),
+    Act.leaderboard => _leaderboard(s),
+    Act.reminders => remindersReply(s),
+    Act.reminder || Act.reminderOff => remindersReply(s),
     Act.examReminderOff => AssistantReply(const [
       Say(Copy('Okay, no more exam reminders.')),
     ], suggestions: defaults(s)),
@@ -522,7 +577,9 @@ class AssistantBrain {
     Act.usageAccess ||
     Act.appList ||
     Act.openShield ||
-    Act.openFocus => const AssistantReply([]),
+    Act.openFocus ||
+    Act.openLeaderboard ||
+    Act.reminderDate => const AssistantReply([]),
   };
 
   /// What to show while working a request out. Empty for small talk.
@@ -1376,6 +1433,155 @@ class AssistantBrain {
     ], thinking: thinkingFor(Act.plan));
   }
 
+  static const _openBoardChip = Suggestion(
+    Copy('Open leaderboard'),
+    Icons.leaderboard_outlined,
+    AssistantAction(Act.openLeaderboard),
+  );
+
+  static const _remindersChip = Suggestion(
+    Copy('My reminders'),
+    Icons.notifications_none_rounded,
+    AssistantAction(Act.reminders),
+  );
+
+  /// Where the user stands on this week's leaderboard.
+  AssistantReply _leaderboard(StudySnapshot s) {
+    final rank = s.boardRank;
+    if (!s.boardJoined) {
+      return const AssistantReply(
+        [
+          Say(
+            Copy(
+              'You’re not on the leaderboard yet. Join it from the Leaderboard page to see where you stand each week.',
+            ),
+          ),
+        ],
+        suggestions: [_openBoardChip],
+      );
+    }
+    if (rank == null) {
+      return const AssistantReply(
+        [
+          Say(
+            Copy(
+              'You’re on the leaderboard, but this week’s places haven’t loaded yet. Open it to check.',
+            ),
+          ),
+        ],
+        suggestions: [_openBoardChip, _startChip],
+      );
+    }
+    final behind = s.boardBehind;
+    return AssistantReply(
+      [
+        Say(
+          Copy('You’re #{0} of {1} on this week’s leaderboard, with {2}.', [
+            Count(rank),
+            Count(s.boardSize),
+            Minutes(s.boardMinutes),
+          ]),
+        ),
+        Say(
+          rank == 1
+              ? const Copy('You’re on top. Keep the lead with a block today.')
+              : Copy('{0} more and you pass #{1}.', [
+                  Minutes(behind ?? 1),
+                  Count(rank - 1),
+                ]),
+        ),
+      ],
+      suggestions: [_startChip, _openBoardChip],
+    );
+  }
+
+  /// The reminders the user has set, to look over or remove.
+  AssistantReply remindersReply(StudySnapshot s) {
+    final today = DateTime(s.now.year, s.now.month, s.now.day);
+    final live = [
+      for (final r in s.memory.reminders)
+        if (!r.day.isBefore(today)) r,
+    ];
+    if (live.isEmpty) {
+      return const AssistantReply(
+        [
+          Say(
+            Copy(
+              'No reminders yet. Try “remind me about my physics test on 25 Nov”.',
+            ),
+          ),
+        ],
+        suggestions: [_timetableChip],
+      );
+    }
+    return AssistantReply([
+      const Say(Copy('Here are your reminders. Tap the bin to remove one.')),
+      Say.card(RemindersCard(live)),
+    ]);
+  }
+
+  /// The reply once a reminder is set. [notifications] says whether the
+  /// phone lets Pip notify; without it the reminder shows on Home.
+  AssistantReply reminderSet(
+    StudyReminder reminder, {
+    required bool notifications,
+    required bool hasTime,
+  }) {
+    final title = Copy.raw(reminder.title);
+    final day = Day(reminder.day);
+    return AssistantReply(
+      [
+        Say(
+          reminder.exam
+              ? Copy(
+                  'Done. I’ll remind you about {0} on {1}: a week, three days and a day before, and that morning.',
+                  [title, day],
+                )
+              : hasTime
+              ? Copy('Done. I’ll remind you about {0} on {1} at {2}.', [
+                  title,
+                  day,
+                  Clock(reminder.at.hour * 60 + reminder.at.minute),
+                ])
+              : Copy('Done. I’ll remind you about {0} on {1} in the evening.', [
+                  title,
+                  day,
+                ]),
+        ),
+        if (!notifications)
+          const Say(
+            Copy(
+              'Notifications are off for FocusForge, so I’ll show these reminders on Home instead.',
+            ),
+          ),
+      ],
+      suggestions: [if (reminder.exam) _timetableChip, _remindersChip],
+    );
+  }
+
+  /// Asks for the day of a reminder the user named without one.
+  AssistantReply reminderNeedsDate(String title, {bool passed = false}) =>
+      AssistantReply(
+        [
+          Say(
+            passed
+                ? const Copy('That date has already passed. Pick another one?')
+                : title.isEmpty
+                ? const Copy('When should I remind you? Pick a date.')
+                : Copy('When is {0}? Pick the date and I’ll remind you.', [
+                    Copy.raw(title),
+                  ]),
+          ),
+        ],
+        suggestions: const [
+          Suggestion(
+            Copy('Pick a date'),
+            Icons.event_rounded,
+            AssistantAction(Act.reminderDate),
+          ),
+        ],
+      );
+
   /// When a new timetable starts: 5 PM, after school, or soon after now if
   /// the evening has already begun.
   static int defaultTimetableStart(DateTime now) {
@@ -1492,6 +1698,10 @@ class AssistantBrain {
       case Act.unknown:
         return true;
       case Act.lock ||
+          Act.leaderboard ||
+          Act.reminder ||
+          Act.reminders ||
+          Act.reminderOff ||
           Act.timetable ||
           Act.timetableOff ||
           Act.examReminder ||
@@ -1679,6 +1889,7 @@ class AssistantBrain {
                   Count(rank),
                 ]),
           const AssistantAction(Act.report),
+          happy: true,
         ),
       );
     }
@@ -1690,6 +1901,7 @@ class AssistantBrain {
             Minutes(s.todayMinutes),
           ]),
           const AssistantAction(Act.report),
+          happy: true,
         ),
       );
     }
@@ -1702,6 +1914,7 @@ class AssistantBrain {
               Minutes(change),
             ]),
             const AssistantAction(Act.report),
+            happy: true,
           ),
         );
       } else if (change <= -30) {
@@ -1720,6 +1933,7 @@ class AssistantBrain {
         BuddyPrompt(
           Copy('{0} days in a row. Keep it up!', [Count(s.streak)]),
           const AssistantAction(Act.report),
+          happy: true,
         ),
       );
     }
@@ -1745,6 +1959,7 @@ class AssistantBrain {
         const BuddyPrompt(
           Copy('Goal done for today. Want to see your week?'),
           AssistantAction(Act.report),
+          happy: true,
         ),
       );
     } else if (s.now.hour >= 11) {

@@ -227,6 +227,10 @@ void main() {
       'read',
       'walk',
       'slip',
+      'yawn',
+      'wiggle',
+      'tilt',
+      'swing',
     ];
     for (final MapEntry(key: label, value: theme) in themes.entries) {
       final rigs = {for (final pose in poses) pose: MascotRig()};
@@ -268,10 +272,15 @@ void main() {
       rigs['walk']!.walk();
       rigs['read']!.reading = true;
       rigs['sit']!.sitDown();
+      rigs['swing']!.sitDown();
       rigs['sleep']!.fallAsleep();
       rigs['look']!.lookAt(-0.9, 0.35);
       rigs['present']!.presenting = true;
       await frames(const Duration(milliseconds: 1500));
+      rigs['yawn']!.yawn();
+      rigs['wiggle']!.wiggle();
+      rigs['tilt']!.tiltCurious(1);
+      rigs['swing']!.swingFeet();
       rigs['think']!.thinking = true;
       await frames(const Duration(milliseconds: 400));
       rigs['sleep']!.puff();

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/utils/format.dart';
+import 'reminders.dart';
 import 'timetable.dart';
 
 /// A length of time, formatted for the reader's language when shown.
@@ -32,6 +33,19 @@ class Clock {
 
   @override
   int get hashCode => minuteOfDay.hashCode;
+}
+
+/// A calendar day for a [Copy], written out the phone's way.
+@immutable
+class Day {
+  const Day(this.date);
+  final DateTime date;
+
+  @override
+  bool operator ==(Object other) => other is Day && other.date == date;
+
+  @override
+  int get hashCode => date.hashCode;
 }
 
 class Count {
@@ -70,6 +84,7 @@ class Copy {
     Copy() => arg.resolve(strings),
     Minutes() => formatMinutes(arg.value, locale: strings.locale),
     Clock() => formatTimeOfDay(arg.minuteOfDay, locale: strings.locale),
+    Day() => formatDate(arg.date, locale: strings.locale),
     Count() => NumberFormat.decimalPattern(
       strings.locale.languageCode,
     ).format(arg.value),
@@ -122,6 +137,10 @@ enum Act {
   examReminderOff,
   timetable,
   timetableOff,
+  reminder,
+  reminders,
+  reminderOff,
+  leaderboard,
 
   // Answers to the one-time question about online answers.
   aiAllow,
@@ -132,6 +151,8 @@ enum Act {
   appList,
   openShield,
   openFocus,
+  openLeaderboard,
+  reminderDate,
 }
 
 /// One request: what to do, and what to do it to.
@@ -291,6 +312,13 @@ class ExamCard extends ChatCard {
   final bool isMine;
 }
 
+/// The reminders the user has set, each with a way to remove it.
+class RemindersCard extends ChatCard {
+  const RemindersCard(this.reminders);
+
+  final List<StudyReminder> reminders;
+}
+
 /// A timetable to adjust and save, with each subject's name.
 class TimetableCard extends ChatCard {
   const TimetableCard({
@@ -354,8 +382,11 @@ class AssistantReply {
 /// Something Pip says from the home screen, and what tapping it does.
 @immutable
 class BuddyPrompt {
-  const BuddyPrompt(this.copy, this.action);
+  const BuddyPrompt(this.copy, this.action, {this.happy = false});
 
   final Copy copy;
   final AssistantAction action;
+
+  /// Good news, which Pip says with a happy wiggle.
+  final bool happy;
 }

@@ -9,6 +9,7 @@ import '../../shield/shield_access.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/exam_guide.dart';
+import '../brain/reminders.dart';
 import '../brain/study_snapshot.dart';
 
 /// One reminder from Pip: when it goes out and what it says.
@@ -149,7 +150,59 @@ abstract final class PipReminders {
     ?PipNudgePlanner.next(s),
     ..._exam(s),
     ..._timetable(s),
+    ..._dated(s),
   ];
+
+  /// Days before a dated test or exam when Pip reminds, in the evening.
+  static const testMilestones = [7, 3, 1];
+
+  /// The reminders the user set by date: a countdown for a test or exam,
+  /// one call on the day for anything else.
+  static List<PipNudge> _dated(StudySnapshot s) => [
+    for (final r in s.memory.reminders) ..._forReminder(r, s.now),
+  ];
+
+  static List<PipNudge> _forReminder(StudyReminder r, DateTime now) {
+    final base = 1000 + r.id * 10;
+    final title = Copy.raw(r.title);
+    if (!r.exam) {
+      return [
+        if (r.at.isAfter(now))
+          PipNudge(
+            id: base,
+            at: r.at,
+            title: Copy('Reminder: {0}', [title]),
+            body: const Copy('You asked me to remind you. You’ve got this.'),
+            staleAfter: const Duration(hours: 2),
+          ),
+      ];
+    }
+    // The morning of the test: 7 AM, or an hour before an early start.
+    final early = r.at.hour * 60 + r.at.minute < 8 * 60 && r.at.hour > 0;
+    final morning = early
+        ? r.at.subtract(const Duration(hours: 1))
+        : DateTime(r.at.year, r.at.month, r.at.day, 7);
+    return [
+      for (final (i, days) in testMilestones.indexed)
+        if (DateTime(r.at.year, r.at.month, r.at.day - days, 18) case final at
+            when at.isAfter(now))
+          PipNudge(
+            id: base + i,
+            at: at,
+            title: examCopy(title, days),
+            body: PipNudgePlanner.quoteFor(at),
+            staleAfter: const Duration(hours: 6),
+          ),
+      if (morning.isAfter(now))
+        PipNudge(
+          id: base + 9,
+          at: morning,
+          title: examCopy(title, 0),
+          body: PipNudgePlanner.quoteFor(morning),
+          staleAfter: const Duration(hours: 3),
+        ),
+    ];
+  }
 
   static List<PipNudge> _exam(StudySnapshot s) {
     final exam = examById(s.memory.examId);
@@ -237,6 +290,23 @@ abstract final class PipReminders {
             Act.focusNow,
             arg: timetable.slots.firstOrNull?.subjectId,
           ),
+        );
+      }
+    }
+    for (final r in s.memory.reminders) {
+      final days = r.day.difference(today).inHours ~/ 24;
+      if (r.exam && (days == 0 || testMilestones.contains(days))) {
+        return BuddyPrompt(
+          examCopy(Copy.raw(r.title), days),
+          const AssistantAction(Act.timetable),
+        );
+      }
+      if (!r.exam &&
+          days == 0 &&
+          s.now.isAfter(r.at.subtract(const Duration(minutes: 30)))) {
+        return BuddyPrompt(
+          Copy('Reminder: {0}', [Copy.raw(r.title)]),
+          const AssistantAction(Act.reminders),
         );
       }
     }

@@ -16,6 +16,7 @@ import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/study_snapshot.dart';
+import '../brain/reminders.dart';
 import '../brain/timetable.dart';
 import '../nudges/pip_nudges.dart';
 
@@ -126,6 +127,9 @@ class ChatController extends Notifier<ChatState> {
 
   /// Whether the user asked for exam reminders before Pip knew the date.
   bool _pendingExamReminder = false;
+
+  /// A reminder the user named before saying when it is.
+  ReminderRequest? _pendingReminder;
 
   /// Shorter pauses when the system asks for less motion.
   bool fast = false;
@@ -262,6 +266,33 @@ class ChatController extends Notifier<ChatState> {
         if (minutes != null) await _saveGoal(minutes);
       case Act.intro:
         await memory.markIntroduced();
+      case Act.reminder:
+        return _setReminder(
+          ReminderRequest.parse(action.said ?? '', DateTime.now()),
+          generation,
+        );
+      case Act.reminderOff:
+        final asked = ReminderRequest.parse(
+          action.said ?? '',
+          DateTime.now(),
+        ).title.toLowerCase().split(' ').where((w) => w.length >= 3).toSet();
+        final match = ref
+            .read(assistantMemoryProvider)
+            .reminders
+            .where((r) => r.title.toLowerCase().split(' ').any(asked.contains))
+            .firstOrNull;
+        if (match != null) {
+          await memory.removeReminder(match.id);
+          _syncReminders();
+          return say(
+            AssistantReply([
+              Say(
+                Copy('Removed the reminder for {0}.', [Copy.raw(match.title)]),
+              ),
+            ]),
+            generation: generation,
+          );
+        }
       case Act.timetable when action.arg == 'today':
         final saved = ref.read(assistantMemoryProvider).timetable;
         if (saved != null) return useTimetableToday(saved);
@@ -273,6 +304,8 @@ class ChatController extends Notifier<ChatState> {
         await memory.setExamReminders(false);
         _syncReminders();
       case Act.examReminder:
+        final named = action.arg;
+        if (named != null) await memory.setExam(named);
         final snapshot = StudySnapshot.capture(ref.read);
         final dated =
             (snapshot.daysToExam ?? -1) >= 0 && snapshot.memory.examId != null;
@@ -440,6 +473,64 @@ class ChatController extends Notifier<ChatState> {
     await run(
       AssistantAction(_pendingExamReminder ? Act.examReminder : Act.examDate),
     );
+  }
+
+  /// Sets [request] if it has a day still ahead, or asks for one.
+  Future<void> _setReminder(ReminderRequest request, int generation) async {
+    final at = request.at;
+    if (at == null || at.isBefore(DateTime.now())) {
+      _pendingReminder = request;
+      return say(
+        brain.reminderNeedsDate(request.title, passed: at != null),
+        generation: generation,
+      );
+    }
+    _pendingReminder = null;
+    final title = request.title.isEmpty
+        ? AppStrings(_locale()).text('Study reminder')
+        : request.title;
+    final reminder = await ref
+        .read(assistantMemoryProvider.notifier)
+        .addReminder(title: title, at: at, exam: request.exam);
+    final allowed = await _allowNotifications();
+    _syncReminders();
+    if (generation != _generation) return;
+    await say(
+      brain.reminderSet(
+        reminder,
+        notifications: allowed,
+        hasTime: request.hasTime,
+      ),
+      generation: generation,
+    );
+  }
+
+  /// The day the user picked for the reminder Pip asked about.
+  Future<void> setReminderDate(DateTime date) {
+    final pending =
+        _pendingReminder ?? const ReminderRequest(title: '', exam: false);
+    final time = pending.hasTime ? pending.at : null;
+    return _setReminder(
+      ReminderRequest(
+        title: pending.title,
+        exam: pending.exam,
+        at: DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time?.hour ?? 18,
+          time?.minute ?? 0,
+        ),
+        hasTime: pending.hasTime,
+      ),
+      ++_generation,
+    );
+  }
+
+  /// Removes a reminder from the reminders card.
+  Future<void> deleteReminder(int id) async {
+    await ref.read(assistantMemoryProvider.notifier).removeReminder(id);
+    _syncReminders();
   }
 
   /// Saves [timetable] from the card in entry [entryId], and its daily

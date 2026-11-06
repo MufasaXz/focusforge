@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/services/local_store.dart';
+import 'brain/reminders.dart';
 import 'brain/timetable.dart';
 
 /// What Pip remembers between launches. Kept on the phone only.
@@ -22,6 +23,7 @@ class AssistantMemory {
     this.tipTurn = 0,
     this.homeReminderOn,
     this.lastRank,
+    this.reminders = const [],
   });
 
   /// The exam the user is preparing for, from the exam guide.
@@ -63,6 +65,9 @@ class AssistantMemory {
   /// The leaderboard place Pip last saw, so it can cheer a climb once.
   final int? lastRank;
 
+  /// Reminders the user set by date: tests, exams and tasks.
+  final List<StudyReminder> reminders;
+
   AssistantMemory copyWith({
     String? examId,
     DateTime? examDate,
@@ -78,6 +83,7 @@ class AssistantMemory {
     int? tipTurn,
     DateTime? homeReminderOn,
     int? lastRank,
+    List<StudyReminder>? reminders,
   }) => AssistantMemory(
     examId: examId ?? this.examId,
     examDate: examDate ?? this.examDate,
@@ -92,6 +98,7 @@ class AssistantMemory {
     tipTurn: tipTurn ?? this.tipTurn,
     homeReminderOn: homeReminderOn ?? this.homeReminderOn,
     lastRank: lastRank ?? this.lastRank,
+    reminders: reminders ?? this.reminders,
   );
 
   Map<String, dynamic> toJson() => {
@@ -108,6 +115,7 @@ class AssistantMemory {
     'tipTurn': tipTurn,
     'homeReminderOn': ?homeReminderOn?.toIso8601String(),
     'lastRank': ?lastRank,
+    'reminders': [for (final r in reminders) r.toJson()],
   };
 
   /// Reads a stored map, ignoring any field of the wrong type.
@@ -131,6 +139,10 @@ class AssistantMemory {
       tipTurn: json['tipTurn'] is int ? json['tipTurn'] as int : 0,
       homeReminderOn: shown is String ? DateTime.tryParse(shown) : null,
       lastRank: json['lastRank'] is int ? json['lastRank'] as int : null,
+      reminders: [
+        if (json['reminders'] case final List list)
+          for (final item in list) ?StudyReminder.fromJson(item),
+      ],
     );
   }
 }
@@ -176,6 +188,53 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   );
 
   Future<void> setLastRank(int rank) => _save(state.copyWith(lastRank: rank));
+
+  /// Most reminders kept at once; the oldest goes first.
+  static const maxReminders = 20;
+
+  Future<StudyReminder> addReminder({
+    required String title,
+    required DateTime at,
+    required bool exam,
+  }) async {
+    final reminder = StudyReminder(
+      id: ReminderRequest.nextId(state.reminders),
+      title: title,
+      at: at,
+      exam: exam,
+    );
+    final kept = [...state.reminders, reminder]
+      ..sort((a, b) => a.at.compareTo(b.at));
+    await _save(
+      state.copyWith(
+        reminders: kept.length > maxReminders
+            ? kept.sublist(kept.length - maxReminders)
+            : kept,
+      ),
+    );
+    return reminder;
+  }
+
+  Future<void> removeReminder(int id) => _save(
+    state.copyWith(
+      reminders: [
+        for (final r in state.reminders)
+          if (r.id != id) r,
+      ],
+    ),
+  );
+
+  /// Drops reminders whose day has passed.
+  Future<void> pruneReminders(DateTime now) async {
+    final today = DateTime(now.year, now.month, now.day);
+    final live = [
+      for (final r in state.reminders)
+        if (!r.day.isBefore(today)) r,
+    ];
+    if (live.length != state.reminders.length) {
+      await _save(state.copyWith(reminders: live));
+    }
+  }
 
   Future<void> markHomeReminder(DateTime day) => _save(
     state.copyWith(homeReminderOn: DateTime(day.year, day.month, day.day)),
