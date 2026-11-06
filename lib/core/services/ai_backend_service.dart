@@ -73,11 +73,12 @@ class AiBackendService implements AiBackend {
     this.timeout = const Duration(seconds: 25),
   }) : _client = client ?? http.Client();
 
-  /// The deployed worker, empty until it is deployed. A build can point
-  /// elsewhere with `--dart-define=PIP_AI_URL=https://…`.
+  /// The deployed worker (`pip-ai-backend/`). A build can point elsewhere
+  /// with `--dart-define=PIP_AI_URL=https://…`, or turn online answers off
+  /// with an empty value.
   static const defaultEndpoint = String.fromEnvironment(
     'PIP_AI_URL',
-    defaultValue: '',
+    defaultValue: 'https://pip-ai-backend.pip-ai-backend.workers.dev/',
   );
 
   /// The worker cuts messages here too; trimming first keeps requests small.
