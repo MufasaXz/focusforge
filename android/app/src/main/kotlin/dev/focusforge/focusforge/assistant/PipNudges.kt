@@ -73,15 +73,18 @@ object PipNudges {
 
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (!canNotify(context, manager)) return
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL,
-                DeviceStrings.text(context, "Pip’s reminders"),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply {
-                description = DeviceStrings.text(context, "Study reminders from Pip for your timetable, your exam and days without study")
-            },
-        )
+        // Channels arrived in Android 8; Android 7 posts with a priority instead.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL,
+                    DeviceStrings.text(context, "Pip’s reminders"),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = DeviceStrings.text(context, "Study reminders from Pip for your timetable, your exam and days without study")
+                },
+            )
+        }
 
         val head = BitmapFactory.decodeResource(context.resources, R.drawable.pip_head)
         val open = PendingIntent.getActivity(
@@ -93,7 +96,9 @@ object PipNudges {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val builder = Notification.Builder(context, CHANNEL)
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, CHANNEL)
+            else Notification.Builder(context).setPriority(Notification.PRIORITY_DEFAULT)
+        builder
             .setSmallIcon(R.drawable.ic_focus_live)
             .setLargeIcon(head)
             .setContentTitle(title)
