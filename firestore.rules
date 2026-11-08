@@ -110,8 +110,10 @@ service cloud.firestore {
       }
     }
     match /leaderboard/{week}/entries/{uid} {
-      allow read: if signedIn();
-      allow create, update: if self(uid) && dayKey(week) &&
+      // The board needs a linked account, as the app says; an anonymous
+      // credential can still remove a row it owns.
+      allow read: if account();
+      allow create, update: if account() && request.auth.uid == uid && dayKey(week) &&
         request.resource.data.keys().hasOnly(['ownerUid','name','minutes','level','updatedAt','avatarPhoto']) &&
         (!request.resource.data.keys().hasAny(['avatarPhoto']) ||
           (request.resource.data.avatarPhoto is string && request.resource.data.avatarPhoto.size() <= 24000 &&

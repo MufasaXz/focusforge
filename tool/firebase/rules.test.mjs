@@ -116,6 +116,12 @@ test('leaderboard accepts optional positive integer levels and preserves row own
   }
   await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), {...summary, level:7}));
 });
+test('an anonymous credential can neither read nor join the leaderboard', async () => {
+  const summary = {ownerUid:'guest', name:'Alex', minutes:30, updatedAt:now()};
+  await assertFails(setDoc(doc(db('guest', true), 'leaderboard/2026-10-12/entries/guest'), summary));
+  await assertFails(getDocs(collection(db('guest', true), 'leaderboard/2026-10-12/entries')));
+  await assertSucceeds(getDocs(collection(db('student'), 'leaderboard/2026-10-12/entries')));
+});
 test('leaderboard photos stay bounded and belong to the row owner', async () => {
   const ref = doc(db('student'), 'leaderboard/2026-10-12/entries/student');
   const summary = {ownerUid:'student',name:'Alex',minutes:60,updatedAt:now(),avatarPhoto:'/9j/AA=='};
