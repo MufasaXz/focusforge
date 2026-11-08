@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0}まであと{1}日。準備のための毎日のプランです。変更して保存してください。",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0}まであと{1}日。この毎日のプランは{2}にいちばん多く時間を割きます。変更して保存してください。",
   "How long a break do you want between study sessions? Pick it on the card.": "勉強セッションの間にどれくらい休憩したいですか？カードで選んでください。",
-  "Break between sessions": "セッション間の休憩"
+  "Break between sessions": "セッション間の休憩",
+  "Could not send the report. Check your connection and try again.": "報告を送信できませんでした。接続を確認して、もう一度お試しください。"
 }

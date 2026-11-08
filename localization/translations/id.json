@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0} tinggal {1} hari. Ini rencana harian untuk bersiap. Ubah, lalu simpan.",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} tinggal {1} hari. Rencana harian ini memberi {2} waktu terbanyak. Ubah, lalu simpan.",
   "How long a break do you want between study sessions? Pick it on the card.": "Berapa lama istirahat yang kamu mau di antara sesi belajar? Pilih di kartu.",
-  "Break between sessions": "Istirahat antarsesi"
+  "Break between sessions": "Istirahat antarsesi",
+  "Could not send the report. Check your connection and try again.": "Laporan tidak dapat dikirim. Periksa koneksi Anda dan coba lagi."
 }

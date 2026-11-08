@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "Faltan {1} días para {0}. Aquí tienes un plan diario para prepararte. Cámbialo y guárdalo.",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "Faltan {1} días para {0}. Este plan diario da más tiempo a {2}. Cámbialo y guárdalo.",
   "How long a break do you want between study sessions? Pick it on the card.": "¿Cuánto descanso quieres entre sesiones de estudio? Elígelo en la tarjeta.",
-  "Break between sessions": "Descanso entre sesiones"
+  "Break between sessions": "Descanso entre sesiones",
+  "Could not send the report. Check your connection and try again.": "No se pudo enviar el informe. Comprueba tu conexión e inténtalo de nuevo."
 }

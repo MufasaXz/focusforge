@@ -171,12 +171,13 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     if (reason == null || !mounted) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
     final thanks = context.tr('Thanks. This answer will be reviewed.');
+    final failed = context.tr(
+      'Could not send the report. Check your connection and try again.',
+    );
     final sent = await _chat.report(id, reason);
-    if (sent) {
-      messenger
-        ?..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(thanks)));
-    }
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(sent ? thanks : failed)));
   }
 
   Future<void> _pickReminderDate() async {

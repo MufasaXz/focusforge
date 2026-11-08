@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "อีก {1} วันถึง {0} นี่คือแผนรายวันเพื่อเตรียมตัว เปลี่ยนได้แล้วบันทึก",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "อีก {1} วันถึง {0} แผนรายวันนี้ให้เวลากับ {2} มากที่สุด เปลี่ยนได้แล้วบันทึก",
   "How long a break do you want between study sessions? Pick it on the card.": "อยากพักนานแค่ไหนระหว่างช่วงเรียน เลือกได้บนการ์ด",
-  "Break between sessions": "พักระหว่างช่วงเรียน"
+  "Break between sessions": "พักระหว่างช่วงเรียน",
+  "Could not send the report. Check your connection and try again.": "ส่งรายงานไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง"
 }

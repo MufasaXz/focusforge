@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "بقي {1} يومًا على {0}. إليك خطة يومية للاستعداد. عدّلها ثم احفظها.",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "بقي {1} يومًا على {0}. تمنح هذه الخطة اليومية {2} أكبر وقت. عدّلها ثم احفظها.",
   "How long a break do you want between study sessions? Pick it on the card.": "كم تريد أن تكون الاستراحة بين جلسات الدراسة؟ اخترها من البطاقة.",
-  "Break between sessions": "الاستراحة بين الجلسات"
+  "Break between sessions": "الاستراحة بين الجلسات",
+  "Could not send the report. Check your connection and try again.": "تعذّر إرسال البلاغ. تحقّق من اتصالك وحاول مرة أخرى."
 }

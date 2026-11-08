@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0} ને {1} દિવસ બાકી છે. તૈયારી માટે આ રોજની યોજના છે. બદલો, પછી સેવ કરો.",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} ને {1} દિવસ બાકી છે. આ રોજની યોજના {2} ને સૌથી વધુ સમય આપે છે. બદલો, પછી સેવ કરો.",
   "How long a break do you want between study sessions? Pick it on the card.": "અભ્યાસ સત્રો વચ્ચે કેટલો વિરામ જોઈએ? કાર્ડ પર પસંદ કરો.",
-  "Break between sessions": "સત્રો વચ્ચે વિરામ"
+  "Break between sessions": "સત્રો વચ્ચે વિરામ",
+  "Could not send the report. Check your connection and try again.": "રિપોર્ટ મોકલી શકાયો નહીં. તમારું કનેક્શન તપાસો અને ફરી પ્રયાસ કરો."
 }

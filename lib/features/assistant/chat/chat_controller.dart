@@ -294,7 +294,8 @@ class ChatController extends Notifier<ChatState> {
     final kept = store.getMap(StoreKeys.assistantReports)?['items'];
     await store.setMap(StoreKeys.assistantReports, {
       'items': [
-        if (kept is List) ...kept.take(49),
+        // The most recent 50, this one included.
+        if (kept is List) ...kept.skip(kept.length > 49 ? kept.length - 49 : 0),
         {
           'reason': reason,
           'reply': reply,
@@ -303,18 +304,20 @@ class ChatController extends Notifier<ChatState> {
         },
       ],
     });
+    // Only a report that reached the review service counts as sent; the
+    // copy on the phone is no review.
     final backend = ref.read(aiBackendProvider);
-    if (backend == null) return true;
+    if (backend == null) return false;
     try {
       await backend.reportReply(
         reply: reply,
         reason: reason,
         question: question,
       );
+      return true;
     } on AiBackendException {
-      // Kept on the phone; the copy there is enough to show it was flagged.
+      return false;
     }
-    return true;
   }
 
   /// The last few lines of the conversation, oldest first, without the

@@ -1606,5 +1606,6 @@
   "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.": "{0} is in {1} days. Here’s a daily plan to get ready. Change it, then save.",
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.",
   "How long a break do you want between study sessions? Pick it on the card.": "How long a break do you want between study sessions? Pick it on the card.",
-  "Break between sessions": "Break between sessions"
+  "Break between sessions": "Break between sessions",
+  "Could not send the report. Check your connection and try again.": "Could not send the report. Check your connection and try again."
 }
