@@ -197,6 +197,13 @@ class ChatController extends Notifier<ChatState> {
     final snapshot = await StudySnapshot.gather(ref.read);
     await _pause(fast ? 60 : 380);
     if (generation != _generation) return;
+    // Consent can be withdrawn, or the account signed out, while the study
+    // summary is read: nothing leaves the phone unless both still hold now.
+    if (ref.read(assistantMemoryProvider).aiConsent != true ||
+        ref.read(accountUidProvider) == null) {
+      state = state.copyWith(status: ChatStatus.idle, clearStep: true);
+      return run(local);
+    }
     state = state.copyWith(step: const Copy('Thinking…'), trail: [reading]);
     try {
       final reply = await backend.askAiAssistant(
@@ -312,13 +319,17 @@ class ChatController extends Notifier<ChatState> {
 
   /// The last few lines of the conversation, oldest first, without the
   /// message being asked now.
+  ///
+  /// Only the user's own words and Pip's online answers go: Pip's answers
+  /// from the phone can carry the user's name, or other people's from the
+  /// leaderboard, and the consent promises never to send a name.
   List<Map<String, String>> _history() {
     final strings = AppStrings(_locale());
     final lines = state.entries.toList();
     if (lines.isNotEmpty && !lines.last.fromPip) lines.removeLast();
     final turns = <Map<String, String>>[
       for (final entry in lines)
-        if (entry.card == null)
+        if (entry.card == null && (!entry.fromPip || entry.online))
           if ((entry.text ?? entry.copy?.resolve(strings)) case final text?
               when text.trim().isNotEmpty)
             {'role': entry.fromPip ? 'pip' : 'user', 'text': text},

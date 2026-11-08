@@ -276,6 +276,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('only the user\'s words and online answers are sent', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(reply: 'Short blocks, then a long one.');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+    await wait(tester);
+    await ask(tester, 'what is my top subject');
+
+    await ask(tester, question);
+    expect(backend.questions, [question]);
+    final sent = backend.histories.single;
+    expect(sent.where((turn) => turn['role'] == 'pip'), isEmpty);
+    expect(jsonOf(sent), isNot(contains('Sam')));
+  });
+
+  testWidgets('turning online answers off before sending keeps it here', (
+    tester,
+  ) async {
+    final backend = _FakeBackend(reply: 'unused');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+    await wait(tester);
+
+    await tester.enterText(find.byType(TextField), question);
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pump(const Duration(milliseconds: 20));
+    await container.read(chatProvider.notifier).setOnlineAnswers(false);
+    await wait(tester);
+    expect(backend.questions, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('offline, Pip says so and the phone answers', (tester) async {
     final backend = _FakeBackend(failure: AiFailure.unavailable);
     final container = await pumpChat(tester, backend: backend, uid: 'u1');
