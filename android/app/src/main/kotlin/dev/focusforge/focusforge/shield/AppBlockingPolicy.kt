@@ -11,7 +11,7 @@ import java.util.Calendar
  * the day's total kept climbing while the user was in another app entirely.
  * One mapping, one place to add an event type.
  */
-enum class UsageAction { RESUME, PAUSE, SCREEN_OFF, SCREEN_ON }
+enum class UsageAction { RESUME, PAUSE, STOP, SCREEN_OFF, SCREEN_ON }
 
 /** Decisions shared by the polling service and native regression tests. */
 object AppBlockingPolicy {
@@ -33,7 +33,8 @@ object AppBlockingPolicy {
 
     fun actionFor(eventType: Int): UsageAction? = when (eventType) {
         RESUMED -> UsageAction.RESUME
-        PAUSED, STOPPED -> UsageAction.PAUSE
+        PAUSED -> UsageAction.PAUSE
+        STOPPED -> UsageAction.STOP
         SCREEN_NON_INTERACTIVE -> UsageAction.SCREEN_OFF
         SCREEN_INTERACTIVE -> UsageAction.SCREEN_ON
         else -> null
@@ -112,6 +113,9 @@ object AppBlockingPolicy {
         else null
 }
 
+/** How long after its pause an activity's stop is still read as that pause's. */
+private const val STOP_AFTER_PAUSE_MS = 10_000L
+
 /** UsageEvents queries overlap intentionally. Old events cannot undo a newer app transition. */
 class ForegroundAppTracker {
     @Volatile var packageName: String? = null
@@ -123,6 +127,11 @@ class ForegroundAppTracker {
     // Multi-resume and transient Overview can leave the underlying activity
     // resumed. Retain only activities with no matching pause, in a bounded set.
     private val resumed = LinkedHashMap<Pair<String, String?>, Long>()
+    // Pauses not yet followed by their stop. An activity pauses before it
+    // stops, so a stop matching one of these ends nothing new: by then a new
+    // instance of the same activity may already be in front.
+    private val pausedUnstopped = HashMap<Pair<String, String?>, MutableSet<Long>>()
+    private val settledStops = HashMap<Pair<String, String?>, MutableSet<Long>>()
     private var activity: String? = null
     private var suspendedPackage: String? = null
     private var suspendedActivity: String? = null
@@ -146,9 +155,38 @@ class ForegroundAppTracker {
         this.activity = activity
     }
 
+    /**
+     * An activity stopped. After its own pause this is bookkeeping; without
+     * one (some apps leave without pausing) it ends the session like a pause.
+     * Queries overlap, so a replayed stop is recognised and ignored too.
+     */
+    fun stop(packageName: String, at: Long, activity: String? = null) {
+        val key = packageName to activity
+        if (settledStops[key]?.contains(at) == true) return
+        val pending = pausedUnstopped[key]
+        pending?.removeAll { at - it > STOP_AFTER_PAUSE_MS || it > at }
+        val matched = pending?.minOrNull()
+        if (matched != null) {
+            pending.remove(matched)
+            remember(settledStops, key, at)
+            lastEventAt = maxOf(lastEventAt, at)
+            return
+        }
+        pause(packageName, at, activity)
+    }
+
+    private fun remember(into: HashMap<Pair<String, String?>, MutableSet<Long>>,
+                         key: Pair<String, String?>, at: Long) {
+        val set = into.getOrPut(key) { LinkedHashSet() }
+        set.add(at)
+        while (set.size > 8) set.remove(set.first())
+        while (into.size > 32) into.remove(into.keys.first())
+    }
+
     fun pause(packageName: String, at: Long, activity: String? = null) {
         if (at < screenBoundaryAt) return
         val key = packageName to activity
+        remember(pausedUnstopped, key, at)
         stoppedAt[key] = maxOf(stoppedAt[key] ?: Long.MIN_VALUE, at)
         resumed.entries.removeAll { (candidate, resumedAt) ->
             candidate.first == packageName && resumedAt <= at &&
@@ -179,6 +217,8 @@ class ForegroundAppTracker {
         screenBoundaryAt = at
         stoppedAt.clear()
         resumed.clear()
+        pausedUnstopped.clear()
+        settledStops.clear()
     }
 
     fun screenOff(at: Long) {
@@ -228,6 +268,13 @@ class DailyForegroundUsage(private val target: String, private val dayStart: Lon
         if (at < lastEventAt) return
         lastEventAt = at
         foreground.pause(pkg, at, activity)
+        update(at)
+    }
+
+    fun stop(pkg: String, at: Long, activity: String? = null) {
+        if (at < lastEventAt) return
+        lastEventAt = at
+        foreground.stop(pkg, at, activity)
         update(at)
     }
 

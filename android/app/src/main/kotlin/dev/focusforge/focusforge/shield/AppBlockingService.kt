@@ -297,6 +297,7 @@ class AppBlockingService : Service() {
                 when (AppBlockingPolicy.actionFor(event.eventType)) {
                     UsageAction.RESUME -> if (pkg.isNotEmpty()) foreground.resume(pkg, event.timeStamp, event.className)
                     UsageAction.PAUSE -> if (pkg.isNotEmpty()) foreground.pause(pkg, event.timeStamp, event.className)
+                    UsageAction.STOP -> if (pkg.isNotEmpty()) foreground.stop(pkg, event.timeStamp, event.className)
                     UsageAction.SCREEN_OFF -> foreground.screenOff(event.timeStamp)
                     UsageAction.SCREEN_ON -> foreground.screenOn(event.timeStamp)
                     null -> { }
@@ -333,12 +334,15 @@ class AppBlockingService : Service() {
                     UsageAction.RESUME -> if (eventPackage.isNotEmpty()) {
                         usage.resume(eventPackage, event.timeStamp, event.className)
                     }
+                    UsageAction.PAUSE -> if (eventPackage.isNotEmpty()) {
+                        usage.pause(eventPackage, event.timeStamp, event.className)
+                    }
                     // A stop counts here too. Without it the interval never
                     // closes for an app that leaves without pausing, and the
                     // day's total grows while the user is somewhere else
                     // entirely, so a budget fires long before it is spent.
-                    UsageAction.PAUSE -> if (eventPackage.isNotEmpty()) {
-                        usage.pause(eventPackage, event.timeStamp, event.className)
+                    UsageAction.STOP -> if (eventPackage.isNotEmpty()) {
+                        usage.stop(eventPackage, event.timeStamp, event.className)
                     }
                     UsageAction.SCREEN_OFF -> usage.screenOff(event.timeStamp)
                     UsageAction.SCREEN_ON -> usage.screenOn(event.timeStamp)

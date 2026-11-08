@@ -209,10 +209,10 @@ class AppBlockingPolicyTest {
     }
     /** The budget counter and the detector read the same event stream; a type
      *  either loop ignores is time the other one keeps counting. */
-    @Test fun aStoppedActivityEndsAForegroundIntervalLikeAPause() {
+    @Test fun usageEventsMapToForegroundActions() {
         assertEquals(UsageAction.RESUME, AppBlockingPolicy.actionFor(1))
         assertEquals(UsageAction.PAUSE, AppBlockingPolicy.actionFor(2))
-        assertEquals(UsageAction.PAUSE, AppBlockingPolicy.actionFor(23))
+        assertEquals(UsageAction.STOP, AppBlockingPolicy.actionFor(23))
         assertEquals(UsageAction.SCREEN_ON, AppBlockingPolicy.actionFor(15))
         assertEquals(UsageAction.SCREEN_OFF, AppBlockingPolicy.actionFor(16))
         assertNull(AppBlockingPolicy.actionFor(7))
@@ -227,6 +227,32 @@ class AppBlockingPolicyTest {
         assertEquals(10 * minute, usage.totalAt(70 * minute))
         assertNull(AppBlockingPolicy.reason(packageName, rules(RuleMode.BUDGET), 70 * minute,
             0, emptySet(), 10 * minute))
+    }
+    @Test fun aStopWithoutAPauseStillEndsTheInterval() {
+        val usage = DailyForegroundUsage("app", 0)
+        usage.resume("app", 0, "Main")
+        usage.stop("app", 1000, "Main")
+        assertEquals(1000L, usage.totalAt(60_000))
+    }
+    @Test fun anOldInstancesLateStopKeepsTheNewInstanceCounting() {
+        // Instance A pauses, instance B of the same activity resumes, then A
+        // stops. B is still in front, so the budget keeps counting.
+        val usage = DailyForegroundUsage("app", 0)
+        usage.resume("app", 0, "Main")
+        usage.pause("app", 1000, "Main")
+        usage.resume("app", 1100, "Main")
+        usage.stop("app", 1300, "Main")
+        assertEquals(1000L + 8_900L, usage.totalAt(10_000))
+    }
+    @Test fun aReplayedStopIsNotReadAsANewExit() {
+        val tracker = ForegroundAppTracker()
+        tracker.resume("app", 0, "Main")
+        tracker.pause("app", 1000, "Main")
+        tracker.resume("app", 1100, "Main")
+        tracker.stop("app", 1300, "Main")
+        // Queries overlap, so the same stop arrives again.
+        tracker.stop("app", 1300, "Main")
+        assertEquals("app", tracker.packageName)
     }
     @Test fun yesterdaysUsageIsNotChargedToTodaysBudget() {
         // The query window opens a day early so a session crossing midnight is
