@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/firebase_auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/study_backup_service.dart';
+import 'package:focusforge/core/models/user.dart';
 
 class _User implements User {
   _User(this.events);
@@ -181,6 +183,14 @@ class _GoogleTokens implements GoogleSignInAuthentication {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _CountingBackup implements StudyBackupBackend {
+  int saves = 0;
+  @override
+  Future<StudyBackup?> load(String uid) async => null;
+  @override
+  Future<void> save(String uid, StudyBackup backup) async => saves++;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late LocalStore store;
@@ -281,6 +291,50 @@ void main() {
       firestore.pendingFailure = TimeoutException('pending changes');
       await expectFailure('cloudSyncPending');
       expect(events, ['pendingWrites']);
+    },
+  );
+
+  test(
+    'a deletion that stops keeps the account\'s private backup on',
+    () async {
+      await store.setMap(
+        StoreKeys.user,
+        const UserProfile(
+          uid: 'deletion-user',
+          displayName: 'Sam',
+          isAnonymous: false,
+          onboardingComplete: true,
+        ).toJson(),
+      );
+      await store.setBool('achievements.linked.deletion-user', true);
+      auth.user
+        ..anonymous = false
+        ..googleProvider = true;
+      final backend = _CountingBackup();
+      final backup = StudyBackupService(store, backend);
+      final linked = FirebaseAuthService(
+        store,
+        firebaseAuth: auth,
+        firestore: firestore,
+        accountCleanup: cleanup,
+        googleSignIn: google,
+        studyBackup: backup,
+      );
+      addTearDown(linked.dispose);
+
+      // Not confirmed recently, so deletion stops before touching anything.
+      await expectLater(
+        linked.deleteAccount(),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.failure,
+            'failure',
+            AuthFailure.requiresRecentLogin,
+          ),
+        ),
+      );
+      await backup.flush();
+      expect(backend.saves, 1);
     },
   );
 

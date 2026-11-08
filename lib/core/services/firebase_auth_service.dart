@@ -553,41 +553,19 @@ class FirebaseAuthService extends AuthService {
       _controller.add(null);
       return;
     }
-    final recentlyConfirmed =
-        _reauthenticatedAt != null &&
-        DateTime.now().difference(_reauthenticatedAt!) <
-            const Duration(minutes: 5);
-    if (!user.isAnonymous && !recentlyConfirmed) {
-      throw const AuthException(AuthFailure.requiresRecentLogin);
-    }
     final db = _firestoreOverride ?? FirebaseFirestore.instance;
     try {
-      await db.waitForPendingWrites().timeout(const Duration(seconds: 20));
-    } on TimeoutException {
-      throw const AuthException(AuthFailure.cloudSyncPending);
-    } on FirebaseException catch (e) {
-      throw AuthException(AuthFailure.cloudSyncPending, e.code);
-    }
-    try {
-      await user.getIdToken(true);
-      await (_cleanupOverride ?? FirestoreAccountCleanup(db)).deleteUserData(
-        user.uid,
-      );
-      // Auth last: any unsuccessful cloud operation retains a credential for
-      // retry. This is a client SDK operation, with no paid backend dependency.
-      await user.delete();
-    } on FirebaseAuthException catch (e) {
-      _reauthenticatedAt = null;
-      throw _translate(e);
-    } on FirebaseException catch (e) {
-      throw AuthException(
-        e.code == 'resource-exhausted'
-            ? AuthFailure.tooManyRequests
-            : AuthFailure.cleanupFailed,
-        e.code,
-      );
-    } catch (_) {
-      throw const AuthException(AuthFailure.cleanupFailed);
+      await _deleteRemote(user, db);
+    } on AuthException {
+      // The account is kept, so its private backup carries on. It resumes by
+      // reading the cloud first, in case cleanup already removed some of it.
+      final profile = _current;
+      if (profile != null &&
+          !profile.isAnonymous &&
+          _auth.currentUser?.uid == profile.uid) {
+        studyBackup?.resumeLocal(profile);
+      }
+      rethrow;
     }
     // user.delete() invalidates the session. Retain a UID-only fence until
     // SDK signout succeeds, so a stale credential cannot restore the profile.
@@ -616,6 +594,46 @@ class FirebaseAuthService extends AuthService {
     _returning = false;
     _reauthenticatedAt = null;
     _controller.add(null);
+  }
+
+  /// Confirms the user, then removes the cloud data and the credential.
+  /// Throws an [AuthException] whenever the account is kept.
+  Future<void> _deleteRemote(User user, FirebaseFirestore db) async {
+    final recentlyConfirmed =
+        _reauthenticatedAt != null &&
+        DateTime.now().difference(_reauthenticatedAt!) <
+            const Duration(minutes: 5);
+    if (!user.isAnonymous && !recentlyConfirmed) {
+      throw const AuthException(AuthFailure.requiresRecentLogin);
+    }
+    try {
+      await db.waitForPendingWrites().timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      throw const AuthException(AuthFailure.cloudSyncPending);
+    } on FirebaseException catch (e) {
+      throw AuthException(AuthFailure.cloudSyncPending, e.code);
+    }
+    try {
+      await user.getIdToken(true);
+      await (_cleanupOverride ?? FirestoreAccountCleanup(db)).deleteUserData(
+        user.uid,
+      );
+      // Auth last: any unsuccessful cloud operation retains a credential for
+      // retry. This is a client SDK operation, with no paid backend dependency.
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      _reauthenticatedAt = null;
+      throw _translate(e);
+    } on FirebaseException catch (e) {
+      throw AuthException(
+        e.code == 'resource-exhausted'
+            ? AuthFailure.tooManyRequests
+            : AuthFailure.cleanupFailed,
+        e.code,
+      );
+    } catch (_) {
+      throw const AuthException(AuthFailure.cleanupFailed);
+    }
   }
 
   @override
