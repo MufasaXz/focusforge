@@ -95,6 +95,10 @@ class MainActivity : FlutterActivity() {
                     PipNudges.schedule(applicationContext, reminders)
                     result.success(null)
                 }
+                "clear" -> {
+                    PipNudges.clear(applicationContext)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

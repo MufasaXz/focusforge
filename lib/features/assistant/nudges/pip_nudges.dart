@@ -410,11 +410,12 @@ abstract final class PipNudges {
     }
   }
 
-  /// Cancels every pending reminder, as when the account is deleted.
+  /// Cancels every pending reminder and removes those already shown, as
+  /// when the account is deleted or another account takes over.
   static Future<void> clear() async {
     if (!supported) return;
     try {
-      await _channel.invokeMethod<void>('schedule', {'items': const []});
+      await _channel.invokeMethod<void>('clear');
     } on MissingPluginException {
       // Tests and builds without the native side.
     } on PlatformException catch (error) {

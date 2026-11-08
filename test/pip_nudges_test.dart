@@ -11,6 +11,7 @@
 
 import 'dart:ui';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:focusforge/core/localization/app_strings.dart';
@@ -199,5 +200,20 @@ void main() {
       expect(all.where((id) => id >= 100 && id < 107), isNotEmpty);
       expect(quiet.where((id) => id >= 100 && id < 107), isEmpty);
     });
+  });
+
+  test('clearing removes shown reminders, not only pending ones', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('dev.focusforge/pip');
+    final calls = <String>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    await PipNudges.clear();
+    expect(calls, ['clear']);
   });
 }

@@ -37,6 +37,10 @@ object PipNudges {
     private const val EXTRA_ID = "pip_reminder_id"
     private const val NOTIFICATION_BASE = 4100
 
+    /** Marks Pip's posted notifications, so [clear] can find them again. */
+    private const val TAG = "pip"
+
+
     data class Reminder(
         val id: Int,
         val at: Long,
@@ -52,6 +56,21 @@ object PipNudges {
         for (old in load(context)) alarms?.cancel(alarm(context, old.id))
         save(context, reminders)
         for (reminder in reminders) arm(context, reminder.id, reminder.at)
+    }
+
+    /**
+     * Cancels every pending reminder and removes any already in the shade,
+     * as when the account is deleted: their titles can name its tasks.
+     */
+    fun clear(context: Context) {
+        schedule(context, emptyList())
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        for (shown in manager.activeNotifications) {
+            val pips = shown.tag == TAG ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    shown.notification.channelId == CHANNEL)
+            if (pips) manager.cancel(shown.tag, shown.id)
+        }
     }
 
     /** Alarms do not survive a reboot or an app update, so pending ones are set again. */
@@ -122,7 +141,7 @@ object PipNudges {
         } else {
             builder.setStyle(Notification.BigTextStyle().bigText("$title\n$body"))
         }
-        manager.notify(NOTIFICATION_BASE + id, builder.build())
+        manager.notify(TAG, NOTIFICATION_BASE + id, builder.build())
     }
 
     private fun canNotify(context: Context, manager: NotificationManager): Boolean {
