@@ -31,9 +31,16 @@ class GroupException implements Exception {
 }
 
 class FirebaseStudyGroupService implements StudyGroupService {
-  FirebaseFirestore get _db => FirebaseFirestore.instance;
+  FirebaseStudyGroupService({FirebaseFirestore? db, FirebaseAuth? auth})
+    : _dbOverride = db,
+      _authOverride = auth;
+
+  final FirebaseFirestore? _dbOverride;
+  final FirebaseAuth? _authOverride;
+
+  FirebaseFirestore get _db => _dbOverride ?? FirebaseFirestore.instance;
   String get _uid {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = (_authOverride ?? FirebaseAuth.instance).currentUser;
     if (user == null || user.isAnonymous) {
       throw const GroupException('Sign in to use study groups.');
     }
@@ -165,6 +172,18 @@ class FirebaseStudyGroupService implements StudyGroupService {
     final groupId = invite.data()?['groupId'];
     if (groupId is! String) {
       throw const GroupException('That invite no longer exists.');
+    }
+    // Already a member, perhaps from a join whose reply was lost: there is
+    // nothing to do, and rewriting the membership is refused by the rules.
+    // Only members can read a group, so a refusal here means "not yet".
+    try {
+      final group = await _db
+          .doc('studyGroups/$groupId')
+          .get(const GetOptions(source: Source.server));
+      final members = group.data()?['memberIds'];
+      if (members is List && members.contains(uid)) return;
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') rethrow;
     }
     final batch = _db.batch();
     batch.update(_db.doc('studyGroups/$groupId'), {
