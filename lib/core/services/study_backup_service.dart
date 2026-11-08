@@ -353,11 +353,19 @@ class StudyBackupService {
     return jsonEncode(settings);
   }
 
+  /// The snapshot kept for the signed-in account between saves: its
+  /// settings. Its sessions are already the live log, and a second copy would
+  /// double the history's size on disk and in memory. The full copy is
+  /// written when the account leaves the device ([connect], [prepareSignOut]).
+  static Map<String, dynamic> _settingsOnly(StudyBackup backup) => StudyBackup(
+    settings: backup.settings,
+    sessions: const [],
+    modifiedAt: backup.modifiedAt,
+  ).toJson();
+
   StudyBackup _capture(String uid) {
-    final exported = store.exportAll();
     final settings = <String, dynamic>{
-      for (final key in keys)
-        if (exported.containsKey(key)) key: exported[key],
+      for (final key in keys) key: ?store.raw(key),
     };
     final aliases = store.getMap(StoreKeys.achievementAliases) ?? {};
     final owner = store.getString(StoreKeys.achievementHistoryOwner) ?? uid;
@@ -604,7 +612,10 @@ class StudyBackupService {
       _uid = profile.uid;
       _deferred = false;
       _settingsState = _settingsSignature(profile.uid);
-      await store.setMap(_cache(profile.uid), _capture(profile.uid).toJson());
+      await store.setMap(
+        _cache(profile.uid),
+        _settingsOnly(_capture(profile.uid)),
+      );
       checkCurrent();
     } finally {
       _restoring = false;
@@ -623,7 +634,7 @@ class StudyBackupService {
       if (generation != _generation || _uid != uid) return;
       try {
         var backup = _capture(uid);
-        await store.setMap(_cache(uid), backup.toJson());
+        await store.setMap(_cache(uid), _settingsOnly(backup));
         if (generation != _generation || _uid != uid) return;
         if (_deferred) {
           final raw = store.getMap(StoreKeys.user);
@@ -692,9 +703,13 @@ class StudyBackupService {
   /// Cache unsynced local data without waiting behind deferred server reads.
   /// A normal connected session still gets its best-effort final upload.
   Future<void> prepareSignOut() async {
-    if (!_deferred) return flush();
     final uid = _uid;
-    disconnect();
+    if (_deferred) {
+      disconnect();
+    } else {
+      await flush();
+    }
+    // The account leaves the device: keep its whole study, sessions too.
     if (uid != null && store.getMap(StoreKeys.user)?['uid'] == uid) {
       await store.setMap(_cache(uid), _capture(uid).toJson());
     }

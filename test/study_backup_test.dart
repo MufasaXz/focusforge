@@ -380,6 +380,27 @@ void main() {
     expect(store.getMap(StoreKeys.stats)?['level'], 9);
   });
 
+  test('the signed-in account\'s study is stored once, not twice', () async {
+    await store.setMap(StoreKeys.user, alice.toJson());
+    await store.setList(StoreKeys.sessions, [
+      {'id': 's-1', 'ownerUid': 'alice', 'startedAt': 1, 'minutes': 25},
+    ]);
+    await service.connect(alice);
+    await service.flush();
+    expect(
+      StudyBackup.fromJson(store.getMap('study.account.alice'))!.sessions,
+      isEmpty,
+    );
+
+    await service.prepareSignOut();
+    expect(
+      StudyBackup.fromJson(store.getMap('study.account.alice'))!
+          .sessions
+          .single['id'],
+      's-1',
+    );
+  });
+
   test('clearing analytics leaves no session in account snapshots', () async {
     await store.setMap(
       'study.account.alice',

@@ -211,6 +211,9 @@ class LocalStore {
   }
 
   /// Everything the app has stored, as a plain map — backs "Export my data".
+  /// The stored value of [key] as saved, or null when there is none.
+  Object? raw(String key) => _prefs.get(_k(key));
+
   Map<String, Object?> exportAll() {
     final out = <String, Object?>{};
     for (final k in _prefs.getKeys().where((k) => k.startsWith(_prefix))) {
