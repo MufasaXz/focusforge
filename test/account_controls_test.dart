@@ -627,6 +627,51 @@ void main() {
     expect(store.getMap(StoreKeys.assistant)?['examId'], isNull);
   });
 
+  test('Pip\'s memory stays with the account it belongs to', () async {
+    watchAssistantOwner(container, store);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
+    await pumpEventQueue();
+    await store.setBool('achievements.linked.alice', true);
+    final memory = container.read(assistantMemoryProvider.notifier);
+    await memory.setExam('neet');
+    await memory.setAiConsent(true);
+    container.read(chatProvider.notifier);
+
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'bob', isAnonymous: false));
+    await pumpEventQueue();
+    expect(container.read(assistantMemoryProvider).examId, isNull);
+    expect(container.read(assistantMemoryProvider).aiConsent, isNull);
+    expect(container.read(chatProvider).entries, isEmpty);
+
+    await store.setBool('achievements.linked.bob', true);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
+    await pumpEventQueue();
+    expect(container.read(assistantMemoryProvider).examId, 'neet');
+    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
+  });
+
+  test('a guest who links an account keeps what they told Pip', () async {
+    watchAssistantOwner(container, store);
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'local-guest'));
+    await pumpEventQueue();
+    await store.setBool('achievements.linked.local-guest', false);
+    await container.read(assistantMemoryProvider.notifier).setExam('jee');
+
+    container
+        .read(userProvider.notifier)
+        .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
+    await pumpEventQueue();
+    expect(container.read(assistantMemoryProvider).examId, 'jee');
+  });
+
   test('deletion reset forgets the app groups the user chose', () async {
     final groups = container.read(usageCategoryOverridesProvider.notifier);
     await groups.set('com.example.video', UsageCategory.distracting);

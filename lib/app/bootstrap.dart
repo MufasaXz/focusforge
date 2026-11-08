@@ -192,6 +192,8 @@ Future<ProviderContainer> bootstrap() async {
   // rather than after a frame.
   container.read(routerProvider);
 
+  watchAssistantOwner(container, store);
+
   // Paint the local shell and recovery surface while the server responds.
   // The changes bridge above adopts the complete restored snapshot together.
   unawaited(authService.restore().catchError((Object error) => null));
@@ -234,6 +236,28 @@ Future<AuthService> _openAuthService(LocalStore store) async {
     debugPrint('[auth] Firebase unavailable: using the local account store.');
     return GuestOnlyAuthService(store);
   }
+}
+
+/// Keeps Pip's memory and chat with the account they belong to: when a
+/// different account takes over this device, Pip starts from that account's
+/// own memory, and its reminders are set again for it.
+void watchAssistantOwner(ProviderContainer container, LocalStore store) {
+  container.listen<String>(userProvider.select((user) => user.uid), (
+    from,
+    to,
+  ) async {
+    if (from == null || from == to || from.isEmpty) return;
+    // A guest that was never linked becoming an account is the same person,
+    // and keeps what they told Pip, as the backup keeps their study.
+    if (store.getBool('achievements.linked.$from') == false) return;
+    // The outgoing account's reminders can name its tasks; the shell sets
+    // the new account's on its next sync.
+    unawaited(PipNudges.clear());
+    await container
+        .read(assistantMemoryProvider.notifier)
+        .switchAccount(from, to);
+    container.invalidate(chatProvider);
+  });
 }
 
 /// Restore the private account snapshot before publishing its linked profile.

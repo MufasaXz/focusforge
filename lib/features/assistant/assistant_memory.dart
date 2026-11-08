@@ -159,6 +159,23 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
     return _store.setMap(StoreKeys.assistant, next.toJson());
   }
 
+  /// Moves Pip's memory from account [from] to account [to] on this device.
+  ///
+  /// What Pip knows (chat consent, exam, timetable, reminders) belongs to an
+  /// account. The outgoing account's memory is kept for it, and the incoming
+  /// one gets its own back, or starts empty.
+  Future<void> switchAccount(String from, String to) async {
+    if (from == to) return;
+    if (from.isNotEmpty) {
+      await _store.setMap(_accountKey(from), state.toJson());
+    }
+    final saved = _store.getMap(_accountKey(to));
+    await _store.remove(_accountKey(to));
+    await _save(AssistantMemory.fromJson(saved));
+  }
+
+  static String _accountKey(String uid) => 'assistant.account.$uid';
+
   Future<void> setExam(String id) => _save(state.copyWith(examId: id));
 
   Future<void> setExamDate(DateTime date) => _save(
