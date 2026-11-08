@@ -246,6 +246,32 @@ class StudyBackupService {
     return jsonEncode({...restored, 'creditedSessionIds': ids.toList()});
   }
 
+  /// Whichever stats value has gone further, by level and then XP, or the
+  /// first readable one on a tie.
+  ///
+  /// Progress only grows, so the further copy is the newest truth wherever
+  /// it was earned: a phone that is behind must not upload, or restore, an
+  /// older level over it just because it saved something else later.
+  static Object? _further(Iterable<Object?> candidates) {
+    Object? best;
+    (int, int)? bestRank;
+    for (final value in candidates) {
+      final stats = _decodeMap(value);
+      if (stats == null) continue;
+      final rank = (
+        (stats['level'] as num?)?.toInt() ?? 1,
+        (stats['xp'] as num?)?.toInt() ?? 0,
+      );
+      if (bestRank == null ||
+          rank.$1 > bestRank.$1 ||
+          (rank.$1 == bestRank.$1 && rank.$2 > bestRank.$2)) {
+        best = value;
+        bestRank = rank;
+      }
+    }
+    return best;
+  }
+
   String _settingsSignature(String uid) {
     // Only what the cloud holds: a local edit must not outrank a newer profile
     // or level saved from another device.
@@ -457,7 +483,14 @@ class StudyBackupService {
         checkCurrent();
         if (key == StoreKeys.user) continue;
         final value = key == StoreKeys.stats
-            ? _withLocalCredits(restoredValue(key), local)
+            ? _withLocalCredits(
+                _further([
+                  restoredValue(key),
+                  local?.settings[key],
+                  remoteSettings?.settings[key],
+                ]),
+                local,
+              )
             : restoredValue(key);
         if (value is String) {
           await store.setString(key, value);
@@ -541,6 +574,31 @@ class StudyBackupService {
           if (_uid != uid) return;
           onReconciled?.call(restored);
           backup = _capture(uid);
+        } else {
+          // Another phone may have saved a higher level since this one last
+          // read the cloud. Keep it, here and in what is uploaded.
+          final remote = await backend.load(uid);
+          if (generation != _generation || _uid != uid) return;
+          final mine = backup.settings[StoreKeys.stats];
+          final ahead = _further([mine, remote?.settings[StoreKeys.stats]]);
+          if (ahead != null && !identical(ahead, mine)) {
+            _restoring = true;
+            try {
+              await store.setString(
+                StoreKeys.stats,
+                _withLocalCredits(ahead, backup) as String,
+              );
+            } finally {
+              _restoring = false;
+            }
+            if (generation != _generation || _uid != uid) return;
+            _settingsState = _settingsSignature(uid);
+            backup = _capture(uid);
+            final raw = store.getMap(StoreKeys.user);
+            if (raw != null && raw['uid'] == uid) {
+              onReconciled?.call(UserProfile.fromJson(raw));
+            }
+          }
         }
         await backend.save(
           uid,

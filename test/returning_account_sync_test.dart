@@ -86,8 +86,16 @@ class _Backup implements StudyBackupBackend {
   StudyBackup? saved;
   Completer<StudyBackup?>? delayedLoad;
   @override
-  Future<StudyBackup?> load(String uid) async =>
-      delayedLoad == null ? saved : await delayedLoad!.future;
+  Future<StudyBackup?> load(String uid) async {
+    final delayed = delayedLoad;
+    if (delayed == null) return saved;
+    // The held answer arrives once; later reads see the server's copy, the
+    // way a real backend would.
+    final value = await delayed.future;
+    delayedLoad = null;
+    return saved ??= value;
+  }
+
   @override
   Future<void> save(String uid, StudyBackup backup) async => saved = backup;
 }

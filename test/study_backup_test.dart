@@ -326,75 +326,133 @@ void main() {
     expect(store.getList(StoreKeys.sessions), isEmpty);
   });
 
-  test('nothing but profile, level and sharing consent reaches the cloud', () async {
+  test('a name edit on a behind phone never lowers the saved level', () async {
+    Map<String, dynamic> stats(int level) => {'xp': 10, 'level': level};
     await store.setMap(StoreKeys.user, alice.toJson());
-    await store.setMap(StoreKeys.stats, const {
-      'xp': 40,
-      'level': 7,
-      'creditedSessionIds': ['s-1760000000000000'],
-    });
-    await store.setBool(StoreKeys.boardOptIn, true);
-    await store.setList(StoreKeys.subjects, [
-      {'id': 'math'},
-    ]);
-    await store.setInt(StoreKeys.dailyGoal, 480);
-    await store.setList(StoreKeys.sessions, [
-      {
-        'id': 's-1760000000000000',
-        'ownerUid': 'alice',
-        'startedAt': 1,
-        'minutes': 25,
-        'completed': true,
-      },
-    ]);
+    await store.setMap(StoreKeys.stats, stats(5));
     await service.connect(alice);
     await service.flush();
-    final cloud = backend.accounts['alice']!;
-    expect(cloud.sessions, isEmpty);
-    expect(cloud.settings.keys.toSet(), {
+    // Another phone reaches level 6 and saves it.
+    final other = backend.accounts['alice']!;
+    backend.accounts['alice'] = StudyBackup(
+      settings: {...other.settings, StoreKeys.stats: jsonEncode(stats(6))},
+      sessions: const [],
+      modifiedAt: other.modifiedAt + 1000,
+    );
+    UserProfile? reconciled;
+    service.onReconciled = (profile) => reconciled = profile;
+
+    await store.setMap(
       StoreKeys.user,
-      StoreKeys.stats,
-      StoreKeys.boardOptIn,
-    });
-    expect(jsonEncode(cloud.settings), isNot(contains('s-1760000000000000')));
-    expect(store.getList(StoreKeys.sessions).single['id'], 's-1760000000000000');
+      alice.copyWith(displayName: 'Alice B').toJson(),
+    );
+    await service.flush();
+
+    final cloud = backend.accounts['alice']!;
+    final cloudStats = jsonDecode(cloud.settings[StoreKeys.stats] as String);
+    expect(cloudStats['level'], 6);
+    expect(
+      jsonDecode(cloud.settings[StoreKeys.user] as String)['displayName'],
+      'Alice B',
+    );
+    expect(store.getMap(StoreKeys.stats)?['level'], 6);
+    expect(reconciled?.uid, 'alice');
   });
 
-  test('signing back in on the same device keeps its local study data', () async {
+  test('recovery keeps the further level of the phone and the cloud', () async {
     await store.setMap(StoreKeys.user, alice.toJson());
-    await store.setList(StoreKeys.subjects, [
-      {'id': 'math'},
-    ]);
-    await store.setMap(StoreKeys.stats, const {
-      'xp': 1,
-      'level': 2,
-      'creditedSessionIds': ['monday'],
-    });
-    await store.setList(StoreKeys.sessions, [
-      {'id': 'monday', 'ownerUid': 'alice', 'startedAt': 1, 'minutes': 25},
-    ]);
-    await service.connect(alice);
-    await service.flush();
-    service.disconnect();
+    await store.setMap(StoreKeys.stats, const {'xp': 5, 'level': 9});
+    await store.setInt('study.modified.alice', 1);
     backend.accounts['alice'] = StudyBackup(
       settings: {
-        ...backend.accounts['alice']!.settings,
-        StoreKeys.stats: jsonEncode(const {'xp': 9, 'level': 8}),
+        StoreKeys.user: jsonEncode(alice.toJson()),
+        StoreKeys.stats: jsonEncode(const {'xp': 50, 'level': 4}),
       },
       sessions: const [],
-      modifiedAt: DateTime.now()
-          .add(const Duration(days: 1))
-          .millisecondsSinceEpoch,
+      modifiedAt: 99,
     );
-    await service.connect(alice, reconcile: true);
-    expect(store.getList(StoreKeys.subjects).single['id'], 'math');
-    expect(store.getList(StoreKeys.sessions).single['id'], 'monday');
-    final stats = store.getMap(StoreKeys.stats)!;
-    expect(stats['level'], 8);
-    // The newer level came from the cloud; the receipt that stops this device
-    // awarding the same block twice did not, and must survive.
-    expect(stats['creditedSessionIds'], ['monday']);
+    await service.connect(alice);
+    expect(store.getMap(StoreKeys.stats)?['level'], 9);
   });
+
+  test(
+    'nothing but profile, level and sharing consent reaches the cloud',
+    () async {
+      await store.setMap(StoreKeys.user, alice.toJson());
+      await store.setMap(StoreKeys.stats, const {
+        'xp': 40,
+        'level': 7,
+        'creditedSessionIds': ['s-1760000000000000'],
+      });
+      await store.setBool(StoreKeys.boardOptIn, true);
+      await store.setList(StoreKeys.subjects, [
+        {'id': 'math'},
+      ]);
+      await store.setInt(StoreKeys.dailyGoal, 480);
+      await store.setList(StoreKeys.sessions, [
+        {
+          'id': 's-1760000000000000',
+          'ownerUid': 'alice',
+          'startedAt': 1,
+          'minutes': 25,
+          'completed': true,
+        },
+      ]);
+      await service.connect(alice);
+      await service.flush();
+      final cloud = backend.accounts['alice']!;
+      expect(cloud.sessions, isEmpty);
+      expect(cloud.settings.keys.toSet(), {
+        StoreKeys.user,
+        StoreKeys.stats,
+        StoreKeys.boardOptIn,
+      });
+      expect(jsonEncode(cloud.settings), isNot(contains('s-1760000000000000')));
+      expect(
+        store.getList(StoreKeys.sessions).single['id'],
+        's-1760000000000000',
+      );
+    },
+  );
+
+  test(
+    'signing back in on the same device keeps its local study data',
+    () async {
+      await store.setMap(StoreKeys.user, alice.toJson());
+      await store.setList(StoreKeys.subjects, [
+        {'id': 'math'},
+      ]);
+      await store.setMap(StoreKeys.stats, const {
+        'xp': 1,
+        'level': 2,
+        'creditedSessionIds': ['monday'],
+      });
+      await store.setList(StoreKeys.sessions, [
+        {'id': 'monday', 'ownerUid': 'alice', 'startedAt': 1, 'minutes': 25},
+      ]);
+      await service.connect(alice);
+      await service.flush();
+      service.disconnect();
+      backend.accounts['alice'] = StudyBackup(
+        settings: {
+          ...backend.accounts['alice']!.settings,
+          StoreKeys.stats: jsonEncode(const {'xp': 9, 'level': 8}),
+        },
+        sessions: const [],
+        modifiedAt: DateTime.now()
+            .add(const Duration(days: 1))
+            .millisecondsSinceEpoch,
+      );
+      await service.connect(alice, reconcile: true);
+      expect(store.getList(StoreKeys.subjects).single['id'], 'math');
+      expect(store.getList(StoreKeys.sessions).single['id'], 'monday');
+      final stats = store.getMap(StoreKeys.stats)!;
+      expect(stats['level'], 8);
+      // The newer level came from the cloud; the receipt that stops this device
+      // awarding the same block twice did not, and must survive.
+      expect(stats['creditedSessionIds'], ['monday']);
+    },
+  );
 
   test(
     'switching accounts never uploads or restores the previous account data',
@@ -473,7 +531,10 @@ void main() {
         modifiedAt: 100,
       ),
     );
-    expect((await db.collection('users/alice/sessionData').get()).docs, isEmpty);
+    expect(
+      (await db.collection('users/alice/sessionData').get()).docs,
+      isEmpty,
+    );
     final recovered = await FirebaseStudyBackupBackend(db).load('alice');
     expect(recovered?.settings, {'goal': 'saved'});
     expect(recovered?.sessions, isEmpty);
@@ -485,15 +546,17 @@ void main() {
     () async {
       final db = FakeFirebaseFirestore();
       for (var i = 0; i < 405; i++) {
-        await db.doc('users/alice/sessionData/row$i').set(
-          FocusSession(
-            id: 'session/$i',
-            subjectId: 'math',
-            startedAt: DateTime(2026, 10, 12),
-            minutes: 25,
-            ownerUid: 'alice',
-          ).toJson(),
-        );
+        await db
+            .doc('users/alice/sessionData/row$i')
+            .set(
+              FocusSession(
+                id: 'session/$i',
+                subjectId: 'math',
+                startedAt: DateTime(2026, 10, 12),
+                minutes: 25,
+                ownerUid: 'alice',
+              ).toJson(),
+            );
       }
       await db.doc('users/alice/preferences/studyBackup').set({
         'version': 1,
@@ -506,7 +569,10 @@ void main() {
         }),
         'modifiedAt': 100,
       });
-      final migrating = StudyBackupService(store, FirebaseStudyBackupBackend(db));
+      final migrating = StudyBackupService(
+        store,
+        FirebaseStudyBackupBackend(db),
+      );
       addTearDown(migrating.dispose);
       await migrating.connect(
         const UserProfile(uid: 'alice', isAnonymous: false),
@@ -514,7 +580,10 @@ void main() {
       expect(store.getList(StoreKeys.sessions), hasLength(405));
       expect(store.getList(StoreKeys.subjects).single['id'], 'legacy-math');
       await migrating.flush();
-      expect((await db.collection('users/alice/sessionData').get()).docs, isEmpty);
+      expect(
+        (await db.collection('users/alice/sessionData').get()).docs,
+        isEmpty,
+      );
       final saved = await db.doc('users/alice/preferences/studyBackup').get();
       expect(saved.data()?['data'], isNot(contains('legacy-math')));
       // The device copy outlives the cloud copy.
