@@ -20,12 +20,11 @@ class SubjectsNotifier extends Notifier<List<Subject>> {
   List<Subject> _base = const [];
 
   @override
-  List<Subject> build() =>
-      _withDerivedCounters(
-        _base,
-        ref.watch(sessionsProvider),
-        ref.watch(focusCalendarDateProvider),
-      );
+  List<Subject> build() => _withDerivedCounters(
+    _base,
+    ref.watch(sessionsProvider),
+    ref.watch(focusCalendarDateProvider),
+  );
 
   LocalStore get _store => ref.read(localStoreProvider);
 
@@ -1399,12 +1398,13 @@ final timerProvider = NotifierProvider<TimerNotifier, TimerState>(
 // degrade to a default rather than throw out of the launch path.
 
 int _intOr(Object? value, int fallback) =>
-    value is num ? value.toInt() : fallback;
+    value is num && value.isFinite ? value.toInt() : fallback;
 
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 DateTime? _dateOrNull(Object? value) {
-  if (value is! num) return null;
+  // JSON reads 1e999 as infinity, which has no whole number to give.
+  if (value is! num || !value.isFinite) return null;
   try {
     return DateTime.fromMillisecondsSinceEpoch(value.toInt());
   } on ArgumentError {

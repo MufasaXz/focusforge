@@ -7,6 +7,8 @@
 // would otherwise fill today's ring, then empty it again when it finished and
 // was logged to yesterday.
 
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,6 +57,19 @@ void main() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
+
+  test('a damaged timer save falls back instead of stopping the app', () {
+    final container = freshContainer();
+    final damaged = jsonDecode(
+      '{"remainingMs":1e999,"presetIndex":1e999,"targetEnd":1e999,'
+      '"segmentStartedAt":-1e999,"completedFocusSegments":1e999}',
+    ) as Map<String, dynamic>;
+    expect(
+      () => container.read(timerProvider.notifier).hydrate(damaged),
+      returnsNormally,
+    );
+    expect(container.read(timerProvider).running, isFalse);
+  });
 
   test('a block started today counts toward today', () {
     final container = freshContainer();
