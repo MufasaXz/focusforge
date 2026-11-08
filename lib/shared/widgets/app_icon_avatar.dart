@@ -77,6 +77,10 @@ class _AppIconAvatarState extends State<AppIconAvatar> {
           bytes,
           width: widget.size,
           height: widget.size,
+          // Launcher icons arrive at up to 432 px. Decoding them at the size
+          // they are drawn keeps a long app list from filling memory.
+          cacheWidth: (widget.size * MediaQuery.devicePixelRatioOf(context))
+              .ceil(),
           fit: BoxFit.cover,
           gaplessPlayback: true,
           // A decode failure on a malformed icon falls back to the glyph

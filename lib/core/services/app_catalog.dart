@@ -44,9 +44,20 @@ class AppCatalog {
   static bool get isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// Icons are PNG bytes and are expensive to fetch, so they are cached for
-  /// the life of the process. An app's icon does not change while it runs.
+  /// Icons are PNG bytes and are expensive to fetch, so recent ones are kept.
+  /// An app's icon does not change while it runs; the oldest go once
+  /// [_iconLimit] are held, so a phone with hundreds of apps does not keep
+  /// every icon in memory.
   static final Map<String, Uint8List?> _icons = {};
+  static const _iconLimit = 120;
+
+  static void _keepIcon(String packageId, Uint8List? bytes) {
+    _icons.remove(packageId);
+    _icons[packageId] = bytes;
+    while (_icons.length > _iconLimit) {
+      _icons.remove(_icons.keys.first);
+    }
+  }
 
   /// Every app on the device, system apps included.
   ///
@@ -97,13 +108,17 @@ class AppCatalog {
   /// and retrying on every rebuild would mean a channel round-trip per frame.
   static Future<Uint8List?> icon(String packageId) async {
     if (!isSupported) return null;
-    if (_icons.containsKey(packageId)) return _icons[packageId];
+    if (_icons.containsKey(packageId)) {
+      final bytes = _icons[packageId];
+      _keepIcon(packageId, bytes);
+      return bytes;
+    }
     try {
       final bytes = await UsageStats.getAppIcon(packageId);
-      _icons[packageId] = bytes;
+      _keepIcon(packageId, bytes);
       return bytes;
     } catch (_) {
-      _icons[packageId] = null;
+      _keepIcon(packageId, null);
       return null;
     }
   }
