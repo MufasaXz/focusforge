@@ -254,6 +254,16 @@ class AppBlockingPolicyTest {
         tracker.stop("app", 1300, "Main")
         assertEquals("app", tracker.packageName)
     }
+    @Test fun aSampleFromBeforeMidnightIsNotReusedAfterIt() {
+        val midnight = java.util.Calendar.getInstance().apply {
+            set(2026, java.util.Calendar.NOVEMBER, 9, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        // Used up at 23:59:55; read again 8 seconds later, in the new day.
+        assertNull(AppBlockingPolicy.cachedUsage(1_800_000L, midnight - 5_000, midnight + 3_000, true))
+        assertEquals(1_002_000L,
+            AppBlockingPolicy.cachedUsage(1_000_000L, midnight + 1_000, midnight + 3_000, true))
+    }
     @Test fun yesterdaysUsageIsNotChargedToTodaysBudget() {
         // The query window opens a day early so a session crossing midnight is
         // whole. Time that closed before midnight still belongs to yesterday.

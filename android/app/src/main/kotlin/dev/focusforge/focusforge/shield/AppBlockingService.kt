@@ -18,7 +18,6 @@ import android.widget.TextView
 import dev.focusforge.focusforge.MainActivity
 import dev.focusforge.focusforge.R
 import dev.focusforge.focusforge.localization.DeviceStrings
-import java.util.Calendar
 import java.io.FileDescriptor
 import java.io.PrintWriter
 
@@ -317,11 +316,7 @@ class AppBlockingService : Service() {
         if (budgetPackage == pkg) AppBlockingPolicy.cachedUsage(
             budgetSample, budgetSampleAt, now, foreground.packageName == pkg,
         )?.let { return it }
-        val midnight = Calendar.getInstance().apply {
-            timeInMillis = now
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        val midnight = AppBlockingPolicy.startOfDay(now)
         val manager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         return try {
             val events = manager.queryEvents(AppBlockingPolicy.bootstrapFrom(now), now)

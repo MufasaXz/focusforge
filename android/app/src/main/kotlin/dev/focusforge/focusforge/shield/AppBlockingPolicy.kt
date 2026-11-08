@@ -65,11 +65,16 @@ object AppBlockingPolicy {
         }
     }
 
-    /** Current day plus the previous calendar day covers ongoing sessions across midnight. */
-    fun bootstrapFrom(now: Long): Long = Calendar.getInstance().apply {
-        timeInMillis = now
+    /** Local midnight at the start of [at]'s day. */
+    fun startOfDay(at: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = at
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
         set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /** Current day plus the previous calendar day covers ongoing sessions across midnight. */
+    fun bootstrapFrom(now: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = startOfDay(now)
         add(Calendar.DATE, -1)
     }.timeInMillis.coerceAtLeast(0L)
 
@@ -107,8 +112,10 @@ object AppBlockingPolicy {
         // Replay a small bounded window; the tracker ignores older timestamps.
         else (lastQueryAt - 5_000L).coerceAtLeast(0L)
 
+    /** A recent sample of today's use, or null when it is stale or from yesterday:
+     *  a budget used up before midnight must not stay used up after it. */
     fun cachedUsage(sample: Long?, sampledAt: Long, now: Long, foreground: Boolean): Long? =
-        if (now - sampledAt in 0L until 10_000L)
+        if (now - sampledAt in 0L until 10_000L && sampledAt >= startOfDay(now))
             sample?.let { it + if (foreground) now - sampledAt else 0L }
         else null
 }
