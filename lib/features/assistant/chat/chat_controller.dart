@@ -595,19 +595,13 @@ class ChatController extends Notifier<ChatState> {
   Future<void> setReminderDate(DateTime date) {
     final pending =
         _pendingReminder ?? const ReminderRequest(title: '', exam: false);
-    final time = pending.hasTime ? pending.at : null;
+    final (hour, minute) = pending.time ?? (18, 0);
     return _setReminder(
       ReminderRequest(
         title: pending.title,
         exam: pending.exam,
-        at: DateTime(
-          date.year,
-          date.month,
-          date.day,
-          time?.hour ?? 18,
-          time?.minute ?? 0,
-        ),
-        hasTime: pending.hasTime,
+        at: DateTime(date.year, date.month, date.day, hour, minute),
+        time: pending.time,
       ),
       ++_generation,
     );

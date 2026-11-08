@@ -434,6 +434,17 @@ void main() {
       container.read(assistantMemoryProvider).reminders.single.title,
       'Chemistry test',
     );
+
+    // A time named without a date survives the date being picked after.
+    await ask(tester, 'remind me to revise chemistry at 8am');
+    final day = DateTime.now().add(const Duration(days: 4));
+    unawaited(container.read(chatProvider.notifier).setReminderDate(day));
+    await wait(tester);
+    final revise = container
+        .read(assistantMemoryProvider)
+        .reminders
+        .singleWhere((r) => r.title == 'Revise chemistry');
+    expect(revise.at, DateTime(day.year, day.month, day.day, 8));
   });
 
   testWidgets('“check my leaderboard position” gets a leaderboard answer', (

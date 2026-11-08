@@ -58,7 +58,7 @@ class ReminderRequest {
     required this.title,
     required this.exam,
     this.at,
-    this.hasTime = false,
+    this.time,
   });
 
   final String title;
@@ -67,8 +67,12 @@ class ReminderRequest {
   /// The day and time asked for, or null when no date was given.
   final DateTime? at;
 
+  /// The hour and minute the user named, kept even when no date came with
+  /// it, so the day picked afterwards still gets this time.
+  final (int, int)? time;
+
   /// Whether the user named a time, rather than Pip picking the evening.
-  final bool hasTime;
+  bool get hasTime => time != null;
 
   /// Reads [said] as of [now]: "set reminder for nov 25, it's my physics
   /// exam", "remind me to revise chemistry on friday at 6pm", "kal test hai
@@ -102,12 +106,7 @@ class ReminderRequest {
         ? ''
         : '${words.first[0].toUpperCase()}${words.first.substring(1)}'
               '${words.length > 1 ? ' ${words.skip(1).join(' ')}' : ''}';
-    return ReminderRequest(
-      title: title,
-      exam: exam,
-      at: at,
-      hasTime: time != null,
-    );
+    return ReminderRequest(title: title, exam: exam, at: at, time: time);
   }
 
   static String _clean(String said) => said
