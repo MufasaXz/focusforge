@@ -27,8 +27,10 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/providers/usage_stats_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/profile/profile_screen.dart';
@@ -57,6 +59,7 @@ void main() {
   /// rest of the test rather than the layout under test.
   ProviderContainer freshContainer({
     FocusCalendarDateNotifier Function()? calendar,
+    Map<String, int> Function()? screenTime,
   }) {
     final engine = RecordingShieldService();
     addTearDown(engine.dispose);
@@ -66,9 +69,20 @@ void main() {
         localStoreProvider.overrideWithValue(store),
         if (calendar != null) focusCalendarDateProvider.overrideWith(calendar),
         shieldServiceProvider.overrideWithValue(engine),
-        installedAppsProvider.overrideWith((ref) async => const []),
+        installedAppsProvider.overrideWith(
+          (ref) async => [
+            if (screenTime != null)
+              const InstalledApp(
+                packageId: 'com.example.video',
+                name: 'Video',
+                isSystem: false,
+              ),
+          ],
+        ),
         appUsageTodayProvider.overrideWith((ref) async => const {}),
-        usageAccessProvider.overrideWith((ref) async => false),
+        usageAccessProvider.overrideWith((ref) async => screenTime != null),
+        if (screenTime != null)
+          dayUsageProvider.overrideWith((ref, day) async => screenTime()),
         shieldEnabledProvider.overrideWith((ref) async => false),
       ],
     );
@@ -147,6 +161,24 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+    testWidgets('returning to the app reads Home\'s screen time again', (
+      tester,
+    ) async {
+      usePhone(tester);
+      var minutes = 30;
+      final container = freshContainer(
+        screenTime: () => {'com.example.video': minutes},
+      );
+      container.read(appListConsentProvider.notifier).hydrate(true);
+      await pumpApp(tester, container);
+      expect(find.text('30m'), findsOneWidget);
+
+      minutes = 90;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(find.text('1h 30m'), findsOneWidget);
+    });
     testWidgets('a tablet gets the rail, not the bar', (tester) async {
       useTablet(tester);
       await pumpApp(tester, freshContainer());

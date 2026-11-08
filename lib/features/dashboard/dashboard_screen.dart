@@ -16,6 +16,7 @@ import '../../core/providers/coach_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/usage_providers.dart';
+import '../../core/providers/usage_stats_providers.dart';
 import '../../core/utils/format.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
@@ -66,6 +67,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.read(timerProvider.notifier).sync();
     ref.read(focusCalendarDateProvider.notifier).refresh();
     ref.invalidate(usageAccessProvider);
+    refreshUsage(ref);
     // Each card owns its error state. Keep the saved study log visible even
     // if the platform cannot answer a usage read.
     await Future.wait([ref.read(usageAccessProvider.future)])

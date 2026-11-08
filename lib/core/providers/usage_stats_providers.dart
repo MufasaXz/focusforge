@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -244,7 +246,13 @@ final dayUsageProvider = FutureProvider.family<Map<String, int>, DateTime>((
   if (!ref.watch(appListConsentProvider)) return const {};
   final start = dayStart(day);
   final now = DateTime.now();
-  if (start.isAfter(now)) return const {};
+  if (start.isAfter(now)) {
+    // A day not yet begun reads as empty; read it again once it starts, or a
+    // week shown before midnight keeps an empty today after it.
+    final begins = Timer(start.difference(now), ref.invalidateSelf);
+    ref.onDispose(begins.cancel);
+    return const {};
+  }
   final end = addDays(start, 1);
   return AppCatalog.usageBetween(start, end.isAfter(now) ? now : end);
 });

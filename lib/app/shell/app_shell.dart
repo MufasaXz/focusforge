@@ -15,6 +15,7 @@ import '../../core/providers/goal_planner_providers.dart';
 import '../../core/providers/shield_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
+import '../../core/providers/usage_stats_providers.dart';
 import '../../core/services/native_shield_service.dart';
 import '../../features/assistant/nudges/pip_nudges.dart';
 import '../../features/shield/breath_gate.dart';
@@ -107,7 +108,8 @@ class _AppShellState extends ConsumerState<AppShell>
       ref.invalidate(appBlockingRunningProvider);
       ref.invalidate(appBlockingPausedProvider);
       ref.invalidate(shieldEnabledProvider);
-      ref.invalidate(appUsageTodayProvider);
+      // Screen time moved on while the app was away, Home's total included.
+      refreshUsage(ref);
       unawaited(_checkBlockedLaunch());
     }
   }
