@@ -183,14 +183,10 @@ Future<ProviderContainer> bootstrap() async {
   // -- Audio -----------------------------------------------------------------
   container
       .read(activeSoundsProvider.notifier)
-      .hydrate(
-        store
-            .getList(StoreKeys.ambientActive)
-            .map((m) => m['id'] as String?)
-            .whereType<String>()
-            .toSet(),
-        store.getDoubleMap(StoreKeys.ambientVolumes),
-      );
+      .hydrate(store.getDoubleMap(StoreKeys.ambientVolumes));
+  // Older builds saved the playing tracks to light them on launch, while
+  // they stayed silent. Nothing reads that list now.
+  await store.remove(StoreKeys.ambientActive);
 
   // Warm the router so the first navigation resolves its redirect immediately
   // rather than after a frame.
@@ -295,9 +291,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // its own volume map, so clear that too — otherwise the next toggle would
   // play at a volume the reset slider no longer shows.
   await container.read(activeSoundsProvider.notifier).clear();
-  container
-      .read(ambientMixerProvider)
-      .restore(active: const {}, volumes: const {});
+  container.read(ambientMixerProvider).restore(volumes: const {});
 
   // Everything below rebuilds to its `build()` default on the next read — the
   // same value a cold install starts from. Invalidate rather than hydrate:

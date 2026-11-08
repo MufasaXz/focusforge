@@ -13,8 +13,9 @@ final ambientMixerProvider = Provider<AmbientMixer>((ref) {
   return mixer;
 });
 
-final ambientCatalogueProvider =
-    Provider<List<AmbientSound>>((_) => SeedData.ambient);
+final ambientCatalogueProvider = Provider<List<AmbientSound>>(
+  (_) => SeedData.ambient,
+);
 
 /// Which tracks are lit. Mirrors the mixer so the tiles rebuild instantly
 /// without waiting for an audio call to resolve.
@@ -22,38 +23,32 @@ class ActiveSoundsNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
 
-  void hydrate(Set<String> stored, Map<String, double> volumes) {
-    if (stored.isEmpty && volumes.isEmpty) return;
-    state = stored;
+  /// Brings back the chosen volumes. Nothing plays after a relaunch, so no
+  /// track starts out lit.
+  void hydrate(Map<String, double> volumes) {
+    if (volumes.isEmpty) return;
     ref.read(volumesProvider.notifier).hydrate(volumes);
-    // Re-arm the mixer in the background; failure is non-fatal by design.
-    ref.read(ambientMixerProvider).restore(active: stored, volumes: volumes);
+    ref.read(ambientMixerProvider).restore(volumes: volumes);
   }
 
-  LocalStore get _store => ref.read(localStoreProvider);
-
-  Future<void> _persist() => _store.setList(
-        StoreKeys.ambientActive,
-        state.map((id) => {'id': id}).toList(growable: false),
-      );
-
   Future<void> toggle(AmbientSound sound) async {
-    final on = await ref.read(ambientMixerProvider).toggle(sound);
-    state = on ? {...state, sound.id} : (state.toSet()..remove(sound.id));
-    await _persist();
+    final mixer = ref.read(ambientMixerProvider);
+    await mixer.toggle(sound);
+    // The mixer's selection, not this toggle's result: another toggle or
+    // Stop all may have landed while this one was loading.
+    state = mixer.active;
   }
 
   Future<void> clear() async {
     await ref.read(ambientMixerProvider).stopAll();
     state = const {};
-    await _persist();
   }
 }
 
 final activeSoundsProvider =
     NotifierProvider<ActiveSoundsNotifier, Set<String>>(
-  ActiveSoundsNotifier.new,
-);
+      ActiveSoundsNotifier.new,
+    );
 
 class VolumesNotifier extends Notifier<Map<String, double>> {
   @override

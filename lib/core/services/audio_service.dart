@@ -15,6 +15,11 @@ import '../models/study.dart';
 /// browser blocks autoplay until the first gesture, the timer must keep
 /// running and the UI must not throw.
 class AmbientMixer {
+  AmbientMixer({AudioPlayer Function()? createPlayer})
+    : _createPlayer = createPlayer ?? AudioPlayer.new;
+
+  final AudioPlayer Function() _createPlayer;
+
   /// Where a track starts before anyone has moved its slider.
   ///
   /// Public because the mixer screen draws the same value: a slider that
@@ -25,6 +30,10 @@ class AmbientMixer {
   final Map<String, AudioPlayer> _players = {};
   final Map<String, double> _volumes = {};
   final Map<String, String> _assets = {};
+
+  /// The latest start of each track. A track switched off, or switched on
+  /// again, while an earlier start was still loading makes that start stale.
+  final Map<String, int> _starts = {};
 
   /// Ids that should be playing. Kept separate from [_players] so a track that
   /// failed to load is not silently dropped from the user's selection.
@@ -37,15 +46,12 @@ class AmbientMixer {
 
   double volumeOf(String id) => _volumes[id] ?? defaultVolume;
 
-  /// Restores a previously persisted selection without starting playback —
-  /// used on launch so the tiles come back lit.
-  void restore({
-    required Set<String> active,
-    required Map<String, double> volumes,
-  }) {
-    _active
-      ..clear()
-      ..addAll(active);
+  /// Brings back the volumes the user chose, on launch.
+  ///
+  /// The selection is not brought back: nothing plays after a relaunch, and
+  /// tiles lit with no sound would say otherwise and make the first tap a
+  /// stop rather than a start.
+  void restore({required Map<String, double> volumes}) {
     _volumes
       ..clear()
       ..addAll(volumes);
@@ -65,15 +71,32 @@ class AmbientMixer {
   }
 
   Future<void> _start(AmbientSound sound) async {
+    final start = (_starts[sound.id] ?? 0) + 1;
+    _starts[sound.id] = start;
+    bool stale() =>
+        _disposed || !_active.contains(sound.id) || _starts[sound.id] != start;
     try {
       var player = _players[sound.id];
       if (player == null) {
-        player = AudioPlayer();
-        await player.setAsset(sound.asset);
-        await player.setLoopMode(LoopMode.one);
+        // Loading takes a moment, and the player is not known to [stop]
+        // until it is registered: check again before it may play.
+        final loading = _createPlayer();
+        try {
+          await loading.setAsset(sound.asset);
+          await loading.setLoopMode(LoopMode.one);
+        } catch (_) {
+          await _release(loading);
+          rethrow;
+        }
+        if (stale()) {
+          await _release(loading);
+          return;
+        }
+        player = loading;
         _players[sound.id] = player;
       }
       await player.setVolume(volumeOf(sound.id));
+      if (stale()) return;
       unawaited(player.play());
     } catch (_) {
       // Codec missing, asset absent, or autoplay blocked. Leave the tile lit
@@ -84,7 +107,10 @@ class AmbientMixer {
   Future<void> stop(String id) async {
     _active.remove(id);
     final player = _players.remove(id);
-    if (player == null) return;
+    if (player != null) await _release(player);
+  }
+
+  Future<void> _release(AudioPlayer player) async {
     try {
       await player.stop();
       await player.dispose();
@@ -94,10 +120,12 @@ class AmbientMixer {
   }
 
   Future<void> stopAll() async {
+    // Tracks still loading have no player yet; clearing the selection is
+    // what stops them from playing once they load.
+    _active.clear();
     for (final id in _players.keys.toList()) {
       await stop(id);
     }
-    _active.clear();
   }
 
   /// Live volume change — cheap enough to call on every slider drag frame.
@@ -110,14 +138,6 @@ class AmbientMixer {
       await player.setVolume(v);
     } catch (_) {
       // Ignore.
-    }
-  }
-
-  /// Re-applies the persisted selection, e.g. after a hot restart.
-  Future<void> resumeAll(List<AmbientSound> catalogue) async {
-    for (final id in _active.toList()) {
-      final sound = catalogue.where((s) => s.id == id).firstOrNull;
-      if (sound != null) await _start(sound);
     }
   }
 

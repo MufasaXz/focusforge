@@ -100,7 +100,7 @@ void main() {
     expect(clock.height, greaterThanOrEqualTo(264));
     expect(tester.takeException(), isNull);
   });
-  testWidgets('sound choices keep their names and placement when restored', (
+  testWidgets('a relaunch keeps sound volumes but lights no silent track', (
     tester,
   ) async {
     phone(tester, width: 320);
@@ -108,15 +108,12 @@ void main() {
     await tester.pumpWidget(wrap(scope, const AmbientMixerSection()));
     await settle(tester);
     final rainBefore = tester.getRect(find.text('Rain').first);
-    final forestBefore = tester.getRect(find.text('Forest'));
-    scope.read(activeSoundsProvider.notifier).hydrate({'rain'}, {});
+    scope.read(activeSoundsProvider.notifier).hydrate({'rain': 0.3});
     await settle(tester);
     expect(tester.getRect(find.text('Rain').first), rainBefore);
-    expect(tester.getRect(find.text('Forest')), forestBefore);
-    expect(find.byType(Slider), findsOneWidget);
-    await tester.tap(find.text('Stop all'));
-    await settle(tester);
     expect(scope.read(activeSoundsProvider), isEmpty);
+    expect(find.byType(Slider), findsNothing);
+    expect(scope.read(volumesProvider)['rain'], 0.3);
     expect(tester.takeException(), isNull);
   });
 
@@ -131,39 +128,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('preset management reveals removal for default and custom plans', (
-    tester,
-  ) async {
-    phone(tester);
-    final scope = container();
-    await scope.read(planLibraryProvider.notifier).save(
-      const CustomPlan(
-        id: 'reading',
-        name: 'Reading',
-        goalMinutes: 90,
-        focusMinutes: 30,
-      ),
-    );
-    await tester.pumpWidget(wrap(scope, const FocusScreen()));
-    await settle(tester);
-    await tester.tap(find.text('Classic Pomodoro'));
-    await settle(tester);
-    expect(find.byTooltip('Remove Sprint'), findsNothing);
-    expect(find.byTooltip('Remove Reading'), findsNothing);
-    await tester.tap(find.byTooltip('Manage presets'));
-    await settle(tester);
-    expect(find.byTooltip('Remove Sprint'), findsOneWidget);
-    expect(find.byTooltip('Remove Reading'), findsOneWidget);
-    await tester.ensureVisible(find.byTooltip('Remove Sprint'));
-    await tester.tap(find.byTooltip('Remove Sprint'));
-    await settle(tester);
-    expect(scope.read(presetsProvider).any((p) => p.name == 'Sprint'), isFalse);
-    await tester.ensureVisible(find.byTooltip('Remove Reading'));
-    await tester.tap(find.byTooltip('Remove Reading'));
-    await settle(tester);
-    expect(scope.read(presetsProvider).any((p) => p.name == 'Reading'), isFalse);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'preset management reveals removal for default and custom plans',
+    (tester) async {
+      phone(tester);
+      final scope = container();
+      await scope
+          .read(planLibraryProvider.notifier)
+          .save(
+            const CustomPlan(
+              id: 'reading',
+              name: 'Reading',
+              goalMinutes: 90,
+              focusMinutes: 30,
+            ),
+          );
+      await tester.pumpWidget(wrap(scope, const FocusScreen()));
+      await settle(tester);
+      await tester.tap(find.text('Classic Pomodoro'));
+      await settle(tester);
+      expect(find.byTooltip('Remove Sprint'), findsNothing);
+      expect(find.byTooltip('Remove Reading'), findsNothing);
+      await tester.tap(find.byTooltip('Manage presets'));
+      await settle(tester);
+      expect(find.byTooltip('Remove Sprint'), findsOneWidget);
+      expect(find.byTooltip('Remove Reading'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('Remove Sprint'));
+      await tester.tap(find.byTooltip('Remove Sprint'));
+      await settle(tester);
+      expect(
+        scope.read(presetsProvider).any((p) => p.name == 'Sprint'),
+        isFalse,
+      );
+      await tester.ensureVisible(find.byTooltip('Remove Reading'));
+      await tester.tap(find.byTooltip('Remove Reading'));
+      await settle(tester);
+      expect(
+        scope.read(presetsProvider).any((p) => p.name == 'Reading'),
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'Home starts the selected plan and resumes without resetting it',
