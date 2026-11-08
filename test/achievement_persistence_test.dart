@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/models/user.dart';
@@ -13,6 +14,20 @@ import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/app/bootstrap.dart';
 
 import 'dart:async';
+
+/// Storage that refuses one badge write, then works again.
+class _FailBadgeWriteOnce extends InMemorySharedPreferencesStore {
+  _FailBadgeWriteOnce() : super.empty();
+  bool fail = true;
+  @override
+  Future<bool> setValue(String type, String key, Object value) async {
+    if (key == 'flutter.ff.${StoreKeys.achievementHistoryOwner}' && fail) {
+      fail = false;
+      throw StateError('disk temporarily unavailable');
+    }
+    return super.setValue(type, key, value);
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -336,6 +351,21 @@ void main() {
       );
     },
   );
+
+  test('one failed badge write does not stop later saves', () async {
+    final previous = SharedPreferencesStorePlatform.instance;
+    final disk = _FailBadgeWriteOnce();
+    SharedPreferencesStorePlatform.instance = disk;
+    addTearDown(() => SharedPreferencesStorePlatform.instance = previous);
+
+    await earnFirstFocus().catchError((Object _) {});
+    expect(disk.fail, isFalse, reason: 'the first badge write failed');
+    // The disk works again: waiting for writes saves the badge after all,
+    // and sign-out or deletion are not stuck behind the failure.
+    await container.read(achievementsProvider.notifier).flushLocal();
+    expect(store.getBoolMap(StoreKeys.achievements)['first_focus'], isTrue);
+    await container.read(achievementsProvider.notifier).refresh();
+  });
 }
 
 class _RemoteAuth extends LocalAuthService {

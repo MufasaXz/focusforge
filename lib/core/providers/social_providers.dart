@@ -189,7 +189,8 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     if (_recompute()) {
       await _persist();
     } else {
-      await _writes;
+      // A write that failed earlier is retried rather than reported again.
+      await _writes.catchError((Object _) => _persist());
     }
   }
 
@@ -248,7 +249,9 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     final linkedOwners = Map<String, bool>.of(_linkedOwners);
     final aliases = Map<String, dynamic>.of(_aliases);
     final store = _store;
-    _writes = _writes.then((_) async {
+    // Chained after the previous write settles, failed or not: one failed
+    // write must not stop every later one.
+    _writes = _writes.catchError((Object _) {}).then((_) async {
       await store.setString(StoreKeys.achievementHistoryOwner, historyOwner);
       await store.setMap(StoreKeys.achievementAccounts, accounts);
       await store.setBoolMap(StoreKeys.achievementLinkedOwners, linkedOwners);
@@ -262,11 +265,14 @@ class AchievementsNotifier extends Notifier<List<Achievement>> {
     return _writes;
   }
 
-  Future<void> flushLocal() => _writes;
+  /// Waits for pending writes, retrying once when the last one failed.
+  Future<void> flushLocal() => _writes.catchError((Object _) => _persist());
 
+  /// Stops writes before deletion wipes the store. A write that failed
+  /// earlier does not block deletion: everything it held is removed anyway.
   Future<void> suspendForDeletion() {
     _suspended = true;
-    return _writes;
+    return _writes.catchError((Object _) {});
   }
 
   void resumeAfterFailedDeletion() {
