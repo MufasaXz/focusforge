@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{1} روز تا {0} مانده است. این برنامهٔ روزانه بیشترین وقت را به {2} می‌دهد. تغییرش دهید و ذخیره کنید.",
   "How long a break do you want between study sessions? Pick it on the card.": "بین جلسه‌های مطالعه چقدر استراحت می‌خواهید؟ روی کارت انتخاب کنید.",
   "Break between sessions": "استراحت بین جلسه‌ها",
-  "Could not send the report. Check your connection and try again.": "ارسال گزارش ممکن نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید."
+  "Could not send the report. Check your connection and try again.": "ارسال گزارش ممکن نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+  "Hold": "نگه دارید",
+  "Well done": "آفرین"
 }

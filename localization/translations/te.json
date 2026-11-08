@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0}కి ఇంకా {1} రోజులు. ఈ రోజువారీ ప్లాన్ {2}కి ఎక్కువ సమయం ఇస్తుంది. మార్చి సేవ్ చేయండి.",
   "How long a break do you want between study sessions? Pick it on the card.": "చదువు సెషన్ల మధ్య ఎంత విరామం కావాలి? కార్డ్‌లో ఎంచుకోండి.",
   "Break between sessions": "సెషన్ల మధ్య విరామం",
-  "Could not send the report. Check your connection and try again.": "నివేదికను పంపలేకపోయాము. మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి."
+  "Could not send the report. Check your connection and try again.": "నివేదికను పంపలేకపోయాము. మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+  "Hold": "ఆపి ఉంచండి",
+  "Well done": "చాలా బాగుంది"
 }

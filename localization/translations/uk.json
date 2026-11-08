@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "До {0} залишилося днів: {1}. У цьому плані найбільше часу має {2}. Змініть і збережіть.",
   "How long a break do you want between study sessions? Pick it on the card.": "Яка перерва потрібна між навчальними сесіями? Виберіть її на картці.",
   "Break between sessions": "Перерва між сесіями",
-  "Could not send the report. Check your connection and try again.": "Не вдалося надіслати скаргу. Перевірте з’єднання та спробуйте ще раз."
+  "Could not send the report. Check your connection and try again.": "Не вдалося надіслати скаргу. Перевірте з’єднання та спробуйте ще раз.",
+  "Hold": "Затримайте",
+  "Well done": "Чудово"
 }

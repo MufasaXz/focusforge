@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} இன்னும் {1} நாட்களில். இந்தத் தினசரித் திட்டம் {2}க்கு அதிக நேரம் தருகிறது. மாற்றிச் சேமியுங்கள்.",
   "How long a break do you want between study sessions? Pick it on the card.": "படிப்பு அமர்வுகளுக்கு இடையே எவ்வளவு இடைவேளை வேண்டும்? கார்டில் தேர்ந்தெடுங்கள்.",
   "Break between sessions": "அமர்வுகளுக்கு இடையே இடைவேளை",
-  "Could not send the report. Check your connection and try again.": "புகாரை அனுப்ப முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்."
+  "Could not send the report. Check your connection and try again.": "புகாரை அனுப்ப முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.",
+  "Hold": "நிறுத்துங்கள்",
+  "Well done": "நன்று"
 }

@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} আর {1} দিন পরে। এই দৈনিক পরিকল্পনা {2}-কে সবচেয়ে বেশি সময় দেয়। বদলে নিন, তারপর সেভ করুন।",
   "How long a break do you want between study sessions? Pick it on the card.": "পড়ার সেশনের মাঝে কতক্ষণ বিরতি চান? কার্ডে বেছে নিন।",
   "Break between sessions": "সেশনের মাঝে বিরতি",
-  "Could not send the report. Check your connection and try again.": "রিপোর্ট পাঠানো যায়নি। আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
+  "Could not send the report. Check your connection and try again.": "রিপোর্ট পাঠানো যায়নি। আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+  "Hold": "ধরে রাখুন",
+  "Well done": "দারুণ"
 }

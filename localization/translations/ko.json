@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0}까지 {1}일 남았어요. 이 하루 계획은 {2}에 가장 많은 시간을 줘요. 바꾸고 저장하세요.",
   "How long a break do you want between study sessions? Pick it on the card.": "공부 세션 사이에 얼마나 쉬고 싶나요? 카드에서 고르세요.",
   "Break between sessions": "세션 사이 휴식",
-  "Could not send the report. Check your connection and try again.": "신고를 보내지 못했습니다. 연결을 확인하고 다시 시도하세요."
+  "Could not send the report. Check your connection and try again.": "신고를 보내지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+  "Hold": "멈추세요",
+  "Well done": "잘했어요"
 }

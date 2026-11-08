@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/app/theme/app_theme.dart';
+import 'package:focusforge/core/localization/app_strings.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
@@ -65,6 +66,7 @@ void main() {
     double textScale = 1,
     Size size = const Size(420, 1600),
     RecordingShieldService? service,
+    Locale? locale,
   }) async {
     useTallPhone(tester);
     tester.view.physicalSize = size;
@@ -109,6 +111,9 @@ void main() {
         container: container,
         child: MaterialApp.router(
           theme: AppTheme.light(),
+          locale: locale,
+          supportedLocales: AppStrings.supportedLocales,
+          localizationsDelegates: AppStrings.localizationsDelegates,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               disableAnimations: reduceMotion,
@@ -297,6 +302,13 @@ void main() {
           'the Shield screen reports',
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the breathing cue speaks the app\'s language', (tester) async {
+    await pumpGate(tester, locale: const Locale('hi'));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('साँस लें'), findsOneWidget);
+    expect(find.text('Breathe in'), findsNothing);
   });
 }
 

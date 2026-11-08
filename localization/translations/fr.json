@@ -1607,5 +1607,7 @@
   "{0} is in {1} days. Here’s a daily plan that gives {2} the most time. Change it, then save.": "{0} dans {1} jours. Ce plan quotidien donne le plus de temps à {2}. Modifiez-le, puis enregistrez.",
   "How long a break do you want between study sessions? Pick it on the card.": "Combien de pause voulez-vous entre deux séances d’étude ? Choisissez-la sur la carte.",
   "Break between sessions": "Pause entre les séances",
-  "Could not send the report. Check your connection and try again.": "Impossible d’envoyer le signalement. Vérifiez votre connexion et réessayez."
+  "Could not send the report. Check your connection and try again.": "Impossible d’envoyer le signalement. Vérifiez votre connexion et réessayez.",
+  "Hold": "Retenez",
+  "Well done": "Bravo"
 }

@@ -58,6 +58,7 @@ enum _Phase {
 
   const _Phase(this.instruction);
 
+  /// The cue in English; shown through the app's translations.
   final String instruction;
 }
 
@@ -542,7 +543,7 @@ class _BreathOrb extends StatelessWidget {
             label: frame.phase == _Phase.complete
                 ? context.tr("Session complete.")
                 : context.tr("{0}. Cycle {1} of {2}.", [
-                    frame.phase.instruction,
+                    context.tr(frame.phase.instruction),
                     frame.cycle,
                     _Protocol.cycles,
                   ]),
@@ -555,7 +556,7 @@ class _BreathOrb extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        frame.phase.instruction,
+                        context.tr(frame.phase.instruction),
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(fontSize: instructionSize),
                       ),
