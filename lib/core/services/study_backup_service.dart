@@ -129,17 +129,54 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
     }
     final signature = '${backup.modifiedAt}:$data';
     if (_savedSettings[uid] != signature) {
-      await _settings(uid)
-          .set({
-            'version': 1,
-            'ownerUid': uid,
-            'data': data,
-            'modifiedAt': backup.modifiedAt,
+      // Read and write in one transaction: if another phone saved a higher
+      // level since this one last read, that level is what stays.
+      final doc = _settings(uid);
+      final written = await db
+          .runTransaction((tx) async {
+            final current = await tx.get(doc);
+            final merged = _keepFurtherStats(
+              backup.settings,
+              current.data()?['data'],
+            );
+            tx.set(doc, {
+              'version': 1,
+              'ownerUid': uid,
+              'data': merged,
+              'modifiedAt': backup.modifiedAt,
+            });
+            return merged;
           })
           .timeout(_wait);
-      _savedSettings[uid] = signature;
+      _savedSettings[uid] = '${backup.modifiedAt}:$written';
     }
     await _deleteLegacySessions(uid);
+  }
+
+  /// [settings] encoded for the cloud, with the cloud's stats kept when
+  /// [stored], the cloud's current encoded settings, has gone further.
+  static String _keepFurtherStats(
+    Map<String, dynamic> settings,
+    Object? stored,
+  ) {
+    if (stored is String) {
+      try {
+        final cloud = jsonDecode(stored);
+        if (cloud is Map<String, dynamic>) {
+          final mine = settings[StoreKeys.stats];
+          final ahead = StudyBackupService._further([
+            mine,
+            cloud[StoreKeys.stats],
+          ]);
+          if (ahead != null && !identical(ahead, mine)) {
+            return jsonEncode({...settings, StoreKeys.stats: ahead});
+          }
+        }
+      } on FormatException {
+        // An unreadable cloud copy has nothing to keep.
+      }
+    }
+    return jsonEncode(settings);
   }
 
   Future<void> _deleteLegacySessions(String uid) async {
@@ -579,6 +616,9 @@ class StudyBackupService {
           // read the cloud. Keep it, here and in what is uploaded.
           final remote = await backend.load(uid);
           if (generation != _generation || _uid != uid) return;
+          // A session may have finished during the read: compare against
+          // this phone's progress as it is now.
+          backup = _capture(uid);
           final mine = backup.settings[StoreKeys.stats];
           final ahead = _further([mine, remote?.settings[StoreKeys.stats]]);
           if (ahead != null && !identical(ahead, mine)) {

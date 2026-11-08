@@ -20,10 +20,15 @@ class MemoryBackup implements StudyBackupBackend {
   bool failLoad = false;
   bool failSave = false;
   int saves = 0;
+
+  /// Runs while a read is under way, as if the phone kept working.
+  Future<void> Function()? duringLoad;
   @override
   Future<StudyBackup?> load(String uid) async {
     if (failLoad) throw StateError('offline');
-    return accounts[uid];
+    final value = accounts[uid];
+    await duringLoad?.call();
+    return value;
   }
 
   @override
@@ -373,6 +378,68 @@ void main() {
     );
     await service.connect(alice);
     expect(store.getMap(StoreKeys.stats)?['level'], 9);
+  });
+
+  test('progress made during the cloud read is not rolled back', () async {
+    Map<String, dynamic> stats(int level) => {'xp': 10, 'level': level};
+    await store.setMap(StoreKeys.user, alice.toJson());
+    await store.setMap(StoreKeys.stats, stats(5));
+    await service.connect(alice);
+    await service.flush();
+    final saved = backend.accounts['alice']!;
+    backend.accounts['alice'] = StudyBackup(
+      settings: {...saved.settings, StoreKeys.stats: jsonEncode(stats(6))},
+      sessions: const [],
+      modifiedAt: saved.modifiedAt + 1000,
+    );
+    // A session lifts this phone to level 7 while the cloud is being read.
+    backend.duringLoad = () async {
+      backend.duringLoad = null;
+      await store.setMap(StoreKeys.stats, {
+        ...stats(7),
+        'creditedSessionIds': ['during-read'],
+      });
+    };
+    await store.setMap(
+      StoreKeys.user,
+      alice.copyWith(displayName: 'Alice B').toJson(),
+    );
+    await service.flush();
+    expect(store.getMap(StoreKeys.stats)?['level'], 7);
+    expect(store.getMap(StoreKeys.stats)?['creditedSessionIds'], [
+      'during-read',
+    ]);
+  });
+
+  test('a save racing a higher level keeps the higher one', () async {
+    final db = FakeFirebaseFirestore();
+    final cloud = FirebaseStudyBackupBackend(db);
+    String settingsAt(int level) => jsonEncode({
+      StoreKeys.stats: jsonEncode({'xp': 0, 'level': level}),
+    });
+    // The other phone's level 6 lands after this phone read level 5.
+    await db.doc('users/alice/preferences/studyBackup').set({
+      'version': 1,
+      'ownerUid': 'alice',
+      'data': settingsAt(6),
+      'modifiedAt': 2,
+    });
+    await cloud.save(
+      'alice',
+      StudyBackup(
+        settings: {
+          StoreKeys.stats: jsonEncode({'xp': 0, 'level': 5}),
+          StoreKeys.user: jsonEncode(alice.toJson()),
+        },
+        sessions: const [],
+        modifiedAt: 3,
+      ),
+    );
+    final data = (await db.doc('users/alice/preferences/studyBackup').get())
+        .data()!;
+    final settings = jsonDecode(data['data'] as String) as Map;
+    expect(jsonDecode(settings[StoreKeys.stats] as String)['level'], 6);
+    expect(settings.containsKey(StoreKeys.user), isTrue);
   });
 
   test(
