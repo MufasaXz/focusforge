@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import dev.focusforge.focusforge.assistant.PipNudges
 import dev.focusforge.focusforge.shield.AppBlockingService
+import dev.focusforge.focusforge.shield.FocusAccessibilityService
 import dev.focusforge.focusforge.shield.ShieldBridge
 import dev.focusforge.focusforge.widgets.FocusLiveActivity
 import dev.focusforge.focusforge.widgets.FocusWidget
@@ -144,6 +145,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        FocusAccessibilityService.instance?.dismissForOwnApp()
         AppBlockingService.activityVisible = true
         AppBlockingService.sync(applicationContext)
         // Includes returning from notification permission/settings changes.

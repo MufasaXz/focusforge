@@ -620,6 +620,16 @@ class FocusAccessibilityService : AccessibilityService() {
         if (blockedPackage == packageName) dismissOverlay()
     }
 
+    /**
+     * FocusForge itself is in front, for example opened from its timer
+     * notification while YouTube was covered. The cover is for YouTube and
+     * must not stay over the app; the watchdog cannot tell, because the
+     * cover's own window belongs to FocusForge too.
+     */
+    fun dismissForOwnApp() {
+        if (overlay != null) dismissOverlay()
+    }
+
     private fun showOverlay(packageName: String, reason: String) {
         if (AppBlockingService.instance?.isCovering(packageName) == true) return
         dismissOverlay()
