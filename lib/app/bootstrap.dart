@@ -21,6 +21,9 @@ import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
 import '../core/services/local_store.dart';
 import '../core/services/study_backup_service.dart';
+import '../features/assistant/assistant_memory.dart';
+import '../features/assistant/chat/chat_controller.dart';
+import '../features/assistant/nudges/pip_nudges.dart';
 import 'router.dart';
 
 /// Opens the store and rebuilds every persisted notifier from it.
@@ -347,6 +350,11 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // or write those groups back with the next change.
   container.invalidate(focusGoalPlannerProvider);
   container.invalidate(usageCategoryOverridesProvider);
+  // Pip's chat, exam, reminders and online-answers consent belong to the
+  // deleted account too, and its reminders are already set with Android.
+  container.invalidate(assistantMemoryProvider);
+  container.invalidate(chatProvider);
+  unawaited(PipNudges.clear());
   if (deletedCredential != null) {
     await store.setString('auth.deletedCredential', deletedCredential);
   }

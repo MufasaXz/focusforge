@@ -22,6 +22,8 @@ import 'package:focusforge/core/providers/usage_stats_providers.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/features/assistant/assistant_memory.dart';
+import 'package:focusforge/features/assistant/chat/chat_controller.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/settings/privacy_screen.dart';
 import 'package:focusforge/shared/widgets/app_page.dart';
@@ -600,6 +602,29 @@ void main() {
     expect(container.read(activeFocusGoalProvider), isNull);
     expect(container.read(focusGoalPlannerProvider).week, isNull);
     expect(store.getMap(FocusGoalPlannerNotifier.storageKey), isNull);
+  });
+
+  test('deletion reset forgets what the user told Pip', () async {
+    final memory = container.read(assistantMemoryProvider.notifier);
+    await memory.setExam('neet');
+    await memory.setAiConsent(true);
+    await memory.addReminder(
+      title: 'Physics exam',
+      at: DateTime(2030, 1, 1),
+      exam: true,
+    );
+    container.read(chatProvider.notifier);
+
+    await resetPersistedState(container);
+
+    final fresh = container.read(assistantMemoryProvider);
+    expect(fresh.examId, isNull);
+    expect(fresh.reminders, isEmpty);
+    expect(fresh.aiConsent, isNull);
+    expect(container.read(chatProvider).entries, isEmpty);
+    // A later change must not write the deleted memory back.
+    await container.read(assistantMemoryProvider.notifier).setQuiet(true);
+    expect(store.getMap(StoreKeys.assistant)?['examId'], isNull);
   });
 
   test('deletion reset forgets the app groups the user chose', () async {

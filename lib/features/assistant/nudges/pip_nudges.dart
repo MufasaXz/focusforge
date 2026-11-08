@@ -356,6 +356,18 @@ abstract final class PipNudges {
       debugPrint('Pip reminders not scheduled: ${error.code}');
     }
   }
+
+  /// Cancels every pending reminder, as when the account is deleted.
+  static Future<void> clear() async {
+    if (!supported) return;
+    try {
+      await _channel.invokeMethod<void>('schedule', {'items': const []});
+    } on MissingPluginException {
+      // Tests and builds without the native side.
+    } on PlatformException catch (error) {
+      debugPrint('Pip reminders not cleared: ${error.code}');
+    }
+  }
 }
 
 /// Whether the phone lets Pip post notifications, and asking for it.
