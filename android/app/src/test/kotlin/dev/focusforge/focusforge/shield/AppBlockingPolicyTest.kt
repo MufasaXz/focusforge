@@ -234,6 +234,26 @@ class AppBlockingPolicyTest {
         usage.stop("app", 1000, "Main")
         assertEquals(1000L, usage.totalAt(60_000))
     }
+    @Test fun repeatedStopsWithoutPausesEachEndTheSession() {
+        val usage = DailyForegroundUsage("app", 0)
+        usage.resume("app", 0, "Main")
+        usage.stop("app", 1000, "Main")
+        usage.resume("app", 1100, "Main")
+        usage.stop("app", 1300, "Main")
+        assertEquals(1200L, usage.totalAt(10_000))
+    }
+    @Test fun aReplayedPauseDoesNotPairWithALaterStop() {
+        val tracker = ForegroundAppTracker()
+        tracker.resume("app", 0, "Main")
+        tracker.pause("app", 1000, "Main")
+        tracker.stop("app", 1100, "Main")
+        // The overlapping query replays the pause, then the app opens and
+        // stops again without pausing.
+        tracker.pause("app", 1000, "Main")
+        tracker.resume("app", 2000, "Main")
+        tracker.stop("app", 2500, "Main")
+        assertNull(tracker.packageName)
+    }
     @Test fun anOldInstancesLateStopKeepsTheNewInstanceCounting() {
         // Instance A pauses, instance B of the same activity resumes, then A
         // stops. B is still in front, so the budget keeps counting.

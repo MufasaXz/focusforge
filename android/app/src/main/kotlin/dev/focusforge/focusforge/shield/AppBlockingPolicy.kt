@@ -139,6 +139,9 @@ class ForegroundAppTracker {
     // instance of the same activity may already be in front.
     private val pausedUnstopped = HashMap<Pair<String, String?>, MutableSet<Long>>()
     private val settledStops = HashMap<Pair<String, String?>, MutableSet<Long>>()
+    // Pauses already paired with their stop; a replayed copy must not pair
+    // again with a later stop.
+    private val settledPauses = HashMap<Pair<String, String?>, MutableSet<Long>>()
     private var activity: String? = null
     private var suspendedPackage: String? = null
     private var suspendedActivity: String? = null
@@ -175,11 +178,17 @@ class ForegroundAppTracker {
         val matched = pending?.minOrNull()
         if (matched != null) {
             pending.remove(matched)
+            remember(settledPauses, key, matched)
             remember(settledStops, key, at)
             lastEventAt = maxOf(lastEventAt, at)
             return
         }
+        // No pause came first: this stop ends the session itself. It is a
+        // stop, not a pause waiting for one, so it must not pair with the
+        // next stop and swallow it.
         pause(packageName, at, activity)
+        pausedUnstopped[key]?.remove(at)
+        remember(settledStops, key, at)
     }
 
     private fun remember(into: HashMap<Pair<String, String?>, MutableSet<Long>>,
@@ -193,7 +202,7 @@ class ForegroundAppTracker {
     fun pause(packageName: String, at: Long, activity: String? = null) {
         if (at < screenBoundaryAt) return
         val key = packageName to activity
-        remember(pausedUnstopped, key, at)
+        if (settledPauses[key]?.contains(at) != true) remember(pausedUnstopped, key, at)
         stoppedAt[key] = maxOf(stoppedAt[key] ?: Long.MIN_VALUE, at)
         resumed.entries.removeAll { (candidate, resumedAt) ->
             candidate.first == packageName && resumedAt <= at &&
@@ -226,6 +235,7 @@ class ForegroundAppTracker {
         resumed.clear()
         pausedUnstopped.clear()
         settledStops.clear()
+        settledPauses.clear()
     }
 
     fun screenOff(at: Long) {
