@@ -212,6 +212,18 @@ class FirebaseAuthService extends AuthService {
   Stream<UserProfile?> get changes => _controller.stream;
 
   @override
+  String? get linkedUid {
+    final user = _auth.currentUser;
+    if (user == null ||
+        user.isAnonymous ||
+        _isDeletedCredential(user) ||
+        _requiresEmailVerification(user)) {
+      return null;
+    }
+    return user.uid;
+  }
+
+  @override
   Future<UserProfile?> restore() async {
     final user = _auth.currentUser;
     if (user != null && _requiresEmailVerification(user)) {
@@ -825,6 +837,7 @@ class FirebaseAuthService extends AuthService {
     profile = profile.copyWith(isAnonymous: credential?.isAnonymous ?? true);
     if (!profileEdit && credential != null) profile = _profileFor(credential);
     final backup = studyBackup;
+    var resumeLocally = false;
     if (!profile.isAnonymous && backup != null) {
       final showRecovery = _current?.uid != profile.uid || _restorationPending;
       if (showRecovery) recoveryState.value = AccountRecoveryStage.connecting;
@@ -878,13 +891,22 @@ class FirebaseAuthService extends AuthService {
         if (!isCurrent() || _auth.currentUser?.uid != credential?.uid) {
           throw const AuthException(AuthFailure.cancelled);
         }
-        _restorationPending = true;
-        if (!_disposed) _controller.add(null);
         final code = error is FirebaseException
             ? error.code
             : error.runtimeType.toString();
-        debugPrint('[auth] Account recovery failed: $code');
-        throw AuthException(AuthFailure.recoveryFailed, code);
+        if (_ownedHere(profile.uid)) {
+          // This device already holds this account's own snapshot. A failed
+          // token refresh or server read must not sign it out of the app: it
+          // keeps working from the device copy while the backup reconciles
+          // in the background, with cloud writes held until that succeeds.
+          debugPrint('[auth] Account recovery deferred: $code');
+          resumeLocally = true;
+        } else {
+          _restorationPending = true;
+          if (!_disposed) _controller.add(null);
+          debugPrint('[auth] Account recovery failed: $code');
+          throw AuthException(AuthFailure.recoveryFailed, code);
+        }
       } finally {
         if (isCurrent()) recoveryState.value = null;
       }
@@ -917,8 +939,14 @@ class FirebaseAuthService extends AuthService {
     _restorationPending = false;
     _current = profile;
     if (!_disposed) _controller.add(profile);
+    if (resumeLocally) backup?.resumeLocal(profile);
     return profile;
   }
+
+  /// Whether this device's stored profile is [uid]'s own, linked record.
+  bool _ownedHere(String uid) =>
+      _store.getMap(StoreKeys.user)?['uid'] == uid &&
+      _store.getBool('achievements.linked.$uid') == true;
 
   /// The same shape check the local implementation applies, kept so a
   /// malformed address fails instantly and identically offline rather than

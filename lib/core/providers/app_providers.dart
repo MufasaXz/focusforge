@@ -70,7 +70,13 @@ class UserNotifier extends Notifier<UserProfile> {
     if (identityChanged) {
       await _store.setBool(StoreKeys.boardOptIn, ref.read(boardOptInProvider));
     }
-    await _store.setMap(StoreKeys.user, profile.toJson());
+    // While an account's data is still being restored, the screen shows it as
+    // signed out. An edit made then must not store that as the account's
+    // state, or the next launch would treat a linked account as signed out.
+    final stored = profile.isAnonymous && auth.linkedUid == profile.uid
+        ? profile.copyWith(isAnonymous: false)
+        : profile;
+    await _store.setMap(StoreKeys.user, stored.toJson());
   }
 
   Future<void> setDisplayName(String name) {

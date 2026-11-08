@@ -113,6 +113,10 @@ abstract class AuthService {
   /// Whether credentials are handled by a remote account service.
   bool get usesRemoteCredentials => false;
 
+  /// The uid of a registered credential the account service still holds,
+  /// even while its data is being restored; null when there is none.
+  String? get linkedUid => null;
+
   /// The signed-in profile, or null while no session has been established.
   UserProfile? get current;
 
