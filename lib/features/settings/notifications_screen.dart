@@ -11,10 +11,12 @@ import '../../app/router.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/social_providers.dart';
+import '../assistant/nudges/pip_nudges.dart';
 import '../../shared/widgets/app_page.dart';
 import 'settings_support.dart';
 
-/// Notification preferences.
+/// Notification preferences: the reminders FocusForge sends, which are Pip's,
+/// and quiet hours over them.
 ///
 /// Every switch is one field on [NotificationPrefs], and every switch writes
 /// the *whole* updated object through `update(...)`. Persisting the full
@@ -29,7 +31,7 @@ class NotificationsScreen extends ConsumerWidget {
 
     return AppPage(
       title: context.tr("Notifications"),
-      subtitle: context.tr("{0} of 8 reminders on", [_activeCount(prefs)]),
+      subtitle: context.tr("{0} of {1} enabled", [_activeCount(prefs), 2]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -60,7 +62,7 @@ class NotificationsScreen extends ConsumerWidget {
                 subtitle: context.tr("“Time to study Physics!”"),
                 value: prefs.sessionReminders,
                 onChanged: (v) =>
-                    _save(ref, prefs.copyWith(sessionReminders: v)),
+                    _save(context, ref, prefs.copyWith(sessionReminders: v)),
               ),
             ],
           ),
@@ -68,62 +70,11 @@ class NotificationsScreen extends ConsumerWidget {
             title: context.tr("Progress"),
             children: [
               _SwitchRow(
-                title: context.tr("Daily summary"),
-                subtitle: context.tr("Your focus total at the end of the day"),
-                value: prefs.dailySummary,
-                onChanged: (v) => _save(ref, prefs.copyWith(dailySummary: v)),
-              ),
-              _SwitchRow(
-                title: context.tr("Weekly report"),
-                subtitle: context.tr("A Sunday recap of the week"),
-                value: prefs.weeklyReport,
-                onChanged: (v) => _save(ref, prefs.copyWith(weeklyReport: v)),
-              ),
-              _SwitchRow(
                 title: context.tr("Streak risk alerts"),
                 subtitle: context.tr("A nudge before a streak breaks"),
                 value: prefs.streakAlerts,
-                onChanged: (v) => _save(ref, prefs.copyWith(streakAlerts: v)),
-              ),
-            ],
-          ),
-          AppSection(
-            title: context.tr("Blocking"),
-            footnote: context.tr(
-              "These fire while a block is active, so they can be frequent.",
-            ),
-            children: [
-              _SwitchRow(
-                title: context.tr("Real-time block alerts"),
-                subtitle: context.tr("“Instagram Reels blocked”"),
-                value: prefs.blockingAlerts,
-                onChanged: (v) => _save(ref, prefs.copyWith(blockingAlerts: v)),
-              ),
-            ],
-          ),
-          AppSection(
-            title: context.tr("Social"),
-            children: [
-              _SwitchRow(
-                title: context.tr("Study buddy updates"),
-                subtitle: context.tr(
-                  "When a buddy starts or finishes a session",
-                ),
-                value: prefs.buddyUpdates,
-                onChanged: (v) => _save(ref, prefs.copyWith(buddyUpdates: v)),
-              ),
-              _SwitchRow(
-                title: context.tr("Group activity"),
-                subtitle: context.tr("Targets met and new members"),
-                value: prefs.groupActivity,
-                onChanged: (v) => _save(ref, prefs.copyWith(groupActivity: v)),
-              ),
-              _SwitchRow(
-                title: context.tr("Challenge invitations"),
-                subtitle: context.tr("Weekly challenges from friends"),
-                value: prefs.challengeInvites,
                 onChanged: (v) =>
-                    _save(ref, prefs.copyWith(challengeInvites: v)),
+                    _save(context, ref, prefs.copyWith(streakAlerts: v)),
               ),
             ],
           ),
@@ -154,11 +105,20 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  void _save(WidgetRef ref, NotificationPrefs next) =>
-      ref.read(notificationsProvider.notifier).update(next);
+  /// Saves [next] and sets Pip's reminders again under it.
+  Future<void> _save(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationPrefs next,
+  ) async {
+    final strings = AppStrings.of(context);
+    await ref.read(notificationsProvider.notifier).update(next);
+    await PipNudges.sync(ref.read, strings);
+  }
 
   Future<void> _editQuietHours(BuildContext context, WidgetRef ref) async {
     var prefs = ref.read(notificationsProvider);
+    final strings = AppStrings.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -281,6 +241,8 @@ class NotificationsScreen extends ConsumerWidget {
         },
       ),
     );
+    // Reminders set inside the new quiet hours wait until they end.
+    await PipNudges.sync(ref.read, strings);
   }
 }
 
@@ -343,13 +305,5 @@ String _clock(BuildContext context, int hour) =>
       alwaysUse24HourFormat: true,
     );
 
-int _activeCount(NotificationPrefs p) => [
-  p.sessionReminders,
-  p.dailySummary,
-  p.weeklyReport,
-  p.streakAlerts,
-  p.blockingAlerts,
-  p.buddyUpdates,
-  p.groupActivity,
-  p.challengeInvites,
-].where((on) => on).length;
+int _activeCount(NotificationPrefs p) =>
+    [p.sessionReminders, p.streakAlerts].where((on) => on).length;

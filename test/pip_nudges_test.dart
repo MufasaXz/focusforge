@@ -14,7 +14,10 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:focusforge/core/localization/app_strings.dart';
+import 'package:focusforge/core/models/social.dart';
 import 'package:focusforge/features/assistant/assistant_memory.dart';
+import 'package:focusforge/features/assistant/brain/reminders.dart';
+import 'package:focusforge/features/assistant/brain/timetable.dart';
 import 'package:focusforge/features/assistant/brain/study_snapshot.dart';
 import 'package:focusforge/features/assistant/nudges/pip_nudges.dart';
 
@@ -134,5 +137,67 @@ void main() {
         PipNudgePlanner.next(StudySnapshot(now: at(10, day)))!.body,
     };
     expect(lines.length, greaterThan(4));
+  });
+
+  group('notification settings', () {
+    // A late-night task; a timetable that starts at 06:30 replaces the
+    // evening nudge, so it is a second, separate case.
+    final task = StudyReminder(
+      id: 1,
+      title: 'Revise chemistry',
+      at: DateTime(2026, 11, 6, 23),
+      exam: false,
+    );
+    final snapshot = StudySnapshot(
+      now: at(10),
+      memory: AssistantMemory(reminders: [task]),
+    );
+    final early = StudySnapshot(
+      now: at(10),
+      memory: AssistantMemory(
+        timetable: Timetable(
+          startMinute: 6 * 60 + 30,
+          blockMinutes: 50,
+          breakMinutes: 10,
+          subjectMinutes: const {'physics': 60},
+        ),
+      ),
+    );
+    List<int> ids(List<PipNudge> nudges) => [for (final n in nudges) n.id];
+    const anyHour = NotificationPrefs(quietHoursEnabled: false);
+
+    test('turning streak alerts off drops only the evening nudge', () {
+      final off = PipReminders.allowed(
+        snapshot,
+        const NotificationPrefs(quietHoursEnabled: false, streakAlerts: false),
+      );
+      expect(ids(off), isNot(contains(PipReminders.eveningId)));
+      expect(off, isNotEmpty);
+    });
+
+    test('turning session reminders off leaves only the evening nudge', () {
+      final off = PipReminders.allowed(
+        snapshot,
+        const NotificationPrefs(
+          quietHoursEnabled: false,
+          sessionReminders: false,
+        ),
+      );
+      expect(ids(off), [PipReminders.eveningId]);
+      expect(PipReminders.allowed(snapshot, anyHour).length, greaterThan(1));
+    });
+
+    test('quiet hours hold a reminder until they end', () {
+      final quiet = PipReminders.allowed(snapshot, const NotificationPrefs());
+      final task = quiet.singleWhere((n) => n.id == 1000 + 10);
+      expect(task.at, DateTime(2026, 11, 7, 7));
+    });
+
+    test('quiet hours drop a timetable call rather than send it late', () {
+      final all = ids(PipReminders.allowed(early, anyHour));
+      final quiet = ids(PipReminders.allowed(early, const NotificationPrefs()));
+      expect(all.where((id) => id >= 100 && id < 107), isNotEmpty);
+      expect(quiet.where((id) => id >= 100 && id < 107), isEmpty);
+    });
   });
 }

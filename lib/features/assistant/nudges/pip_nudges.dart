@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/models/social.dart';
+import '../../../core/providers/social_providers.dart';
 import '../../../core/providers/usage_stats_providers.dart';
 import '../../../core/services/permission_manager.dart';
 import '../../shield/shield_access.dart';
@@ -152,6 +154,54 @@ abstract final class PipReminders {
     ..._timetable(s),
     ..._dated(s),
   ];
+
+  /// [all] as the user's notification settings allow it.
+  ///
+  /// The evening nudge on a day without study is a streak alert; the rest
+  /// are session reminders. During quiet hours a reminder waits until they
+  /// end, apart from a timetable call: it is about a block starting then, so
+  /// it is dropped rather than sent late.
+  static List<PipNudge> allowed(StudySnapshot s, NotificationPrefs prefs) {
+    final out = <PipNudge>[];
+    for (final nudge in all(s)) {
+      final on = nudge.id == eveningId
+          ? prefs.streakAlerts
+          : prefs.sessionReminders;
+      if (!on) continue;
+      final end = _quietEnd(nudge.at, prefs);
+      if (end == null) {
+        out.add(nudge);
+      } else if (!_isTimetable(nudge.id)) {
+        out.add(
+          PipNudge(
+            id: nudge.id,
+            at: end,
+            title: nudge.title,
+            body: nudge.body,
+            staleAfter: nudge.staleAfter,
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
+  static bool _isTimetable(int id) =>
+      id >= _timetableBase && id < _timetableBase + timetableDays;
+
+  /// When the quiet hours holding [at] end, or null when [at] is outside them.
+  static DateTime? _quietEnd(DateTime at, NotificationPrefs prefs) {
+    final from = prefs.quietStartHour;
+    final until = prefs.quietEndHour;
+    if (!prefs.quietHoursEnabled || from == until) return null;
+    final hour = at.hour;
+    final quiet = from < until
+        ? hour >= from && hour < until
+        : hour >= from || hour < until;
+    if (!quiet) return null;
+    final day = hour < until ? at.day : at.day + 1;
+    return DateTime(at.year, at.month, day, until);
+  }
 
   /// Days before a dated test or exam when Pip reminds, in the evening.
   static const testMilestones = [7, 3, 1];
@@ -336,7 +386,10 @@ abstract final class PipNudges {
   /// [strings]' language.
   static Future<void> sync(Reader read, AppStrings strings) async {
     if (!supported) return;
-    final reminders = PipReminders.all(StudySnapshot.capture(read));
+    final reminders = PipReminders.allowed(
+      StudySnapshot.capture(read),
+      read(notificationsProvider),
+    );
     try {
       await _channel.invokeMethod<void>('schedule', {
         'items': [
