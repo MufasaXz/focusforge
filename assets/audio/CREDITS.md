@@ -12,7 +12,7 @@ Licence deed: https://creativecommons.org/publicdomain/zero/1.0/
 All files were sourced from Freesound (https://freesound.org).
 
 --------------------------------------------------------------------------
-rain.mp3
+rain.ogg
   Title:      Slowly Raining Loop
   Author:     unfa
   Source:     https://freesound.org/people/unfa/sounds/177479/
@@ -23,35 +23,35 @@ rain.mp3
      commercial purposes, all without the need of asking permission to
      the author."
 
-forest.mp3
+forest.ogg
   Title:      Spring Birds 2019 (processed loop)
   Author:     hargissssound
   Source:     https://freesound.org/people/hargissssound/sounds/471891/
   Licence:    Creative Commons 0 (CC0 1.0)
   Original:   146.9 s stereo
 
-cafe.mp3
+cafe.ogg
   Title:      People talking at cafe ambience
   Author:     priesjensen
   Source:     https://freesound.org/people/priesjensen/sounds/482990/
   Licence:    Creative Commons 0 (CC0 1.0)
   Original:   137.4 s stereo
 
-waves.mp3
+waves.ogg
   Title:      Calm ocean waves
   Author:     SamsterBirdies
   Source:     https://freesound.org/people/SamsterBirdies/sounds/578524/
   Licence:    Creative Commons 0 (CC0 1.0)
   Original:   179.7 s stereo
 
-fire.mp3
+fire.ogg
   Title:      Fireplace crackling wood little flame.wav
   Author:     BonnyOrbit
   Source:     https://freesound.org/people/BonnyOrbit/sounds/484338/
   Licence:    Creative Commons 0 (CC0 1.0)
   Original:   124.3 s stereo
 
-noise.mp3
+noise.ogg
   Title:      Brown Noise
   Author:     tracyradio
   Source:     https://freesound.org/people/tracyradio/sounds/737409/
@@ -68,6 +68,8 @@ Processing applied to every file (all changes are permitted by CC0):
   * Downmixed from stereo to mono, resampled to 44.1 kHz.
   * Loudness-normalised to -23 LUFS integrated, with a look-ahead limiter
     at -2.5 dBFS so the whole set sits at a consistent level when mixed.
-  * Encoded as MP3 (LAME), 96 kbps mono, 66.0 s, 774 KB each.
+  * Encoded as MP3 (LAME), 96 kbps mono, 66.0 s, 774 KB each, then
+    re-encoded as Opus in Ogg, 48 kbps mono, 66.0 s, about 340 KB each.
+    Opus keeps the loop point exact, with no encoder padding.
 
 No other files in this repository were modified.
