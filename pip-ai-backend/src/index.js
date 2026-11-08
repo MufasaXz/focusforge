@@ -132,8 +132,8 @@ async function handle(request, env, fetchImpl) {
   if (Number(request.headers.get('content-length') ?? 0) > LIMITS.bodyBytes) {
     return json(413, {error: 'invalid-argument'});
   }
-  const raw = await request.text();
-  if (raw.length > LIMITS.bodyBytes) return json(413, {error: 'invalid-argument'});
+  const raw = await readBounded(request, LIMITS.bodyBytes);
+  if (raw === null) return json(413, {error: 'invalid-argument'});
   if (path === '/report') return report(raw, uid, env);
   let parsed;
   try {
@@ -206,3 +206,32 @@ export default {
     }
   },
 };
+
+/**
+ * The request body as text, or null once it passes [limit] bytes. Reads the
+ * stream as it arrives, so a body with no or a false Content-Length is never
+ * held whole, and the limit is in bytes, as declared, not in characters.
+ */
+async function readBounded(request, limit) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}

@@ -206,12 +206,14 @@ export function readGeminiReply(body) {
   if (body?.promptFeedback?.blockReason) return {blocked: true};
   const candidate = body?.candidates?.[0];
   if (!candidate) return {empty: true};
+  // A flagged answer is withheld even when some of its text came through.
+  if (BLOCKED.includes(candidate.finishReason)) return {blocked: true};
   const text = (candidate.content?.parts ?? [])
     .filter((part) => typeof part?.text === 'string' && !part.thought)
     .map((part) => part.text)
     .join('')
     .trim();
-  if (!text) return BLOCKED.includes(candidate.finishReason) ? {blocked: true} : {empty: true};
+  if (!text) return {empty: true};
   return {text: tidyReply(text)};
 }
 
@@ -219,8 +221,9 @@ export function readGeminiReply(body) {
 export function readGroqReply(body) {
   const choice = body?.choices?.[0];
   if (!choice) return {empty: true};
+  if (choice.finish_reason === 'content_filter') return {blocked: true};
   const text = typeof choice.message?.content === 'string' ? choice.message.content.trim() : '';
-  if (!text) return choice.finish_reason === 'content_filter' ? {blocked: true} : {empty: true};
+  if (!text) return {empty: true};
   return {text: tidyReply(text)};
 }
 

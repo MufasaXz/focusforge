@@ -171,6 +171,17 @@ test('blocked and empty replies are told apart', () => {
   assert.deepEqual(readGroqReply({}), {empty: true});
 });
 
+test('a flagged answer is withheld even when it carries text', () => {
+  assert.deepEqual(
+    readGeminiReply({candidates: [{finishReason: 'SPII', content: {parts: [{text: 'Call 555 0100.'}]}}]}),
+    {blocked: true},
+  );
+  assert.deepEqual(
+    readGroqReply({choices: [{message: {content: 'Some text.'}, finish_reason: 'content_filter'}]}),
+    {blocked: true},
+  );
+});
+
 test('a report needs a known reason and the answer it is about', () => {
   assert.deepEqual(parseReport({reason: 'incorrect', reply: ' Wrong date. ', question: 'when is neet'}), {
     reason: 'incorrect',

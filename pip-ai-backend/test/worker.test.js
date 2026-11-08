@@ -106,6 +106,14 @@ test('bad input is refused with 400 and wrong methods with 405', async () => {
   assert.equal((await ask(null, {method: 'GET'})).status, 405);
 });
 
+test('the body limit counts bytes, not characters', async () => {
+  // 6,000 Hindi letters are 18,000 bytes in UTF-8, over the 16 KiB limit,
+  // though far fewer characters.
+  const fetchImpl = providers();
+  assert.equal((await ask({message: 'आ'.repeat(6000)}, {fetchImpl})).status, 413);
+  assert.ok(fetchImpl.calls.every((c) => !c.url.includes('generativelanguage') && !c.url.includes('groq')));
+});
+
 test('a flood of text reaches the model as at most 300 characters', async () => {
   let sent;
   const fetchImpl = providers({gemini: (url, init) => ((sent = JSON.parse(init.body)), geminiOk('ok'))});
