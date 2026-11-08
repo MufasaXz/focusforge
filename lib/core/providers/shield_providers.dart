@@ -401,9 +401,17 @@ class StrictModeNotifier extends Notifier<StrictModeConfig> {
   /// A running window keeps its length. Its end is counted from the length,
   /// so shortening it would end the commitment at once, without the phrase
   /// and the cooldown the emergency unlock asks for.
+  ///
+  /// A window that has run out is closed here: its old start would otherwise
+  /// count from the new length and lock the apps again without the user
+  /// turning Strict Mode back on.
   Future<void> setDuration(int minutes) async {
     if (state.isActive) return;
-    state = state.copyWith(durationMinutes: minutes);
+    state = state.copyWith(
+      durationMinutes: minutes,
+      enabled: false,
+      clearEnabledAt: true,
+    );
     await _persist();
   }
 

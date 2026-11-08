@@ -104,6 +104,28 @@ void main() {
       expect(config.isActive, isTrue);
     });
 
+    test('lengthening a window that ran out does not lock again', () async {
+      final container = freshContainer();
+      final strict = container.read(strictModeProvider.notifier);
+      // A 15-minute window opened 20 minutes ago has run out.
+      await strict.update(
+        StrictModeConfig(
+          enabled: true,
+          enabledAtMillis: DateTime.now()
+              .subtract(const Duration(minutes: 20))
+              .millisecondsSinceEpoch,
+          durationMinutes: 15,
+        ),
+      );
+
+      await strict.setDuration(120);
+
+      final config = container.read(strictModeProvider);
+      expect(config.durationMinutes, 120);
+      expect(config.isActive, isFalse);
+      expect(config.enabled, isFalse);
+    });
+
     test('can be changed while no window is open', () async {
       final container = freshContainer();
       await container.read(strictModeProvider.notifier).setDuration(45);
