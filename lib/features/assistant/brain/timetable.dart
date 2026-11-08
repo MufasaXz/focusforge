@@ -124,6 +124,8 @@ class Timetable {
   Timetable adjust(String subjectId, int delta) {
     final current = subjectMinutes[subjectId] ?? 0;
     final room = maxTotal - (totalMinutes - current);
+    // A new subject needs at least a step of room; a full day takes none.
+    if (current == 0 && room < step) return this;
     final next = (current + delta).clamp(0, room);
     final minutes = {...subjectMinutes};
     if (next == 0 && minutes.length > 1) {
@@ -193,10 +195,15 @@ class Timetable {
     final int total = _round(math.max(totalMinutes, askedTotal))
         .clamp(step, maxTotal)
         .toInt();
-    final minutes = <String, int>{
-      for (final MapEntry(key: id, value: m) in asked.entries)
-        if (m > 0) id: _round(m).clamp(step, maxTotal).toInt(),
-    };
+    // Asked-for subjects fill the day in the order named, never past it.
+    final minutes = <String, int>{};
+    var room = maxTotal;
+    for (final MapEntry(key: id, value: m) in asked.entries) {
+      if (m <= 0 || room < step) continue;
+      final given = _round(m).clamp(step, room).toInt();
+      minutes[id] = given;
+      room -= given;
+    }
     int rest = total - minutes.values.fold(0, (a, b) => a + b);
     final others = subjects
         .where((id) => !minutes.containsKey(id))

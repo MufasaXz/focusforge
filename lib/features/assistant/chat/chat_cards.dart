@@ -683,6 +683,9 @@ class _TimetableCardViewState extends State<TimetableCardView> {
             alignment: AlignmentDirectional.centerStart,
             child: PopupMenuButton<String>(
               tooltip: context.tr('Add a subject'),
+              // A full day has no room for another subject.
+              enabled:
+                  _draft.totalMinutes + Timetable.step <= Timetable.maxTotal,
               onSelected: (id) => _change(_draft.adjust(id, 60)),
               itemBuilder: (context) => [
                 for (final id in missing)

@@ -408,4 +408,25 @@ void main() {
       );
     });
   });
+
+  test('a timetable never goes past the day\'s limit', () {
+    final asked = Timetable.plan(
+      totalMinutes: 16 * 60,
+      subjects: const ['physics', 'chemistry'],
+      asked: const {'physics': 8 * 60, 'chemistry': 8 * 60},
+      startMinute: 8 * 60,
+    );
+    expect(asked.totalMinutes, lessThanOrEqualTo(Timetable.maxTotal));
+    expect(asked.subjectMinutes['physics'], 8 * 60);
+
+    final full = Timetable(
+      startMinute: 8 * 60,
+      blockMinutes: 50,
+      breakMinutes: 10,
+      subjectMinutes: const {'physics': Timetable.maxTotal},
+    );
+    final added = full.adjust('maths', 60);
+    expect(added.totalMinutes, Timetable.maxTotal);
+    expect(added.subjectMinutes.containsKey('maths'), isFalse);
+  });
 }
