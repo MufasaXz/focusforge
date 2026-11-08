@@ -234,6 +234,30 @@ class StudyBackupService {
   static const keys = {...cloudKeys, ...localKeys};
   String _cache(String uid) => 'study.account.$uid';
 
+  /// Removes study history from every account snapshot kept on this
+  /// device, for "Clear local analytics": its sessions, and its stats reset
+  /// to [emptyStats]. Without this a cleared history stays in the export
+  /// and comes back when that account signs in again.
+  static Future<void> forgetHistory(LocalStore store, String emptyStats) async {
+    for (final key in store.exportAll().keys) {
+      if (!key.startsWith('study.account.')) continue;
+      final cached = StudyBackup.fromJson(store.getMap(key));
+      if (cached == null) continue;
+      await store.setMap(
+        key,
+        StudyBackup(
+          settings: {
+            ...cached.settings,
+            if (cached.settings.containsKey(StoreKeys.stats))
+              StoreKeys.stats: emptyStats,
+          },
+          sessions: const [],
+          modifiedAt: cached.modifiedAt,
+        ).toJson(),
+      );
+    }
+  }
+
   /// The part of [settings] allowed to leave the device.
   ///
   /// Credited session ids are stripped from the stats: each encodes when a

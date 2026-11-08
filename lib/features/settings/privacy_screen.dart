@@ -21,6 +21,7 @@ import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_store.dart';
+import '../../core/services/study_backup_service.dart';
 import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -296,6 +297,11 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
     await store.setMap(StoreKeys.stats, const GamificationStats().toJson());
     await store.setList(StoreKeys.sessions, const []);
     await store.setList(StoreKeys.breathEvents, const []);
+    // Each account's snapshot on this device holds the same history.
+    await StudyBackupService.forgetHistory(
+      store,
+      jsonEncode(const GamificationStats().toJson()),
+    );
 
     // Subject counters are derived from the session log, but the stored rows
     // keep the last derived value, so zero the progress here too — in memory

@@ -380,6 +380,28 @@ void main() {
     expect(store.getMap(StoreKeys.stats)?['level'], 9);
   });
 
+  test('clearing analytics leaves no session in account snapshots', () async {
+    await store.setMap(
+      'study.account.alice',
+      StudyBackup(
+        settings: {
+          StoreKeys.stats: jsonEncode({'xp': 5, 'level': 3}),
+          StoreKeys.dailyGoal: 90,
+        },
+        sessions: [
+          {'id': 's-erased', 'ownerUid': 'alice', 'minutes': 25},
+        ],
+        modifiedAt: 7,
+      ).toJson(),
+    );
+    await StudyBackupService.forgetHistory(store, jsonEncode({'level': 1}));
+    expect(jsonEncode(store.exportAll()), isNot(contains('s-erased')));
+    final cached = StudyBackup.fromJson(store.getMap('study.account.alice'))!;
+    expect(cached.sessions, isEmpty);
+    expect(cached.settings[StoreKeys.dailyGoal], 90);
+    expect(jsonDecode(cached.settings[StoreKeys.stats] as String)['level'], 1);
+  });
+
   test('progress made during the cloud read is not rolled back', () async {
     Map<String, dynamic> stats(int level) => {'xp': 10, 'level': level};
     await store.setMap(StoreKeys.user, alice.toJson());
