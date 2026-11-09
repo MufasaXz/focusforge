@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1} দিয়ে চালিয়ে যান",
   "Continue without access": "অ্যাক্সেস ছাড়াই চালিয়ে যান",
   "Cooldown": "কুলডাউন",
-  "Copied {0} stored keys to the clipboard as JSON.": "JSON হিসাবে ক্লিপবোর্ডে {0} সঞ্চিত কীগুলি অনুলিপি করা হয়েছে৷",
-  "Copies every stored key to the clipboard": "প্রতিটি সঞ্চিত কী ক্লিপবোর্ডে অনুলিপি করে",
   "Copy JSON": "JSON কপি করুন",
   "Could not add this subject. Try again.": "এই বিষয় যোগ করা যায়নি. আবার চেষ্টা করুন",
   "Could not change the group. Please try again.": "গ্রুপ পরিবর্তন করা যায়নি. আবার চেষ্টা করুন.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "অনলাইন উত্তর চালু",
   "Answers stay on this phone": "উত্তর এই ফোনেই থাকে",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "আপনার প্রশ্ন, শেষ কয়েকটি বার্তা এবং পড়াশোনার একটি ছোট সারাংশ একটি এআই পরিষেবায় যায়। আপনার নাম বা ইমেল কখনও নয়।",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "অনলাইন উত্তরের জন্য একটি লিঙ্ক করা অ্যাকাউন্টও লাগে। ততদিন উত্তর এই ফোনেই থাকে।"
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "অনলাইন উত্তরের জন্য একটি লিঙ্ক করা অ্যাকাউন্টও লাগে। ততদিন উত্তর এই ফোনেই থাকে।",
+  "Save file": "ফাইল সংরক্ষণ করুন",
+  "Saved {0}.": "{0} সংরক্ষিত হয়েছে।",
+  "Could not save the file. Try again.": "ফাইলটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
+  "Saves as {0}": "{0} নামে সংরক্ষিত হবে",
+  "It includes the data of every account saved on this device.": "এতে এই ডিভাইসে সংরক্ষিত প্রতিটি অ্যাকাউন্টের ডেটা আছে।",
+  "Save every stored key as a file, or copy it": "সংরক্ষিত প্রতিটি কী ফাইল হিসেবে সংরক্ষণ করুন বা কপি করুন"
 }

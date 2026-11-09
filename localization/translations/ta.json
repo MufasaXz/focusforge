@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1} உடன் தொடரவும்",
   "Continue without access": "அணுகல் இல்லாமல் தொடரவும்",
   "Cooldown": "கூல்டவுன்",
-  "Copied {0} stored keys to the clipboard as JSON.": "{0} சேமிக்கப்பட்ட விசைகளை கிளிப்போர்டில் JSON ஆக நகலெடுக்கப்பட்டது.",
-  "Copies every stored key to the clipboard": "ஒவ்வொரு சேமிக்கப்பட்ட விசையையும் கிளிப்போர்டுக்கு நகலெடுக்கிறது",
   "Copy JSON": "JSON நகலெடு",
   "Could not add this subject. Try again.": "இந்த விஷயத்தைச் சேர்க்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
   "Could not change the group. Please try again.": "குழுவை மாற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "ஆன்லைன் பதில்கள் இயக்கத்தில்",
   "Answers stay on this phone": "பதில்கள் இந்த மொபைலிலேயே இருக்கும்",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Ваше запитання, останні повідомлення та короткий підсумок навчання надсилаються до сервісу ШІ. Ніколи — ваше ім’я чи пошта.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-відповідей також потрібен прив’язаний обліковий запис. Доти відповіді залишаються на цьому телефоні."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-відповідей також потрібен прив’язаний обліковий запис. Доти відповіді залишаються на цьому телефоні.",
+  "Save file": "கோப்பைச் சேமி",
+  "Saved {0}.": "{0} சேமிக்கப்பட்டது.",
+  "Could not save the file. Try again.": "கோப்பைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
+  "Saves as {0}": "{0} எனச் சேமிக்கப்படும்",
+  "It includes the data of every account saved on this device.": "இந்தச் சாதனத்தில் சேமிக்கப்பட்ட ஒவ்வொரு கணக்கின் தரவும் இதில் உள்ளது.",
+  "Save every stored key as a file, or copy it": "சேமித்த ஒவ்வொரு விசையையும் கோப்பாகச் சேமிக்கவும் அல்லது நகலெடுக்கவும்"
 }

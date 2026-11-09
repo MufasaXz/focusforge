@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Продолжить с {0} {1}",
   "Continue without access": "Продолжить без доступа",
   "Cooldown": "Время восстановления",
-  "Copied {0} stored keys to the clipboard as JSON.": "Скопировал сохраненные ключи {0} в буфер обмена в формате JSON.",
-  "Copies every stored key to the clipboard": "Копирует каждый сохраненный ключ в буфер обмена.",
   "Copy JSON": "Копировать JSON",
   "Could not add this subject. Try again.": "Не удалось добавить эту тему. Попробуйте еще раз.",
   "Could not change the group. Please try again.": "Не удалось изменить группу. Пожалуйста, попробуйте еще раз.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Онлайн-ответы включены",
   "Answers stay on this phone": "Ответы остаются на этом телефоне",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Ваш вопрос, последние сообщения и краткая сводка учёбы отправляются в сервис ИИ. Никогда — ваше имя или почта.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-ответов также нужен привязанный аккаунт. До тех пор ответы остаются на этом телефоне."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-ответов также нужен привязанный аккаунт. До тех пор ответы остаются на этом телефоне.",
+  "Save file": "Сохранить файл",
+  "Saved {0}.": "Файл {0} сохранён.",
+  "Could not save the file. Try again.": "Не удалось сохранить файл. Попробуйте ещё раз.",
+  "Saves as {0}": "Сохраняется как {0}",
+  "It includes the data of every account saved on this device.": "Включает данные всех аккаунтов, сохранённых на этом устройстве.",
+  "Save every stored key as a file, or copy it": "Сохранить все ключи в файл или скопировать"
 }

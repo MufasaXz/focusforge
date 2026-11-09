@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1} સાથે ચાલુ રાખો",
   "Continue without access": "ઍક્સેસ વિના ચાલુ રાખો",
   "Cooldown": "કૂલડાઉન",
-  "Copied {0} stored keys to the clipboard as JSON.": "એ JSON તરીકે ક્લિપબોર્ડ પર સ્ટોર કરેલી {0} કૉપિ કરી.",
-  "Copies every stored key to the clipboard": "ક્લિપબોર્ડ પર સંગ્રહિત દરેક કીની નકલ કરે છે",
   "Copy JSON": "JSON કૉપિ કરો",
   "Could not add this subject. Try again.": "આ વિષય ઉમેરી શકાયો નથી. ફરી પ્રયાસ કરો.",
   "Could not change the group. Please try again.": "જૂથ બદલી શક્યું નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "ઓનલાઇન જવાબ ચાલુ",
   "Answers stay on this phone": "જવાબ આ ફોન પર જ રહે છે",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "તમારો પ્રશ્ન, છેલ્લા થોડા સંદેશા અને અભ્યાસનો ટૂંકો સારાંશ એક AI સેવાને જાય છે. તમારું નામ કે ઇમેઇલ ક્યારેય નહીં.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "ઓનલાઇન જવાબ માટે લિંક કરેલું એકાઉન્ટ પણ જોઈએ. ત્યાં સુધી જવાબ આ ફોન પર જ રહે છે."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ઓનલાઇન જવાબ માટે લિંક કરેલું એકાઉન્ટ પણ જોઈએ. ત્યાં સુધી જવાબ આ ફોન પર જ રહે છે.",
+  "Save file": "ફાઇલ સાચવો",
+  "Saved {0}.": "{0} સાચવી.",
+  "Could not save the file. Try again.": "ફાઇલ સાચવી શકાઈ નહીં. ફરી પ્રયાસ કરો.",
+  "Saves as {0}": "{0} તરીકે સાચવાશે",
+  "It includes the data of every account saved on this device.": "તેમાં આ ઉપકરણ પર સાચવેલા દરેક એકાઉન્ટનો ડેટા છે.",
+  "Save every stored key as a file, or copy it": "દરેક સંગ્રહિત કી ફાઇલ તરીકે સાચવો અથવા કૉપિ કરો"
 }

@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "继续 {0} {1}",
   "Continue without access": "无需访问即可继续",
   "Cooldown": "冷却",
-  "Copied {0} stored keys to the clipboard as JSON.": "将 {0} 存储的密钥以 JSON 形式复制到剪贴板。",
-  "Copies every stored key to the clipboard": "将每个存储的密钥复制到剪贴板",
   "Copy JSON": "复制 JSON",
   "Could not add this subject. Try again.": "无法添加此主题。再试一次。",
   "Could not change the group. Please try again.": "无法更改组。请再试一次。",
@@ -1637,5 +1635,11 @@
   "Online answers on": "在线回答已开启",
   "Answers stay on this phone": "回答仅保留在这部手机上",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "你的问题、最近几条消息和一份简短的学习摘要会发送到 AI 服务。绝不发送你的姓名或邮箱。",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "在线回答还需要已关联的账号。在此之前，回答仅保留在这部手机上。"
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "在线回答还需要已关联的账号。在此之前，回答仅保留在这部手机上。",
+  "Save file": "保存文件",
+  "Saved {0}.": "已保存 {0}。",
+  "Could not save the file. Try again.": "无法保存文件。请重试。",
+  "Saves as {0}": "保存为 {0}",
+  "It includes the data of every account saved on this device.": "其中包含此设备上保存的所有账号的数据。",
+  "Save every stored key as a file, or copy it": "将所有存储的键保存为文件或复制"
 }

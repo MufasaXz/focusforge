@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1} सह सुरू ठेवा",
   "Continue without access": "प्रवेशाशिवाय सुरू ठेवा",
   "Cooldown": "कूलडाउन",
-  "Copied {0} stored keys to the clipboard as JSON.": "ने क्लिपबोर्डवर JSON म्हणून {0} संग्रहित की कॉपी केल्या.",
-  "Copies every stored key to the clipboard": "प्रत्येक संचयित की क्लिपबोर्डवर कॉपी करते",
   "Copy JSON": "JSON कॉपी करा",
   "Could not add this subject. Try again.": "हा विषय जोडू शकलो नाही. पुन्हा प्रयत्न करा.",
   "Could not change the group. Please try again.": "गट बदलू शकला नाही. कृपया पुन्हा प्रयत्न करा.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "ऑनलाइन उत्तरे सुरू",
   "Answers stay on this phone": "उत्तरे याच फोनवर राहतात",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "तुमचा प्रश्न, शेवटचे काही संदेश आणि अभ्यासाचा छोटा सारांश एका AI सेवेकडे जातो. तुमचे नाव किंवा ईमेल कधीही नाही.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "ऑनलाइन उत्तरांसाठी जोडलेले खातेही लागते. तोपर्यंत उत्तरे याच फोनवर राहतात."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ऑनलाइन उत्तरांसाठी जोडलेले खातेही लागते. तोपर्यंत उत्तरे याच फोनवर राहतात.",
+  "Save file": "फाइल जतन करा",
+  "Saved {0}.": "{0} जतन केली.",
+  "Could not save the file. Try again.": "फाइल जतन करता आली नाही. पुन्हा प्रयत्न करा.",
+  "Saves as {0}": "{0} नावाने जतन होईल",
+  "It includes the data of every account saved on this device.": "यात या डिव्हाइसवर जतन केलेल्या प्रत्येक खात्याचा डेटा आहे.",
+  "Save every stored key as a file, or copy it": "प्रत्येक साठवलेली की फाइल म्हणून जतन करा किंवा कॉपी करा"
 }

@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Weiter mit {0} {1}",
   "Continue without access": "Weiter ohne Zugriff",
   "Cooldown": "Abklingzeit",
-  "Copied {0} stored keys to the clipboard as JSON.": "hat die gespeicherten Schlüssel von {0} als JSON in die Zwischenablage kopiert.",
-  "Copies every stored key to the clipboard": "Kopiert jeden gespeicherten Schlüssel in die Zwischenablage",
   "Copy JSON": "JSON kopieren",
   "Could not add this subject. Try again.": "Dieses Thema konnte nicht hinzugefügt werden. Versuchen Sie es erneut.",
   "Could not change the group. Please try again.": "Die Gruppe konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Online-Antworten an",
   "Answers stay on this phone": "Antworten bleiben auf diesem Telefon",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Deine Frage, die letzten Nachrichten und eine kurze Lernübersicht gehen an einen KI-Dienst. Nie dein Name oder deine E-Mail-Adresse.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Online-Antworten brauchen außerdem ein verknüpftes Konto. Bis dahin bleiben Antworten auf diesem Telefon."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Online-Antworten brauchen außerdem ein verknüpftes Konto. Bis dahin bleiben Antworten auf diesem Telefon.",
+  "Save file": "Datei speichern",
+  "Saved {0}.": "{0} gespeichert.",
+  "Could not save the file. Try again.": "Die Datei konnte nicht gespeichert werden. Versuche es erneut.",
+  "Saves as {0}": "Wird gespeichert als {0}",
+  "It includes the data of every account saved on this device.": "Sie enthält die Daten aller auf diesem Gerät gespeicherten Konten.",
+  "Save every stored key as a file, or copy it": "Alle gespeicherten Schlüssel als Datei sichern oder kopieren"
 }

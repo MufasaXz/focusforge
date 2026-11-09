@@ -3,7 +3,6 @@ import '../../core/localization/app_strings.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +19,7 @@ import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../core/providers/usage_providers.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/data_export.dart';
 import '../../core/services/local_store.dart';
 import '../../core/services/study_backup_service.dart';
 import '../../shared/widgets/app_list_disclosure.dart';
@@ -101,8 +101,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 _Row(
                   icon: Icons.ios_share,
                   title: context.tr("Export all data (JSON)"),
-                  subtitle: kIsWeb
-                      ? context.tr("Copies every stored key to the clipboard")
+                  subtitle: DataExport.supported
+                      ? context.tr("Save every stored key as a file, or copy it")
                       : context.tr("Preview and copy every stored key"),
                   onTap: _busy ? null : () => _export(context, ref),
                 ),
@@ -254,27 +254,20 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final data = ref.read(localStoreProvider).exportAll();
     final json = const JsonEncoder.withIndent('  ').convert(data);
+    final name = DataExport.fileName(DateTime.now());
 
-    if (kIsWeb) {
-      await Clipboard.setData(ClipboardData(text: json));
-      if (!context.mounted) return;
-      showAppSnack(
-        context,
-        context.tr("Copied {0} stored keys to the clipboard as JSON.", [
-          data.length,
-        ]),
-      );
-      return;
-    }
-
-    if (!context.mounted) return;
-    final copied = await showAppDialog<bool>(
+    final done = await showAppDialog<String>(
       context: context,
-      builder: (context) => _ExportBody(json: json, keyCount: data.length),
+      builder: (context) =>
+          _ExportBody(json: json, keyCount: data.length, fileName: name),
     );
-    if (copied == true && context.mounted) {
-      showAppSnack(context, context.tr("JSON copied to the clipboard."));
-    }
+    if (!context.mounted || done == null) return;
+    showAppSnack(
+      context,
+      done == _ExportBody.copied
+          ? context.tr("JSON copied to the clipboard.")
+          : context.tr("Saved {0}.", [name]),
+    );
   }
 
   // -- Clear analytics ------------------------------------------------------
@@ -652,15 +645,56 @@ class _DeleteAccountPasswordBodyState
   }
 }
 
-class _ExportBody extends StatelessWidget {
-  const _ExportBody({required this.json, required this.keyCount});
+/// The export: what it holds, a preview of it, and two ways to take it
+/// away. Pops [copied] after a copy, [saved] after a file is written, and
+/// nothing when closed or when the save is cancelled in the picker.
+class _ExportBody extends StatefulWidget {
+  const _ExportBody({
+    required this.json,
+    required this.keyCount,
+    required this.fileName,
+  });
+
+  static const copied = 'copied';
+  static const saved = 'saved';
 
   final String json;
   final int keyCount;
+  final String fileName;
+
+  @override
+  State<_ExportBody> createState() => _ExportBodyState();
+}
+
+class _ExportBodyState extends State<_ExportBody> {
+  bool _saving = false;
+  bool _failed = false;
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _failed = false;
+    });
+    final outcome = await DataExport.save(widget.fileName, widget.json);
+    if (!mounted) return;
+    if (outcome == ExportOutcome.saved) {
+      Navigator.of(context).pop(_ExportBody.saved);
+      return;
+    }
+    // A cancelled picker leaves the dialog as it was.
+    setState(() {
+      _saving = false;
+      _failed =
+          outcome == ExportOutcome.failed ||
+          outcome == ExportOutcome.unsupported;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -675,20 +709,21 @@ class _ExportBody extends StatelessWidget {
             ),
             const SizedBox(width: Gap.md),
             Expanded(
-              child: Text(
-                context.tr("Exported JSON"),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              child: Text(context.tr("Exported JSON"), style: tt.titleMedium),
             ),
           ],
         ),
         const SizedBox(height: Gap.md),
         Text(
-          context.tr("{0} stored keys. Nothing has left this device.", [
-            keyCount,
-          ]),
-          style: Theme.of(context).textTheme.bodySmall
-              ?.copyWith(color: cs.onSurfaceVariant),
+          [
+            context.tr("{0} stored keys. Nothing has left this device.", [
+              widget.keyCount,
+            ]),
+            context.tr(
+              "It includes the data of every account saved on this device.",
+            ),
+          ].join(' '),
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Gap.lg),
         Container(
@@ -701,7 +736,7 @@ class _ExportBody extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(Gap.md),
             child: SelectableText(
-              json,
+              widget.json,
               style: TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 11.5,
@@ -712,6 +747,35 @@ class _ExportBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Gap.xl),
+        if (DataExport.supported) ...[
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: _saving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_alt_rounded),
+            label: Text(context.tr("Save file")),
+          ),
+          const SizedBox(height: Gap.xs),
+          Semantics(
+            liveRegion: _failed,
+            child: Text(
+              _failed
+                  ? context.tr("Could not save the file. Try again.")
+                  : context.tr("Saves as {0}", [widget.fileName]),
+              textAlign: TextAlign.center,
+              style: tt.bodySmall?.copyWith(
+                color: _failed ? cs.error : cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(height: Gap.md),
+        ],
         Row(
           children: [
             Expanded(
@@ -719,7 +783,7 @@ class _ExportBody extends StatelessWidget {
                 label: context.tr("Close"),
                 icon: Icons.close_rounded,
                 accent: cs.onSurfaceVariant,
-                onTap: () => Navigator.of(context).pop(false),
+                onTap: () => Navigator.of(context).pop(),
               ),
             ),
             const SizedBox(width: Gap.md),
@@ -727,10 +791,11 @@ class _ExportBody extends StatelessWidget {
               child: AppActionButton(
                 label: context.tr("Copy JSON"),
                 icon: Icons.copy_rounded,
+                accent: DataExport.supported ? cs.primary : null,
                 onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: json));
+                  await Clipboard.setData(ClipboardData(text: widget.json));
                   if (!context.mounted) return;
-                  Navigator.of(context).pop(true);
+                  Navigator.of(context).pop(_ExportBody.copied);
                 },
               ),
             ),

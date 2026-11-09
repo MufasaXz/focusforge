@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1} を続行します",
   "Continue without access": "アクセスせずに続行します",
   "Cooldown": "クールダウン",
-  "Copied {0} stored keys to the clipboard as JSON.": "{0} に保存されたキーを JSON としてクリップボードにコピーしました。",
-  "Copies every stored key to the clipboard": "保存されているすべてのキーをクリップボードにコピーします",
   "Copy JSON": "JSON をコピー",
   "Could not add this subject. Try again.": "この件名を追加できませんでした。もう一度やり直してください。",
   "Could not change the group. Please try again.": "グループを変更できませんでした。もう一度試してください。",
@@ -1637,5 +1635,11 @@
   "Online answers on": "オンライン回答オン",
   "Answers stay on this phone": "回答はこのスマホ内で完結します",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "質問、直近のいくつかのメッセージ、短い学習の要約が AI サービスに送られます。名前やメールアドレスは送られません。",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "オンライン回答には連携済みアカウントも必要です。それまでは回答はこのスマホ内で完結します。"
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "オンライン回答には連携済みアカウントも必要です。それまでは回答はこのスマホ内で完結します。",
+  "Save file": "ファイルに保存",
+  "Saved {0}.": "{0} を保存しました。",
+  "Could not save the file. Try again.": "ファイルを保存できませんでした。もう一度お試しください。",
+  "Saves as {0}": "{0} として保存",
+  "It includes the data of every account saved on this device.": "この端末に保存されているすべてのアカウントのデータが含まれます。",
+  "Save every stored key as a file, or copy it": "保存されたすべてのキーをファイルに保存、またはコピー"
 }

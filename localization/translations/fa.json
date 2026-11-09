@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "با {0} {1} ادامه دهید",
   "Continue without access": "بدون دسترسی ادامه دهید",
   "Cooldown": "خنک کننده",
-  "Copied {0} stored keys to the clipboard as JSON.": "{0} کلیدهای ذخیره شده در کلیپ بورد را به صورت JSON کپی کرد.",
-  "Copies every stored key to the clipboard": "هر کلید ذخیره شده را در کلیپ بورد کپی می کند",
   "Copy JSON": "JSON را کپی کنید",
   "Could not add this subject. Try again.": "نمی تواند این موضوع را اضافه کند. دوباره امتحان کنید.",
   "Could not change the group. Please try again.": "نمی تواند گروه را تغییر دهد. لطفا دوباره امتحان کنید.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "پاسخ‌های آنلاین روشن است",
   "Answers stay on this phone": "پاسخ‌ها روی همین گوشی می‌مانند",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "پرسش شما، چند پیام آخر و خلاصه‌ای کوتاه از مطالعه‌تان به یک سرویس هوش مصنوعی می‌رود. هرگز نام یا ایمیل شما.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "پاسخ‌های آنلاین به حساب پیوندشده هم نیاز دارند. تا آن زمان، پاسخ‌ها روی همین گوشی می‌مانند."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "پاسخ‌های آنلاین به حساب پیوندشده هم نیاز دارند. تا آن زمان، پاسخ‌ها روی همین گوشی می‌مانند.",
+  "Save file": "ذخیره فایل",
+  "Saved {0}.": "{0} ذخیره شد.",
+  "Could not save the file. Try again.": "فایل ذخیره نشد. دوباره امتحان کنید.",
+  "Saves as {0}": "با نام {0} ذخیره می‌شود",
+  "It includes the data of every account saved on this device.": "شامل داده‌های همه حساب‌های ذخیره‌شده روی این دستگاه است.",
+  "Save every stored key as a file, or copy it": "همه کلیدهای ذخیره‌شده را در فایل ذخیره یا کپی کنید"
 }

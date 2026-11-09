@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Tiếp tục với {0} {1}",
   "Continue without access": "Tiếp tục mà không có quyền truy cập",
   "Cooldown": "Thời gian hồi chiêu của",
-  "Copied {0} stored keys to the clipboard as JSON.": "Đã sao chép các khóa được lưu trữ {0} vào bảng tạm dưới dạng JSON.",
-  "Copies every stored key to the clipboard": "Sao chép mọi khóa được lưu vào bảng nhớ tạm",
   "Copy JSON": "Sao chép JSON",
   "Could not add this subject. Try again.": "Không thể thêm chủ đề này. Hãy thử lại.",
   "Could not change the group. Please try again.": "Không thể thay đổi nhóm. Vui lòng thử lại.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Trả lời trực tuyến đang bật",
   "Answers stay on this phone": "Câu trả lời chỉ ở trên điện thoại này",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Câu hỏi của bạn, vài tin nhắn gần nhất và bản tóm tắt ngắn về việc học được gửi đến một dịch vụ AI. Không bao giờ gửi tên hay email của bạn.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Trả lời trực tuyến cũng cần tài khoản đã liên kết. Cho đến lúc đó, câu trả lời chỉ ở trên điện thoại này."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Trả lời trực tuyến cũng cần tài khoản đã liên kết. Cho đến lúc đó, câu trả lời chỉ ở trên điện thoại này.",
+  "Save file": "Lưu tệp",
+  "Saved {0}.": "Đã lưu {0}.",
+  "Could not save the file. Try again.": "Không lưu được tệp. Hãy thử lại.",
+  "Saves as {0}": "Lưu thành {0}",
+  "It includes the data of every account saved on this device.": "Bao gồm dữ liệu của mọi tài khoản được lưu trên thiết bị này.",
+  "Save every stored key as a file, or copy it": "Lưu mọi khóa đã lưu thành tệp hoặc sao chép"
 }

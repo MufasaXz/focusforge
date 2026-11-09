@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Teruskan dengan {0} {1}",
   "Continue without access": "Teruskan tanpa akses",
   "Cooldown": "Cooldown",
-  "Copied {0} stored keys to the clipboard as JSON.": "Disalin {0} menyimpan kunci ke papan keratan sebagai JSON.",
-  "Copies every stored key to the clipboard": "Menyalin setiap kunci yang disimpan ke papan keratan",
   "Copy JSON": "Salin JSON",
   "Could not add this subject. Try again.": "Tidak dapat menambah subjek ini. Cuba lagi.",
   "Could not change the group. Please try again.": "Tidak dapat menukar kumpulan. Sila cuba lagi.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Jawapan dalam talian dihidupkan",
   "Answers stay on this phone": "Jawapan kekal pada telefon ini",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Soalan anda, beberapa mesej terakhir dan ringkasan pendek pembelajaran anda dihantar ke perkhidmatan AI. Tidak sekali-kali nama atau e-mel anda.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Jawapan dalam talian juga memerlukan akaun yang dipautkan. Sehingga itu, jawapan kekal pada telefon ini."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Jawapan dalam talian juga memerlukan akaun yang dipautkan. Sehingga itu, jawapan kekal pada telefon ini.",
+  "Save file": "Simpan fail",
+  "Saved {0}.": "{0} disimpan.",
+  "Could not save the file. Try again.": "Tidak dapat menyimpan fail. Cuba lagi.",
+  "Saves as {0}": "Disimpan sebagai {0}",
+  "It includes the data of every account saved on this device.": "Ia termasuk data setiap akaun yang disimpan pada peranti ini.",
+  "Save every stored key as a file, or copy it": "Simpan setiap kunci tersimpan sebagai fail, atau salin"
 }

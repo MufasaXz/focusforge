@@ -26,6 +26,7 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private var bridge: ShieldBridge? = null
+    private var export: DataExport? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,6 +105,17 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        val saver = DataExport(this).also { export = it }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DataExport.CHANNEL).setMethodCallHandler { call, result ->
+            val name = call.argument<String>("name")
+            val json = call.argument<String>("json")
+            if (call.method == "save" && name != null && json != null) {
+                saver.save(name, json, result)
+            } else {
+                result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "focusforge/widgets").setMethodCallHandler { call, result ->
             when (call.method) {
                 "refresh" -> {
@@ -163,9 +175,18 @@ class MainActivity : FlutterActivity() {
         FocusWidget.refresh(applicationContext)
     }
 
+    @Deprecated("Flutter's embedding still delivers picker results here")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (export?.onActivityResult(requestCode, resultCode, data) == true) return
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun onDestroy() {
         bridge?.detach()
         bridge = null
+        export?.dispose()
+        export = null
         super.onDestroy()
     }
 }

@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Продовжити з {0} {1}",
   "Continue without access": "Продовжити без доступу",
   "Cooldown": "Зарядка",
-  "Copied {0} stored keys to the clipboard as JSON.": "Збережені ключі {0} скопійовано в буфер обміну як JSON.",
-  "Copies every stored key to the clipboard": "Копіює кожен збережений ключ у буфер обміну",
   "Copy JSON": "Копіювати JSON",
   "Could not add this subject. Try again.": "Не вдалося додати цю тему. Спробуйте знову.",
   "Could not change the group. Please try again.": "Не вдалося змінити групу. Спробуйте ще раз.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Онлайн-відповіді увімкнено",
   "Answers stay on this phone": "Відповіді залишаються на цьому телефоні",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Sorunuz, son birkaç mesaj ve kısa bir çalışma özeti bir yapay zekâ hizmetine gider. Adınız veya e-postanız asla gitmez.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Çevrimiçi yanıtlar için bağlı bir hesap da gerekir. O zamana kadar yanıtlar bu telefonda kalır."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Çevrimiçi yanıtlar için bağlı bir hesap da gerekir. O zamana kadar yanıtlar bu telefonda kalır.",
+  "Save file": "Зберегти файл",
+  "Saved {0}.": "Файл {0} збережено.",
+  "Could not save the file. Try again.": "Не вдалося зберегти файл. Спробуйте ще раз.",
+  "Saves as {0}": "Зберігається як {0}",
+  "It includes the data of every account saved on this device.": "Містить дані всіх облікових записів, збережених на цьому пристрої.",
+  "Save every stored key as a file, or copy it": "Зберегти всі ключі у файл або скопіювати"
 }

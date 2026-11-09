@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "ต่อด้วย {0} {1}",
   "Continue without access": "ดำเนินการต่อโดยไม่ต้องเข้าถึง",
   "Cooldown": "คูลดาวน์",
-  "Copied {0} stored keys to the clipboard as JSON.": "คัดลอก {0} จัดเก็บคีย์ไปยังคลิปบอร์ดเป็น JSON",
-  "Copies every stored key to the clipboard": "คัดลอกทุกคีย์ที่เก็บไว้ไปยังคลิปบอร์ด",
   "Copy JSON": "คัดลอก JSON",
   "Could not add this subject. Try again.": "ไม่สามารถเพิ่มหัวข้อนี้ได้ ลองอีกครั้ง",
   "Could not change the group. Please try again.": "ไม่สามารถเปลี่ยนกลุ่มได้ โปรดลองอีกครั้ง",
@@ -1637,5 +1635,11 @@
   "Online answers on": "คำตอบออนไลน์เปิดอยู่",
   "Answers stay on this phone": "คำตอบอยู่ในโทรศัพท์เครื่องนี้",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "మీ ప్రశ్న, చివరి కొన్ని సందేశాలు, చదువు చిన్న సారాంశం ఒక AI సేవకు వెళ్తాయి. మీ పేరు లేదా ఇమెయిల్ ఎప్పుడూ కాదు.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "ఆన్‌లైన్ సమాధానాలకు లింక్ చేసిన ఖాతా కూడా అవసరం. అప్పటివరకు సమాధానాలు ఈ ఫోన్‌లోనే ఉంటాయి."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ఆన్‌లైన్ సమాధానాలకు లింక్ చేసిన ఖాతా కూడా అవసరం. అప్పటివరకు సమాధానాలు ఈ ఫోన్‌లోనే ఉంటాయి.",
+  "Save file": "บันทึกไฟล์",
+  "Saved {0}.": "บันทึก {0} แล้ว",
+  "Could not save the file. Try again.": "บันทึกไฟล์ไม่ได้ ลองอีกครั้ง",
+  "Saves as {0}": "บันทึกเป็น {0}",
+  "It includes the data of every account saved on this device.": "รวมข้อมูลของทุกบัญชีที่บันทึกไว้ในอุปกรณ์นี้",
+  "Save every stored key as a file, or copy it": "บันทึกทุกคีย์ที่เก็บไว้เป็นไฟล์ หรือคัดลอก"
 }

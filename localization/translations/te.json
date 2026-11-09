@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "{0} {1}తో కొనసాగించండి",
   "Continue without access": "యాక్సెస్ లేకుండా కొనసాగించండి",
   "Cooldown": "కూల్‌డౌన్",
-  "Copied {0} stored keys to the clipboard as JSON.": "{0} నిల్వ చేయబడిన కీలను క్లిప్‌బోర్డ్‌కి JSONగా కాపీ చేసారు.",
-  "Copies every stored key to the clipboard": "క్లిప్‌బోర్డ్‌కి నిల్వ చేయబడిన ప్రతి కీని కాపీ చేస్తుంది",
   "Copy JSON": "JSONని కాపీ చేయండి",
   "Could not add this subject. Try again.": "ఈ విషయాన్ని జోడించడం సాధ్యపడలేదు. మళ్లీ ప్రయత్నించండి.",
   "Could not change the group. Please try again.": "సమూహాన్ని మార్చడం సాధ్యపడలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "ఆన్‌లైన్ సమాధానాలు ఆన్",
   "Answers stay on this phone": "సమాధానాలు ఈ ఫోన్‌లోనే ఉంటాయి",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "உங்கள் கேள்வி, கடைசி சில செய்திகள் மற்றும் படிப்பின் சிறு சுருக்கம் ஒரு AI சேவைக்குச் செல்லும். உங்கள் பெயர் அல்லது மின்னஞ்சல் ஒருபோதும் இல்லை.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "ஆன்லைன் பதில்களுக்கு இணைக்கப்பட்ட கணக்கும் தேவை. அதுவரை பதில்கள் இந்த மொபைலிலேயே இருக்கும்."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ஆன்லைன் பதில்களுக்கு இணைக்கப்பட்ட கணக்கும் தேவை. அதுவரை பதில்கள் இந்த மொபைலிலேயே இருக்கும்.",
+  "Save file": "ఫైల్ సేవ్ చేయండి",
+  "Saved {0}.": "{0} సేవ్ అయింది.",
+  "Could not save the file. Try again.": "ఫైల్‌ను సేవ్ చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి.",
+  "Saves as {0}": "{0} పేరుతో సేవ్ అవుతుంది",
+  "It includes the data of every account saved on this device.": "ఈ పరికరంలో సేవ్ చేసిన ప్రతి ఖాతా డేటా ఇందులో ఉంటుంది.",
+  "Save every stored key as a file, or copy it": "నిల్వ ఉన్న ప్రతి కీని ఫైల్‌గా సేవ్ చేయండి లేదా కాపీ చేయండి"
 }

@@ -210,8 +210,6 @@
   "Continue with {0} {1}": "Continuar con {0} {1}",
   "Continue without access": "Continuar sin acceso",
   "Cooldown": "Enfriamiento de",
-  "Copied {0} stored keys to the clipboard as JSON.": "Se copiaron las claves almacenadas de {0} en el portapapeles como JSON.",
-  "Copies every stored key to the clipboard": "Copia todas las claves almacenadas en el portapapeles",
   "Copy JSON": "Copiar JSON",
   "Could not add this subject. Try again.": "No se pudo agregar este tema. Intentar otra vez.",
   "Could not change the group. Please try again.": "No se pudo cambiar el grupo. Por favor inténtalo de nuevo.",
@@ -1637,5 +1635,11 @@
   "Online answers on": "Respuestas en línea activadas",
   "Answers stay on this phone": "Las respuestas se quedan en este teléfono",
   "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Tu pregunta, los últimos mensajes y un breve resumen de tu estudio se envían a un servicio de IA. Nunca tu nombre ni tu correo.",
-  "Online answers also need a linked account. Until then, answers stay on this phone.": "Las respuestas en línea también necesitan una cuenta vinculada. Hasta entonces, se quedan en este teléfono."
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Las respuestas en línea también necesitan una cuenta vinculada. Hasta entonces, se quedan en este teléfono.",
+  "Save file": "Guardar archivo",
+  "Saved {0}.": "Se guardó {0}.",
+  "Could not save the file. Try again.": "No se pudo guardar el archivo. Inténtalo de nuevo.",
+  "Saves as {0}": "Se guarda como {0}",
+  "It includes the data of every account saved on this device.": "Incluye los datos de todas las cuentas guardadas en este dispositivo.",
+  "Save every stored key as a file, or copy it": "Guarda cada clave almacenada como archivo o cópiala"
 }
