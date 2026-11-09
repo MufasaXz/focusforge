@@ -1630,5 +1630,8 @@
   "Teal": "청록",
   "Theme colour {0}": "테마 색상 {0}",
   "Initials": "이니셜",
-  "Person": "사람"
+  "Person": "사람",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "이 시간대의 알림은 {0}까지 기다립니다. 그 안의 시간표 블록 알림은 건너뜁니다.",
+  "Start and end are the same, so nothing is muted.": "시작과 종료가 같아서 아무것도 무음 처리되지 않습니다.",
+  "Could not save quiet hours. Try again.": "방해 금지 시간을 저장할 수 없습니다. 다시 시도하세요."
 }

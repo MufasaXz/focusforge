@@ -1630,5 +1630,8 @@
   "Teal": "Бірюзовий",
   "Theme colour {0}": "Колір теми {0}",
   "Initials": "Ініціали",
-  "Person": "Людина"
+  "Person": "Людина",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Нагадування в цьому проміжку чекають до {0}. Сигнали про блоки розкладу всередині нього пропускаються.",
+  "Start and end are the same, so nothing is muted.": "Початок і кінець однакові, тож нічого не вимикається.",
+  "Could not save quiet hours. Try again.": "Не вдалося зберегти тихі години. Спробуйте ще раз."
 }

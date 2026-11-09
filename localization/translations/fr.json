@@ -1630,5 +1630,8 @@
   "Teal": "Bleu canard",
   "Theme colour {0}": "Couleur du thème {0}",
   "Initials": "Initiales",
-  "Person": "Personne"
+  "Person": "Personne",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Les rappels prévus dans cette plage attendent {0}. Les annonces des blocs d’emploi du temps qui s’y trouvent sont ignorées.",
+  "Start and end are the same, so nothing is muted.": "Le début et la fin sont identiques, rien n’est donc mis en sourdine.",
+  "Could not save quiet hours. Try again.": "Impossible d’enregistrer les heures calmes. Réessayez."
 }

@@ -1045,15 +1045,6 @@ class NotificationsNotifier extends Notifier<NotificationPrefs> {
     state = next;
     await _persist();
   }
-
-  Future<void> setQuietHours({int? start, int? end, bool? enabled}) async {
-    state = state.copyWith(
-      quietStartHour: start,
-      quietEndHour: end,
-      quietHoursEnabled: enabled,
-    );
-    await _persist();
-  }
 }
 
 final notificationsProvider =

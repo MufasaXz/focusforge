@@ -1630,5 +1630,8 @@
   "Teal": "నీలి ఆకుపచ్చ",
   "Theme colour {0}": "థీమ్ రంగు {0}",
   "Initials": "మొదటి అక్షరాలు",
-  "Person": "వ్యక్తి"
+  "Person": "వ్యక్తి",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "ఈ సమయంలో వచ్చే రిమైండర్‌లు {0} వరకు ఆగుతాయి. దాని లోపలి టైమ్‌టేబుల్ బ్లాక్ పిలుపులు దాటవేయబడతాయి.",
+  "Start and end are the same, so nothing is muted.": "ప్రారంభం, ముగింపు ఒకటే కాబట్టి ఏదీ మ్యూట్ కాదు.",
+  "Could not save quiet hours. Try again.": "నిశ్శబ్ద సమయాన్ని సేవ్ చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి."
 }

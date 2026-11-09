@@ -1630,5 +1630,8 @@
   "Teal": "Biru kehijauan",
   "Theme colour {0}": "Warna tema {0}",
   "Initials": "Inisial",
-  "Person": "Orang"
+  "Person": "Orang",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Peringatan dalam tempoh ini menunggu hingga {0}. Panggilan untuk blok jadual di dalamnya dilangkau.",
+  "Start and end are the same, so nothing is muted.": "Mula dan tamat adalah sama, jadi tiada apa yang disenyapkan.",
+  "Could not save quiet hours. Try again.": "Tidak dapat menyimpan waktu senyap. Cuba lagi."
 }

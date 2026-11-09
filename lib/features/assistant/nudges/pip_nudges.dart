@@ -191,16 +191,16 @@ abstract final class PipReminders {
 
   /// When the quiet hours holding [at] end, or null when [at] is outside them.
   static DateTime? _quietEnd(DateTime at, NotificationPrefs prefs) {
-    final from = prefs.quietStartHour;
-    final until = prefs.quietEndHour;
-    if (!prefs.quietHoursEnabled || from == until) return null;
-    final hour = at.hour;
+    if (!prefs.quietWindow) return null;
+    final from = prefs.quietStart;
+    final until = prefs.quietEnd;
+    final minute = at.hour * 60 + at.minute;
     final quiet = from < until
-        ? hour >= from && hour < until
-        : hour >= from || hour < until;
+        ? minute >= from && minute < until
+        : minute >= from || minute < until;
     if (!quiet) return null;
-    final day = hour < until ? at.day : at.day + 1;
-    return DateTime(at.year, at.month, day, until);
+    final day = minute < until ? at.day : at.day + 1;
+    return DateTime(at.year, at.month, day, until ~/ 60, until % 60);
   }
 
   /// Days before a dated test or exam when Pip reminds, in the evening.

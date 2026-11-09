@@ -1630,5 +1630,8 @@
   "Teal": "نیلگوں سبز",
   "Theme colour {0}": "تھیم کا رنگ {0}",
   "Initials": "ابتدائی حروف",
-  "Person": "شخص"
+  "Person": "شخص",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "اس دورانیے کی یاد دہانیاں {0} تک رکتی ہیں۔ اس کے اندر ٹائم ٹیبل بلاک کی اطلاعات چھوڑ دی جاتی ہیں۔",
+  "Start and end are the same, so nothing is muted.": "شروع اور اختتام ایک ہی ہیں، اس لیے کچھ بھی خاموش نہیں ہوتا۔",
+  "Could not save quiet hours. Try again.": "خاموش اوقات محفوظ نہیں ہو سکے۔ دوبارہ کوشش کریں۔"
 }

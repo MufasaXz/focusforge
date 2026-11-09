@@ -194,6 +194,96 @@ void main() {
       expect(task.at, DateTime(2026, 11, 7, 7));
     });
 
+    test('quiet hours keep the minutes they were set to', () {
+      StudyReminder due(int id, DateTime at) =>
+          StudyReminder(id: id, title: 'Task $id', at: at, exam: false);
+      final reminders = StudySnapshot(
+        now: at(10),
+        memory: AssistantMemory(
+          reminders: [
+            due(2, DateTime(2026, 11, 6, 22, 30)),
+            due(3, DateTime(2026, 11, 6, 22, 50)),
+            due(4, DateTime(2026, 11, 7, 7, 15)),
+            due(5, DateTime(2026, 11, 7, 7, 30)),
+          ],
+        ),
+      );
+      final quiet = {
+        for (final n in PipReminders.allowed(
+          reminders,
+          const NotificationPrefs(
+            quietStart: 22 * 60 + 45,
+            quietEnd: 7 * 60 + 30,
+          ),
+        ))
+          n.id: n.at,
+      };
+      // Before 22:45 and from 07:30 on, reminders arrive as set.
+      expect(quiet[1020], DateTime(2026, 11, 6, 22, 30));
+      expect(quiet[1050], DateTime(2026, 11, 7, 7, 30));
+      // Inside the window they wait until 07:30, not 07:00.
+      expect(quiet[1030], DateTime(2026, 11, 7, 7, 30));
+      expect(quiet[1040], DateTime(2026, 11, 7, 7, 30));
+    });
+
+    test('a daytime window and an empty one', () {
+      final afternoon = StudySnapshot(
+        now: at(10),
+        memory: AssistantMemory(
+          reminders: [
+            StudyReminder(
+              id: 6,
+              title: 'Call',
+              at: DateTime(2026, 11, 6, 13, 20),
+              exam: false,
+            ),
+          ],
+        ),
+      );
+      DateTime? when(NotificationPrefs prefs) => PipReminders.allowed(
+        afternoon,
+        prefs,
+      ).where((n) => n.id == 1060).single.at;
+      expect(
+        when(
+          const NotificationPrefs(
+            quietStart: 13 * 60 + 15,
+            quietEnd: 14 * 60 + 45,
+          ),
+        ),
+        DateTime(2026, 11, 6, 14, 45),
+      );
+      expect(
+        when(const NotificationPrefs(quietStart: 13 * 60, quietEnd: 13 * 60)),
+        DateTime(2026, 11, 6, 13, 20),
+        reason: 'equal start and end mute nothing',
+      );
+    });
+
+    test('hours saved by earlier builds become the same times', () {
+      final old = NotificationPrefs.fromJson({
+        'quietStartHour': 23,
+        'quietEndHour': 6,
+      });
+      expect(old.quietStart, 23 * 60);
+      expect(old.quietEnd, 6 * 60);
+      final saved = const NotificationPrefs(
+        quietStart: 22 * 60 + 45,
+        quietEnd: 7 * 60 + 30,
+      ).toJson();
+      final back = NotificationPrefs.fromJson(saved);
+      expect(back.quietStart, 22 * 60 + 45);
+      expect(back.quietEnd, 7 * 60 + 30);
+      // An older build reading it gets the hour it knows how to show.
+      expect(saved['quietStartHour'], 22);
+      expect(saved['quietEndHour'], 7);
+      expect(
+        NotificationPrefs.fromJson({'quietStart': 99999, 'quietEndHour': 8})
+            .quietStart,
+        22 * 60,
+      );
+    });
+
     test('quiet hours drop a timetable call rather than send it late', () {
       final all = ids(PipReminders.allowed(early, anyHour));
       final quiet = ids(PipReminders.allowed(early, const NotificationPrefs()));

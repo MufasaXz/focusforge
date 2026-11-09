@@ -1630,5 +1630,8 @@
   "Teal": "টিল",
   "Theme colour {0}": "থিমের রং {0}",
   "Initials": "আদ্যক্ষর",
-  "Person": "ব্যক্তি"
+  "Person": "ব্যক্তি",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "এই সময়ের মধ্যে থাকা রিমাইন্ডার {0} পর্যন্ত অপেক্ষা করে। এর ভেতরের রুটিন ব্লকের ডাক বাদ দেওয়া হয়।",
+  "Start and end are the same, so nothing is muted.": "শুরু ও শেষ একই, তাই কিছুই নীরব হয় না।",
+  "Could not save quiet hours. Try again.": "নীরব সময় সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।"
 }

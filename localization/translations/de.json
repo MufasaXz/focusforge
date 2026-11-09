@@ -1630,5 +1630,8 @@
   "Teal": "Petrol",
   "Theme colour {0}": "Designfarbe {0}",
   "Initials": "Initialen",
-  "Person": "Person"
+  "Person": "Person",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Erinnerungen in diesem Zeitraum warten bis {0}. Hinweise für Stundenplanblöcke darin entfallen.",
+  "Start and end are the same, so nothing is muted.": "Beginn und Ende sind gleich, daher wird nichts stummgeschaltet.",
+  "Could not save quiet hours. Try again.": "Ruhige Stunden konnten nicht gespeichert werden. Versuche es erneut."
 }

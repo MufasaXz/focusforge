@@ -1630,5 +1630,8 @@
   "Teal": "निळसर हिरवा",
   "Theme colour {0}": "थीम रंग {0}",
   "Initials": "आद्याक्षरे",
-  "Person": "व्यक्ती"
+  "Person": "व्यक्ती",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "या कालावधीतील रिमाइंडर {0} पर्यंत थांबतात. त्यामधील वेळापत्रक ब्लॉकच्या सूचना वगळल्या जातात.",
+  "Start and end are the same, so nothing is muted.": "सुरुवात आणि शेवट एकच आहे, त्यामुळे काहीही म्यूट होत नाही.",
+  "Could not save quiet hours. Try again.": "शांत वेळ जतन करता आली नाही. पुन्हा प्रयत्न करा."
 }

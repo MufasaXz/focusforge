@@ -1630,5 +1630,8 @@
   "Teal": "Teal",
   "Theme colour {0}": "Theme colour {0}",
   "Initials": "Initials",
-  "Person": "Person"
+  "Person": "Person",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.",
+  "Start and end are the same, so nothing is muted.": "Start and end are the same, so nothing is muted.",
+  "Could not save quiet hours. Try again.": "Could not save quiet hours. Try again."
 }

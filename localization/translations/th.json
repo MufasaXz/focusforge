@@ -1630,5 +1630,8 @@
   "Teal": "เขียวอมฟ้า",
   "Theme colour {0}": "สีธีม {0}",
   "Initials": "อักษรย่อ",
-  "Person": "บุคคล"
+  "Person": "บุคคล",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "การเตือนที่ตรงกับช่วงนี้จะรอจนถึง {0} การแจ้งบล็อกตารางเวลาในช่วงนี้จะถูกข้าม",
+  "Start and end are the same, so nothing is muted.": "เวลาเริ่มและสิ้นสุดตรงกัน จึงไม่มีการปิดเสียงใด ๆ",
+  "Could not save quiet hours. Try again.": "บันทึกช่วงเวลาเงียบไม่ได้ ลองอีกครั้ง"
 }

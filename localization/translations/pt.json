@@ -1630,5 +1630,8 @@
   "Teal": "Verde-azulado",
   "Theme colour {0}": "Cor do tema {0}",
   "Initials": "Iniciais",
-  "Person": "Pessoa"
+  "Person": "Pessoa",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Lembretes nesse intervalo esperam até {0}. Os avisos de blocos do horário dentro dele são ignorados.",
+  "Start and end are the same, so nothing is muted.": "O início e o fim são iguais, então nada é silenciado.",
+  "Could not save quiet hours. Try again.": "Não foi possível salvar o horário silencioso. Tente novamente."
 }

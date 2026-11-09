@@ -1630,5 +1630,8 @@
   "Teal": "أزرق مخضر",
   "Theme colour {0}": "لون السمة {0}",
   "Initials": "الأحرف الأولى",
-  "Person": "شخص"
+  "Person": "شخص",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "التذكيرات المستحقة خلال هذه الفترة تنتظر حتى {0}. يتم تخطي تنبيهات كتل الجدول داخلها.",
+  "Start and end are the same, so nothing is muted.": "وقت البدء والانتهاء متطابقان، لذا لا يُكتم شيء.",
+  "Could not save quiet hours. Try again.": "تعذّر حفظ ساعات الهدوء. حاول مرة أخرى."
 }

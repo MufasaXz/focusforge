@@ -1630,5 +1630,8 @@
   "Teal": "Camgöbeği",
   "Theme colour {0}": "Tema rengi {0}",
   "Initials": "Baş harfler",
-  "Person": "Kişi"
+  "Person": "Kişi",
+  "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Bu aralıktaki hatırlatıcılar {0} saatine kadar bekler. İçindeki ders programı bloklarının bildirimleri atlanır.",
+  "Start and end are the same, so nothing is muted.": "Başlangıç ve bitiş aynı, bu yüzden hiçbir şey sessize alınmaz.",
+  "Could not save quiet hours. Try again.": "Sessiz saatler kaydedilemedi. Yeniden deneyin."
 }

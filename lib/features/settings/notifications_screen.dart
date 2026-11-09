@@ -86,14 +86,7 @@ class NotificationsScreen extends ConsumerWidget {
             children: [
               ListTile(
                 title: Text(context.tr("Quiet hours")),
-                subtitle: Text(
-                  prefs.quietHoursEnabled
-                      ? context.tr("Muted {0} – {1}", [
-                          _clock(context, prefs.quietStartHour),
-                          _clock(context, prefs.quietEndHour),
-                        ])
-                      : context.tr("Off — notifications arrive at any hour"),
-                ),
+                subtitle: Text(_quietSummary(context, prefs)),
                 leading: const Icon(Icons.bedtime_outlined),
                 trailing: const AppChevron(),
                 onTap: () => _editQuietHours(context, ref),
@@ -118,6 +111,8 @@ class NotificationsScreen extends ConsumerWidget {
 
   Future<void> _editQuietHours(BuildContext context, WidgetRef ref) async {
     var prefs = ref.read(notificationsProvider);
+    // The change that could not be saved, kept so Retry can save it again.
+    NotificationPrefs? unsaved;
     final strings = AppStrings.of(context);
 
     await showModalBottomSheet<void>(
@@ -130,26 +125,31 @@ class NotificationsScreen extends ConsumerWidget {
 
           Future<void> write(NotificationPrefs next) async {
             prefs = next;
-            await ref.read(notificationsProvider.notifier).update(next);
+            unsaved = null;
             setSheetState(() {});
+            try {
+              await ref.read(notificationsProvider.notifier).update(next);
+            } catch (_) {
+              unsaved = next;
+            }
+            if (context.mounted) setSheetState(() {});
           }
 
           Future<void> pick({required bool start}) async {
+            final current = start ? prefs.quietStart : prefs.quietEnd;
             final picked = await showTimePicker(
               context: context,
-              initialTime: TimeOfDay(
-                hour: start ? prefs.quietStartHour : prefs.quietEndHour,
-                minute: 0,
-              ),
+              initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
               helpText: start
                   ? context.tr("Quiet hours start")
                   : context.tr("Quiet hours end"),
             );
             if (picked == null) return;
+            final minute = picked.hour * 60 + picked.minute;
             await write(
               start
-                  ? prefs.copyWith(quietStartHour: picked.hour)
-                  : prefs.copyWith(quietEndHour: picked.hour),
+                  ? prefs.copyWith(quietStart: minute)
+                  : prefs.copyWith(quietEnd: minute),
             );
           }
 
@@ -172,67 +172,119 @@ class NotificationsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(Radii.hero),
                   ),
                   padding: const EdgeInsets.all(Gap.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: cs.onSurfaceVariant,
-                            borderRadius: BorderRadius.circular(Radii.pill),
+                  // The rows' ripples need a Material above this colour,
+                  // or a tap on Starts or Ends shows nothing.
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: cs.onSurfaceVariant,
+                              borderRadius: BorderRadius.circular(Radii.pill),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: Gap.xl),
-                      Text(
-                        context.tr("Quiet hours"),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: Gap.xs),
-                      Text(
-                        context.tr("Mute every reminder between these times."),
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: Gap.lg),
-                      _SwitchRow(
-                        title: context.tr("Quiet hours"),
-                        subtitle: prefs.quietHoursEnabled
-                            ? context.tr("Muted {0} – {1}", [
-                                _clock(context, prefs.quietStartHour),
-                                _clock(context, prefs.quietEndHour),
-                              ])
-                            : context.tr("Off"),
-                        value: prefs.quietHoursEnabled,
-                        onChanged: (v) =>
-                            write(prefs.copyWith(quietHoursEnabled: v)),
-                      ),
-                      ListTile(
-                        title: Text(context.tr("Starts")),
-                        leading: const Icon(Icons.schedule_outlined),
-                        trailing: _TimeValue(
-                          value: _clock(context, prefs.quietStartHour),
+                        const SizedBox(height: Gap.xl),
+                        Text(
+                          context.tr("Quiet hours"),
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        onTap: () => pick(start: true),
-                      ),
-                      ListTile(
-                        title: Text(context.tr("Ends")),
-                        leading: const Icon(Icons.schedule_outlined),
-                        trailing: _TimeValue(
-                          value: _clock(context, prefs.quietEndHour),
+                        const SizedBox(height: Gap.xs),
+                        Text(
+                          context.tr(
+                            "Mute every reminder between these times.",
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
-                        onTap: () => pick(start: false),
-                      ),
-                      const SizedBox(height: Gap.xl),
-                      AppActionButton(
-                        label: context.tr("Done"),
-                        icon: Icons.check_rounded,
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                    ],
+                        const SizedBox(height: Gap.lg),
+                        _SwitchRow(
+                          title: context.tr("Quiet hours"),
+                          subtitle: prefs.quietHoursEnabled
+                              ? _quietSummary(context, prefs)
+                              : context.tr("Off"),
+                          value: prefs.quietHoursEnabled,
+                          onChanged: (v) =>
+                              write(prefs.copyWith(quietHoursEnabled: v)),
+                        ),
+                        ListTile(
+                          title: Text(context.tr("Starts")),
+                          leading: const Icon(Icons.schedule_outlined),
+                          trailing: _TimeValue(
+                            value: _clock(context, prefs.quietStart),
+                          ),
+                          onTap: () => pick(start: true),
+                        ),
+                        ListTile(
+                          title: Text(context.tr("Ends")),
+                          leading: const Icon(Icons.schedule_outlined),
+                          trailing: _TimeValue(
+                            value: _clock(context, prefs.quietEnd),
+                          ),
+                          onTap: () => pick(start: false),
+                        ),
+                        // What the window does, in the terms it was set in.
+                        if (prefs.quietWindow)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Gap.lg,
+                            ),
+                            child: Text(
+                              context.tr(
+                                "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.",
+                                [_clock(context, prefs.quietEnd)],
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                        if (unsaved case final failed?) ...[
+                          const SizedBox(height: Gap.md),
+                          Semantics(
+                            liveRegion: true,
+                            child: Row(
+                              children: [
+                                const SizedBox(width: Gap.lg),
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 16,
+                                  color: cs.error,
+                                ),
+                                const SizedBox(width: Gap.sm),
+                                Expanded(
+                                  child: Text(
+                                    context.tr(
+                                      "Could not save quiet hours. Try again.",
+                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: cs.error),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => write(failed),
+                                  style: TextButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                  ),
+                                  child: Text(context.tr("Retry")),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: Gap.xl),
+                        AppActionButton(
+                          label: context.tr("Done"),
+                          icon: Icons.check_rounded,
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -299,11 +351,26 @@ class _TimeValue extends StatelessWidget {
 }
 
 /// 24-hour clock so the window reads identically in every locale.
-String _clock(BuildContext context, int hour) =>
+/// [minuteOfDay] as a 24-hour time, like 22:45.
+String _clock(BuildContext context, int minuteOfDay) =>
     MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay(hour: hour, minute: 0),
+      TimeOfDay(hour: minuteOfDay ~/ 60, minute: minuteOfDay % 60),
       alwaysUse24HourFormat: true,
     );
+
+/// One line for the whole window: off, empty, or the times it covers.
+String _quietSummary(BuildContext context, NotificationPrefs prefs) {
+  if (!prefs.quietHoursEnabled) {
+    return context.tr("Off — notifications arrive at any hour");
+  }
+  if (!prefs.quietWindow) {
+    return context.tr("Start and end are the same, so nothing is muted.");
+  }
+  return context.tr("Muted {0} – {1}", [
+    _clock(context, prefs.quietStart),
+    _clock(context, prefs.quietEnd),
+  ]);
+}
 
 int _activeCount(NotificationPrefs p) =>
     [p.sessionReminders, p.streakAlerts].where((on) => on).length;

@@ -193,8 +193,8 @@ class NotificationPrefs {
     this.groupActivity = true,
     this.challengeInvites = true,
     this.quietHoursEnabled = true,
-    this.quietStartHour = 22,
-    this.quietEndHour = 7,
+    this.quietStart = 22 * 60,
+    this.quietEnd = 7 * 60,
   });
 
   final bool sessionReminders;
@@ -206,8 +206,15 @@ class NotificationPrefs {
   final bool groupActivity;
   final bool challengeInvites;
   final bool quietHoursEnabled;
-  final int quietStartHour;
-  final int quietEndHour;
+
+  /// Minutes after midnight when quiet hours begin and end. The end is
+  /// exclusive: a reminder due at exactly [quietEnd] arrives on time. Equal
+  /// values mute nothing.
+  final int quietStart;
+  final int quietEnd;
+
+  /// Whether quiet hours are on and cover any time at all.
+  bool get quietWindow => quietHoursEnabled && quietStart != quietEnd;
 
   NotificationPrefs copyWith({
     bool? sessionReminders,
@@ -219,8 +226,8 @@ class NotificationPrefs {
     bool? groupActivity,
     bool? challengeInvites,
     bool? quietHoursEnabled,
-    int? quietStartHour,
-    int? quietEndHour,
+    int? quietStart,
+    int? quietEnd,
   }) => NotificationPrefs(
     sessionReminders: sessionReminders ?? this.sessionReminders,
     dailySummary: dailySummary ?? this.dailySummary,
@@ -231,8 +238,8 @@ class NotificationPrefs {
     groupActivity: groupActivity ?? this.groupActivity,
     challengeInvites: challengeInvites ?? this.challengeInvites,
     quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
-    quietStartHour: quietStartHour ?? this.quietStartHour,
-    quietEndHour: quietEndHour ?? this.quietEndHour,
+    quietStart: quietStart ?? this.quietStart,
+    quietEnd: quietEnd ?? this.quietEnd,
   );
 
   Map<String, dynamic> toJson() => {
@@ -245,8 +252,11 @@ class NotificationPrefs {
     'groupActivity': groupActivity,
     'challengeInvites': challengeInvites,
     'quietHoursEnabled': quietHoursEnabled,
-    'quietStartHour': quietStartHour,
-    'quietEndHour': quietEndHour,
+    'quietStart': quietStart,
+    'quietEnd': quietEnd,
+    // Whole hours, as builds before minute precision read them.
+    'quietStartHour': quietStart ~/ 60,
+    'quietEndHour': quietEnd ~/ 60,
   };
 
   factory NotificationPrefs.fromJson(Map<String, dynamic> j) =>
@@ -260,7 +270,15 @@ class NotificationPrefs {
         groupActivity: j['groupActivity'] as bool? ?? true,
         challengeInvites: j['challengeInvites'] as bool? ?? true,
         quietHoursEnabled: j['quietHoursEnabled'] as bool? ?? true,
-        quietStartHour: j['quietStartHour'] as int? ?? 22,
-        quietEndHour: j['quietEndHour'] as int? ?? 7,
+        quietStart: _minuteOfDay(j['quietStart'], j['quietStartHour'], 22),
+        quietEnd: _minuteOfDay(j['quietEnd'], j['quietEndHour'], 7),
       );
+
+  /// A stored time as minutes after midnight. Builds before minute
+  /// precision saved only the hour; that hour is its own exact migration.
+  static int _minuteOfDay(Object? minutes, Object? hour, int fallbackHour) {
+    if (minutes is int && minutes >= 0 && minutes < 24 * 60) return minutes;
+    if (hour is int && hour >= 0 && hour < 24) return hour * 60;
+    return fallbackHour * 60;
+  }
 }
