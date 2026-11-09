@@ -133,18 +133,22 @@ class _FlipBoard extends StatelessWidget {
             ),
             child: text[i] == ':'
                 ? _FlipColon(accent: accent, height: card)
-                : _FlipCard(
-                    // Keyed from the right, because the string grows and
-                    // shrinks: "9:59" becoming "10:00" shifts every character
-                    // one place to the right, and without a key that is stable
-                    // across the shift each card would flip to a figure that
-                    // belonged to its neighbour.
-                    key: ValueKey<int>(text.length - i),
-                    glyph: text[i],
-                    style: style,
-                    accent: accent,
-                    width: width,
-                    height: card,
+                // Its own layer: a flipping seconds card repaints only
+                // itself, not the board around it.
+                : RepaintBoundary(
+                    child: _FlipCard(
+                      // Keyed from the right, because the string grows and
+                      // shrinks: "9:59" becoming "10:00" shifts every character
+                      // one place to the right, and without a key that is stable
+                      // across the shift each card would flip to a figure that
+                      // belonged to its neighbour.
+                      key: ValueKey<int>(text.length - i),
+                      glyph: text[i],
+                      style: style,
+                      accent: accent,
+                      width: width,
+                      height: card,
+                    ),
                   ),
           ),
       ],
@@ -209,9 +213,19 @@ class _FlipCardState extends State<_FlipCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _flip = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: const Duration(milliseconds: 480),
     value: 1,
   );
+
+  /// The share of the flip spent falling. The top flap accelerates over the
+  /// hinge like a weight, then the new bottom half lands with a small
+  /// settle: fast in, springy out. One curve across both halves put the
+  /// fastest moment exactly at the hinge, where the flap swaps, and that is
+  /// the hitch the eye read as a stutter.
+  static const _fallShare = 0.42;
+
+  /// Lands just past flat and settles back, about four degrees.
+  static const _landing = Cubic(0.22, 1.18, 0.42, 1);
 
   late String _current = widget.glyph;
   late String _outgoing = widget.glyph;
@@ -252,9 +266,23 @@ class _FlipCardState extends State<_FlipCard>
       child: AnimatedBuilder(
         animation: _flip,
         builder: (context, _) {
-          final t = Curves.easeInOutCubic.transform(_flip.value);
-          // First half: the old top falls. Second half: the new bottom rises.
-          final falling = t < 0.5;
+          final v = _flip.value;
+          // First the old top falls, then the new bottom lands.
+          final falling = v < _fallShare;
+          final fall = falling
+              ? Curves.easeInQuad.transform(v / _fallShare)
+              : 1.0;
+          final land = falling
+              ? 0.0
+              : _landing.transform((v - _fallShare) / (1 - _fallShare));
+          final angle = falling
+              ? -math.pi / 2 * fall
+              : math.pi / 2 * (1 - land);
+          // A flap turned away from the light darkens, and the half under
+          // it sits in its shadow until it lands. Both are continuous across
+          // the swap, so the hinge shows no seam in time either.
+          final flapShade = 0.26 * math.sin(angle.abs());
+          final underShade = 0.18 * (falling ? fall : (1 - land).clamp(0, 1));
 
           // Every child is positioned, and that is load-bearing: a Stack
           // aligns its non-positioned children to the top-left, so both halves
@@ -285,36 +313,23 @@ class _FlipCardState extends State<_FlipCard>
                   width: widget.width,
                   height: widget.height,
                   radius: radius,
+                  shade: underShade,
                 ),
               ),
-              if (falling)
-                _HalfSlot(
-                  top: true,
+              _HalfSlot(
+                top: falling,
+                height: widget.height,
+                child: _FlippingHalf(
+                  glyph: falling ? _outgoing : _current,
+                  style: widget.style,
+                  top: falling,
+                  width: widget.width,
                   height: widget.height,
-                  child: _FlippingHalf(
-                    glyph: _outgoing,
-                    style: widget.style,
-                    top: true,
-                    width: widget.width,
-                    height: widget.height,
-                    radius: radius,
-                    angle: -math.pi / 2 * (t / 0.5),
-                  ),
-                )
-              else
-                _HalfSlot(
-                  top: false,
-                  height: widget.height,
-                  child: _FlippingHalf(
-                    glyph: _current,
-                    style: widget.style,
-                    top: false,
-                    width: widget.width,
-                    height: widget.height,
-                    radius: radius,
-                    angle: math.pi / 2 * (1 - (t - 0.5) / 0.5),
-                  ),
+                  radius: radius,
+                  angle: angle,
+                  shade: flapShade,
                 ),
+              ),
               // The hinge: a hairline in the fold, and the shade the top
               // half casts on the one below it. Together they are what the
               // eye reads as a seam rather than as a line drawn on a panel.
@@ -342,6 +357,25 @@ class _FlipCardState extends State<_FlipCard>
                   ),
                 ),
               ),
+              // The axle ends at either side of the fold, as on a real
+              // board: they say where the flaps turn.
+              for (final start in [true, false])
+                PositionedDirectional(
+                  start: start ? 0 : null,
+                  end: start ? null : 0,
+                  top: widget.height * 0.455,
+                  width: math.max(2, widget.width * 0.045),
+                  height: widget.height * 0.09,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: divider,
+                      borderRadius: BorderRadius.horizontal(
+                        left: Radius.circular(start ? 0 : radius),
+                        right: Radius.circular(start ? radius : 0),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -399,6 +433,7 @@ class _Half extends StatelessWidget {
     required this.width,
     required this.height,
     required this.radius,
+    this.shade = 0,
   });
 
   final String glyph;
@@ -408,29 +443,49 @@ class _Half extends StatelessWidget {
   final double height;
   final double radius;
 
+  /// How far this half sits in shadow, 0 to 1, painted over its figure.
+  final double shade;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final base = cs.surfaceContainerHighest;
-    final fill = top
-        ? base
-        : Color.alphaBlend(cs.shadow.withValues(alpha: 0.10), base);
+    Color shaded(double alpha) =>
+        Color.alphaBlend(cs.shadow.withValues(alpha: alpha), base);
+    // A slight fall-off away from the fold on each half, so a card reads as
+    // a curved flap rather than a flat panel.
+    final fill = top ? [base, shaded(0.03)] : [shaded(0.10), shaded(0.14)];
 
     return ClipRRect(
       borderRadius: BorderRadius.vertical(
         top: top ? Radius.circular(radius) : Radius.zero,
         bottom: top ? Radius.zero : Radius.circular(radius),
       ),
-      child: ColoredBox(
-        color: fill,
-        child: OverflowBox(
-          alignment: top ? Alignment.topCenter : Alignment.bottomCenter,
-          minHeight: height,
-          maxHeight: height,
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Center(child: Text(glyph, style: style, maxLines: 1)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: fill,
+          ),
+        ),
+        position: DecorationPosition.background,
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            color: shade <= 0
+                ? null
+                : cs.shadow.withValues(alpha: shade.clamp(0.0, 1.0)),
+          ),
+          child: OverflowBox(
+            alignment: top ? Alignment.topCenter : Alignment.bottomCenter,
+            minHeight: height,
+            maxHeight: height,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Center(child: Text(glyph, style: style, maxLines: 1)),
+            ),
           ),
         ),
       ),
@@ -448,6 +503,7 @@ class _FlippingHalf extends StatelessWidget {
     required this.height,
     required this.radius,
     required this.angle,
+    this.shade = 0,
   });
 
   final String glyph;
@@ -457,14 +513,17 @@ class _FlippingHalf extends StatelessWidget {
   final double height;
   final double radius;
   final double angle;
+  final double shade;
 
   @override
   Widget build(BuildContext context) => Transform(
     alignment: top ? Alignment.bottomCenter : Alignment.topCenter,
-    // A small perspective term: without it the halves shear flat and the
-    // motion reads as a squash rather than as a card turning over.
+    // Perspective, or the halves shear flat and the motion reads as a
+    // squash. The eye sits a fixed number of card heights away, so a large
+    // fullscreen card turns with the same depth as a small one instead of
+    // swelling as it passes edge-on.
     transform: Matrix4.identity()
-      ..setEntry(3, 2, 0.0016)
+      ..setEntry(3, 2, 1 / (height * 5))
       ..rotateX(angle),
     child: _Half(
       glyph: glyph,
@@ -473,6 +532,7 @@ class _FlippingHalf extends StatelessWidget {
       width: width,
       height: height,
       radius: radius,
+      shade: shade,
     ),
   );
 }
