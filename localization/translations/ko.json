@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". 탭하여 변경",
-  "0h · No target": "0h · 대상 없음",
   "1 completed session": "1개의 세션이 완료되었습니다.",
   "1 playing": "1 재생 중",
   "1 session": "1 세션",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "접근성에서 FocusForge를 선택한 다음 액세스를 허용하세요.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "사용 액세스에서 FocusForge를 선택하고 켠 다음 다시 돌아옵니다.",
   "Choose FocusForge, then allow usage access.": "FocusForge를 선택한 다음 사용 액세스를 허용하십시오.",
-  "Choose a focus target above zero.": "0보다 큰 초점 대상을 선택합니다.",
   "Choose a goal from 1 to 1,000 hours.": "1시간부터 1,000시간까지 목표를 선택하세요.",
   "Choose a name your friends will recognise.": "친구들이 알아볼 수 있는 이름을 선택하세요.",
   "Choose a recognized study channel.": "인정받는 학습 채널을 선택하세요.",

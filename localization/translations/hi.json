@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": "। बदलने के लिए टैप करें",
-  "0h · No target": "0h · कोई लक्ष्य नहीं",
   "1 completed session": "1 सत्र पूरा हुआ",
   "1 playing": "1 बज रहा है",
   "1 session": "1 सत्र",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "एक्सेसिबिलिटी में फोकसफोर्ज चुनें, फिर एक्सेस की अनुमति दें।",
   "Choose FocusForge in Usage access, turn it on, then come back.": "उपयोग पहुंच में फोकसफोर्ज चुनें, इसे चालू करें, फिर वापस आएं।",
   "Choose FocusForge, then allow usage access.": "फोकसफोर्ज चुनें, फिर उपयोग की अनुमति दें।",
-  "Choose a focus target above zero.": "शून्य से ऊपर फोकस लक्ष्य चुनें।",
   "Choose a goal from 1 to 1,000 hours.": "1 से 1,000 घंटे तक का लक्ष्य चुनें।",
   "Choose a name your friends will recognise.": "ऐसा नाम चुनें जिसे आपके मित्र पहचान सकें।",
   "Choose a recognized study channel.": "एक मान्यता प्राप्त अध्ययन चैनल चुनें.",

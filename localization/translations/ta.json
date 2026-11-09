@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". மாற்ற தட்டவும்",
-  "0h · No target": "0h · இலக்கு இல்லை",
   "1 completed session": "1 நிறைவு அமர்வு",
   "1 playing": "1 விளையாடுகிறது",
   "1 session": "1 அமர்வு",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "அணுகல்தன்மையில் FocusForge ஐத் தேர்ந்தெடுத்து, அணுகலை அனுமதிக்கவும்.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "பயன்பாட்டு அணுகலில் FocusForge ஐத் தேர்வுசெய்து, அதை இயக்கவும், பிறகு திரும்பி வரவும்.",
   "Choose FocusForge, then allow usage access.": "FocusForge ஐத் தேர்வுசெய்து, பின்னர் பயன்பாட்டு அணுகலை அனுமதிக்கவும்.",
-  "Choose a focus target above zero.": "பூஜ்ஜியத்திற்கு மேல் குவிய இலக்கைத் தேர்வு செய்யவும்.",
   "Choose a goal from 1 to 1,000 hours.": "1 முதல் 1,000 மணிநேரம் வரை இலக்கைத் தேர்வு செய்யவும்.",
   "Choose a name your friends will recognise.": "உங்கள் நண்பர்கள் அங்கீகரிக்கும் பெயரைத் தேர்ந்தெடுக்கவும்.",
   "Choose a recognized study channel.": "அங்கீகரிக்கப்பட்ட படிப்பு சேனலைத் தேர்வு செய்யவும்.",

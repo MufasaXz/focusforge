@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": "。点按即可更换",
-  "0h · No target": "0h · 无目标",
   "1 completed session": "1 已完成会话",
   "1 playing": "1 播放",
   "1 session": "1 次",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "在辅助功能中选择 FocusForge，然后允许访问。",
   "Choose FocusForge in Usage access, turn it on, then come back.": "在使用访问中选择 FocusForge，将其打开，然后返回。",
   "Choose FocusForge, then allow usage access.": "选择 FocusForge，然后允许使用访问。",
-  "Choose a focus target above zero.": "选择零以上的聚焦目标。",
   "Choose a goal from 1 to 1,000 hours.": "选择 1 到 1,000 小时之间的目标。",
   "Choose a name your friends will recognise.": "选择一个您的朋友会认识的名字。",
   "Choose a recognized study channel.": "选择公认的学习渠道。",

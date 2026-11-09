@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". Değiştirmek için dokun",
-  "0h · No target": "0sa · Hedef yok",
   "1 completed session": "1 tamamlanmış oturum",
   "1 playing": "1 oynuyor",
   "1 session": "1 oturum",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "Erişilebilirlik'te FocusForge'u seçin, ardından erişime izin verin.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "Kullanım erişiminde FocusForge'u seçin, açın ve sonra geri gelin.",
   "Choose FocusForge, then allow usage access.": "FocusForge'u seçin, ardından kullanım erişimine izin verin.",
-  "Choose a focus target above zero.": "Sıfırın üzerinde bir odak hedefi seçin.",
   "Choose a goal from 1 to 1,000 hours.": "1 ile 1.000 saat arasında bir hedef seçin.",
   "Choose a name your friends will recognise.": "Arkadaşlarınızın tanıyacağı bir isim seçin.",
   "Choose a recognized study channel.": "Tanınmış bir çalışma kanalı seçin.",

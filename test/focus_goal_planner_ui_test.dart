@@ -80,7 +80,7 @@ void main() {
       final picker = tester.widget<CupertinoPicker>(
         find.byType(CupertinoPicker),
       );
-      picker.scrollController!.jumpToItem(32); // 8h, in quarter-hour steps.
+      picker.scrollController!.jumpToItem(31); // 8h: quarter hours from 15m.
       await tester.pumpAndSettle();
       expect(find.text('8h'), findsWidgets);
       await tester.drag(
@@ -120,13 +120,13 @@ void main() {
             .widget<CupertinoPicker>(find.byType(CupertinoPicker))
             .scrollController!
             .selectedItem,
-        32,
+        31,
       );
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('a zero-hour goal cannot be saved without subject allocations', (
+  testWidgets('every target on the wheel can be saved, starting at 15m', (
     tester,
   ) async {
     final container = await mount(tester);
@@ -135,14 +135,11 @@ void main() {
         .scrollController!
         .jumpToItem(0);
     await tester.pumpAndSettle();
+    expect(find.textContaining('No target'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('save-focus-goal')));
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(const ValueKey('save-focus-goal')))
-          .onPressed,
-      isNull,
-    );
-    expect(container.read(focusGoalPlannerProvider).day, isNull);
+    await tester.tap(find.byKey(const ValueKey('save-focus-goal')));
+    await tester.pumpAndSettle();
+    expect(container.read(activeFocusGoalProvider)?.totalMinutes, 15);
     expect(tester.takeException(), isNull);
   });
 

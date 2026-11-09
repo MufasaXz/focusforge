@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". Нажми, чтобы изменить",
-  "0h · No target": "0h · Нет цели",
   "1 completed session": "1 завершенная сессия",
   "1 playing": "1 играет",
   "1 session": "1 сеанс",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "Выберите FocusForge в разделе «Доступность», затем разрешите доступ.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "Выберите FocusForge в разделе «Доступ к использованию», включите его, затем вернитесь.",
   "Choose FocusForge, then allow usage access.": "Выберите FocusForge, затем разрешите доступ к использованию.",
-  "Choose a focus target above zero.": "Выберите цель фокусировки выше нуля.",
   "Choose a goal from 1 to 1,000 hours.": "Выберите цель от 1 до 1000 часов.",
   "Choose a name your friends will recognise.": "Выберите имя, которое узнают ваши друзья.",
   "Choose a recognized study channel.": "Выберите признанный канал обучения.",

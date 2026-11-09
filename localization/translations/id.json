@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". Ketuk untuk mengubah",
-  "0h · No target": "0 jam · Tidak ada target",
   "1 completed session": "1 sesi selesai",
   "1 playing": "1 diputar",
   "1 session": "1 sesi",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "Pilih FocusForge di Aksesibilitas, lalu izinkan akses.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "Pilih FocusForge di Akses penggunaan, nyalakan, lalu kembali.",
   "Choose FocusForge, then allow usage access.": "Pilih FocusForge, lalu izinkan akses penggunaan.",
-  "Choose a focus target above zero.": "Pilih target fokus di atas nol.",
   "Choose a goal from 1 to 1,000 hours.": "Pilih sasaran dari 1 hingga 1.000 jam.",
   "Choose a name your friends will recognise.": "Pilih nama yang dikenali teman Anda.",
   "Choose a recognized study channel.": "Pilih saluran belajar yang diakui.",

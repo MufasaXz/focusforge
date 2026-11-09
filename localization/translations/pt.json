@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". Toque para mudar",
-  "0h · No target": "0h · Sem alvo",
   "1 completed session": "1 sessão concluída",
   "1 playing": "1 jogando",
   "1 session": "1 sessão",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "Escolha FocusForge em Acessibilidade e permita o acesso.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "Escolha FocusForge em acesso de uso, ligue-o e volte.",
   "Choose FocusForge, then allow usage access.": "Escolha FocusForge e permita o acesso de uso.",
-  "Choose a focus target above zero.": "Escolha um alvo de foco acima de zero.",
   "Choose a goal from 1 to 1,000 hours.": "Escolha uma meta de 1 a 1.000 horas.",
   "Choose a name your friends will recognise.": "Escolha um nome que seus amigos reconhecerão.",
   "Choose a recognized study channel.": "Escolha um canal de estudo reconhecido.",

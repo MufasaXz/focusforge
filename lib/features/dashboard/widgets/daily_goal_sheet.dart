@@ -1,5 +1,7 @@
 import '../../../core/localization/app_strings.dart';
 
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,19 +42,24 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
   @override
   void initState() {
     super.initState();
-    // A saved zero-hour rest plan intentionally hides the ring, but remains
-    // the value to edit rather than reopening with an invented one-hour goal.
     final plan = ref
         .read(focusGoalPlannerProvider)
         .forDate(ref.read(focusCalendarDateProvider));
-    _total =
-        plan?.totalMinutes ??
-        ref.read(focusGoalPlannerProvider).day?.totalMinutes ??
-        60;
+    // Every value on the wheel can be saved, so it starts at one step. A
+    // zero-hour plan saved by an older build opens on that first step.
+    _total = math.max(
+      _step,
+      plan?.totalMinutes ??
+          ref.read(focusGoalPlannerProvider).day?.totalMinutes ??
+          60,
+    );
     _repeatThisWeek = plan?.repeatThisWeek ?? false;
     _allocations.addAll(plan?.subjectMinutes ?? const {});
-    _wheel = FixedExtentScrollController(initialItem: (_total / _step).round());
+    _wheel = FixedExtentScrollController(initialItem: _itemOf(_total));
   }
+
+  /// The wheel row showing [minutes]: row 0 is one [_step].
+  static int _itemOf(int minutes) => (minutes / _step).round() - 1;
 
   @override
   void dispose() {
@@ -155,7 +162,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                   onSelectedItemChanged: (item) {
                     if (_saving) return;
                     setState(() {
-                      _total = item * _step;
+                      _total = (item + 1) * _step;
                       for (final subject in subjects) {
                         _allocations[subject.id] =
                             (_allocations[subject.id] ?? 0).clamp(0, _total);
@@ -165,15 +172,13 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                   },
                   children: [
                     for (
-                      var value = 0;
+                      var value = _step;
                       value <= FocusGoalPlan.maxMinutes;
                       value += _step
                     )
                       Center(
                         child: Text(
-                          value == 0
-                              ? context.tr("0h · No target")
-                              : formatMinutes(value),
+                          formatMinutes(value),
                           style: tt.headlineSmall?.copyWith(
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
@@ -236,7 +241,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                 const SizedBox(height: Gap.sm),
               ],
               const SizedBox(height: Gap.sm),
-              if (assigned > 0 || _total == 0)
+              if (assigned > 0)
                 Container(
                   padding: const EdgeInsets.all(Gap.md),
                   decoration: BoxDecoration(
@@ -257,9 +262,7 @@ class _FocusGoalSheetState extends ConsumerState<_FocusGoalSheet> {
                       ),
                       const SizedBox(height: Gap.xs),
                       Text(
-                        _total == 0
-                            ? context.tr("Choose a focus target above zero.")
-                            : difference == 0
+                        difference == 0
                             ? context.tr(
                                 "Every minute has a place. Your plan is ready.",
                               )

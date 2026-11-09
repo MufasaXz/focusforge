@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". మార్చడానికి నొక్కండి",
-  "0h · No target": "0h · లక్ష్యం లేదు",
   "1 completed session": "1 సెషన్ పూర్తయింది",
   "1 playing": "1 ప్లే అవుతోంది",
   "1 session": "1 సెషన్",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "యాక్సెసిబిలిటీలో FocusForgeని ఎంచుకుని, ఆపై యాక్సెస్‌ని అనుమతించండి.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "వినియోగ యాక్సెస్‌లో FocusForge ఎంచుకోండి, దాన్ని ఆన్ చేసి, ఆపై తిరిగి రండి.",
   "Choose FocusForge, then allow usage access.": "FocusForgeని ఎంచుకుని, ఆపై వినియోగ ప్రాప్యతను అనుమతించండి.",
-  "Choose a focus target above zero.": "సున్నా పైన ఫోకస్ లక్ష్యాన్ని ఎంచుకోండి.",
   "Choose a goal from 1 to 1,000 hours.": "1 నుండి 1,000 గంటల వరకు లక్ష్యాన్ని ఎంచుకోండి.",
   "Choose a name your friends will recognise.": "మీ స్నేహితులు గుర్తించే పేరును ఎంచుకోండి.",
   "Choose a recognized study channel.": "గుర్తింపు పొందిన అధ్యయన ఛానెల్‌ని ఎంచుకోండి.",

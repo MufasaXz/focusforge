@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": ". برای تغییر ضربه بزنید",
-  "0h · No target": "0h · بدون هدف",
   "1 completed session": "1 جلسه کامل شد",
   "1 playing": "1 در حال پخش",
   "1 session": "1 جلسه",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "FocusForge را در Accessibility انتخاب کنید، سپس اجازه دسترسی را بدهید.",
   "Choose FocusForge in Usage access, turn it on, then come back.": "FocusForge را در دسترسی استفاده انتخاب کنید، آن را روشن کنید، سپس برگردید.",
   "Choose FocusForge, then allow usage access.": "FocusForge را انتخاب کنید، سپس اجازه دسترسی به استفاده را بدهید.",
-  "Choose a focus target above zero.": "هدف فوکوس بالای صفر را انتخاب کنید.",
   "Choose a goal from 1 to 1,000 hours.": "یک هدف از 1 تا 1000 ساعت انتخاب کنید.",
   "Choose a name your friends will recognise.": "نامی را انتخاب کنید که دوستانتان آن را تشخیص دهند.",
   "Choose a recognized study channel.": "یک کانال مطالعه شناخته شده را انتخاب کنید.",

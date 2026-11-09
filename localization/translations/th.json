@@ -1,7 +1,6 @@
 {
   "+{0} XP": "+{0} XP",
   ". Tap to change it": " แตะเพื่อเปลี่ยน",
-  "0h · No target": "0h · ไม่มีเป้าหมาย",
   "1 completed session": "1 เซสชันเสร็จสมบูรณ์",
   "1 playing": "1 กำลังเล่นอยู่",
   "1 session": "1 เซสชัน",
@@ -157,7 +156,6 @@
   "Choose FocusForge in Accessibility, then allow access.": "เลือก FocusForge ในการเข้าถึง จากนั้นอนุญาตการเข้าถึง",
   "Choose FocusForge in Usage access, turn it on, then come back.": "เลือก FocusForge ในการเข้าถึงการใช้งาน เปิดแล้วกลับมาใหม่",
   "Choose FocusForge, then allow usage access.": "เลือก FocusForge จากนั้นอนุญาตการเข้าถึงการใช้งาน",
-  "Choose a focus target above zero.": "เลือกเป้าหมายโฟกัสที่อยู่เหนือศูนย์",
   "Choose a goal from 1 to 1,000 hours.": "เลือกเป้าหมายตั้งแต่ 1 ถึง 1,000 ชั่วโมง",
   "Choose a name your friends will recognise.": "เลือกชื่อที่เพื่อนของคุณจะรู้จัก",
   "Choose a recognized study channel.": "เลือกช่องทางการศึกษาที่ได้รับการยอมรับ",
