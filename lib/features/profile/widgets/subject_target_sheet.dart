@@ -46,12 +46,30 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
   static const _quickTargets = [3.0, 5.0, 8.0, 10.0, 15.0];
 
   late double _target = widget.subject.weekTarget.clamp(_min, _max).toDouble();
+  bool _saving = false;
+  String? _error;
 
+  /// One save at a time. The sheet closes only once the target is stored;
+  /// a failure keeps the chosen value and says so.
   Future<void> _save() async {
-    await ref
-        .read(subjectsProvider.notifier)
-        .setWeeklyTarget(widget.subject.id, _target);
-    if (mounted) Navigator.of(context).pop();
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(subjectsProvider.notifier)
+          .setWeeklyTarget(widget.subject.id, _target);
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = context.tr("Could not save this target. Try again.");
+        });
+      }
+    }
   }
 
   @override
@@ -190,10 +208,26 @@ class _SubjectTargetSheetState extends ConsumerState<_SubjectTargetSheet> {
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
+                  if (_error case final error?) ...[
+                    const SizedBox(height: Gap.md),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        error,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: cs.error),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: Gap.lg),
                   FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check_rounded, size: 18),
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_rounded, size: 18),
                     label: Text(context.tr("Save target")),
                   ),
                 ],

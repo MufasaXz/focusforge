@@ -1631,5 +1631,7 @@
   "Person": "Persona",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "I promemoria previsti in questa fascia attendono fino alle {0}. Gli avvisi dei blocchi dell’orario al suo interno vengono saltati.",
   "Start and end are the same, so nothing is muted.": "Inizio e fine coincidono, quindi nulla viene silenziato.",
-  "Could not save quiet hours. Try again.": "Impossibile salvare le ore di silenzio. Riprova."
+  "Could not save quiet hours. Try again.": "Impossibile salvare le ore di silenzio. Riprova.",
+  "Could not save your profile. Try again.": "Impossibile salvare il profilo. Riprova.",
+  "Could not save this target. Try again.": "Impossibile salvare questo obiettivo. Riprova."
 }

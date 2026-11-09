@@ -1631,5 +1631,7 @@
   "Person": "Человек",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Напоминания в этом промежутке ждут до {0}. Сигналы о блоках расписания внутри него пропускаются.",
   "Start and end are the same, so nothing is muted.": "Начало и конец совпадают, поэтому ничего не отключается.",
-  "Could not save quiet hours. Try again.": "Не удалось сохранить тихие часы. Попробуйте ещё раз."
+  "Could not save quiet hours. Try again.": "Не удалось сохранить тихие часы. Попробуйте ещё раз.",
+  "Could not save your profile. Try again.": "Не удалось сохранить профиль. Попробуйте ещё раз.",
+  "Could not save this target. Try again.": "Не удалось сохранить эту цель. Попробуйте ещё раз."
 }

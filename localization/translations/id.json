@@ -1631,5 +1631,7 @@
   "Person": "Orang",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Pengingat dalam rentang ini menunggu hingga {0}. Panggilan untuk blok jadwal di dalamnya dilewati.",
   "Start and end are the same, so nothing is muted.": "Mulai dan selesai sama, jadi tidak ada yang dibisukan.",
-  "Could not save quiet hours. Try again.": "Tidak dapat menyimpan jam tenang. Coba lagi."
+  "Could not save quiet hours. Try again.": "Tidak dapat menyimpan jam tenang. Coba lagi.",
+  "Could not save your profile. Try again.": "Tidak dapat menyimpan profil Anda. Coba lagi.",
+  "Could not save this target. Try again.": "Tidak dapat menyimpan target ini. Coba lagi."
 }

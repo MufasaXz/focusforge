@@ -1631,5 +1631,7 @@
   "Person": "บุคคล",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "การเตือนที่ตรงกับช่วงนี้จะรอจนถึง {0} การแจ้งบล็อกตารางเวลาในช่วงนี้จะถูกข้าม",
   "Start and end are the same, so nothing is muted.": "เวลาเริ่มและสิ้นสุดตรงกัน จึงไม่มีการปิดเสียงใด ๆ",
-  "Could not save quiet hours. Try again.": "บันทึกช่วงเวลาเงียบไม่ได้ ลองอีกครั้ง"
+  "Could not save quiet hours. Try again.": "บันทึกช่วงเวลาเงียบไม่ได้ ลองอีกครั้ง",
+  "Could not save your profile. Try again.": "บันทึกโปรไฟล์ของคุณไม่ได้ ลองอีกครั้ง",
+  "Could not save this target. Try again.": "บันทึกเป้าหมายนี้ไม่ได้ ลองอีกครั้ง"
 }

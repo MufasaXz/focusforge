@@ -33,6 +33,8 @@ class _EditProfileSheet extends ConsumerStatefulWidget {
 
 class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late final TextEditingController _name;
+  bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -49,10 +51,25 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
 
   bool get _valid => _name.text.trim().isNotEmpty;
 
+  /// One save at a time. The sheet closes only once the name is stored;
+  /// a failure keeps the typed name and says so.
   Future<void> _save() async {
-    final notifier = ref.read(userProvider.notifier);
-    await notifier.setDisplayName(_name.text);
-    if (mounted) Navigator.of(context).pop();
+    if (_saving || !_valid) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref.read(userProvider.notifier).setDisplayName(_name.text);
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = context.tr("Could not save your profile. Try again.");
+        });
+      }
+    }
   }
 
   @override
@@ -114,10 +131,8 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                 textInputAction: TextInputAction.done,
                 style: Theme.of(context).textTheme.bodyLarge,
                 cursorColor: cs.primary,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) {
-                  if (_valid) _save();
-                },
+                onChanged: (_) => setState(() => _error = null),
+                onSubmitted: (_) => _save(),
                 decoration: InputDecoration(
                   hintText: context.tr("Your name"),
                   counterText: '',
@@ -139,10 +154,26 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                   ),
                 ),
               ),
+              if (_error case final error?) ...[
+                const SizedBox(height: Gap.md),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    error,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.error),
+                  ),
+                ),
+              ],
               const SizedBox(height: Gap.xl),
               FilledButton.icon(
-                onPressed: _valid ? _save : null,
-                icon: const Icon(Icons.check_rounded, size: 18),
+                onPressed: _valid && !_saving ? _save : null,
+                icon: _saving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check_rounded, size: 18),
                 label: Text(context.tr("Save changes")),
               ),
             ],

@@ -1631,5 +1631,7 @@
   "Person": "شخص",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "یادآورهای این بازه تا {0} صبر می‌کنند. اعلان بلوک‌های برنامه در این بازه حذف می‌شوند.",
   "Start and end are the same, so nothing is muted.": "شروع و پایان یکی است، پس چیزی بی‌صدا نمی‌شود.",
-  "Could not save quiet hours. Try again.": "ساعات سکوت ذخیره نشد. دوباره امتحان کنید."
+  "Could not save quiet hours. Try again.": "ساعات سکوت ذخیره نشد. دوباره امتحان کنید.",
+  "Could not save your profile. Try again.": "نمایه شما ذخیره نشد. دوباره امتحان کنید.",
+  "Could not save this target. Try again.": "این هدف ذخیره نشد. دوباره امتحان کنید."
 }

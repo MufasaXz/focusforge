@@ -1631,5 +1631,7 @@
   "Person": "人物",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "此时段内的提醒会等到 {0}。其中课表时段的提醒会被跳过。",
   "Start and end are the same, so nothing is muted.": "开始和结束时间相同，因此不会静音任何内容。",
-  "Could not save quiet hours. Try again.": "无法保存免打扰时段。请重试。"
+  "Could not save quiet hours. Try again.": "无法保存免打扰时段。请重试。",
+  "Could not save your profile. Try again.": "无法保存你的个人资料。请重试。",
+  "Could not save this target. Try again.": "无法保存此目标。请重试。"
 }

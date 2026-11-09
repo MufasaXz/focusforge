@@ -1631,5 +1631,7 @@
   "Person": "વ્યક્તિ",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "આ સમયગાળામાં આવતા રિમાઇન્ડર {0} સુધી રાહ જુએ છે. તેની અંદરના ટાઇમટેબલ બ્લોકની સૂચનાઓ છોડી દેવાય છે.",
   "Start and end are the same, so nothing is muted.": "શરૂઆત અને અંત સરખા છે, તેથી કંઈ મ્યૂટ થતું નથી.",
-  "Could not save quiet hours. Try again.": "શાંત સમય સાચવી શકાયો નહીં. ફરી પ્રયાસ કરો."
+  "Could not save quiet hours. Try again.": "શાંત સમય સાચવી શકાયો નહીં. ફરી પ્રયાસ કરો.",
+  "Could not save your profile. Try again.": "તમારી પ્રોફાઇલ સાચવી શકાઈ નહીં. ફરી પ્રયાસ કરો.",
+  "Could not save this target. Try again.": "આ લક્ષ્ય સાચવી શકાયું નહીં. ફરી પ્રયાસ કરો."
 }

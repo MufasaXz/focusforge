@@ -1631,5 +1631,7 @@
   "Person": "人物",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "この時間帯のリマインダーは {0} まで待ちます。時間帯内の時間割ブロックの通知はスキップされます。",
   "Start and end are the same, so nothing is muted.": "開始と終了が同じなので、何もミュートされません。",
-  "Could not save quiet hours. Try again.": "おやすみ時間を保存できませんでした。もう一度お試しください。"
+  "Could not save quiet hours. Try again.": "おやすみ時間を保存できませんでした。もう一度お試しください。",
+  "Could not save your profile. Try again.": "プロフィールを保存できませんでした。もう一度お試しください。",
+  "Could not save this target. Try again.": "この目標を保存できませんでした。もう一度お試しください。"
 }

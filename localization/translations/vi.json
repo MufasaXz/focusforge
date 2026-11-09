@@ -1631,5 +1631,7 @@
   "Person": "Người",
   "Reminders due in this window wait until {0}. Calls for timetable blocks inside it are skipped.": "Lời nhắc trong khung giờ này sẽ chờ đến {0}. Thông báo cho các khối thời gian biểu bên trong sẽ bị bỏ qua.",
   "Start and end are the same, so nothing is muted.": "Giờ bắt đầu và kết thúc trùng nhau nên không có gì bị tắt tiếng.",
-  "Could not save quiet hours. Try again.": "Không lưu được giờ yên lặng. Hãy thử lại."
+  "Could not save quiet hours. Try again.": "Không lưu được giờ yên lặng. Hãy thử lại.",
+  "Could not save your profile. Try again.": "Không lưu được hồ sơ của bạn. Hãy thử lại.",
+  "Could not save this target. Try again.": "Không lưu được mục tiêu này. Hãy thử lại."
 }
