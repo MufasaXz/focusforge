@@ -567,6 +567,7 @@ class _FakeBackend implements AiBackend {
     Map<String, dynamic>? extraContext,
     List<Map<String, String>> history = const [],
     String locale = 'en',
+    bool Function()? allowed,
   }) async {
     questions.add(userMessage);
     contexts.add(extraContext);

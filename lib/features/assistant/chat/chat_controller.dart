@@ -221,6 +221,10 @@ class ChatController extends Notifier<ChatState> {
         extraContext: brain.aiContext(snapshot),
         history: history,
         locale: _locale().languageCode,
+        allowed: () =>
+            generation == _generation &&
+            ref.read(assistantMemoryProvider).aiConsent == true &&
+            ref.read(accountUidProvider) != null,
       );
       if (generation != _generation) return;
       await say(
@@ -231,6 +235,12 @@ class ChatController extends Notifier<ChatState> {
       );
     } on AiBackendException catch (error) {
       if (generation != _generation) return;
+      if (error.failure == AiFailure.withdrawn) {
+        // Turned off before sending: the phone answers, with nothing to say
+        // about the online brain.
+        state = state.copyWith(status: ChatStatus.idle, clearStep: true);
+        return run(local);
+      }
       final phoneAnswers =
           brain.fallsBackLocally(error.failure) && local.act != Act.unknown;
       await say(

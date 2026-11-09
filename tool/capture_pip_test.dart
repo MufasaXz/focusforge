@@ -376,6 +376,7 @@ class _FakeBackend implements AiBackend {
     Map<String, dynamic>? extraContext,
     List<Map<String, String>> history = const [],
     String locale = 'en',
+    bool Function()? allowed,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 1400));
     return 'Start small tonight: one 40 minute block of Physics. Pick your '

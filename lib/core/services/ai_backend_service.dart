@@ -31,6 +31,10 @@ enum AiFailure {
 
   /// The proxy is not deployed or not configured in this build.
   notReady,
+
+  /// Online answers were turned off, or the account left, before the
+  /// question was sent: nothing left the phone.
+  withdrawn,
 }
 
 @immutable
@@ -49,11 +53,15 @@ class AiBackendException implements Exception {
 abstract interface class AiBackend {
   /// Sends [userMessage], with an optional study summary in [extraContext],
   /// and returns Pip's reply. Throws [AiBackendException] on any failure.
+  ///
+  /// [allowed] is asked once more right before the request is sent; when it
+  /// says no, nothing is sent and [AiFailure.withdrawn] is thrown.
   Future<String> askAiAssistant({
     required String userMessage,
     Map<String, dynamic>? extraContext,
     List<Map<String, String>> history = const [],
     String locale = 'en',
+    bool Function()? allowed,
   });
 
   /// Sends a user's report of [reply] for review. [reason] is one of
@@ -106,6 +114,7 @@ class AiBackendService implements AiBackend {
     Map<String, dynamic>? extraContext,
     List<Map<String, String>> history = const [],
     String locale = 'en',
+    bool Function()? allowed,
   }) async {
     final message = userMessage.trim();
     if (message.isEmpty) {
@@ -119,6 +128,10 @@ class AiBackendService implements AiBackend {
     }
     if (token == null || token.isEmpty) {
       throw const AiBackendException(AiFailure.signedOut);
+    }
+    // Getting a token can take a while; consent may be gone by now.
+    if (allowed != null && !allowed()) {
+      throw const AiBackendException(AiFailure.withdrawn);
     }
 
     final http.Response response;

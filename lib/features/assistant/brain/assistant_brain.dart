@@ -2208,7 +2208,8 @@ class AssistantBrain {
     ),
     AiFailure.unavailable ||
     AiFailure.timeout ||
-    AiFailure.notReady => const Copy(
+    AiFailure.notReady ||
+    AiFailure.withdrawn => const Copy(
       'I can’t reach my online brain right now, so here’s what I can do on this phone.',
     ),
   };
@@ -2218,7 +2219,8 @@ class AssistantBrain {
     AiFailure.unavailable ||
     AiFailure.timeout ||
     AiFailure.notReady ||
-    AiFailure.signedOut => true,
+    AiFailure.signedOut ||
+    AiFailure.withdrawn => true,
     _ => false,
   };
 

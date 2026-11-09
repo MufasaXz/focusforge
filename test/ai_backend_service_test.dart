@@ -40,6 +40,30 @@ void main() {
     fail('Expected an AiBackendException');
   }
 
+  test('consent withdrawn while the token loads sends nothing', () async {
+    var requests = 0;
+    var consent = true;
+    final token = Completer<String?>();
+    final backend = AiBackendService(
+      client: MockClient((request) async {
+        requests++;
+        return http.Response(jsonEncode({'reply': 'x'}), 200);
+      }),
+      idToken: () => token.future,
+      endpoint: endpoint,
+    );
+    final asking = failureOf(
+      backend.askAiAssistant(
+        userMessage: 'plan my week',
+        allowed: () => consent,
+      ),
+    );
+    consent = false;
+    token.complete('id-token');
+    expect(await asking, AiFailure.withdrawn);
+    expect(requests, 0);
+  });
+
   test('a question carries the token and comes back as text', () async {
     late http.Request sent;
     final reply =
