@@ -6,7 +6,7 @@
 import {beforeEach, test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {AuthError, resetKeyCache, verifyIdToken} from '../src/auth.js';
+import {AuthError, JWKS_URL, REFRESH_COOLDOWN_MS, resetKeyCache, verifyIdToken} from '../src/auth.js';
 import {PROJECT, fakeFetch, makeSigner} from './support.js';
 
 const signer = await makeSigner();
@@ -64,4 +64,39 @@ test('signing keys are cached between requests', async () => {
   const counting = fakeFetch(signer.jwks);
   for (let i = 0; i < 3; i++) await verifyIdToken(await signer.token(), PROJECT, {fetchImpl: counting});
   assert.equal(counting.calls.length, 1);
+});
+
+test('unknown-key tokens cannot force a key download each', async () => {
+  const counting = fakeFetch(signer.jwks);
+  const start = Date.now();
+  for (let i = 0; i < 5; i++) {
+    const forged = await signer.token({}, {kid: `made-up-${i}`});
+    await assert.rejects(verifyIdToken(forged, PROJECT, {fetchImpl: counting, nowMs: start + i}), AuthError);
+  }
+  // The first download fills the cache; a refresh so soon after it is skipped.
+  assert.equal(counting.calls.filter((c) => c.url === JWKS_URL).length, 1);
+});
+
+test('requests arriving together share one key download', async () => {
+  const counting = fakeFetch(signer.jwks);
+  const tokens = await Promise.all([1, 2, 3, 4].map(() => signer.token()));
+  await Promise.all(tokens.map((token) => verifyIdToken(token, PROJECT, {fetchImpl: counting})));
+  assert.equal(counting.calls.length, 1);
+});
+
+test('a key Google rotates in is still picked up', async () => {
+  const next = await makeSigner();
+  let served = signer.jwks;
+  const rotating = fakeFetch(null);
+  const impl = async (url, init) => {
+    rotating.calls.push({url: String(url), init});
+    return new Response(JSON.stringify(served), {headers: {'cache-control': 'public, max-age=3600'}});
+  };
+  const start = Date.now();
+  await verifyIdToken(await signer.token(), PROJECT, {fetchImpl: impl, nowMs: start});
+  served = {keys: [...signer.jwks.keys, {...next.jwks.keys[0], kid: 'rotated'}]};
+  const fresh = await next.token({}, {kid: 'rotated'});
+  const later = start + REFRESH_COOLDOWN_MS;
+  assert.deepEqual(await verifyIdToken(fresh, PROJECT, {fetchImpl: impl, nowMs: later}), {uid: 'user-123'});
+  assert.equal(rotating.calls.length, 2);
 });

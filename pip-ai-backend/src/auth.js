@@ -13,17 +13,28 @@ const SKEW = 60;
 /** Why a token was refused. Never shown to the user. */
 export class AuthError extends Error {}
 
+/**
+ * Least time between signing-key downloads made for an unknown key ID.
+ * Google publishes a new key hours before signing with it, so a kid the
+ * cache has never seen right after a download is a forged one, and a
+ * stream of them must not turn into a stream of downloads.
+ */
+export const REFRESH_COOLDOWN_MS = 60 * 1000;
+
 let cachedKeys = null;
 let cachedUntil = 0;
+let fetchedAt = -Infinity;
+let inFlight = null;
 
 /** Clears the signing-key cache. For tests. */
 export function resetKeyCache() {
   cachedKeys = null;
   cachedUntil = 0;
+  fetchedAt = -Infinity;
+  inFlight = null;
 }
 
-async function signingKeys(fetchImpl, nowMs, refresh) {
-  if (!refresh && cachedKeys && nowMs < cachedUntil) return cachedKeys;
+async function downloadKeys(fetchImpl, nowMs) {
   const response = await fetchImpl(JWKS_URL);
   if (!response.ok) throw new AuthError(`signing keys: HTTP ${response.status}`);
   const body = await response.json();
@@ -32,6 +43,23 @@ async function signingKeys(fetchImpl, nowMs, refresh) {
   cachedKeys = new Map(body.keys.map((key) => [key.kid, key]));
   cachedUntil = nowMs + Math.min(Number(maxAge?.[1] ?? 3600), 6 * 3600) * 1000;
   return cachedKeys;
+}
+
+/**
+ * The signing keys, downloaded when the cache has expired, or when
+ * [refresh] asks and none was downloaded in the last [REFRESH_COOLDOWN_MS].
+ * Requests arriving while a download runs share it.
+ */
+async function signingKeys(fetchImpl, nowMs, refresh) {
+  const stale = !cachedKeys || nowMs >= cachedUntil;
+  if (!stale && !(refresh && nowMs - fetchedAt >= REFRESH_COOLDOWN_MS)) return cachedKeys;
+  if (!inFlight) {
+    fetchedAt = nowMs;
+    inFlight = downloadKeys(fetchImpl, nowMs).finally(() => {
+      inFlight = null;
+    });
+  }
+  return inFlight;
 }
 
 function base64UrlBytes(segment) {

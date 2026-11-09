@@ -120,6 +120,13 @@ async function handle(request, env, fetchImpl) {
   if (path !== '/' && path !== '/report') return json(404, {error: 'not-found'});
   if (request.method !== 'POST') return json(405, {error: 'method-not-allowed'}, {allow: 'POST, OPTIONS'});
 
+  // Checking a token can mean downloading Google's signing keys, so callers
+  // are limited before it, by address, as well as per account after it.
+  const caller = request.headers.get('cf-connecting-ip') ?? 'unknown';
+  if (!(await env.CALLER_LIMIT.limit({key: caller})).success) {
+    return json(429, {error: 'resource-exhausted', window: 'minute'}, {'retry-after': '60'});
+  }
+
   const bearer = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
   let uid;
   try {

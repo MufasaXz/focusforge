@@ -23,6 +23,9 @@
   // Counted per Cloudflare location, which is close enough for a quota guard.
   "ratelimits": [
     { "name": "PER_USER_LIMIT", "namespace_id": "4101", "simple": { "limit": 6, "period": 60 } },
-    { "name": "ALL_USERS_LIMIT", "namespace_id": "4102", "simple": { "limit": 300, "period": 60 } }
+    { "name": "ALL_USERS_LIMIT", "namespace_id": "4102", "simple": { "limit": 300, "period": 60 } },
+    // Per address, before the token is checked: one network can hold many
+    // accounts, so it sits well above the per-account limit.
+    { "name": "CALLER_LIMIT", "namespace_id": "4103", "simple": { "limit": 60, "period": 60 } }
   ]
 }

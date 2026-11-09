@@ -34,6 +34,7 @@ function env(overrides = {}) {
     GROQ_MODEL: 'openai/gpt-oss-20b',
     PER_USER_LIMIT: limiter(),
     ALL_USERS_LIMIT: limiter(),
+    CALLER_LIMIT: limiter(),
     REPORTS: store(),
     ...overrides,
   };
@@ -68,6 +69,18 @@ async function ask(body, {token, headers = {}, method = 'POST', vars = env(), fe
 }
 
 beforeEach(resetKeyCache);
+
+test('callers over the address limit are turned away before any token check', async () => {
+  const fetchImpl = providers();
+  const vars = env({CALLER_LIMIT: limiter(false)});
+  const forged = await signer.token({}, {kid: 'made-up'});
+  const result = await ask({message: 'hi'}, {token: forged, vars, fetchImpl, headers: {'cf-connecting-ip': '203.0.113.7'}});
+  assert.equal(result.status, 429);
+  assert.equal(result.headers.get('retry-after'), '60');
+  assert.deepEqual(vars.CALLER_LIMIT.keys, ['203.0.113.7']);
+  assert.equal(fetchImpl.calls.length, 0);
+  assert.deepEqual(vars.PER_USER_LIMIT.keys, []);
+});
 
 test('a signed-in question is answered by Gemini, with the key only in a header', async () => {
   const fetchImpl = providers();
