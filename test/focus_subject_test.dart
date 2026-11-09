@@ -26,7 +26,9 @@ import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/models/icon_registry.dart';
 import 'package:focusforge/features/focus/subject_picker.dart';
+import 'package:focusforge/features/focus/subject_sheet.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -457,5 +459,77 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets('every icon and colour choice has its own name and state', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(wrap(freshContainer(), const SubjectSheet()));
+    await settle(tester);
+
+    final iconNames = [
+      for (final name in AppIcons.curated)
+        '${AppIcons.curatedLabels[name]} icon',
+    ];
+    expect(iconNames.toSet(), hasLength(AppIcons.curated.length));
+    expect(SubjectPalette.names, hasLength(SubjectPalette.count));
+    for (final label in [...iconNames, ...SubjectPalette.names]) {
+      final node = find.bySemanticsLabel(label);
+      expect(node, findsOneWidget, reason: label);
+      expect(
+        tester.getSize(node),
+        const Size(48, 48),
+        reason: '$label is a 48dp target',
+      );
+    }
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Book icon')),
+      matchesSemantics(
+        label: 'Book icon',
+        isButton: true,
+        hasSelectedState: true,
+        isSelected: true,
+        hasTapAction: true,
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('Flame icon'));
+    await tester.tap(find.bySemanticsLabel('Teal'));
+    await settle(tester);
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Flame icon')),
+      matchesSemantics(
+        label: 'Flame icon',
+        isButton: true,
+        hasSelectedState: true,
+        isSelected: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Book icon')),
+      matchesSemantics(
+        label: 'Book icon',
+        isButton: true,
+        hasSelectedState: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Teal')),
+      matchesSemantics(
+        label: 'Teal',
+        isButton: true,
+        hasSelectedState: true,
+        isSelected: true,
+        hasTapAction: true,
+      ),
+    );
+    semantics.dispose();
+    expect(tester.takeException(), isNull);
   });
 }

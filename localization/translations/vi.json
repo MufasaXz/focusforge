@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "Âm nền {0}, đang tải",
   "{0} ambience, playing": "Âm nền {0}, đang phát",
   "{0} ambience, couldn’t play. Tap to try again": "Âm nền {0}, không phát được. Chạm để thử lại",
-  "{0} couldn’t play": "Không phát được {0}"
+  "{0} couldn’t play": "Không phát được {0}",
+  "{0} icon": "Biểu tượng {0}",
+  "Book": "Sách",
+  "Graduation cap": "Mũ tốt nghiệp",
+  "Star": "Ngôi sao",
+  "Heart": "Trái tim",
+  "Briefcase": "Cặp tài liệu",
+  "Flame": "Ngọn lửa",
+  "Clock": "Đồng hồ",
+  "Blue": "Xanh dương",
+  "Purple": "Tím",
+  "Green": "Xanh lá",
+  "Orange": "Cam",
+  "Pink": "Hồng",
+  "Teal": "Xanh mòng két",
+  "Theme colour {0}": "Màu chủ đề {0}",
+  "Initials": "Chữ cái đầu",
+  "Person": "Người"
 }

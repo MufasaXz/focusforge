@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} Ambiente, wird geladen",
   "{0} ambience, playing": "{0} Ambiente, spielt",
   "{0} ambience, couldn’t play. Tap to try again": "{0} Ambiente, konnte nicht abgespielt werden. Zum erneuten Versuch tippen",
-  "{0} couldn’t play": "{0} konnte nicht abgespielt werden"
+  "{0} couldn’t play": "{0} konnte nicht abgespielt werden",
+  "{0} icon": "Symbol: {0}",
+  "Book": "Buch",
+  "Graduation cap": "Doktorhut",
+  "Star": "Stern",
+  "Heart": "Herz",
+  "Briefcase": "Aktentasche",
+  "Flame": "Flamme",
+  "Clock": "Uhr",
+  "Blue": "Blau",
+  "Purple": "Lila",
+  "Green": "Grün",
+  "Orange": "Orange",
+  "Pink": "Rosa",
+  "Teal": "Petrol",
+  "Theme colour {0}": "Designfarbe {0}",
+  "Initials": "Initialen",
+  "Person": "Person"
 }

@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} পরিবেশ, লোড হচ্ছে",
   "{0} ambience, playing": "{0} পরিবেশ, বাজছে",
   "{0} ambience, couldn’t play. Tap to try again": "{0} পরিবেশ, চালানো যায়নি। আবার চেষ্টা করতে ট্যাপ করুন",
-  "{0} couldn’t play": "{0} চালানো যায়নি"
+  "{0} couldn’t play": "{0} চালানো যায়নি",
+  "{0} icon": "আইকন: {0}",
+  "Book": "বই",
+  "Graduation cap": "গ্র্যাজুয়েশন টুপি",
+  "Star": "তারা",
+  "Heart": "হৃদয়",
+  "Briefcase": "ব্রিফকেস",
+  "Flame": "শিখা",
+  "Clock": "ঘড়ি",
+  "Blue": "নীল",
+  "Purple": "বেগুনি",
+  "Green": "সবুজ",
+  "Orange": "কমলা",
+  "Pink": "গোলাপি",
+  "Teal": "টিল",
+  "Theme colour {0}": "থিমের রং {0}",
+  "Initials": "আদ্যক্ষর",
+  "Person": "ব্যক্তি"
 }

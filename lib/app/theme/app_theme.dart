@@ -425,6 +425,17 @@ class SubjectPalette {
 
   static int get count => all.length;
 
+  /// The name of each colour in [all], in the same order, for screen
+  /// readers and tooltips. English source text, translated where shown.
+  static const names = <String>[
+    'Blue',
+    'Purple',
+    'Green',
+    'Orange',
+    'Pink',
+    'Teal',
+  ];
+
   /// [primary] is the live scheme's primary, so the set re-harmonises with the
   /// theme rather than being frozen at import time.
   static List<Color> harmonized(Color primary) => [

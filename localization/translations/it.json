@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "Ambiente {0}, caricamento",
   "{0} ambience, playing": "Ambiente {0}, in riproduzione",
   "{0} ambience, couldn’t play. Tap to try again": "Ambiente {0}, impossibile riprodurre. Tocca per riprovare",
-  "{0} couldn’t play": "Impossibile riprodurre {0}"
+  "{0} couldn’t play": "Impossibile riprodurre {0}",
+  "{0} icon": "Icona: {0}",
+  "Book": "Libro",
+  "Graduation cap": "Tocco",
+  "Star": "Stella",
+  "Heart": "Cuore",
+  "Briefcase": "Valigetta",
+  "Flame": "Fiamma",
+  "Clock": "Orologio",
+  "Blue": "Blu",
+  "Purple": "Viola",
+  "Green": "Verde",
+  "Orange": "Arancione",
+  "Pink": "Rosa",
+  "Teal": "Verde acqua",
+  "Theme colour {0}": "Colore del tema {0}",
+  "Initials": "Iniziali",
+  "Person": "Persona"
 }

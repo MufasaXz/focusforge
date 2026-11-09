@@ -7,7 +7,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/data/seed.dart';
 import '../../core/models/subject_naming.dart';
 import '../../core/providers/study_providers.dart';
-import '../../shared/widgets/pressable.dart';
+import '../../shared/widgets/choice_swatch.dart';
 import '../../shared/widgets/sheet_chrome.dart';
 
 /// Opens the sheet that creates a subject, and returns the one it made.
@@ -223,15 +223,18 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                 _FieldLabel(text: context.tr("Icon")),
                 const SizedBox(height: Gap.sm),
                 Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: Gap.sm,
+                  spacing: ChoiceSwatch.spacing,
+                  runSpacing: ChoiceSwatch.spacing,
                   children: [
                     for (var i = 0; i < _iconNames.length; i++)
-                      _IconChoice(
-                        icon: AppIcons.resolve(_iconNames[i]),
+                      GlyphChoice(
+                        label: context.tr("{0} icon", [
+                          context.tr(AppIcons.curatedLabels[_iconNames[i]]!),
+                        ]),
                         accent: colors[_color % colors.length],
                         selected: i == _icon,
                         onTap: () => setState(() => _icon = i),
+                        child: Icon(AppIcons.resolve(_iconNames[i])),
                       ),
                   ],
                 ),
@@ -239,12 +242,13 @@ class _SubjectSheetState extends ConsumerState<SubjectSheet> {
                 _FieldLabel(text: context.tr("Colour")),
                 const SizedBox(height: Gap.sm),
                 Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: Gap.sm,
+                  spacing: ChoiceSwatch.spacing,
+                  runSpacing: ChoiceSwatch.spacing,
                   children: [
                     for (var i = 0; i < colors.length; i++)
-                      _ColorChoice(
+                      ColorChoice(
                         color: colors[i],
+                        label: context.tr(SubjectPalette.names[i]),
                         selected: i == _color % colors.length,
                         onTap: () => setState(() => _color = i),
                       ),
@@ -280,103 +284,4 @@ class _FieldLabel extends StatelessWidget {
       fontWeight: FontWeight.w700,
     ),
   );
-}
-
-class _IconChoice extends StatelessWidget {
-  const _IconChoice({
-    required this.icon,
-    required this.accent,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final Color accent;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: selected
-                  ? accent.withValues(alpha: 0.18)
-                  : cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(Radii.tile),
-              border: Border.all(
-                color: selected ? accent : cs.outlineVariant,
-                width: selected ? 1.4 : 1,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 19,
-              color: selected ? accent : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColorChoice extends StatelessWidget {
-  const _ColorChoice({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: selected ? 0.22 : 0.10),
-              border: Border.all(
-                color: selected ? color : cs.outlineVariant,
-                width: selected ? 2 : 1,
-              ),
-            ),
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: selected ? 16 : 13,
-                height: selected ? 16 : 13,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

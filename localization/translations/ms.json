@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "Suasana {0}, memuatkan",
   "{0} ambience, playing": "Suasana {0}, sedang dimainkan",
   "{0} ambience, couldn’t play. Tap to try again": "Suasana {0}, tidak dapat dimainkan. Ketik untuk cuba lagi",
-  "{0} couldn’t play": "{0} tidak dapat dimainkan"
+  "{0} couldn’t play": "{0} tidak dapat dimainkan",
+  "{0} icon": "Ikon {0}",
+  "Book": "Buku",
+  "Graduation cap": "Topi graduasi",
+  "Star": "Bintang",
+  "Heart": "Hati",
+  "Briefcase": "Beg kerja",
+  "Flame": "Api",
+  "Clock": "Jam",
+  "Blue": "Biru",
+  "Purple": "Ungu",
+  "Green": "Hijau",
+  "Orange": "Oren",
+  "Pink": "Merah jambu",
+  "Teal": "Biru kehijauan",
+  "Theme colour {0}": "Warna tema {0}",
+  "Initials": "Inisial",
+  "Person": "Orang"
 }

@@ -110,6 +110,30 @@ class AppIcons {
     'clock',
   ];
 
+  /// What each [curated] glyph is called when it is offered as a choice,
+  /// for screen readers and tooltips. English source text, translated where
+  /// it is shown.
+  static const curatedLabels = <String, String>{
+    'book': 'Book',
+    'math': 'Math',
+    'physics': 'Physics',
+    'chemistry': 'Chemistry',
+    'biology': 'Biology',
+    'english': 'English',
+    'history': 'History',
+    'code': 'Coding',
+    'art': 'Art',
+    'writing': 'Writing',
+    'deepwork': 'Deep work',
+    'planning': 'Planning',
+    'school': 'Graduation cap',
+    'star': 'Star',
+    'heart': 'Heart',
+    'work': 'Briefcase',
+    'fire': 'Flame',
+    'clock': 'Clock',
+  };
+
   /// Reverse lookup for persistence. Returns `null` for an icon that is not in
   /// the table, so callers can decide whether that is a bug or a fallback.
   static String? nameOf(IconData icon) =>

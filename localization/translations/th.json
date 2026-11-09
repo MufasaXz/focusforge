@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "บรรยากาศ {0}, กำลังโหลด",
   "{0} ambience, playing": "บรรยากาศ {0}, กำลังเล่น",
   "{0} ambience, couldn’t play. Tap to try again": "บรรยากาศ {0}, เล่นไม่ได้ แตะเพื่อลองอีกครั้ง",
-  "{0} couldn’t play": "เล่น {0} ไม่ได้"
+  "{0} couldn’t play": "เล่น {0} ไม่ได้",
+  "{0} icon": "ไอคอน {0}",
+  "Book": "หนังสือ",
+  "Graduation cap": "หมวกรับปริญญา",
+  "Star": "ดาว",
+  "Heart": "หัวใจ",
+  "Briefcase": "กระเป๋าเอกสาร",
+  "Flame": "เปลวไฟ",
+  "Clock": "นาฬิกา",
+  "Blue": "น้ำเงิน",
+  "Purple": "ม่วง",
+  "Green": "เขียว",
+  "Orange": "ส้ม",
+  "Pink": "ชมพู",
+  "Teal": "เขียวอมฟ้า",
+  "Theme colour {0}": "สีธีม {0}",
+  "Initials": "อักษรย่อ",
+  "Person": "บุคคล"
 }

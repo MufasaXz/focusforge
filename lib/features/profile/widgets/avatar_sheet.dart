@@ -13,7 +13,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/models/icon_registry.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/choice_swatch.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
 /// Opens the sheet that chooses the avatar's mark and colour.
@@ -85,6 +85,15 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
     cs.secondary,
     cs.tertiary,
   ];
+
+  /// The name of colour [i] of [_colors]: the theme's own three around the
+  /// subject palette's named ones.
+  static String _colorName(BuildContext context, int i, int count) {
+    if (i == 0) return context.tr("Theme colour {0}", [1]);
+    if (i == count - 2) return context.tr("Theme colour {0}", [2]);
+    if (i == count - 1) return context.tr("Theme colour {0}", [3]);
+    return context.tr(SubjectPalette.names[i - 1]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,13 +171,16 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
               _FieldLabel(text: context.tr("Mark")),
               const SizedBox(height: Gap.sm),
               Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
+                spacing: ChoiceSwatch.spacing,
+                runSpacing: ChoiceSwatch.spacing,
                 children: [
                   // Initials first, and always available: they are what the
                   // avatar is before anything is chosen, so they have to be
                   // something it can go back to.
-                  _MarkChoice(
+                  GlyphChoice(
+                    label: user.initials.isEmpty
+                        ? context.tr("{0} icon", [context.tr("Person")])
+                        : context.tr("Initials"),
                     selected: mark == null,
                     accent: user.avatarColor == null
                         ? cs.primary
@@ -185,7 +197,10 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                           ),
                   ),
                   for (final name in AppIcons.curated)
-                    _MarkChoice(
+                    GlyphChoice(
+                      label: context.tr("{0} icon", [
+                        context.tr(AppIcons.curatedLabels[name]!),
+                      ]),
                       selected: mark == name,
                       accent: user.avatarColor == null
                           ? cs.primary
@@ -194,7 +209,7 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
                         icon: name,
                         color: user.avatarColor,
                       ),
-                      child: Icon(AppIcons.resolve(name), size: 19),
+                      child: Icon(AppIcons.resolve(name)),
                     ),
                 ],
               ),
@@ -202,12 +217,13 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
               _FieldLabel(text: context.tr("Colour")),
               const SizedBox(height: Gap.sm),
               Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
+                spacing: ChoiceSwatch.spacing,
+                runSpacing: ChoiceSwatch.spacing,
                 children: [
                   for (var i = 0; i < colors.length; i++)
-                    _ColorChoice(
+                    ColorChoice(
                       color: colors[i],
+                      label: _colorName(context, i, colors.length),
                       selected: selected == i,
                       onTap: () =>
                           notifier.setAvatarColor(colors[i].toARGB32()),
@@ -440,111 +456,4 @@ class _FieldLabel extends StatelessWidget {
       fontWeight: FontWeight.w700,
     ),
   );
-}
-
-class _MarkChoice extends StatelessWidget {
-  const _MarkChoice({
-    required this.selected,
-    required this.accent,
-    required this.onTap,
-    required this.child,
-  });
-
-  final bool selected;
-  final Color accent;
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: selected
-                  ? accent.withValues(alpha: 0.18)
-                  : cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(Radii.tile),
-              border: Border.all(
-                color: selected ? accent : cs.outlineVariant,
-                width: selected ? 1.4 : 1,
-              ),
-            ),
-            child: Center(
-              child: IconTheme(
-                data: IconThemeData(
-                  color: selected ? accent : cs.onSurfaceVariant,
-                ),
-                child: DefaultTextStyle.merge(
-                  style: TextStyle(
-                    color: selected ? accent : cs.onSurfaceVariant,
-                  ),
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColorChoice extends StatelessWidget {
-  const _ColorChoice({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: selected ? 0.22 : 0.10),
-              border: Border.all(
-                color: selected ? color : cs.outlineVariant,
-                width: selected ? 2 : 1,
-              ),
-            ),
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: selected ? 16 : 13,
-                height: selected ? 16 : 13,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

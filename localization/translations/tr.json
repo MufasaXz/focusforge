@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} ambiyansı, yükleniyor",
   "{0} ambience, playing": "{0} ambiyansı, çalıyor",
   "{0} ambience, couldn’t play. Tap to try again": "{0} ambiyansı çalınamadı. Yeniden denemek için dokunun",
-  "{0} couldn’t play": "{0} çalınamadı"
+  "{0} couldn’t play": "{0} çalınamadı",
+  "{0} icon": "Simge: {0}",
+  "Book": "Kitap",
+  "Graduation cap": "Mezuniyet kepi",
+  "Star": "Yıldız",
+  "Heart": "Kalp",
+  "Briefcase": "Evrak çantası",
+  "Flame": "Alev",
+  "Clock": "Saat",
+  "Blue": "Mavi",
+  "Purple": "Mor",
+  "Green": "Yeşil",
+  "Orange": "Turuncu",
+  "Pink": "Pembe",
+  "Teal": "Camgöbeği",
+  "Theme colour {0}": "Tema rengi {0}",
+  "Initials": "Baş harfler",
+  "Person": "Kişi"
 }

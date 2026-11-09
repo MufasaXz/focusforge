@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "محیط {0}، در حال بارگیری",
   "{0} ambience, playing": "محیط {0}، در حال پخش",
   "{0} ambience, couldn’t play. Tap to try again": "محیط {0}، پخش نشد. برای تلاش دوباره ضربه بزنید",
-  "{0} couldn’t play": "{0} پخش نشد"
+  "{0} couldn’t play": "{0} پخش نشد",
+  "{0} icon": "نماد {0}",
+  "Book": "کتاب",
+  "Graduation cap": "کلاه فارغ‌التحصیلی",
+  "Star": "ستاره",
+  "Heart": "قلب",
+  "Briefcase": "کیف اداری",
+  "Flame": "شعله",
+  "Clock": "ساعت",
+  "Blue": "آبی",
+  "Purple": "بنفش",
+  "Green": "سبز",
+  "Orange": "نارنجی",
+  "Pink": "صورتی",
+  "Teal": "سبزآبی",
+  "Theme colour {0}": "رنگ پوسته {0}",
+  "Initials": "حروف اول نام",
+  "Person": "شخص"
 }

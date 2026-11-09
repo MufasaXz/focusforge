@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "Ambiente {0}, cargando",
   "{0} ambience, playing": "Ambiente {0}, sonando",
   "{0} ambience, couldn’t play. Tap to try again": "Ambiente {0}, no se pudo reproducir. Toca para reintentar",
-  "{0} couldn’t play": "No se pudo reproducir {0}"
+  "{0} couldn’t play": "No se pudo reproducir {0}",
+  "{0} icon": "Icono: {0}",
+  "Book": "Libro",
+  "Graduation cap": "Birrete",
+  "Star": "Estrella",
+  "Heart": "Corazón",
+  "Briefcase": "Maletín",
+  "Flame": "Llama",
+  "Clock": "Reloj",
+  "Blue": "Azul",
+  "Purple": "Morado",
+  "Green": "Verde",
+  "Orange": "Naranja",
+  "Pink": "Rosa",
+  "Teal": "Verde azulado",
+  "Theme colour {0}": "Color del tema {0}",
+  "Initials": "Iniciales",
+  "Person": "Persona"
 }

@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} ambience, loading",
   "{0} ambience, playing": "{0} ambience, playing",
   "{0} ambience, couldn’t play. Tap to try again": "{0} ambience, couldn’t play. Tap to try again",
-  "{0} couldn’t play": "{0} couldn’t play"
+  "{0} couldn’t play": "{0} couldn’t play",
+  "{0} icon": "{0} icon",
+  "Book": "Book",
+  "Graduation cap": "Graduation cap",
+  "Star": "Star",
+  "Heart": "Heart",
+  "Briefcase": "Briefcase",
+  "Flame": "Flame",
+  "Clock": "Clock",
+  "Blue": "Blue",
+  "Purple": "Purple",
+  "Green": "Green",
+  "Orange": "Orange",
+  "Pink": "Pink",
+  "Teal": "Teal",
+  "Theme colour {0}": "Theme colour {0}",
+  "Initials": "Initials",
+  "Person": "Person"
 }

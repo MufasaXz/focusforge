@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} アンビエンス、読み込み中",
   "{0} ambience, playing": "{0} アンビエンス、再生中",
   "{0} ambience, couldn’t play. Tap to try again": "{0} アンビエンス、再生できませんでした。タップして再試行",
-  "{0} couldn’t play": "{0} を再生できませんでした"
+  "{0} couldn’t play": "{0} を再生できませんでした",
+  "{0} icon": "アイコン: {0}",
+  "Book": "本",
+  "Graduation cap": "卒業帽",
+  "Star": "星",
+  "Heart": "ハート",
+  "Briefcase": "ブリーフケース",
+  "Flame": "炎",
+  "Clock": "時計",
+  "Blue": "青",
+  "Purple": "紫",
+  "Green": "緑",
+  "Orange": "オレンジ",
+  "Pink": "ピンク",
+  "Teal": "ティール",
+  "Theme colour {0}": "テーマカラー {0}",
+  "Initials": "イニシャル",
+  "Person": "人物"
 }

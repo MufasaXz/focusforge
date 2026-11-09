@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} ماحول، لوڈ ہو رہا ہے",
   "{0} ambience, playing": "{0} ماحول، چل رہا ہے",
   "{0} ambience, couldn’t play. Tap to try again": "{0} ماحول، چل نہیں سکا۔ دوبارہ کوشش کے لیے تھپتھپائیں",
-  "{0} couldn’t play": "{0} چل نہیں سکا"
+  "{0} couldn’t play": "{0} چل نہیں سکا",
+  "{0} icon": "آئیکن: {0}",
+  "Book": "کتاب",
+  "Graduation cap": "گریجویشن ٹوپی",
+  "Star": "ستارہ",
+  "Heart": "دل",
+  "Briefcase": "بریف کیس",
+  "Flame": "شعلہ",
+  "Clock": "گھڑی",
+  "Blue": "نیلا",
+  "Purple": "جامنی",
+  "Green": "سبز",
+  "Orange": "نارنجی",
+  "Pink": "گلابی",
+  "Teal": "نیلگوں سبز",
+  "Theme colour {0}": "تھیم کا رنگ {0}",
+  "Initials": "ابتدائی حروف",
+  "Person": "شخص"
 }

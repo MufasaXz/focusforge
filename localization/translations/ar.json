@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "أجواء {0}، جارٍ التحميل",
   "{0} ambience, playing": "أجواء {0}، قيد التشغيل",
   "{0} ambience, couldn’t play. Tap to try again": "أجواء {0}، تعذّر التشغيل. انقر للمحاولة مرة أخرى",
-  "{0} couldn’t play": "تعذّر تشغيل {0}"
+  "{0} couldn’t play": "تعذّر تشغيل {0}",
+  "{0} icon": "أيقونة {0}",
+  "Book": "كتاب",
+  "Graduation cap": "قبعة التخرج",
+  "Star": "نجمة",
+  "Heart": "قلب",
+  "Briefcase": "حقيبة عمل",
+  "Flame": "لهب",
+  "Clock": "ساعة",
+  "Blue": "أزرق",
+  "Purple": "بنفسجي",
+  "Green": "أخضر",
+  "Orange": "برتقالي",
+  "Pink": "وردي",
+  "Teal": "أزرق مخضر",
+  "Theme colour {0}": "لون السمة {0}",
+  "Initials": "الأحرف الأولى",
+  "Person": "شخص"
 }

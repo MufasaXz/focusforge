@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} 분위기, 불러오는 중",
   "{0} ambience, playing": "{0} 분위기, 재생 중",
   "{0} ambience, couldn’t play. Tap to try again": "{0} 분위기, 재생할 수 없습니다. 탭하여 다시 시도",
-  "{0} couldn’t play": "{0}을(를) 재생할 수 없습니다"
+  "{0} couldn’t play": "{0}을(를) 재생할 수 없습니다",
+  "{0} icon": "아이콘: {0}",
+  "Book": "책",
+  "Graduation cap": "학사모",
+  "Star": "별",
+  "Heart": "하트",
+  "Briefcase": "서류 가방",
+  "Flame": "불꽃",
+  "Clock": "시계",
+  "Blue": "파랑",
+  "Purple": "보라",
+  "Green": "초록",
+  "Orange": "주황",
+  "Pink": "분홍",
+  "Teal": "청록",
+  "Theme colour {0}": "테마 색상 {0}",
+  "Initials": "이니셜",
+  "Person": "사람"
 }

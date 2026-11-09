@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} 氛围，正在加载",
   "{0} ambience, playing": "{0} 氛围，正在播放",
   "{0} ambience, couldn’t play. Tap to try again": "{0} 氛围，无法播放。点按重试",
-  "{0} couldn’t play": "无法播放{0}"
+  "{0} couldn’t play": "无法播放{0}",
+  "{0} icon": "图标：{0}",
+  "Book": "书本",
+  "Graduation cap": "学士帽",
+  "Star": "星星",
+  "Heart": "爱心",
+  "Briefcase": "公文包",
+  "Flame": "火焰",
+  "Clock": "时钟",
+  "Blue": "蓝色",
+  "Purple": "紫色",
+  "Green": "绿色",
+  "Orange": "橙色",
+  "Pink": "粉色",
+  "Teal": "青绿色",
+  "Theme colour {0}": "主题色 {0}",
+  "Initials": "姓名首字母",
+  "Person": "人物"
 }

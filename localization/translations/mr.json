@@ -1613,5 +1613,22 @@
   "{0} ambience, loading": "{0} वातावरण, लोड होत आहे",
   "{0} ambience, playing": "{0} वातावरण, वाजत आहे",
   "{0} ambience, couldn’t play. Tap to try again": "{0} वातावरण, वाजवता आले नाही. पुन्हा प्रयत्न करण्यासाठी टॅप करा",
-  "{0} couldn’t play": "{0} वाजवता आले नाही"
+  "{0} couldn’t play": "{0} वाजवता आले नाही",
+  "{0} icon": "आयकन: {0}",
+  "Book": "पुस्तक",
+  "Graduation cap": "पदवी टोपी",
+  "Star": "तारा",
+  "Heart": "हृदय",
+  "Briefcase": "ब्रीफकेस",
+  "Flame": "ज्योत",
+  "Clock": "घड्याळ",
+  "Blue": "निळा",
+  "Purple": "जांभळा",
+  "Green": "हिरवा",
+  "Orange": "नारिंगी",
+  "Pink": "गुलाबी",
+  "Teal": "निळसर हिरवा",
+  "Theme colour {0}": "थीम रंग {0}",
+  "Initials": "आद्याक्षरे",
+  "Person": "व्यक्ती"
 }
