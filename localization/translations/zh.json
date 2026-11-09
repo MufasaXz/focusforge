@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "开始和结束时间相同，因此不会静音任何内容。",
   "Could not save quiet hours. Try again.": "无法保存免打扰时段。请重试。",
   "Could not save your profile. Try again.": "无法保存你的个人资料。请重试。",
-  "Could not save this target. Try again.": "无法保存此目标。请重试。"
+  "Could not save this target. Try again.": "无法保存此目标。请重试。",
+  "Online answers on": "在线回答已开启",
+  "Answers stay on this phone": "回答仅保留在这部手机上",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "你的问题、最近几条消息和一份简短的学习摘要会发送到 AI 服务。绝不发送你的姓名或邮箱。",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "在线回答还需要已关联的账号。在此之前，回答仅保留在这部手机上。"
 }

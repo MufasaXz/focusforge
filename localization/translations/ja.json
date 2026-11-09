@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "開始と終了が同じなので、何もミュートされません。",
   "Could not save quiet hours. Try again.": "おやすみ時間を保存できませんでした。もう一度お試しください。",
   "Could not save your profile. Try again.": "プロフィールを保存できませんでした。もう一度お試しください。",
-  "Could not save this target. Try again.": "この目標を保存できませんでした。もう一度お試しください。"
+  "Could not save this target. Try again.": "この目標を保存できませんでした。もう一度お試しください。",
+  "Online answers on": "オンライン回答オン",
+  "Answers stay on this phone": "回答はこのスマホ内で完結します",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "質問、直近のいくつかのメッセージ、短い学習の要約が AI サービスに送られます。名前やメールアドレスは送られません。",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "オンライン回答には連携済みアカウントも必要です。それまでは回答はこのスマホ内で完結します。"
 }

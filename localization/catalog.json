@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Start and end are the same, so nothing is muted.",
   "Could not save quiet hours. Try again.": "Could not save quiet hours. Try again.",
   "Could not save your profile. Try again.": "Could not save your profile. Try again.",
-  "Could not save this target. Try again.": "Could not save this target. Try again."
+  "Could not save this target. Try again.": "Could not save this target. Try again.",
+  "Online answers on": "Online answers on",
+  "Answers stay on this phone": "Answers stay on this phone",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Online answers also need a linked account. Until then, answers stay on this phone."
 }

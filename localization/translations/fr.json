@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Le début et la fin sont identiques, rien n’est donc mis en sourdine.",
   "Could not save quiet hours. Try again.": "Impossible d’enregistrer les heures calmes. Réessayez.",
   "Could not save your profile. Try again.": "Impossible d’enregistrer votre profil. Réessayez.",
-  "Could not save this target. Try again.": "Impossible d’enregistrer cet objectif. Réessayez."
+  "Could not save this target. Try again.": "Impossible d’enregistrer cet objectif. Réessayez.",
+  "Online answers on": "Réponses en ligne activées",
+  "Answers stay on this phone": "Les réponses restent sur ce téléphone",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Votre question, les derniers messages et un bref résumé de vos études sont envoyés à un service d’IA. Jamais votre nom ni votre e-mail.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Les réponses en ligne nécessitent aussi un compte associé. D’ici là, elles restent sur ce téléphone."
 }

@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Başlangıç ve bitiş aynı, bu yüzden hiçbir şey sessize alınmaz.",
   "Could not save quiet hours. Try again.": "Sessiz saatler kaydedilemedi. Yeniden deneyin.",
   "Could not save your profile. Try again.": "Profilin kaydedilemedi. Yeniden deneyin.",
-  "Could not save this target. Try again.": "Bu hedef kaydedilemedi. Yeniden deneyin."
+  "Could not save this target. Try again.": "Bu hedef kaydedilemedi. Yeniden deneyin.",
+  "Online answers on": "Çevrimiçi yanıtlar açık",
+  "Answers stay on this phone": "Yanıtlar bu telefonda kalır",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "คำถามของคุณ ข้อความล่าสุดไม่กี่ข้อความ และสรุปการเรียนสั้น ๆ จะถูกส่งไปยังบริการ AI ไม่ส่งชื่อหรืออีเมลของคุณเด็ดขาด",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "คำตอบออนไลน์ต้องใช้บัญชีที่ลิงก์ไว้ด้วย จนกว่าจะถึงตอนนั้น คำตอบจะอยู่ในโทรศัพท์เครื่องนี้"
 }

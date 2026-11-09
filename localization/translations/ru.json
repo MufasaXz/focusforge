@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Начало и конец совпадают, поэтому ничего не отключается.",
   "Could not save quiet hours. Try again.": "Не удалось сохранить тихие часы. Попробуйте ещё раз.",
   "Could not save your profile. Try again.": "Не удалось сохранить профиль. Попробуйте ещё раз.",
-  "Could not save this target. Try again.": "Не удалось сохранить эту цель. Попробуйте ещё раз."
+  "Could not save this target. Try again.": "Не удалось сохранить эту цель. Попробуйте ещё раз.",
+  "Online answers on": "Онлайн-ответы включены",
+  "Answers stay on this phone": "Ответы остаются на этом телефоне",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Ваш вопрос, последние сообщения и краткая сводка учёбы отправляются в сервис ИИ. Никогда — ваше имя или почта.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-ответов также нужен привязанный аккаунт. До тех пор ответы остаются на этом телефоне."
 }

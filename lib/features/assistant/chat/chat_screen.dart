@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/localization/app_strings.dart';
-import '../../../core/services/ai_backend_service.dart' show reportReasons;
+import '../../../core/providers/app_providers.dart' show accountUidProvider;
+import '../../../core/services/ai_backend_service.dart'
+    show aiBackendProvider, reportReasons;
 import '../../../core/models/shield.dart';
 import '../../../core/providers/shield_providers.dart';
 import '../../../core/services/permission_manager.dart';
@@ -232,6 +234,41 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     await PipNudges.sync(ref.read, strings);
   }
 
+  /// Turning online answers on says first what would be sent, as Pip's
+  /// own question does; turning them off needs no confirmation.
+  Future<void> _changeOnlineAnswers(bool on) async {
+    if (!on) return _chat.setOnlineAnswers(false);
+    final signedIn = ref.read(accountUidProvider) != null;
+    final allow = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr('Answer with AI when online')),
+        content: Text(
+          [
+            context.tr(
+              'Your question, the last few messages and a short study summary go to an AI service. Never your name or email.',
+            ),
+            if (!signedIn)
+              context.tr(
+                'Online answers also need a linked account. Until then, answers stay on this phone.',
+              ),
+          ].join('\n\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.tr('Keep it on this phone')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.tr('Allow')),
+          ),
+        ],
+      ),
+    );
+    if (allow == true && mounted) await _chat.setOnlineAnswers(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider);
@@ -251,15 +288,26 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
       if (goTo != null && previous?.goTo != goTo) _go(goTo);
     });
 
-    final status = switch (chat.status) {
-      ChatStatus.thinking => chat.step?.of(context) ?? context.tr('Thinking…'),
-      ChatStatus.typing => context.tr('Typing…'),
-      ChatStatus.idle => context.tr('Your study buddy'),
-    };
     final quiet = ref.watch(assistantMemoryProvider.select((m) => m.quiet));
     final online = ref.watch(
       assistantMemoryProvider.select((m) => m.aiConsent == true),
     );
+    // What a question sent now would actually use: consent alone is not
+    // enough without a linked account and the service.
+    final answersOnline =
+        online &&
+        ref.watch(accountUidProvider) != null &&
+        ref.watch(aiBackendProvider) != null;
+    // At rest the header says where answers come from, so it is known
+    // before anything is typed.
+    final status = switch (chat.status) {
+      ChatStatus.thinking => chat.step?.of(context) ?? context.tr('Thinking…'),
+      ChatStatus.typing => context.tr('Typing…'),
+      ChatStatus.idle =>
+        answersOnline
+            ? context.tr('Online answers on')
+            : context.tr('Answers stay on this phone'),
+    };
     final remindersOff = ref.watch(
       assistantMemoryProvider.select((m) => m.remindersOff),
     );
@@ -310,7 +358,7 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                 _chat.clear();
                 unawaited(_chat.open());
               } else if (value == 2) {
-                unawaited(_chat.setOnlineAnswers(!online));
+                unawaited(_changeOnlineAnswers(!online));
               } else if (value == 3) {
                 unawaited(_setReminders(off: !remindersOff));
               } else {

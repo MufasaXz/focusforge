@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "시작과 종료가 같아서 아무것도 무음 처리되지 않습니다.",
   "Could not save quiet hours. Try again.": "방해 금지 시간을 저장할 수 없습니다. 다시 시도하세요.",
   "Could not save your profile. Try again.": "프로필을 저장할 수 없습니다. 다시 시도하세요.",
-  "Could not save this target. Try again.": "이 목표를 저장할 수 없습니다. 다시 시도하세요."
+  "Could not save this target. Try again.": "이 목표를 저장할 수 없습니다. 다시 시도하세요.",
+  "Online answers on": "온라인 답변 켜짐",
+  "Answers stay on this phone": "답변은 이 휴대전화에만 머뭅니다",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "질문, 최근 메시지 몇 개, 짧은 학습 요약이 AI 서비스로 전송됩니다. 이름이나 이메일은 절대 보내지 않습니다.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "온라인 답변에는 연결된 계정도 필요합니다. 그전까지 답변은 이 휴대전화에만 머뭅니다."
 }

@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "தொடக்கமும் முடிவும் ஒன்றே, எனவே எதுவும் ஒலியடக்கப்படாது.",
   "Could not save quiet hours. Try again.": "அமைதி நேரத்தைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
   "Could not save your profile. Try again.": "உங்கள் சுயவிவரத்தைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
-  "Could not save this target. Try again.": "இந்த இலக்கைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்."
+  "Could not save this target. Try again.": "இந்த இலக்கைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
+  "Online answers on": "ஆன்லைன் பதில்கள் இயக்கத்தில்",
+  "Answers stay on this phone": "பதில்கள் இந்த மொபைலிலேயே இருக்கும்",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Ваше запитання, останні повідомлення та короткий підсумок навчання надсилаються до сервісу ШІ. Ніколи — ваше ім’я чи пошта.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Для онлайн-відповідей також потрібен прив’язаний обліковий запис. Доти відповіді залишаються на цьому телефоні."
 }

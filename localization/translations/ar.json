@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "وقت البدء والانتهاء متطابقان، لذا لا يُكتم شيء.",
   "Could not save quiet hours. Try again.": "تعذّر حفظ ساعات الهدوء. حاول مرة أخرى.",
   "Could not save your profile. Try again.": "تعذّر حفظ ملفك الشخصي. حاول مرة أخرى.",
-  "Could not save this target. Try again.": "تعذّر حفظ هذا الهدف. حاول مرة أخرى."
+  "Could not save this target. Try again.": "تعذّر حفظ هذا الهدف. حاول مرة أخرى.",
+  "Online answers on": "الإجابات عبر الإنترنت مفعّلة",
+  "Answers stay on this phone": "تبقى الإجابات على هذا الهاتف",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "يُرسل سؤالك وآخر بضع رسائل وملخص قصير لدراستك إلى خدمة ذكاء اصطناعي. لا يُرسل اسمك أو بريدك الإلكتروني أبدًا.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "تحتاج الإجابات عبر الإنترنت أيضًا إلى حساب مرتبط. حتى ذلك الحين، تبقى الإجابات على هذا الهاتف."
 }

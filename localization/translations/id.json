@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Mulai dan selesai sama, jadi tidak ada yang dibisukan.",
   "Could not save quiet hours. Try again.": "Tidak dapat menyimpan jam tenang. Coba lagi.",
   "Could not save your profile. Try again.": "Tidak dapat menyimpan profil Anda. Coba lagi.",
-  "Could not save this target. Try again.": "Tidak dapat menyimpan target ini. Coba lagi."
+  "Could not save this target. Try again.": "Tidak dapat menyimpan target ini. Coba lagi.",
+  "Online answers on": "Jawaban online aktif",
+  "Answers stay on this phone": "Jawaban tetap di ponsel ini",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Pertanyaan Anda, beberapa pesan terakhir, dan ringkasan singkat belajar Anda dikirim ke layanan AI. Tidak pernah nama atau email Anda.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Jawaban online juga memerlukan akun yang tertaut. Sampai saat itu, jawaban tetap di ponsel ini."
 }

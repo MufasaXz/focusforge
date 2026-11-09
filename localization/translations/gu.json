@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "શરૂઆત અને અંત સરખા છે, તેથી કંઈ મ્યૂટ થતું નથી.",
   "Could not save quiet hours. Try again.": "શાંત સમય સાચવી શકાયો નહીં. ફરી પ્રયાસ કરો.",
   "Could not save your profile. Try again.": "તમારી પ્રોફાઇલ સાચવી શકાઈ નહીં. ફરી પ્રયાસ કરો.",
-  "Could not save this target. Try again.": "આ લક્ષ્ય સાચવી શકાયું નહીં. ફરી પ્રયાસ કરો."
+  "Could not save this target. Try again.": "આ લક્ષ્ય સાચવી શકાયું નહીં. ફરી પ્રયાસ કરો.",
+  "Online answers on": "ઓનલાઇન જવાબ ચાલુ",
+  "Answers stay on this phone": "જવાબ આ ફોન પર જ રહે છે",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "તમારો પ્રશ્ન, છેલ્લા થોડા સંદેશા અને અભ્યાસનો ટૂંકો સારાંશ એક AI સેવાને જાય છે. તમારું નામ કે ઇમેઇલ ક્યારેય નહીં.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ઓનલાઇન જવાબ માટે લિંક કરેલું એકાઉન્ટ પણ જોઈએ. ત્યાં સુધી જવાબ આ ફોન પર જ રહે છે."
 }

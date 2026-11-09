@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "เวลาเริ่มและสิ้นสุดตรงกัน จึงไม่มีการปิดเสียงใด ๆ",
   "Could not save quiet hours. Try again.": "บันทึกช่วงเวลาเงียบไม่ได้ ลองอีกครั้ง",
   "Could not save your profile. Try again.": "บันทึกโปรไฟล์ของคุณไม่ได้ ลองอีกครั้ง",
-  "Could not save this target. Try again.": "บันทึกเป้าหมายนี้ไม่ได้ ลองอีกครั้ง"
+  "Could not save this target. Try again.": "บันทึกเป้าหมายนี้ไม่ได้ ลองอีกครั้ง",
+  "Online answers on": "คำตอบออนไลน์เปิดอยู่",
+  "Answers stay on this phone": "คำตอบอยู่ในโทรศัพท์เครื่องนี้",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "మీ ప్రశ్న, చివరి కొన్ని సందేశాలు, చదువు చిన్న సారాంశం ఒక AI సేవకు వెళ్తాయి. మీ పేరు లేదా ఇమెయిల్ ఎప్పుడూ కాదు.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "ఆన్‌లైన్ సమాధానాలకు లింక్ చేసిన ఖాతా కూడా అవసరం. అప్పటివరకు సమాధానాలు ఈ ఫోన్‌లోనే ఉంటాయి."
 }

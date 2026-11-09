@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "شروع اور اختتام ایک ہی ہیں، اس لیے کچھ بھی خاموش نہیں ہوتا۔",
   "Could not save quiet hours. Try again.": "خاموش اوقات محفوظ نہیں ہو سکے۔ دوبارہ کوشش کریں۔",
   "Could not save your profile. Try again.": "آپ کی پروفائل محفوظ نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
-  "Could not save this target. Try again.": "یہ ہدف محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔"
+  "Could not save this target. Try again.": "یہ ہدف محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+  "Online answers on": "آن لائن جوابات آن",
+  "Answers stay on this phone": "جوابات اسی فون پر رہتے ہیں",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "آپ کا سوال، آخری چند پیغامات اور پڑھائی کا مختصر خلاصہ ایک AI سروس کو جاتا ہے۔ آپ کا نام یا ای میل کبھی نہیں۔",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "آن لائن جوابات کے لیے منسلک اکاؤنٹ بھی ضروری ہے۔ تب تک جوابات اسی فون پر رہتے ہیں۔"
 }

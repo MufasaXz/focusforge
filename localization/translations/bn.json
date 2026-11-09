@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "শুরু ও শেষ একই, তাই কিছুই নীরব হয় না।",
   "Could not save quiet hours. Try again.": "নীরব সময় সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
   "Could not save your profile. Try again.": "আপনার প্রোফাইল সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
-  "Could not save this target. Try again.": "এই লক্ষ্য সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।"
+  "Could not save this target. Try again.": "এই লক্ষ্য সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
+  "Online answers on": "অনলাইন উত্তর চালু",
+  "Answers stay on this phone": "উত্তর এই ফোনেই থাকে",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "আপনার প্রশ্ন, শেষ কয়েকটি বার্তা এবং পড়াশোনার একটি ছোট সারাংশ একটি এআই পরিষেবায় যায়। আপনার নাম বা ইমেল কখনও নয়।",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "অনলাইন উত্তরের জন্য একটি লিঙ্ক করা অ্যাকাউন্টও লাগে। ততদিন উত্তর এই ফোনেই থাকে।"
 }

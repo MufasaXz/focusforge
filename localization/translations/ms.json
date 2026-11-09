@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Mula dan tamat adalah sama, jadi tiada apa yang disenyapkan.",
   "Could not save quiet hours. Try again.": "Tidak dapat menyimpan waktu senyap. Cuba lagi.",
   "Could not save your profile. Try again.": "Tidak dapat menyimpan profil anda. Cuba lagi.",
-  "Could not save this target. Try again.": "Tidak dapat menyimpan sasaran ini. Cuba lagi."
+  "Could not save this target. Try again.": "Tidak dapat menyimpan sasaran ini. Cuba lagi.",
+  "Online answers on": "Jawapan dalam talian dihidupkan",
+  "Answers stay on this phone": "Jawapan kekal pada telefon ini",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Soalan anda, beberapa mesej terakhir dan ringkasan pendek pembelajaran anda dihantar ke perkhidmatan AI. Tidak sekali-kali nama atau e-mel anda.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Jawapan dalam talian juga memerlukan akaun yang dipautkan. Sehingga itu, jawapan kekal pada telefon ini."
 }

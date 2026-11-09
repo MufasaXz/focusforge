@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Giờ bắt đầu và kết thúc trùng nhau nên không có gì bị tắt tiếng.",
   "Could not save quiet hours. Try again.": "Không lưu được giờ yên lặng. Hãy thử lại.",
   "Could not save your profile. Try again.": "Không lưu được hồ sơ của bạn. Hãy thử lại.",
-  "Could not save this target. Try again.": "Không lưu được mục tiêu này. Hãy thử lại."
+  "Could not save this target. Try again.": "Không lưu được mục tiêu này. Hãy thử lại.",
+  "Online answers on": "Trả lời trực tuyến đang bật",
+  "Answers stay on this phone": "Câu trả lời chỉ ở trên điện thoại này",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Câu hỏi của bạn, vài tin nhắn gần nhất và bản tóm tắt ngắn về việc học được gửi đến một dịch vụ AI. Không bao giờ gửi tên hay email của bạn.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Trả lời trực tuyến cũng cần tài khoản đã liên kết. Cho đến lúc đó, câu trả lời chỉ ở trên điện thoại này."
 }

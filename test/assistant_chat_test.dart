@@ -292,6 +292,41 @@ void main() {
     expect(jsonOf(sent), isNot(contains('Sam')));
   });
 
+  testWidgets('the header says where answers come from, and going online '
+      'asks first without losing the draft', (tester) async {
+    final backend = _FakeBackend(reply: 'unused');
+    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    await wait(tester);
+    expect(find.text('Answers stay on this phone'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'half-typed question');
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Answer with AI when online'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Never your name or email.'),
+      findsOneWidget,
+      reason: 'what would be sent is said before it is allowed',
+    );
+    await tester.tap(find.text('Keep it on this phone'));
+    await tester.pumpAndSettle();
+    expect(container.read(assistantMemoryProvider).aiConsent, isNot(true));
+    expect(find.text('Answers stay on this phone'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Answer with AI when online'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Allow'));
+    await tester.pumpAndSettle();
+    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
+    expect(find.text('Online answers on'), findsOneWidget);
+    expect(find.text('half-typed question'), findsOneWidget);
+    expect(backend.questions, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('turning online answers off before sending keeps it here', (
     tester,
   ) async {

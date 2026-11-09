@@ -1633,5 +1633,9 @@
   "Start and end are the same, so nothing is muted.": "Початок і кінець однакові, тож нічого не вимикається.",
   "Could not save quiet hours. Try again.": "Не вдалося зберегти тихі години. Спробуйте ще раз.",
   "Could not save your profile. Try again.": "Не вдалося зберегти профіль. Спробуйте ще раз.",
-  "Could not save this target. Try again.": "Не вдалося зберегти цю ціль. Спробуйте ще раз."
+  "Could not save this target. Try again.": "Не вдалося зберегти цю ціль. Спробуйте ще раз.",
+  "Online answers on": "Онлайн-відповіді увімкнено",
+  "Answers stay on this phone": "Відповіді залишаються на цьому телефоні",
+  "Your question, the last few messages and a short study summary go to an AI service. Never your name or email.": "Sorunuz, son birkaç mesaj ve kısa bir çalışma özeti bir yapay zekâ hizmetine gider. Adınız veya e-postanız asla gitmez.",
+  "Online answers also need a linked account. Until then, answers stay on this phone.": "Çevrimiçi yanıtlar için bağlı bir hesap da gerekir. O zamana kadar yanıtlar bu telefonda kalır."
 }
