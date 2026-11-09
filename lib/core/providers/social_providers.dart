@@ -710,10 +710,18 @@ bool _ownsBoardTime(Ref ref, String owner) {
 /// Deliberately not [weekTotalHoursProvider]: that one is a rolling
 /// last-seven-days window, so reading it under a "This week" label put the
 /// board and the rest of the app on different weeks.
+/// The Monday that starts this week, from the calendar date the app keeps.
+///
+/// Every weekly figure counts from here and watches that date, so when a new
+/// week begins under a running app they all move to it together.
+DateTime _boardMonday(Ref ref) {
+  final day = ref.watch(focusCalendarDateProvider);
+  return DateTime(day.year, day.month, day.day - (day.weekday - 1));
+}
+
 final leaderboardWeekHoursProvider = Provider<double>((ref) {
   final now = DateTime.now();
-  ref.watch(focusCalendarDateProvider);
-  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final monday = _boardMonday(ref);
   var minutes = 0;
   for (final session in ref.watch(sessionsProvider)) {
     if (!session.completed) continue;
@@ -730,8 +738,7 @@ final leaderboardWeekHoursProvider = Provider<double>((ref) {
 /// The same window, one week earlier — the only honest comparison the app can
 /// draw without a server, because it is against the user's own history.
 final previousWeekHoursProvider = Provider<double>((ref) {
-  final now = DateTime.now();
-  final thisMonday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final thisMonday = _boardMonday(ref);
   final lastMonday = DateTime(
     thisMonday.year,
     thisMonday.month,
@@ -752,7 +759,7 @@ final previousWeekHoursProvider = Provider<double>((ref) {
 /// Completed sessions logged this week.
 final weekSessionCountProvider = Provider<int>((ref) {
   final now = DateTime.now();
-  final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  final monday = _boardMonday(ref);
   return ref
       .watch(sessionsProvider)
       .where(

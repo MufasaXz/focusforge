@@ -9,6 +9,7 @@ import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/social.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/social_providers.dart';
@@ -679,4 +680,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  test('a new week moves every weekly figure on together', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    await store.clearAll();
+    final sunday = DateTime(2026, 10, 25);
+    final calendar = _TurningCalendar(sunday);
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        focusCalendarDateProvider.overrideWith(() => calendar),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(userProvider.notifier)
+        .save(const UserProfile(uid: 'me', isAnonymous: false));
+    container.read(sessionsProvider.notifier).hydrate([
+      FocusSession(
+        id: 'sunday',
+        ownerUid: 'me',
+        subjectId: '',
+        startedAt: DateTime(2026, 10, 25, 10),
+        minutes: 60,
+      ).toJson(),
+    ]);
+    List<num> figures() => [
+      container.read(leaderboardWeekHoursProvider),
+      container.read(previousWeekHoursProvider),
+      container.read(weekSessionCountProvider),
+    ];
+    expect(figures(), [1, 0, 1]);
+    calendar.turnTo(DateTime(2026, 10, 26));
+    expect(figures(), [0, 1, 0]);
+  });
+}
+
+/// A calendar the test turns over to the next day.
+class _TurningCalendar extends FocusCalendarDateNotifier {
+  _TurningCalendar(this.start);
+  final DateTime start;
+  @override
+  DateTime build() => start;
+  void turnTo(DateTime day) => state = day;
 }
