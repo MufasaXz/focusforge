@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} క్రియాశీల రోజులు",
   "{0} active {1}": "{0} సక్రియ {1}",
   "{0} active {1} in the last 7 days": "{0} గత 7 రోజుల్లో {1} యాక్టివ్‌గా ఉంది",
-  "{0} ambience, {1}": "{0} వాతావరణం, {1}",
   "{0} assigned / {1} target": "{0} కేటాయించబడింది / {1} లక్ష్యం",
   "{0} clock, {1}": "{0} గడియారం, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} మిమ్మల్ని ఇతర వ్యక్తులతో పోలుస్తుంది, కాబట్టి దీనికి నిజమైన ఖాతా అవసరం. ఒకదానిని లింక్ చేయడం తక్షణమే మరియు మీరు ఇప్పటికే ఈ పరికరంలో లాగిన్ చేసిన ప్రతిదాన్ని ఉంచుతుంది.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "సెషన్ల మధ్య విరామం",
   "Could not send the report. Check your connection and try again.": "నివేదికను పంపలేకపోయాము. మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
   "Hold": "ఆపి ఉంచండి",
-  "Well done": "చాలా బాగుంది"
+  "Well done": "చాలా బాగుంది",
+  "{0} ambience, off": "{0} వాతావరణం, ఆఫ్",
+  "{0} ambience, loading": "{0} వాతావరణం, లోడ్ అవుతోంది",
+  "{0} ambience, playing": "{0} వాతావరణం, ప్లే అవుతోంది",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} వాతావరణం, ప్లే చేయలేకపోయింది. మళ్లీ ప్రయత్నించడానికి నొక్కండి",
+  "{0} couldn’t play": "{0} ప్లే చేయలేకపోయింది"
 }

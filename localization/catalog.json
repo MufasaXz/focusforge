@@ -279,7 +279,6 @@
   "Levels": "Levels",
   "1 playing": "1 playing",
   "{0} playing": "{0} playing",
-  "{0} ambience, {1}": "{0} ambience, {1}",
   "{0} volume": "{0} volume",
   "Custom": "Custom",
   "Your own plan": "Your own plan",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Break between sessions",
   "Could not send the report. Check your connection and try again.": "Could not send the report. Check your connection and try again.",
   "Hold": "Hold",
-  "Well done": "Well done"
+  "Well done": "Well done",
+  "{0} ambience, off": "{0} ambience, off",
+  "{0} ambience, loading": "{0} ambience, loading",
+  "{0} ambience, playing": "{0} ambience, playing",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} ambience, couldn’t play. Tap to try again",
+  "{0} couldn’t play": "{0} couldn’t play"
 }

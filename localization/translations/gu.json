@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} સક્રિય દિવસો",
   "{0} active {1}": "{0} સક્રિય {1}",
   "{0} active {1} in the last 7 days": "{0} {1} છેલ્લા 7 દિવસમાં સક્રિય",
-  "{0} ambience, {1}": "{0} વાતાવરણ, {1}",
   "{0} assigned / {1} target": "{0} સોંપાયેલ / {1} લક્ષ્ય",
   "{0} clock, {1}": "{0} ઘડિયાળ, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} તમારી સરખામણી અન્ય લોકો સાથે કરે છે, તેથી તેને વાસ્તવિક એકાઉન્ટની જરૂર છે. એકને લિંક કરવું એ ત્વરિત છે અને તમે આ ઉપકરણ પર પહેલેથી લૉગ કરેલ છે તે બધું જ રાખે છે.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "સત્રો વચ્ચે વિરામ",
   "Could not send the report. Check your connection and try again.": "રિપોર્ટ મોકલી શકાયો નહીં. તમારું કનેક્શન તપાસો અને ફરી પ્રયાસ કરો.",
   "Hold": "રોકી રાખો",
-  "Well done": "ખૂબ સરસ"
+  "Well done": "ખૂબ સરસ",
+  "{0} ambience, off": "{0} વાતાવરણ, બંધ",
+  "{0} ambience, loading": "{0} વાતાવરણ, લોડ થઈ રહ્યું છે",
+  "{0} ambience, playing": "{0} વાતાવરણ, વાગી રહ્યું છે",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} વાતાવરણ, વગાડી શકાયું નહીં. ફરી પ્રયાસ કરવા ટૅપ કરો",
+  "{0} couldn’t play": "{0} વગાડી શકાયું નહીં"
 }

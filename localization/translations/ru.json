@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} активных дней",
   "{0} active {1}": "{0} активен {1}",
   "{0} active {1} in the last 7 days": "{0} активен {1} за последние 7 дней",
-  "{0} ambience, {1}": "{0} атмосфера, {1}",
   "{0} assigned / {1} target": "{0} назначен / цель {1}",
   "{0} clock, {1}": "{0} часы, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} сравнивает вас с другими людьми, поэтому для этого требуется реальная учетная запись. Привязка осуществляется мгновенно и сохраняет все, что вы уже выполнили на этом устройстве.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Перерыв между сессиями",
   "Could not send the report. Check your connection and try again.": "Не удалось отправить жалобу. Проверьте подключение и повторите попытку.",
   "Hold": "Задержите",
-  "Well done": "Отлично"
+  "Well done": "Отлично",
+  "{0} ambience, off": "Атмосфера «{0}», выключено",
+  "{0} ambience, loading": "Атмосфера «{0}», загрузка",
+  "{0} ambience, playing": "Атмосфера «{0}», воспроизводится",
+  "{0} ambience, couldn’t play. Tap to try again": "Атмосфера «{0}», не удалось воспроизвести. Нажмите, чтобы повторить",
+  "{0} couldn’t play": "Не удалось воспроизвести «{0}»"
 }

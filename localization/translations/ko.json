@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} 활동일",
   "{0} active {1}": "{0} 활성 {1}",
   "{0} active {1} in the last 7 days": "지난 7일 동안 {0} 활성 {1}",
-  "{0} ambience, {1}": "{0} 분위기, {1}",
   "{0} assigned / {1} target": "{0} 할당됨 / {1} 대상",
   "{0} clock, {1}": "{0} 시계, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0}는 귀하를 다른 사람과 비교하므로 실제 계정이 필요합니다. 연결은 즉시 이루어지며 이 장치에 이미 로그인한 모든 내용을 유지합니다.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "세션 사이 휴식",
   "Could not send the report. Check your connection and try again.": "신고를 보내지 못했습니다. 연결을 확인하고 다시 시도하세요.",
   "Hold": "멈추세요",
-  "Well done": "잘했어요"
+  "Well done": "잘했어요",
+  "{0} ambience, off": "{0} 분위기, 꺼짐",
+  "{0} ambience, loading": "{0} 분위기, 불러오는 중",
+  "{0} ambience, playing": "{0} 분위기, 재생 중",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} 분위기, 재생할 수 없습니다. 탭하여 다시 시도",
+  "{0} couldn’t play": "{0}을(를) 재생할 수 없습니다"
 }

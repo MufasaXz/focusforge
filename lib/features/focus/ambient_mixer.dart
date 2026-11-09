@@ -30,9 +30,14 @@ class AmbientMixerSection extends ConsumerWidget {
     final t = Theme.of(context).colorScheme;
     final catalogue = ref.watch(ambientCatalogueProvider);
     final active = ref.watch(activeSoundsProvider);
+    final status = ref.watch(trackStatusProvider);
     final volumes = ref.watch(volumesProvider);
 
+    // The mix lists what is selected; the count says what is audible.
     final playing = catalogue.where((s) => active.contains(s.id)).toList();
+    final audible = playing
+        .where((s) => status[s.id] == TrackStatus.playing)
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,7 +85,9 @@ class AmbientMixerSection extends ConsumerWidget {
                             width: width,
                             child: _AmbientTile(
                               tile: sound,
-                              active: active.contains(sound.id),
+                              status: active.contains(sound.id)
+                                  ? status[sound.id] ?? TrackStatus.loading
+                                  : null,
                               onTap: () {
                                 unawaited(HapticFeedback.selectionClick());
                                 unawaited(
@@ -158,32 +165,43 @@ class AmbientMixerSection extends ConsumerWidget {
                                         ),
                                   ),
                                   const Spacer(),
-                                  Text(
-                                    playing.length == 1
-                                        ? context.tr("1 playing")
-                                        : context.tr("{0} playing", [
-                                            playing.length,
-                                          ]),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(color: t.onSurfaceVariant),
-                                  ),
+                                  if (audible > 0)
+                                    Text(
+                                      audible == 1
+                                          ? context.tr("1 playing")
+                                          : context.tr("{0} playing", [
+                                              audible,
+                                            ]),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(color: t.onSurfaceVariant),
+                                    ),
                                 ],
                               ),
                               for (final sound in playing)
-                                _VolumeRow(
-                                  sound: sound,
-                                  value:
-                                      (volumes[sound.id] ??
-                                              AmbientMixer.defaultVolume)
-                                          .clamp(0.0, 1.0),
-                                  onChanged: (v) => unawaited(
-                                    ref
-                                        .read(volumesProvider.notifier)
-                                        .set(sound.id, v),
+                                if (status[sound.id] == TrackStatus.failed)
+                                  _FailedRow(
+                                    sound: sound,
+                                    onRetry: () => unawaited(
+                                      ref
+                                          .read(activeSoundsProvider.notifier)
+                                          .retry(sound),
+                                    ),
+                                  )
+                                else
+                                  _VolumeRow(
+                                    sound: sound,
+                                    value:
+                                        (volumes[sound.id] ??
+                                                AmbientMixer.defaultVolume)
+                                            .clamp(0.0, 1.0),
+                                    onChanged: (v) => unawaited(
+                                      ref
+                                          .read(volumesProvider.notifier)
+                                          .set(sound.id, v),
+                                    ),
                                   ),
-                                ),
                             ],
                           );
                     if (MediaQuery.disableAnimationsOf(context)) return mix;
@@ -205,39 +223,49 @@ class AmbientMixerSection extends ConsumerWidget {
 }
 
 /// A named track with stable dimensions when its playback state changes.
+///
+/// [status] is null for a track that is off. A loading track is lit with a
+/// spinner, a playing one with moving bars, and one the platform refused is
+/// unlit with an error mark: it is not playing, and a tap tries again.
 class _AmbientTile extends StatelessWidget {
   const _AmbientTile({
     required this.tile,
-    required this.active,
+    required this.status,
     required this.onTap,
   });
 
   final AmbientSound tile;
-  final bool active;
+  final TrackStatus? status;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
     final color = harmonize(tile.color, t.primary);
-    final ink = active ? color : t.onSurfaceVariant;
+    final lit = status == TrackStatus.loading || status == TrackStatus.playing;
+    final ink = lit ? color : t.onSurfaceVariant;
+    final still = MediaQuery.disableAnimationsOf(context);
+    final name = context.tr(tile.name);
 
     return Semantics(
       button: true,
-      selected: active,
-      label: context.tr("{0} ambience, {1}", [
-        context.tr(tile.name),
-        active ? 'on' : 'off',
-      ]),
+      selected: lit,
+      label: switch (status) {
+        null => context.tr("{0} ambience, off", [name]),
+        TrackStatus.loading => context.tr("{0} ambience, loading", [name]),
+        TrackStatus.playing => context.tr("{0} ambience, playing", [name]),
+        TrackStatus.failed => context.tr(
+          "{0} ambience, couldn’t play. Tap to try again",
+          [name],
+        ),
+      },
       excludeSemantics: true,
       onTap: onTap,
       child: Pressable(
         onTap: onTap,
         scale: 0.97,
         child: AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : Motion.base,
+          duration: still ? Duration.zero : Motion.base,
           curve: Motion.decelerate,
           constraints: const BoxConstraints(minHeight: 68),
           padding: const EdgeInsets.symmetric(
@@ -245,15 +273,11 @@ class _AmbientTile extends StatelessWidget {
             vertical: Gap.md,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(
-              active ? Radii.tile : Radii.card,
-            ),
+            borderRadius: BorderRadius.circular(lit ? Radii.tile : Radii.card),
             border: Border.all(
-              color: active ? color : t.outlineVariant.withValues(alpha: 0.5),
+              color: lit ? color : t.outlineVariant.withValues(alpha: 0.5),
             ),
-            color: active
-                ? color.withValues(alpha: 0.12)
-                : t.surfaceContainerLow,
+            color: lit ? color.withValues(alpha: 0.12) : t.surfaceContainerLow,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -264,16 +288,32 @@ class _AmbientTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(tile.icon, size: 20, color: ink),
-                    if (active) ...[
+                    if (status != null) ...[
                       const SizedBox(width: Gap.sm),
-                      _Equalizer(color: color),
+                      switch (status!) {
+                        TrackStatus.playing => _Equalizer(color: color),
+                        TrackStatus.loading => SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: color,
+                            // Reduce motion gets a still arc, not a spinner.
+                            value: still ? 0.3 : null,
+                          ),
+                        ),
+                        TrackStatus.failed => Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: t.error,
+                        ),
+                      },
                     ],
                   ],
                 ),
               ),
               const SizedBox(height: Gap.sm),
               Text(
-                context.tr(tile.name),
+                name,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium
                     ?.copyWith(color: t.onSurface),
@@ -281,6 +321,46 @@ class _AmbientTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A selected track the platform would not play, in place of its slider.
+///
+/// The message is a live region, so a screen reader says it once when the
+/// failure arrives; the focus timer is untouched either way.
+class _FailedRow extends StatelessWidget {
+  const _FailedRow({required this.sound, required this.onRetry});
+
+  final AmbientSound sound;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.sm),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 15, color: t.error),
+          const SizedBox(width: Gap.sm),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                context.tr("{0} couldn’t play", [context.tr(sound.name)]),
+                style: text.bodySmall?.copyWith(color: t.onSurface),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            child: Text(context.tr("Retry")),
+          ),
+        ],
       ),
     );
   }

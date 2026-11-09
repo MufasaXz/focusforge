@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} 活跃天数",
   "{0} active {1}": "{0} 有源 {1}",
   "{0} active {1} in the last 7 days": "{0} 过去 7 天内活跃 {1}",
-  "{0} ambience, {1}": "{0} 氛围，{1}",
   "{0} assigned / {1} target": "{0} 指定/{1} 目标",
   "{0} clock, {1}": "{0}时钟，{1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} 会将您与其他人进行比较，因此需要真实账户。链接是即时的，并保留您已在此设备上登录的所有内容。",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "学习时段间休息",
   "Could not send the report. Check your connection and try again.": "无法发送举报。请检查网络连接后重试。",
   "Hold": "屏住",
-  "Well done": "做得好"
+  "Well done": "做得好",
+  "{0} ambience, off": "{0} 氛围，已关闭",
+  "{0} ambience, loading": "{0} 氛围，正在加载",
+  "{0} ambience, playing": "{0} 氛围，正在播放",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} 氛围，无法播放。点按重试",
+  "{0} couldn’t play": "无法播放{0}"
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:focusforge/app/theme/app_theme.dart';
@@ -8,6 +9,7 @@ import 'package:focusforge/core/models/study.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/providers/audio_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
+import 'package:focusforge/core/services/audio_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/features/dashboard/widgets/session_shortcut.dart';
 import 'package:focusforge/features/dashboard/widgets/day_summary_sheet.dart';
@@ -16,6 +18,24 @@ import 'package:focusforge/features/focus/focus_screen.dart';
 import 'package:focusforge/features/focus/ambient_mixer.dart';
 import 'package:focusforge/shared/widgets/pressable.dart';
 import 'package:focusforge/shared/widgets/stagger.dart';
+
+/// A player the platform will not load, as with a missing codec.
+class _RefusingPlayer implements AudioPlayer {
+  @override
+  Future<Duration?> setAsset(
+    String assetPath, {
+    String? package,
+    bool preload = true,
+    Duration? initialPosition,
+    dynamic tag,
+  }) async => throw StateError('no codec');
+  @override
+  Future<void> stop() async {}
+  @override
+  Future<void> dispose() async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -114,6 +134,43 @@ void main() {
     expect(scope.read(activeSoundsProvider), isEmpty);
     expect(find.byType(Slider), findsNothing);
     expect(scope.read(volumesProvider)['rain'], 0.3);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a track that cannot play says so and offers a retry', (
+    tester,
+  ) async {
+    phone(tester, width: 320);
+    final scope = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        ambientMixerProvider.overrideWithValue(
+          AmbientMixer(createPlayer: _RefusingPlayer.new),
+        ),
+      ],
+    );
+    addTearDown(scope.dispose);
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(wrap(scope, const AmbientMixerSection()));
+    await settle(tester);
+    await tester.tap(find.text('Rain').first);
+    await settle(tester);
+    expect(find.text('Rain couldn’t play'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.byType(Slider), findsNothing);
+    // Nothing is audible, but the selection can still be cleared.
+    expect(find.text('Stop all'), findsOneWidget);
+    expect(find.textContaining('playing'), findsNothing);
+    expect(
+      find.bySemanticsLabel('Rain ambience, couldn’t play. Tap to try again'),
+      findsOneWidget,
+    );
+    expect(tester.getSize(find.text('Retry')).height, lessThan(48));
+    expect(
+      tester.getSize(find.widgetWithText(TextButton, 'Retry')).height,
+      greaterThanOrEqualTo(48),
+    );
+    semantics.dispose();
     expect(tester.takeException(), isNull);
   });
 

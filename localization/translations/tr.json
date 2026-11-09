@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} aktif günler",
   "{0} active {1}": "{0} aktif {1}",
   "{0} active {1} in the last 7 days": "{0} son 7 gün içinde aktif {1}",
-  "{0} ambience, {1}": "{0} ambiyans, {1}",
   "{0} assigned / {1} target": "{0} atandı / {1} hedefi",
   "{0} clock, {1}": "{0} saat, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} sizi diğer insanlarla karşılaştırır, bu nedenle gerçek bir hesaba ihtiyaç duyar. Birini bağlamak anında gerçekleşir ve bu cihazda oturum açmış olduğunuz her şeyin saklanmasını sağlar.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Oturumlar arası mola",
   "Could not send the report. Check your connection and try again.": "Bildirim gönderilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
   "Hold": "Tut",
-  "Well done": "Aferin"
+  "Well done": "Aferin",
+  "{0} ambience, off": "{0} ambiyansı, kapalı",
+  "{0} ambience, loading": "{0} ambiyansı, yükleniyor",
+  "{0} ambience, playing": "{0} ambiyansı, çalıyor",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} ambiyansı çalınamadı. Yeniden denemek için dokunun",
+  "{0} couldn’t play": "{0} çalınamadı"
 }

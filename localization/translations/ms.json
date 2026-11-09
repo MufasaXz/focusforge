@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} hari aktif",
   "{0} active {1}": "{0} aktif {1}",
   "{0} active {1} in the last 7 days": "{0} aktif {1} dalam tempoh 7 hari yang lalu",
-  "{0} ambience, {1}": "{0} suasana, {1}",
   "{0} assigned / {1} target": "{0} diperuntukkan / {1} sasaran",
   "{0} clock, {1}": "Jam {0}, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} membandingkan anda dengan orang lain, jadi ia memerlukan akaun sebenar. Memautkan satu adalah serta-merta dan menyimpan semua yang anda telah log masuk pada peranti ini.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Rehat antara sesi",
   "Could not send the report. Check your connection and try again.": "Laporan tidak dapat dihantar. Semak sambungan anda dan cuba lagi.",
   "Hold": "Tahan",
-  "Well done": "Syabas"
+  "Well done": "Syabas",
+  "{0} ambience, off": "Suasana {0}, mati",
+  "{0} ambience, loading": "Suasana {0}, memuatkan",
+  "{0} ambience, playing": "Suasana {0}, sedang dimainkan",
+  "{0} ambience, couldn’t play. Tap to try again": "Suasana {0}, tidak dapat dimainkan. Ketik untuk cuba lagi",
+  "{0} couldn’t play": "{0} tidak dapat dimainkan"
 }

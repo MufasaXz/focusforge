@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} সক্রিয় দিন",
   "{0} active {1}": "{0} সক্রিয় {1}",
   "{0} active {1} in the last 7 days": "{0} {1} গত 7 দিনে সক্রিয়",
-  "{0} ambience, {1}": "{0} পরিবেশ, {1}",
   "{0} assigned / {1} target": "{0} নির্ধারিত / {1} লক্ষ্য",
   "{0} clock, {1}": "{0} ঘড়ি, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} আপনাকে অন্য লোকেদের সাথে তুলনা করে, তাই এটির একটি বাস্তব অ্যাকাউন্ট প্রয়োজন৷ একটি লিঙ্ক করা তাত্ক্ষণিক এবং আপনি ইতিমধ্যে এই ডিভাইসে লগ ইন করেছেন এমন সমস্ত কিছু রাখে৷",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "সেশনের মাঝে বিরতি",
   "Could not send the report. Check your connection and try again.": "রিপোর্ট পাঠানো যায়নি। আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
   "Hold": "ধরে রাখুন",
-  "Well done": "দারুণ"
+  "Well done": "দারুণ",
+  "{0} ambience, off": "{0} পরিবেশ, বন্ধ",
+  "{0} ambience, loading": "{0} পরিবেশ, লোড হচ্ছে",
+  "{0} ambience, playing": "{0} পরিবেশ, বাজছে",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} পরিবেশ, চালানো যায়নি। আবার চেষ্টা করতে ট্যাপ করুন",
+  "{0} couldn’t play": "{0} চালানো যায়নি"
 }

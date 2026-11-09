@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} aktive Tage",
   "{0} active {1}": "{0} aktiv {1}",
   "{0} active {1} in the last 7 days": "{0} aktiv {1} in den letzten 7 Tagen",
-  "{0} ambience, {1}": "{0} Ambiente, {1}",
   "{0} assigned / {1} target": "{0} zugewiesenes / {1} Ziel",
   "{0} clock, {1}": "{0} Uhr, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} vergleicht Sie mit anderen Personen, daher ist ein echtes Konto erforderlich. Die Verknüpfung erfolgt sofort und behält alles bei, was Sie bereits auf diesem Gerät angemeldet haben.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Pause zwischen Einheiten",
   "Could not send the report. Check your connection and try again.": "Die Meldung konnte nicht gesendet werden. Prüfe deine Verbindung und versuche es erneut.",
   "Hold": "Halten",
-  "Well done": "Gut gemacht"
+  "Well done": "Gut gemacht",
+  "{0} ambience, off": "{0} Ambiente, aus",
+  "{0} ambience, loading": "{0} Ambiente, wird geladen",
+  "{0} ambience, playing": "{0} Ambiente, spielt",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} Ambiente, konnte nicht abgespielt werden. Zum erneuten Versuch tippen",
+  "{0} couldn’t play": "{0} konnte nicht abgespielt werden"
 }

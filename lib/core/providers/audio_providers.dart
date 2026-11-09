@@ -17,11 +17,18 @@ final ambientCatalogueProvider = Provider<List<AmbientSound>>(
   (_) => SeedData.ambient,
 );
 
-/// Which tracks are lit. Mirrors the mixer so the tiles rebuild instantly
-/// without waiting for an audio call to resolve.
+/// Which tracks are selected. Follows the mixer, so it also changes when a
+/// load finishes, the platform refuses a track, or Stop all completes after
+/// another track was chosen.
 class ActiveSoundsNotifier extends Notifier<Set<String>> {
   @override
-  Set<String> build() => const {};
+  Set<String> build() {
+    final mixer = ref.watch(ambientMixerProvider);
+    void sync() => state = mixer.active;
+    mixer.addListener(sync);
+    ref.onDispose(() => mixer.removeListener(sync));
+    return mixer.active;
+  }
 
   /// Brings back the chosen volumes. Nothing plays after a relaunch, so no
   /// track starts out lit.
@@ -31,23 +38,35 @@ class ActiveSoundsNotifier extends Notifier<Set<String>> {
     ref.read(ambientMixerProvider).restore(volumes: volumes);
   }
 
-  Future<void> toggle(AmbientSound sound) async {
-    final mixer = ref.read(ambientMixerProvider);
-    await mixer.toggle(sound);
-    // The mixer's selection, not this toggle's result: another toggle or
-    // Stop all may have landed while this one was loading.
-    state = mixer.active;
-  }
+  Future<bool> toggle(AmbientSound sound) =>
+      ref.read(ambientMixerProvider).toggle(sound);
 
-  Future<void> clear() async {
-    await ref.read(ambientMixerProvider).stopAll();
-    state = const {};
-  }
+  Future<void> retry(AmbientSound sound) =>
+      ref.read(ambientMixerProvider).retry(sound);
+
+  Future<void> clear() => ref.read(ambientMixerProvider).stopAll();
 }
 
 final activeSoundsProvider =
     NotifierProvider<ActiveSoundsNotifier, Set<String>>(
       ActiveSoundsNotifier.new,
+    );
+
+/// Whether each selected track is loading, playing or failed.
+class TrackStatusNotifier extends Notifier<Map<String, TrackStatus>> {
+  @override
+  Map<String, TrackStatus> build() {
+    final mixer = ref.watch(ambientMixerProvider);
+    void sync() => state = mixer.statuses;
+    mixer.addListener(sync);
+    ref.onDispose(() => mixer.removeListener(sync));
+    return mixer.statuses;
+  }
+}
+
+final trackStatusProvider =
+    NotifierProvider<TrackStatusNotifier, Map<String, TrackStatus>>(
+      TrackStatusNotifier.new,
     );
 
 class VolumesNotifier extends Notifier<Map<String, double>> {

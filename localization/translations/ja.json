@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} アクティブ日",
   "{0} active {1}": "{0} アクティブ {1}",
   "{0} active {1} in the last 7 days": "過去 7 日間の {0} アクティブな {1}",
-  "{0} ambience, {1}": "{0} アンビエンス、{1}",
   "{0} assigned / {1} target": "{0} 割り当て / {1} ターゲット",
   "{0} clock, {1}": "{0} クロック、{1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} はあなたを他の人と比較するため、実際のアカウントが必要です。リンクは即座に行われ、このデバイスに既にログオンしているすべてのものが保持されます。",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "セッション間の休憩",
   "Could not send the report. Check your connection and try again.": "報告を送信できませんでした。接続を確認して、もう一度お試しください。",
   "Hold": "止めて",
-  "Well done": "よくできました"
+  "Well done": "よくできました",
+  "{0} ambience, off": "{0} アンビエンス、オフ",
+  "{0} ambience, loading": "{0} アンビエンス、読み込み中",
+  "{0} ambience, playing": "{0} アンビエンス、再生中",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} アンビエンス、再生できませんでした。タップして再試行",
+  "{0} couldn’t play": "{0} を再生できませんでした"
 }

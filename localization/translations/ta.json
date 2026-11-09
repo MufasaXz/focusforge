@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} செயலில் உள்ள நாட்கள்",
   "{0} active {1}": "{0} செயலில் {1}",
   "{0} active {1} in the last 7 days": "{0} கடந்த 7 நாட்களில் {1} செயலில் உள்ளது",
-  "{0} ambience, {1}": "{0} சூழல், {1}",
   "{0} assigned / {1} target": "{0} ஒதுக்கப்பட்டது / {1} இலக்கு",
   "{0} clock, {1}": "{0} கடிகாரம், {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} உங்களை மற்றவர்களுடன் ஒப்பிடுகிறது, எனவே அதற்கு உண்மையான கணக்கு தேவை. ஒன்றை இணைப்பது உடனடி மற்றும் நீங்கள் ஏற்கனவே உள்நுழைந்த அனைத்தையும் இந்தச் சாதனத்தில் வைத்திருக்கும்.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "அமர்வுகளுக்கு இடையே இடைவேளை",
   "Could not send the report. Check your connection and try again.": "புகாரை அனுப்ப முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.",
   "Hold": "நிறுத்துங்கள்",
-  "Well done": "நன்று"
+  "Well done": "நன்று",
+  "{0} ambience, off": "{0} சூழல், அணைக்கப்பட்டது",
+  "{0} ambience, loading": "{0} சூழல், ஏற்றப்படுகிறது",
+  "{0} ambience, playing": "{0} சூழல், இயங்குகிறது",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} சூழல், இயக்க முடியவில்லை. மீண்டும் முயல தட்டவும்",
+  "{0} couldn’t play": "{0} இயக்க முடியவில்லை"
 }

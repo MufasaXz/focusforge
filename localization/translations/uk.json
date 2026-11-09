@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} активні дні",
   "{0} active {1}": "{0} активний {1}",
   "{0} active {1} in the last 7 days": "{0} активний {1} за останні 7 днів",
-  "{0} ambience, {1}": "{0} атмосфера, {1}",
   "{0} assigned / {1} target": "{0} призначено / {1} мета",
   "{0} clock, {1}": "{0} годинник, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} порівнює вас з іншими людьми, тому для цього потрібен справжній обліковий запис. Підключення відбувається миттєво та зберігає все, що ви вже ввійшли на цьому пристрої.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Перерва між сесіями",
   "Could not send the report. Check your connection and try again.": "Не вдалося надіслати скаргу. Перевірте з’єднання та спробуйте ще раз.",
   "Hold": "Затримайте",
-  "Well done": "Чудово"
+  "Well done": "Чудово",
+  "{0} ambience, off": "Атмосфера «{0}», вимкнено",
+  "{0} ambience, loading": "Атмосфера «{0}», завантаження",
+  "{0} ambience, playing": "Атмосфера «{0}», відтворюється",
+  "{0} ambience, couldn’t play. Tap to try again": "Атмосфера «{0}», не вдалося відтворити. Торкніться, щоб повторити",
+  "{0} couldn’t play": "Не вдалося відтворити «{0}»"
 }

@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} ngày hoạt động",
   "{0} active {1}": "{0} đang hoạt động {1}",
   "{0} active {1} in the last 7 days": "{0} hoạt động {1} trong 7 ngày qua",
-  "{0} ambience, {1}": "Môi trường {0}, {1}",
   "{0} assigned / {1} target": "{0} được chỉ định / mục tiêu {1}",
   "{0} clock, {1}": "Đồng hồ {0}, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} so sánh bạn với người khác nên cần có tài khoản thật. Việc liên kết một thiết bị diễn ra ngay lập tức và lưu giữ mọi thứ bạn đã đăng nhập trên thiết bị này.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Nghỉ giữa các phiên",
   "Could not send the report. Check your connection and try again.": "Không thể gửi báo cáo. Hãy kiểm tra kết nối và thử lại.",
   "Hold": "Giữ hơi",
-  "Well done": "Làm tốt lắm"
+  "Well done": "Làm tốt lắm",
+  "{0} ambience, off": "Âm nền {0}, tắt",
+  "{0} ambience, loading": "Âm nền {0}, đang tải",
+  "{0} ambience, playing": "Âm nền {0}, đang phát",
+  "{0} ambience, couldn’t play. Tap to try again": "Âm nền {0}, không phát được. Chạm để thử lại",
+  "{0} couldn’t play": "Không phát được {0}"
 }

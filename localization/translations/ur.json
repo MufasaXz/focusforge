@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} فعال دن",
   "{0} active {1}": "{0} فعال {1}",
   "{0} active {1} in the last 7 days": "{0} {1} پچھلے 7 دنوں میں فعال",
-  "{0} ambience, {1}": "{0} ماحول، {1}",
   "{0} assigned / {1} target": "{0} تفویض کردہ / {1} ہدف",
   "{0} clock, {1}": "{0} گھڑی، {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} آپ کا موازنہ دوسرے لوگوں سے کرتا ہے، لہذا اسے ایک حقیقی اکاؤنٹ کی ضرورت ہے۔ ایک کو جوڑنا فوری ہے اور اس آلے پر آپ کے پہلے سے لاگ ان کردہ ہر چیز کو محفوظ رکھتا ہے۔",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "سیشنز کے درمیان وقفہ",
   "Could not send the report. Check your connection and try again.": "رپورٹ نہیں بھیجی جا سکی۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
   "Hold": "روکیں",
-  "Well done": "بہت خوب"
+  "Well done": "بہت خوب",
+  "{0} ambience, off": "{0} ماحول، بند",
+  "{0} ambience, loading": "{0} ماحول، لوڈ ہو رہا ہے",
+  "{0} ambience, playing": "{0} ماحول، چل رہا ہے",
+  "{0} ambience, couldn’t play. Tap to try again": "{0} ماحول، چل نہیں سکا۔ دوبارہ کوشش کے لیے تھپتھپائیں",
+  "{0} couldn’t play": "{0} چل نہیں سکا"
 }

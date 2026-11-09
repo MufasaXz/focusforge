@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} días activos",
   "{0} active {1}": "{0} activo {1}",
   "{0} active {1} in the last 7 days": "{0} activo {1} en los últimos 7 días",
-  "{0} ambience, {1}": "{0} ambiente, {1}",
   "{0} assigned / {1} target": "{0} asignado / objetivo {1}",
   "{0} clock, {1}": "Reloj {0}, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} te compara con otras personas, por lo que necesita una cuenta real. Vincular uno es instantáneo y mantiene todo lo que ya ha iniciado sesión en este dispositivo.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "Descanso entre sesiones",
   "Could not send the report. Check your connection and try again.": "No se pudo enviar el informe. Comprueba tu conexión e inténtalo de nuevo.",
   "Hold": "Mantén",
-  "Well done": "Bien hecho"
+  "Well done": "Bien hecho",
+  "{0} ambience, off": "Ambiente {0}, apagado",
+  "{0} ambience, loading": "Ambiente {0}, cargando",
+  "{0} ambience, playing": "Ambiente {0}, sonando",
+  "{0} ambience, couldn’t play. Tap to try again": "Ambiente {0}, no se pudo reproducir. Toca para reintentar",
+  "{0} couldn’t play": "No se pudo reproducir {0}"
 }

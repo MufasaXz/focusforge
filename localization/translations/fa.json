@@ -1132,7 +1132,6 @@
   "{0} active days": "روزهای فعال {0}",
   "{0} active {1}": "{0} فعال {1}",
   "{0} active {1} in the last 7 days": "{0} فعال {1} در 7 روز گذشته",
-  "{0} ambience, {1}": "محیط {0}، {1}",
   "{0} assigned / {1} target": "{0} اختصاص داده شد / هدف {1}",
   "{0} clock, {1}": "ساعت {0}، {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} شما را با افراد دیگر مقایسه می کند، بنابراین به یک حساب واقعی نیاز دارد. پیوند دادن یکی فوری است و همه چیزهایی را که قبلاً در این دستگاه وارد کرده‌اید نگه می‌دارد.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "استراحت بین جلسه‌ها",
   "Could not send the report. Check your connection and try again.": "ارسال گزارش ممکن نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید.",
   "Hold": "نگه دارید",
-  "Well done": "آفرین"
+  "Well done": "آفرین",
+  "{0} ambience, off": "محیط {0}، خاموش",
+  "{0} ambience, loading": "محیط {0}، در حال بارگیری",
+  "{0} ambience, playing": "محیط {0}، در حال پخش",
+  "{0} ambience, couldn’t play. Tap to try again": "محیط {0}، پخش نشد. برای تلاش دوباره ضربه بزنید",
+  "{0} couldn’t play": "{0} پخش نشد"
 }

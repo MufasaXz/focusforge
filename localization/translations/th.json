@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} จำนวนวันที่แอคทีฟ",
   "{0} active {1}": "{0} ใช้งานอยู่ {1}",
   "{0} active {1} in the last 7 days": "{0} แอคทีฟ {1} ใน 7 วันที่ผ่านมา",
-  "{0} ambience, {1}": "บรรยากาศ {0}, {1}",
   "{0} assigned / {1} target": "{0} ถูกกำหนด / เป้าหมาย {1}",
   "{0} clock, {1}": "นาฬิกา {0}, {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} เปรียบเทียบคุณกับคนอื่นๆ ดังนั้นจึงจำเป็นต้องมีบัญชีจริง การลิงก์จะทำได้ทันทีและเก็บทุกสิ่งที่คุณบันทึกไว้ในอุปกรณ์นี้",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "พักระหว่างช่วงเรียน",
   "Could not send the report. Check your connection and try again.": "ส่งรายงานไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
   "Hold": "กลั้นไว้",
-  "Well done": "เยี่ยมมาก"
+  "Well done": "เยี่ยมมาก",
+  "{0} ambience, off": "บรรยากาศ {0}, ปิด",
+  "{0} ambience, loading": "บรรยากาศ {0}, กำลังโหลด",
+  "{0} ambience, playing": "บรรยากาศ {0}, กำลังเล่น",
+  "{0} ambience, couldn’t play. Tap to try again": "บรรยากาศ {0}, เล่นไม่ได้ แตะเพื่อลองอีกครั้ง",
+  "{0} couldn’t play": "เล่น {0} ไม่ได้"
 }

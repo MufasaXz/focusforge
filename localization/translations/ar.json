@@ -1132,7 +1132,6 @@
   "{0} active days": "{0} الأيام النشطة",
   "{0} active {1}": "{0} نشط {1}",
   "{0} active {1} in the last 7 days": "{0} نشط {1} في آخر 7 أيام",
-  "{0} ambience, {1}": "أجواء {0}، {1}",
   "{0} assigned / {1} target": "{0} تم تعيين الهدف / {1}",
   "{0} clock, {1}": "الساعة {0}، {1}",
   "{0} compares you with other people, so it needs a real account. Linking one is instant and keeps everything you have already logged on this device.": "{0} يقارنك بأشخاص آخرين، لذلك فهو يحتاج إلى حساب حقيقي. يتم ربط أحدهما بشكل فوري ويحتفظ بكل ما قمت بتسجيله بالفعل على هذا الجهاز.",
@@ -1609,5 +1608,10 @@
   "Break between sessions": "الاستراحة بين الجلسات",
   "Could not send the report. Check your connection and try again.": "تعذّر إرسال البلاغ. تحقّق من اتصالك وحاول مرة أخرى.",
   "Hold": "احبس",
-  "Well done": "أحسنت"
+  "Well done": "أحسنت",
+  "{0} ambience, off": "أجواء {0}، متوقفة",
+  "{0} ambience, loading": "أجواء {0}، جارٍ التحميل",
+  "{0} ambience, playing": "أجواء {0}، قيد التشغيل",
+  "{0} ambience, couldn’t play. Tap to try again": "أجواء {0}، تعذّر التشغيل. انقر للمحاولة مرة أخرى",
+  "{0} couldn’t play": "تعذّر تشغيل {0}"
 }
