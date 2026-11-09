@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../models/user.dart';
 import 'local_store.dart';
@@ -135,48 +136,70 @@ class FirebaseStudyBackupBackend implements StudyBackupBackend {
       final written = await db
           .runTransaction((tx) async {
             final current = await tx.get(doc);
-            final merged = _keepFurtherStats(
+            final merged = mergeWithCloud(
               backup.settings,
+              backup.modifiedAt,
               current.data()?['data'],
+              current.data()?['modifiedAt'],
             );
             tx.set(doc, {
               'version': 1,
               'ownerUid': uid,
-              'data': merged,
-              'modifiedAt': backup.modifiedAt,
+              'data': merged.data,
+              'modifiedAt': merged.modifiedAt,
             });
             return merged;
           })
           .timeout(_wait);
-      _savedSettings[uid] = '${backup.modifiedAt}:$written';
+      _savedSettings[uid] = '${written.modifiedAt}:${written.data}';
     }
     await _deleteLegacySessions(uid);
   }
 
-  /// [settings] encoded for the cloud, with the cloud's stats kept when
-  /// [stored], the cloud's current encoded settings, has gone further.
-  static String _keepFurtherStats(
+  /// [settings] at revision [modifiedAt], merged with the cloud's current
+  /// encoded settings [stored] at revision [storedAt], encoded for the cloud.
+  ///
+  /// The two halves resolve differently. Progress only grows, so the further
+  /// stats win wherever they were earned. The profile and the sharing choice
+  /// are edits, so the newer revision wins: a phone that has not seen another
+  /// phone's later edit must not put its older name or consent back.
+  @visibleForTesting
+  static ({String data, int modifiedAt}) mergeWithCloud(
     Map<String, dynamic> settings,
+    int modifiedAt,
     Object? stored,
+    Object? storedAt,
   ) {
+    var merged = settings;
+    var revision = modifiedAt;
     if (stored is String) {
       try {
         final cloud = jsonDecode(stored);
         if (cloud is Map<String, dynamic>) {
-          final mine = settings[StoreKeys.stats];
+          if (storedAt is int && storedAt > modifiedAt) {
+            merged = {
+              for (final entry in merged.entries)
+                if (!StudyBackupService.editedKeys.contains(entry.key))
+                  entry.key: entry.value,
+              for (final key in StudyBackupService.editedKeys)
+                if (cloud.containsKey(key)) key: cloud[key],
+            };
+            revision = storedAt;
+          }
+          final mine = merged[StoreKeys.stats];
           final ahead = StudyBackupService._further([
             mine,
             cloud[StoreKeys.stats],
           ]);
           if (ahead != null && !identical(ahead, mine)) {
-            return jsonEncode({...settings, StoreKeys.stats: ahead});
+            merged = {...merged, StoreKeys.stats: ahead};
           }
         }
       } on FormatException {
         // An unreadable cloud copy has nothing to keep.
       }
     }
-    return jsonEncode(settings);
+    return (data: jsonEncode(merged), modifiedAt: revision);
   }
 
   Future<void> _deleteLegacySessions(String uid) async {
@@ -220,6 +243,10 @@ class StudyBackupService {
     StoreKeys.stats,
     StoreKeys.boardOptIn,
   };
+
+  /// The cloud settings a person edits. Their revision is the settings
+  /// revision; stats are progress and merge by how far they have gone.
+  static const editedKeys = {StoreKeys.user, StoreKeys.boardOptIn};
 
   /// Study setup, kept for each account on this device and never uploaded.
   static const localKeys = {
@@ -336,7 +363,10 @@ class StudyBackupService {
   String _settingsSignature(String uid) {
     // Only what the cloud holds: a local edit must not outrank a newer profile
     // or level saved from another device.
-    final settings = _cloudSettings(_capture(uid).settings);
+    // Progress is not an edit either: finishing a session must not make this
+    // phone's profile outrank a newer one saved elsewhere.
+    final settings = _cloudSettings(_capture(uid).settings)
+      ..remove(StoreKeys.stats);
     final raw = settings[StoreKeys.user];
     if (raw is String) {
       try {
@@ -656,13 +686,27 @@ class StudyBackupService {
           backup = _capture(uid);
           final mine = backup.settings[StoreKeys.stats];
           final ahead = _further([mine, remote?.settings[StoreKeys.stats]]);
-          if (ahead != null && !identical(ahead, mine)) {
+          final aheadStats = ahead != null && !identical(ahead, mine);
+          // A newer profile or sharing choice saved on another phone replaces
+          // this phone's older one rather than being overwritten by it.
+          final newer =
+              remote != null &&
+                  remote.hasSettings &&
+                  remote.modifiedAt > backup.modifiedAt
+              ? remote
+              : null;
+          if (aheadStats || newer != null) {
             _restoring = true;
             try {
-              await store.setString(
-                StoreKeys.stats,
-                _withLocalCredits(ahead, backup) as String,
-              );
+              if (aheadStats) {
+                await store.setString(
+                  StoreKeys.stats,
+                  _withLocalCredits(ahead, backup) as String,
+                );
+              }
+              if (newer != null) {
+                await _adoptEdits(uid, newer);
+              }
             } finally {
               _restoring = false;
             }
@@ -698,6 +742,28 @@ class StudyBackupService {
     });
     _writes = next;
     return next;
+  }
+
+  /// Takes the profile and sharing choice from [newer], another phone's
+  /// later revision of [uid]'s settings, keeping this account's identity.
+  Future<void> _adoptEdits(String uid, StudyBackup newer) async {
+    final raw = newer.settings[StoreKeys.user];
+    if (raw is String) {
+      try {
+        final profile = UserProfile.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>,
+        ).copyWith(uid: uid, isAnonymous: false);
+        await store.setMap(StoreKeys.user, profile.toJson());
+      } catch (_) {
+        // An unreadable profile leaves this phone's own in place.
+      }
+    }
+    final optIn = newer.settings[StoreKeys.boardOptIn];
+    if (optIn is bool) {
+      await store.setBool(StoreKeys.boardOptIn, optIn);
+      await store.setBool('leaderboard.consent.$uid', optIn);
+    }
+    await store.setInt('study.modified.$uid', newer.modifiedAt);
   }
 
   /// Cache unsynced local data without waiting behind deferred server reads.

@@ -454,6 +454,121 @@ void main() {
     ]);
   });
 
+  test('an older phone does not undo a newer name or sharing choice', () async {
+    Map<String, dynamic> stats(int level) => {'xp': 10, 'level': level};
+    await store.setMap(
+      StoreKeys.user,
+      alice.copyWith(displayName: 'Old Name').toJson(),
+    );
+    await store.setMap(StoreKeys.stats, stats(5));
+    await store.setBool(StoreKeys.boardOptIn, true);
+    await service.connect(alice.copyWith(displayName: 'Old Name'));
+    await service.flush();
+    await store.setInt('study.modified.alice', 100);
+    // Another phone renames the account and stops sharing at revision 200.
+    final saved = backend.accounts['alice']!;
+    backend.accounts['alice'] = StudyBackup(
+      settings: {
+        ...saved.settings,
+        StoreKeys.user: jsonEncode(
+          alice.copyWith(displayName: 'New Name').toJson(),
+        ),
+        StoreKeys.boardOptIn: false,
+      },
+      sessions: const [],
+      modifiedAt: 200,
+      hasSettings: true,
+    );
+    UserProfile? reconciled;
+    service.onReconciled = (profile) => reconciled = profile;
+
+    // This phone finishes a session: progress, not an edit.
+    await store.setMap(StoreKeys.stats, stats(6));
+    expect(store.getInt('study.modified.alice'), 100);
+    await service.flush();
+
+    final cloud = backend.accounts['alice']!;
+    expect(cloud.modifiedAt, 200);
+    expect(
+      jsonDecode(cloud.settings[StoreKeys.user] as String)['displayName'],
+      'New Name',
+    );
+    expect(cloud.settings[StoreKeys.boardOptIn], isFalse);
+    expect(jsonDecode(cloud.settings[StoreKeys.stats] as String)['level'], 6);
+    expect(store.getMap(StoreKeys.user)?['displayName'], 'New Name');
+    expect(store.getBool(StoreKeys.boardOptIn), isFalse);
+    expect(store.getBool('leaderboard.consent.alice'), isFalse);
+    expect(reconciled?.displayName, 'New Name');
+  });
+
+  test(
+    'a stale save keeps the cloud\'s newer name and sharing choice',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final cloud = FirebaseStudyBackupBackend(db);
+      await db.doc('users/alice/preferences/studyBackup').set({
+        'version': 1,
+        'ownerUid': 'alice',
+        'data': jsonEncode({
+          StoreKeys.user: jsonEncode(
+            alice.copyWith(displayName: 'New Name').toJson(),
+          ),
+          StoreKeys.boardOptIn: false,
+          StoreKeys.stats: jsonEncode({'xp': 0, 'level': 5}),
+        }),
+        'modifiedAt': 200,
+      });
+      await cloud.save(
+        'alice',
+        StudyBackup(
+          settings: {
+            StoreKeys.user: jsonEncode(
+              alice.copyWith(displayName: 'Old Name').toJson(),
+            ),
+            StoreKeys.boardOptIn: true,
+            StoreKeys.stats: jsonEncode({'xp': 0, 'level': 6}),
+          },
+          sessions: const [],
+          modifiedAt: 100,
+        ),
+      );
+      final data = (await db.doc('users/alice/preferences/studyBackup').get())
+          .data()!;
+      final settings = jsonDecode(data['data'] as String) as Map;
+      expect(data['modifiedAt'], 200);
+      expect(
+        jsonDecode(settings[StoreKeys.user] as String)['displayName'],
+        'New Name',
+      );
+      expect(settings[StoreKeys.boardOptIn], isFalse);
+      expect(jsonDecode(settings[StoreKeys.stats] as String)['level'], 6);
+
+      // A newer edit from this phone still replaces them.
+      await cloud.save(
+        'alice',
+        StudyBackup(
+          settings: {
+            StoreKeys.user: jsonEncode(
+              alice.copyWith(displayName: 'Newest').toJson(),
+            ),
+            StoreKeys.boardOptIn: true,
+          },
+          sessions: const [],
+          modifiedAt: 300,
+        ),
+      );
+      final after = (await db.doc('users/alice/preferences/studyBackup').get())
+          .data()!;
+      final latest = jsonDecode(after['data'] as String) as Map;
+      expect(after['modifiedAt'], 300);
+      expect(
+        jsonDecode(latest[StoreKeys.user] as String)['displayName'],
+        'Newest',
+      );
+      expect(latest[StoreKeys.boardOptIn], isTrue);
+    },
+  );
+
   test('a save racing a higher level keeps the higher one', () async {
     final db = FakeFirebaseFirestore();
     final cloud = FirebaseStudyBackupBackend(db);
