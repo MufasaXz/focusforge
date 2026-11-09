@@ -23,6 +23,7 @@ import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/assistant/assistant_memory.dart';
+import 'package:focusforge/features/assistant/brain/assistant_models.dart';
 import 'package:focusforge/features/assistant/chat/chat_controller.dart';
 import 'package:focusforge/features/onboarding/auth_screen.dart';
 import 'package:focusforge/features/settings/privacy_screen.dart';
@@ -654,6 +655,18 @@ void main() {
     await pumpEventQueue();
     expect(container.read(assistantMemoryProvider).examId, 'neet');
     expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
+  });
+
+  test('a reply still being written does not land in a reset chat', () async {
+    final chat = container.read(chatProvider.notifier)..fast = true;
+    final speaking = chat.say(
+      const AssistantReply([Say(Copy.raw('Alice’s private exam plan'))]),
+    );
+    container.invalidate(chatProvider);
+    container.read(chatProvider);
+    await speaking;
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    expect(container.read(chatProvider).entries, isEmpty);
   });
 
   test('a guest who links an account keeps what they told Pip', () async {

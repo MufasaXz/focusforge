@@ -136,7 +136,17 @@ class ChatController extends Notifier<ChatState> {
   bool fast = false;
 
   @override
-  ChatState build() => const ChatState();
+  ChatState build() {
+    // A reset (another account, or deletion) rebuilds this same instance.
+    // Whatever was still on its way belongs to the old conversation: moving
+    // the generation on stops it, and the half-asked questions go with it.
+    _generation++;
+    _pending = null;
+    _suggestedSignIn = false;
+    _pendingExamReminder = false;
+    _pendingReminder = null;
+    return const ChatState();
+  }
 
   /// Called when the chat screen opens, with the request that opened it.
   Future<void> open({AssistantAction? action}) async {
