@@ -68,7 +68,70 @@ local history cannot be remotely erased. The UID-only fence and request time
 remain in Firestore to block still-valid tokens; no profile/email/progress is
 retained. TTL is not used. Administrators may remove completed fences after
 verifying Auth is absent and tokens expired (allow at least 24 hours). Never
-remove a pending fence.
+remove a pending fence by hand. The guarded administrator recovery below is
+the exception for an owner who explicitly asks to keep an interrupted account.
+
+### Restore an interrupted account through support
+
+First verify the owner's request and stop deletion on their devices. Recovery
+keeps the login and remaining data; it cannot restore records already deleted
+or return the account to groups it left. The usual Delete account retry remains
+the right action when the owner still wants deletion.
+
+Use Application Default Credentials for a project administrator, as with the
+migration script above. `inspect` is read-only; `begin` and `finish` need an
+explicit flag and one UID:
+
+```sh
+node functions/recover-client-account.js PROJECT UID inspect
+node functions/recover-client-account.js PROJECT UID begin --confirm-account-recovery
+# Wait at least 65 minutes; leave the account disabled during this time.
+node functions/recover-client-account.js PROJECT UID finish --confirm-account-recovery
+```
+
+`begin` disables the account and revokes refresh tokens while retaining its
+Firestore fence. `finish` uses server time to require at least 65 minutes for
+existing one-hour ID tokens to expire, checks that the same account still
+exists and remains disabled, and refuses changed session or fence state. It
+revokes again and checks the cutoff against server time, so same-second tokens
+and an incorrect administrator clock cannot bypass the wait. Only then does it
+remove the fence and enable sign-in again. The owner must sign in
+again. An interrupted command can be rerun; rerunning `begin` restarts the wait.
+Run one recovery operator at a time and do not change Auth settings for this UID
+during recovery. If it has been deleted meanwhile, keep the fence.
+
+The script refuses accounts already disabled before recovery, malformed fences,
+and backend `pending`/`complete` jobs. Its `_accountRecoveries` coordination
+records are administrator-only, contain no email/profile data, and are removed
+on success. It is a local support tool, not a deployed client endpoint. No real
+account is recovered merely by installing or testing this script.
+
+Never expire a fence based on its original request time. An old client or the
+website can resume a deletion much later; its still-valid tokens must remain
+blocked after the eventual Auth deletion.
+
+### Live hardening checked on November 10, 2026
+
+- Auth enforces at least eight password characters for new or changed passwords.
+  Existing users are not forced to upgrade passwords at sign-in.
+- Firestore database deletion protection is enabled. This protects the database
+  resource, not individual document deletion or account cleanup.
+- New Firebase anonymous registrations are disabled. A disposable production
+  account verified that an existing anonymous credential can still refresh its
+  token and delete itself after this change; the test account was removed.
+  The current app's guest mode is local. Older apps that try to create a new
+  Firebase guest must update. Existing anonymous users are not bulk-deleted.
+- App Check's API is enabled and Auth/Firestore use `UNENFORCED` monitoring.
+  This does **not** enforce attestation. No Android Play Integrity or web
+  reCAPTCHA provider is registered, and the current clients have no App Check
+  integration. Register providers, add both client integrations, verify a signed
+  release and website, and measure valid traffic before enforcing either
+  service. Enforcing now would reject legitimate users and web account deletion.
+- The website reset-email implementation and canonical URL use
+  `https://www.focus-forge.in`. Firebase's own fallback/verification email action
+  handler remains `https://focusforge-1edf7.firebaseapp.com/__/auth/action`.
+  Both branded domains and the old Vercel domain remain authorized so existing
+  email links keep working.
 
 ## Email login configuration
 

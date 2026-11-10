@@ -58,6 +58,13 @@ void main() {
     );
     expect((await db.doc('accountDeletions/sam').get()).exists, isTrue);
   });
+  test('retry preserves the original fence and backend lifecycle fields', () async {
+    final marker = db.doc('accountDeletions/sam');
+    final original = {'requestedAt': 1, 'status': 'pending', 'expiresAt': 2};
+    await marker.set(original);
+    await FirestoreAccountCleanup(db).deleteUserData('sam');
+    expect((await marker.get()).data(), original);
+  });
   test(
     'owner departure transfers group and last member removes invite',
     () async {

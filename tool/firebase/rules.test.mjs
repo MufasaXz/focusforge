@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { before, after, beforeEach, test } from 'node:test';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { doc, getDoc, getDocs, collection, collectionGroup, query, where, setDoc, updateDoc,
-  deleteDoc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
+  deleteDoc, writeBatch, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
 let env;
 const db = (uid, anonymous = false) => env.authenticatedContext(uid, {
   auth_time: Math.floor(Date.now()/1000),
@@ -261,9 +261,49 @@ test('client deletion marker is owner-only, immutable and requires fresh authent
   const stale = env.authenticatedContext('student', {auth_time:1, firebase:{sign_in_provider:'google.com'}}).firestore();
   await assertFails(setDoc(doc(stale,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
   await assertSucceeds(setDoc(doc(store,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  // Retrying cleanup reuses the fence without changing its lifecycle.
   await assertFails(updateDoc(doc(store,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  await assertFails(updateDoc(doc(stale,'accountDeletions/student'), {requestedAt:serverTimestamp()}));
+  await assertFails(updateDoc(doc(store,'accountDeletions/student'), {requestedAt:Timestamp.fromMillis(0)}));
+  await assertFails(updateDoc(doc(store,'accountDeletions/student'), {requestedAt:serverTimestamp(),status:'complete'}));
   await assertFails(deleteDoc(doc(store,'accountDeletions/student')));
   await assertFails(getDoc(doc(db('stranger'),'accountDeletions/student')));
+});
+test('old deletion fences still reject tokens from a later completed retry', async () => {
+  const store = db('student');
+  const requestedAt = Timestamp.fromMillis(Date.now() - 3 * 60 * 60 * 1000);
+  const backup = {version:1,ownerUid:'student',data:'{}',modifiedAt:Date.now()};
+  const board = {ownerUid:'student',name:'Student',minutes:30,updatedAt:Date.now()};
+  await seedGroup();
+  for (const marker of [
+    {requestedAt},
+    {requestedAt, status:'pending'},
+    {requestedAt, status:'complete', completedAt:Timestamp.now()},
+    {requestedAt:0},
+    {status:'pending'},
+  ]) {
+    await env.withSecurityRulesDisabled(c =>
+      setDoc(doc(c.firestore(),'accountDeletions/student'), marker));
+    await assertFails(setDoc(doc(store,'users/student/preferences/studyBackup'), backup));
+    await assertFails(setDoc(doc(store,earnedBadgePath), earnedBadges()));
+    await assertFails(setDoc(doc(store,'leaderboard/2026-10-05/entries/student'), board));
+    await assertFails(join('student'));
+    await assertSucceeds(getDoc(doc(store,'accountDeletions/student')));
+    await assertSucceeds(deleteDoc(doc(store,'users/student/preferences/studyBackup')));
+  }
+});
+test('clients cannot replace backend deletion state or access recovery operations', async () => {
+  for (const status of ['pending', 'complete']) {
+    await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),
+      'accountDeletions/student'), {requestedAt:Timestamp.now(), status}));
+    await assertFails(setDoc(doc(db('student'),'accountDeletions/student'),
+      {requestedAt:serverTimestamp()}));
+  }
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),
+    '_accountRecoveries/student'), {phase:'waiting'}));
+  await assertFails(getDoc(doc(db('student'),'_accountRecoveries/student')));
+  await assertFails(setDoc(doc(db('student'),'_accountRecoveries/student'), {phase:'released'}));
+  await assertFails(deleteDoc(doc(db('student'),'_accountRecoveries/student')));
 });
 test('deletion marker still permits owner cleanup and group departure', async () => {
   await seedGroup(); await assertSucceeds(join('friend'));
