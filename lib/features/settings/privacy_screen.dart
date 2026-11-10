@@ -252,7 +252,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   // -- Export ---------------------------------------------------------------
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
-    final data = ref.read(localStoreProvider).exportAll();
+    // Only this account's data: the store also holds a snapshot for every
+    // other account that has signed in on this phone.
+    final data = DataExport.forAccount(
+      ref.read(localStoreProvider).exportAll(),
+      ref.read(userProvider).uid,
+    );
     final json = const JsonEncoder.withIndent('  ').convert(data);
     final name = DataExport.fileName(DateTime.now());
 

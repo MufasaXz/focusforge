@@ -29,6 +29,60 @@ void main() {
     );
   });
 
+  test('the export leaves out every other account kept on the phone', () {
+    final all = <String, Object?>{
+      'user': jsonEncode({'uid': 'me', 'displayName': 'Asha'}),
+      'sessions': '[]',
+      'focus.clock': 'flip',
+      // This account's own per-account keys, and its earlier guest id.
+      'study.account.me': '{"settings":{}}',
+      'study.modified.me': 7,
+      'leaderboard.consent.me': true,
+      'achievements.linked.me': true,
+      'achievements.linked.local-1': false,
+      // Another person who signed in on this phone before.
+      'study.account.other': jsonEncode({
+        'settings': {'user': '{"displayName":"Ravi"}'},
+        'sessions': [
+          {'id': 's-other'},
+        ],
+      }),
+      'study.modified.other': 3,
+      'assistant.account.other': jsonEncode({'chat': 'private to Ravi'}),
+      'leaderboard.consent.other': true,
+      'achievements.linked.other': true,
+      'achievements.accounts': jsonEncode({
+        'me': {'first_focus': 1},
+        'other': {'night_owl': 2},
+      }),
+      'achievements.linkedOwners': jsonEncode({'me': true, 'other': true}),
+      'achievements.aliases': jsonEncode({'local-1': 'me', 'local-9': 'other'}),
+      'auth.deletedCredential': 'gone',
+    };
+
+    final mine = DataExport.forAccount(all, 'me');
+    final text = jsonEncode(mine);
+
+    expect(text, isNot(contains('other')));
+    expect(text, isNot(contains('Ravi')));
+    expect(text, isNot(contains('local-9')));
+    expect(mine.containsKey('auth.deletedCredential'), isFalse);
+    // Everything that is this account's is still there.
+    expect(mine['user'], all['user']);
+    expect(mine['sessions'], '[]');
+    expect(mine['focus.clock'], 'flip');
+    expect(mine['study.account.me'], all['study.account.me']);
+    expect(mine['study.modified.me'], 7);
+    expect(mine['leaderboard.consent.me'], isTrue);
+    expect(mine['achievements.linked.local-1'], isFalse);
+    expect(jsonDecode(mine['achievements.accounts']! as String), {
+      'me': {'first_focus': 1},
+    });
+    expect(jsonDecode(mine['achievements.aliases']! as String), {
+      'local-1': 'me',
+    });
+  });
+
   testWidgets('saving: cancel, a failed write, then a saved file', (
     tester,
   ) async {
