@@ -66,6 +66,11 @@ void main() {
         ClockFace.retro,
         reason: 'a face that has been retired reads as the fallback',
       );
+      expect(
+        ClockFace.fromName('neon'),
+        ClockFace.retro,
+        reason: 'someone who had chosen the retired neon face gets the dial',
+      );
     });
 
     test('round-trips by name', () {
@@ -117,7 +122,7 @@ void main() {
     );
 
     testWidgets('the faces that draw text show every figure', (tester) async {
-      for (final face in [ClockFace.minimal, ClockFace.neon]) {
+      for (final face in [ClockFace.minimal]) {
         await tester.pumpWidget(
           wrap(
             ClockDisplay(
@@ -500,7 +505,7 @@ void main() {
       }
       // The shipped face is the one the timer is wearing. Asked of the
       // semantics rather than of the check mark: the check is built into every
-      // card and scaled away, so its presence finds all seven.
+      // card and scaled away, so its presence finds all of them.
       final chosen = [
         for (final face in ClockFace.values)
           if (tester
