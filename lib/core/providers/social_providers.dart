@@ -965,11 +965,15 @@ final leaderboardPublisherProvider = Provider<Future<void> Function()>((ref) {
     if (!service.available || uid == null) return;
     if (!ref.read(boardOptInProvider)) return;
 
-    final minutes = (ref.read(leaderboardWeekHoursProvider) * 60).round();
+    // Bounded as the rules bound them: a row over either limit is refused
+    // whole, and would be retried every thirty seconds for good.
+    final minutes = (ref.read(leaderboardWeekHoursProvider) * 60)
+        .round()
+        .clamp(0, 10080);
     // A row reading 0m is not a standing; it is an absence with a name on it.
     if (minutes <= 0) return;
 
-    final name = ref.read(userProvider).displayName.trim();
+    final name = cappedDisplayName(ref.read(userProvider).displayName);
     final week = ref.read(currentWeekKeyProvider);
     final level = ref.read(statsProvider).level;
     await ref.read(boardPublishQueueProvider).run(() async {

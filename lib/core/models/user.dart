@@ -66,6 +66,28 @@ enum AppPalette {
   );
 }
 
+/// The longest display name the weekly board and a group row accept; the
+/// Firestore rules refuse a longer one.
+const maxSharedNameLength = 60;
+
+/// [name] trimmed and cut to [maxSharedNameLength].
+///
+/// A name the user types is already capped by its field, but one filled in
+/// from a Google account or an email address is not, and the rules refuse
+/// the whole row for it. The cut falls between characters, never inside a
+/// surrogate pair, so an emoji at the limit is dropped rather than halved.
+String cappedDisplayName(String name) {
+  final trimmed = name.trim();
+  if (trimmed.length <= maxSharedNameLength) return trimmed;
+  final kept = StringBuffer();
+  for (final rune in trimmed.runes) {
+    final next = String.fromCharCode(rune);
+    if (kept.length + next.length > maxSharedNameLength) break;
+    kept.write(next);
+  }
+  return kept.toString().trim();
+}
+
 /// How the focus timer draws the time that is left.
 ///
 /// A display preference, not a theme: it changes one widget on one screen, and

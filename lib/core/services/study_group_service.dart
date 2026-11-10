@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/social.dart';
+import '../models/user.dart' show cappedDisplayName;
 import '../models/icon_registry.dart';
 
 abstract class StudyGroupService {
@@ -121,9 +122,7 @@ class FirebaseStudyGroupService implements StudyGroupService {
       );
   Map<String, dynamic> _member(String name) => {
     'ownerUid': _uid,
-    'name': name.trim().isEmpty
-        ? 'A student'
-        : name.trim().substring(0, min(name.trim().length, 60)),
+    'name': name.trim().isEmpty ? 'A student' : cappedDisplayName(name),
     'joinedAt': DateTime.now().millisecondsSinceEpoch,
     'week': '',
     'minutes': 0,

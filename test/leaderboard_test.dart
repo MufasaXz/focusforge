@@ -22,6 +22,8 @@ import 'dart:math' as math;
 
 class _Board implements LeaderboardService {
   final publishedLevels = <int>[];
+  final publishedNames = <String>[];
+  final publishedMinutes = <int>[];
   final withdrawn = <String>[];
   @override
   bool get available => true;
@@ -40,6 +42,8 @@ class _Board implements LeaderboardService {
     String? avatarPhoto,
   }) async {
     publishedLevels.add(level);
+    publishedNames.add(name);
+    publishedMinutes.add(minutes);
   }
 
   @override
@@ -521,6 +525,54 @@ void main() {
     await container.read(statsProvider.notifier).award(100);
     await container.pump();
     expect(service.publishedLevels.length, count);
+  });
+
+  test('publisher keeps a long provider name and a long week within the rules', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final service = _Board();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        leaderboardServiceProvider.overrideWithValue(service),
+        accountUidProvider.overrideWithValue('me'),
+      ],
+    );
+    addTearDown(container.dispose);
+    // A name filled in from a Google account or an email address never
+    // passed through the 60-character field; the emoji straddles the limit.
+    final long = '${'N' * 59}\u{1F600} and the rest of a very long name';
+    container
+        .read(userProvider.notifier)
+        .hydrate(UserProfile(uid: 'me', displayName: long, isAnonymous: false));
+    final monday = DateTime.now().subtract(
+      Duration(days: DateTime.now().weekday - 1),
+    );
+    container.read(sessionsProvider.notifier).hydrate([
+      // More than a week of minutes in one week, as overlapping rows can be.
+      for (var i = 0; i < 8; i++)
+        FocusSession(
+          id: 'long-$i',
+          subjectId: 'math',
+          startedAt: DateTime(monday.year, monday.month, monday.day, 0, i),
+          minutes: 1440,
+        ).toJson(),
+    ]);
+    container.read(leaderboardPublisherProvider);
+    await container.read(boardOptInProvider.notifier).set(true);
+    await container.pump();
+
+    expect(service.publishedNames, isNotEmpty);
+    expect(service.publishedNames.last, 'N' * 59);
+    expect(service.publishedNames.last.length, lessThanOrEqualTo(60));
+    expect(service.publishedMinutes.last, lessThanOrEqualTo(10080));
+  });
+
+  test('a shared name is cut between characters and a short one is kept', () {
+    expect(cappedDisplayName('  Asha  '), 'Asha');
+    expect(cappedDisplayName('a' * 60), 'a' * 60);
+    expect(cappedDisplayName('a' * 61), 'a' * 60);
+    expect(cappedDisplayName('${'a' * 58} \u{1F600}x'), 'a' * 58);
   });
 
   test('board entries carry the shared level into the screen model', () async {
