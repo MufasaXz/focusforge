@@ -14,7 +14,7 @@ import '../focus/widgets/clock_faces.dart';
 
 /// How the timer draws its figures.
 ///
-/// A page rather than a row of tiles on the profile: seven faces need the width
+/// A page rather than a row of tiles on the profile: the faces need the width
 /// to be seen at all — a flip card at 40dp is a grey smudge, and the whole
 /// point of the choice is what the face looks like — and a page is where the
 /// rest of the app's settings already live.
@@ -25,6 +25,12 @@ import '../focus/widgets/clock_faces.dart';
 /// one real number available.
 class ClockFaceScreen extends ConsumerWidget {
   const ClockFaceScreen({super.key});
+
+  /// The picker's order: the round faces first, then the rows of figures.
+  static final List<ClockFace> _ordered = [
+    ...ClockFace.values.where(_isDial),
+    ...ClockFace.values.where((f) => !_isDial(f)),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,8 +60,9 @@ class ClockFaceScreen extends ConsumerWidget {
             progress: progress,
           ),
           const SizedBox(height: Gap.xl),
-          // The seven faces in a two-column grid — each one a live preview of
-          // the same clock, not a sample number.
+          // The faces in a two-column grid — each one a live preview of the
+          // same clock, not a sample number. The two dials lead and share a
+          // row, so every row holds tiles of one shape.
           LayoutBuilder(
             builder: (context, constraints) {
               final width = (constraints.maxWidth - Gap.md) / 2;
@@ -63,7 +70,7 @@ class ClockFaceScreen extends ConsumerWidget {
                 spacing: Gap.md,
                 runSpacing: Gap.md,
                 children: [
-                  for (final face in ClockFace.values)
+                  for (final face in _ordered)
                     SizedBox(
                       width: width,
                       child: _FaceCard(
@@ -94,6 +101,19 @@ class ClockFaceScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Whether [face] is a round dial rather than a row of figures.
+///
+/// A dial is as tall as it is wide, so its previews get a taller window than
+/// the figure faces do. The two kinds each keep one shape.
+bool _isDial(ClockFace face) =>
+    face == ClockFace.retro || face == ClockFace.analog;
+
+/// The height to ask [ClockDisplay] for so that [face] fills a dial window of
+/// [diameter]. The analog face draws itself a little larger than the height
+/// it is given; the retro dial draws exactly that height.
+double _dialHeight(ClockFace face, double diameter) =>
+    face == ClockFace.analog ? diameter / 1.22 : diameter;
 
 /// The selected face, shown at reading size in a tinted hero panel.
 ///
@@ -141,7 +161,7 @@ class _FeaturedFace extends StatelessWidget {
       child: Column(
         children: [
           SizedBox(
-            height: face == ClockFace.retro ? 190 : 120,
+            height: _isDial(face) ? 190 : 120,
             child: Center(
               child: AnimatedSwitcher(
                 duration: MediaQuery.disableAnimationsOf(context)
@@ -165,7 +185,7 @@ class _FeaturedFace extends StatelessWidget {
                     remaining: remaining,
                     face: face,
                     accent: cs.primary,
-                    height: face == ClockFace.retro ? 168 : 88,
+                    height: _isDial(face) ? _dialHeight(face, 168) : 88,
                     progress: progress,
                   ),
                 ),
@@ -253,7 +273,7 @@ class _FaceCard extends StatelessWidget {
               // card of its own — the flip board — is still visible as a shape
               // rather than dissolving into the row behind it.
               Container(
-                height: face == ClockFace.retro ? 92 : 62,
+                height: _isDial(face) ? 92 : 62,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(Radii.tile),
@@ -266,7 +286,7 @@ class _FaceCard extends StatelessWidget {
                     remaining: remaining,
                     face: face,
                     accent: t.primary,
-                    height: face == ClockFace.retro ? 84 : 36,
+                    height: _isDial(face) ? _dialHeight(face, 84) : 36,
                     progress: progress,
                   ),
                 ),
