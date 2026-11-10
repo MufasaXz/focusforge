@@ -771,7 +771,7 @@ class _AppearanceCard extends ConsumerWidget {
                       children: [
                         Text(
                           context.tr("True black"),
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
                         Text(
                           context.tr("Use a black background in dark mode."),

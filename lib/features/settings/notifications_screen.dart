@@ -58,6 +58,7 @@ class NotificationsScreen extends ConsumerWidget {
             title: context.tr("Focus reminders"),
             children: [
               _SwitchRow(
+                icon: Icons.notifications_active_outlined,
                 title: context.tr("Session reminders"),
                 subtitle: context.tr("“Time to study Physics!”"),
                 value: prefs.sessionReminders,
@@ -70,6 +71,7 @@ class NotificationsScreen extends ConsumerWidget {
             title: context.tr("Progress"),
             children: [
               _SwitchRow(
+                icon: Icons.local_fire_department_outlined,
                 title: context.tr("Streak risk alerts"),
                 subtitle: context.tr("A nudge before a streak breaks"),
                 value: prefs.streakAlerts,
@@ -205,6 +207,7 @@ class NotificationsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: Gap.lg),
                         _SwitchRow(
+                          icon: Icons.bedtime_outlined,
                           title: context.tr("Quiet hours"),
                           subtitle: prefs.quietHoursEnabled
                               ? _quietSummary(context, prefs)
@@ -300,12 +303,15 @@ class NotificationsScreen extends ConsumerWidget {
 
 class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
+    required this.icon,
     required this.title,
     required this.value,
     required this.onChanged,
     this.subtitle,
   });
 
+  /// Leads the row, so its text starts where the rows with a chevron start.
+  final IconData icon;
   final String title;
   final String? subtitle;
   final bool value;
@@ -314,6 +320,7 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      leading: Icon(icon),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: Semantics(

@@ -195,8 +195,15 @@ class AppTheme {
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
       ),
 
+      // One row language everywhere: a row that names its own styles and a
+      // plain `ListTile` used to disagree (14 semibold beside 16 regular), so
+      // the same list could hold two kinds of title.
       listTileTheme: ListTileThemeData(
         iconColor: cs.onSurfaceVariant,
+        titleTextStyle: AppType.build(cs).titleSmall,
+        subtitleTextStyle: AppType.build(
+          cs,
+        ).bodySmall?.copyWith(color: cs.onSurfaceVariant),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.tile),
         ),
