@@ -399,6 +399,19 @@ void main() {
     expect(container.read(assistantMemoryProvider).aiConsent, isFalse);
     expect(backend.questions, isEmpty);
   });
+  test('an online answer loses its Markdown marks and keeps its list', () {
+    expect(
+      tidyAnswer(
+        '## Tonight\r\n\r\n\r\n**Start small:**\n- one `40 minute` block\n'
+        '* ten questions\n\nThen rest.  ',
+      ),
+      'Tonight\n\nStart small:\n• one 40 minute block\n• ten questions\n\n'
+      'Then rest.',
+    );
+    // Plain answers pass through, a multiplication sign included.
+    expect(tidyAnswer('2 * 3 is 6. Keep going.'), '2 * 3 is 6. Keep going.');
+  });
+
   testWidgets('a typed timetable is saved and becomes today’s focus plan', (
     tester,
   ) async {
@@ -408,7 +421,9 @@ void main() {
     await ask(tester, 'make a timetable: physics 2 hours, 3 hours a day');
     expect(find.text('Your timetable'), findsOneWidget);
 
+    // A tall card opens at its top, so Save is a scroll away.
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await wait(tester);
     final saved = container.read(assistantMemoryProvider).timetable!;

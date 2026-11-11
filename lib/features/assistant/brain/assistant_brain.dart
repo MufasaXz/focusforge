@@ -1059,51 +1059,74 @@ class AssistantBrain {
         suggestions: [_startChip, _planChip],
       );
     }
-    final lines = <Copy>[];
+    // What Pip noticed, most telling first. The first becomes the line Pip
+    // says; the rest sit under the charts they explain.
+    final notes = <ReportNote>[];
     final diff = s.weekMinutes - s.lastWeekSpanMinutes;
     if (s.lastWeekSpanMinutes > 0 && diff.abs() >= 15) {
-      lines.add(
+      notes.add(
         diff > 0
-            ? Copy('You’re {0} ahead of last week at this point.', [
-                Minutes(diff),
-              ])
-            : Copy('You’re {0} behind last week at this point.', [
-                Minutes(-diff),
-              ]),
+            ? ReportNote(
+                Icons.trending_up_rounded,
+                Copy('You’re {0} ahead of last week at this point.', [
+                  Minutes(diff),
+                ]),
+              )
+            : ReportNote(
+                Icons.trending_down_rounded,
+                Copy('You’re {0} behind last week at this point.', [
+                  Minutes(-diff),
+                ]),
+              ),
       );
     }
     final weak = weakest(s);
     if (weak != null) {
-      lines.add(
-        Copy('{0} is down {1} from last week.', [
-          Copy.raw(weak.name),
-          Minutes(-weak.delta),
-        ]),
+      notes.add(
+        ReportNote(
+          Icons.south_east_rounded,
+          Copy('{0} is down {1} from last week.', [
+            Copy.raw(weak.name),
+            Minutes(-weak.delta),
+          ]),
+        ),
       );
     }
     final strong = s.subjects.where((t) => t.thisWeek > 0).toList()
       ..sort((a, b) => b.thisWeek.compareTo(a.thisWeek));
-    if (strong.isNotEmpty && strong.first.id != weak?.id && lines.length < 2) {
-      lines.add(
-        Copy('{0} is your strongest subject this week.', [
-          Copy.raw(strong.first.name),
-        ]),
+    if (strong.isNotEmpty && strong.first.id != weak?.id && notes.length < 2) {
+      notes.add(
+        ReportNote(
+          Icons.emoji_events_outlined,
+          Copy('{0} is your strongest subject this week.', [
+            Copy.raw(strong.first.name),
+          ]),
+        ),
       );
     }
     final daypart = _bestDaypart(s);
-    if (daypart != null && lines.length < 3) lines.add(daypart);
-    if (s.reached > 0 && lines.length < 3) {
-      lines.add(
-        Copy(
-          'You reached for blocked apps {0} times today and walked away {1} times.',
-          [Count(s.reached), Count(s.walkedAway)],
+    if (daypart != null && notes.length < 3) {
+      notes.add(ReportNote(Icons.schedule_rounded, daypart));
+    }
+    if (s.reached > 0 && notes.length < 3) {
+      notes.add(
+        ReportNote(
+          Icons.shield_outlined,
+          Copy(
+            'You reached for blocked apps {0} times today and walked away {1} times.',
+            [Count(s.reached), Count(s.walkedAway)],
+          ),
         ),
       );
     }
 
+    final today = s.now.weekday - 1;
     return AssistantReply(
       [
-        const Say(Copy('Here’s how your week is going.')),
+        Say(
+          notes.firstOrNull?.copy ??
+              const Copy('Here’s how your week is going.'),
+        ),
         Say.card(
           ReportCard(
             todayMinutes: s.todayMinutes,
@@ -1117,9 +1140,16 @@ class AssistantBrain {
             usageReady: s.usageReady,
             distractingMinutes: s.distractingMinutes,
             topApps: s.distracting.take(3).toList(),
+            days: [
+              for (final (i, m) in s.weekDays.indexed)
+                // A block still running counts toward today.
+                i == today ? math.max(m, s.todayMinutes) : m,
+            ],
+            lastDays: s.lastWeekDays,
+            today: today,
+            notes: notes.skip(1).toList(),
           ),
         ),
-        for (final line in lines) Say(line),
       ],
       suggestions: [
         if (weak != null)
@@ -1747,6 +1777,36 @@ class AssistantBrain {
     _ => const Copy('this week'),
   };
 
+  /// The heading of a breakdown card for [period].
+  static Copy _periodTitle(String period) => switch (period) {
+    'day' => const Copy('Today'),
+    'month' => const Copy('This month'),
+    'all' => const Copy('All time'),
+    _ => const Copy('This week'),
+  };
+
+  /// How the study in [period] divides between subjects, as a card.
+  static Say _breakdown(StudySnapshot s, String period) {
+    final shares = [
+      for (final t in s.subjects)
+        if (_minutesIn(t, period) > 0)
+          Share(t.name, t.color, _minutesIn(t, period)),
+    ]..sort((a, b) => b.minutes.compareTo(a.minutes));
+    final studied = shares.fold(0, (sum, share) => sum + share.minutes);
+    return Say.card(
+      BreakdownCard(
+        title: _periodTitle(period),
+        // Today's total includes a block still running; the others are the
+        // sum of what the card lists.
+        totalMinutes: period == 'day'
+            ? math.max(s.todayMinutes, studied)
+            : studied,
+        shares: shares,
+        goalMinutes: period == 'day' ? s.goalMinutes : 0,
+      ),
+    );
+  }
+
   static int _minutesIn(SubjectTrend t, String period) => switch (period) {
     'day' => t.today,
     'month' => t.month,
@@ -1783,6 +1843,7 @@ class AssistantBrain {
                     Minutes(minutes),
                   ]),
           ),
+          _breakdown(s, period),
         ],
         suggestions: [
           Suggestion(
@@ -1796,9 +1857,6 @@ class AssistantBrain {
     }
     final top = ranked.first;
     final minutes = _minutesIn(top, period);
-    final next = ranked.length > 1 && _minutesIn(ranked[1], period) > 0
-        ? ranked[1]
-        : null;
     return AssistantReply(
       [
         Say(
@@ -1809,13 +1867,8 @@ class AssistantBrain {
             Count((minutes * 100 / total).round()),
           ]),
         ),
-        if (next != null)
-          Say(
-            Copy('Next is {0} with {1}.', [
-              Copy.raw(next.name),
-              Minutes(_minutesIn(next, period)),
-            ]),
-          ),
+        // The card ranks the rest, so Pip does not read them out.
+        _breakdown(s, period),
       ],
       suggestions: [
         Suggestion(
@@ -1831,7 +1884,6 @@ class AssistantBrain {
   /// "How much did I study today", "monthly performance", "total study".
   AssistantReply _periodStats(StudySnapshot s, String period) {
     if (period == 'week') return _report(s);
-    final topLine = _subjectStats(s, 'top:$period').says.first;
     final lines = <Say>[];
     switch (period) {
       case 'day':
@@ -1853,15 +1905,6 @@ class AssistantBrain {
             ]),
           ),
         );
-        if (s.goalMinutes > 0) {
-          lines.add(
-            Say(
-              Copy('That’s {0}% of today’s goal.', [
-                Count((s.todayMinutes * 100 / s.goalMinutes).round()),
-              ]),
-            ),
-          );
-        }
       case 'month':
         if (s.monthMinutes == 0) {
           return AssistantReply(
@@ -1911,8 +1954,10 @@ class AssistantBrain {
           Say(Copy('In all, you’ve studied {0}.', [Minutes(s.totalMinutes)])),
         );
     }
+    // One line for the answer, then the split as a chart: the goal ring and
+    // the subject shares say the rest without more bubbles.
     return AssistantReply(
-      [...lines, topLine],
+      [...lines, _breakdown(s, period)],
       suggestions: [
         if (period != 'month')
           const Suggestion(

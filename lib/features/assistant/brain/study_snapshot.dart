@@ -49,6 +49,8 @@ class StudySnapshot {
     this.totalMinutes = 0,
     this.lastWeekSpanMinutes = 0,
     this.lastWeekMinutes = 0,
+    this.weekDays = const [0, 0, 0, 0, 0, 0, 0],
+    this.lastWeekDays = const [0, 0, 0, 0, 0, 0, 0],
     this.dayparts = const [0, 0, 0, 0],
     this.sessionsToday = 0,
     this.android = false,
@@ -106,6 +108,10 @@ class StudySnapshot {
   /// Minutes over the last four weeks in the morning, afternoon, evening and
   /// night.
   final List<int> dayparts;
+
+  /// Minutes on each day of this week and of last week, Monday first.
+  final List<int> weekDays;
+  final List<int> lastWeekDays;
   final int sessionsToday;
   final bool android;
   final bool appListConsent;
@@ -274,6 +280,8 @@ class StudySnapshot {
     final totalBy = <String, int>{};
     final monthDays = <int>{};
     final dayparts = [0, 0, 0, 0];
+    final weekDays = List.filled(7, 0);
+    final lastWeekDays = List.filled(7, 0);
     var week = 0, lastWeekSpan = 0, lastWeek = 0, sessionsToday = 0;
     var month = 0, lastMonthSpan = 0, total = 0;
     for (final s in sessions) {
@@ -285,12 +293,16 @@ class StudySnapshot {
       if (within(monday, tomorrow)) {
         thisWeek.update(s.subjectId, (v) => v + m, ifAbsent: () => m);
         week += m;
+        weekDays[at.weekday - 1] += m;
       }
       if (within(lastMonday, lastSpanEnd)) {
         lastSpan.update(s.subjectId, (v) => v + m, ifAbsent: () => m);
         lastWeekSpan += m;
       }
-      if (within(lastMonday, monday)) lastWeek += m;
+      if (within(lastMonday, monday)) {
+        lastWeek += m;
+        lastWeekDays[at.weekday - 1] += m;
+      }
       if (within(today, tomorrow)) {
         todayBy.update(s.subjectId, (v) => v + m, ifAbsent: () => m);
         sessionsToday++;
@@ -383,6 +395,8 @@ class StudySnapshot {
       lastWeekSpanMinutes: lastWeekSpan,
       lastWeekMinutes: lastWeek,
       dayparts: dayparts,
+      weekDays: weekDays,
+      lastWeekDays: lastWeekDays,
       sessionsToday: sessionsToday,
       android: android,
       appListConsent: read(appListConsentProvider),

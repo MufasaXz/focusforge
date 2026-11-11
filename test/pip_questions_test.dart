@@ -89,8 +89,8 @@ void main() {
     }
     expect(
       answer('top subject this month'),
-      'Your top subject this month is Physics: 10h, 60% of your study. '
-      'Next is Chemistry with 5h.',
+      // The chart under it ranks the rest.
+      'Your top subject this month is Physics: 10h, 60% of your study.',
     );
     expect(
       answer('what is my favourite subject overall'),
@@ -129,7 +129,8 @@ void main() {
     );
     expect(
       answer('how much did i study today'),
-      startsWith('Today: 30m in 1 sessions. That’s 25% of today’s goal.'),
+      // The goal is the ring on the card, not another line.
+      'Today: 30m in 1 sessions.',
     );
     expect(
       answer('total study time overall'),

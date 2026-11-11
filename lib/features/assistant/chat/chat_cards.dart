@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -9,6 +11,7 @@ import '../brain/assistant_models.dart';
 import '../brain/exam_guide.dart';
 import '../brain/reminders.dart';
 import '../brain/timetable.dart';
+import 'chat_charts.dart';
 
 /// The frame every card in the chat shares: a tonal panel with a titled
 /// badge, so a report and a plan read as one family.
@@ -68,41 +71,6 @@ class _CardShell extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value, this.trailing});
-
-  final String label;
-  final String value;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          Text(
-            value,
-            style: tt.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          if (trailing != null) ...[const SizedBox(width: Gap.sm), trailing!],
-        ],
       ),
     );
   }
@@ -180,79 +148,253 @@ class _Subhead extends StatelessWidget {
   );
 }
 
-class ReportCardView extends StatelessWidget {
-  const ReportCardView({super.key, required this.card});
+/// A big number under a small label: the reading a card leads with.
+class _Figure extends StatelessWidget {
+  const _Figure({
+    required this.label,
+    required this.value,
+    this.trailing,
+    this.hero = false,
+  });
 
-  final ReportCard card;
+  final String label;
+  final String value;
+  final Widget? trailing;
+
+  /// The card's headline number, set a size larger than the rest.
+  final bool hero;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+        const SizedBox(height: 2),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: Gap.sm,
+          children: [
+            Text(
+              value,
+              style: (hero ? tt.headlineSmall : tt.titleLarge)?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            ?trailing,
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A row of a chart: what it is, how much, and a bar to compare by eye.
+class _BarRow extends StatelessWidget {
+  const _BarRow({
+    required this.lead,
+    required this.name,
+    required this.value,
+    required this.bar,
+    this.trailing,
+  });
+
+  final Widget lead;
+  final String name;
+  final String value;
+  final Widget bar;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Name at one edge, numbers at the other; with large text the
+          // numbers drop to their own line instead of squeezing the name out.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: Gap.sm,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  lead,
+                  const SizedBox(width: Gap.sm),
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: tt.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: Gap.sm),
+                    trailing!,
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          ExcludeSemantics(child: bar),
+        ],
+      ),
+    );
+  }
+}
+
+/// The streak, worn in a card's corner.
+class _StreakPill extends StatelessWidget {
+  const _StreakPill(this.days);
+
+  final int days;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final text = context.tr('{0} days', [days]);
+    return Semantics(
+      label: '${context.tr('Streak')}: $text',
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.secondaryContainer,
+          borderRadius: BorderRadius.circular(Radii.pill),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.local_fire_department_rounded,
+                size: 16,
+                color: cs.onSecondaryContainer,
+              ),
+              const SizedBox(width: Gap.xs),
+              Text(
+                text,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: cs.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The week as a picture: the total, a column for each day, today against
+/// its goal, then each subject and each distracting app as a bar.
+class ReportCardView extends StatelessWidget {
+  const ReportCardView({super.key, required this.card, this.animate = false});
+
+  final ReportCard card;
+
+  /// Whether the charts draw themselves in, for a card that has just arrived.
+  final bool animate;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final locale = Localizations.localeOf(context);
+    final surface = cs.surfaceContainerLow;
     String minutes(int m) => formatMinutes(m, locale: locale);
+    final subjects = card.subjects.take(5).toList();
+    final subjectTop = subjects.fold(
+      1,
+      (top, t) => [top, t.thisWeek, t.lastWeekSpan].reduce(math.max),
+    );
+    final appTop = card.topApps.fold(1, (top, a) => math.max(top, a.minutes));
     return _CardShell(
       icon: Icons.insights_rounded,
       title: context.tr('Your week so far'),
+      trailing: card.streak > 0 ? _StreakPill(card.streak) : null,
       children: [
-        _Row(
-          label: context.tr('Today'),
-          value: card.goalMinutes > 0
-              ? context.tr('{0} of {1}', [
-                  minutes(card.todayMinutes),
-                  minutes(card.goalMinutes),
-                ])
-              : minutes(card.todayMinutes),
-        ),
-        if (card.goalMinutes > 0)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Gap.xs),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Radii.pill),
-              child: LinearProgressIndicator(
-                value: (card.todayMinutes / card.goalMinutes).clamp(0.0, 1.0),
-                minHeight: 6,
-              ),
-            ),
-          ),
-        _Row(
+        _Figure(
           label: context.tr('This week'),
           value: minutes(card.weekMinutes),
+          hero: true,
           trailing: card.lastWeekSpanMinutes > 0
               ? _Delta(card.weekMinutes - card.lastWeekSpanMinutes)
               : null,
         ),
-        if (card.streak > 0)
-          _Row(
-            label: context.tr('Streak'),
-            value: context.tr('{0} days', [card.streak]),
-          ),
-        if (card.subjects.isNotEmpty) ...[
+        const SizedBox(height: Gap.md),
+        WeekBars(
+          days: card.days,
+          lastDays: card.lastDays,
+          today: card.today,
+          surface: surface,
+          animate: animate,
+        ),
+        const SizedBox(height: Gap.md),
+        Divider(height: 1, color: cs.outlineVariant),
+        const SizedBox(height: Gap.md),
+        Row(
+          children: [
+            Expanded(
+              child: _Figure(
+                label: context.tr('Today'),
+                value: card.goalMinutes > 0
+                    ? context.tr('{0} of {1}', [
+                        minutes(card.todayMinutes),
+                        minutes(card.goalMinutes),
+                      ])
+                    : minutes(card.todayMinutes),
+              ),
+            ),
+            if (card.goalMinutes > 0) ...[
+              const SizedBox(width: Gap.md),
+              GoalRing(
+                share: card.todayMinutes / card.goalMinutes,
+                animate: animate,
+              ),
+            ],
+          ],
+        ),
+        if (subjects.isNotEmpty) ...[
           _Subhead(context.tr('By subject')),
-          for (final subject in card.subjects.take(5))
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  _Dot(subject.color),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: Text(
-                      subject.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    minutes(subject.thisWeek),
-                    style: const TextStyle(
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  if (subject.lastWeekSpan > 0) ...[
-                    const SizedBox(width: Gap.sm),
-                    _Delta(subject.delta),
-                  ],
-                ],
+          for (final subject in subjects)
+            _BarRow(
+              lead: _Dot(subject.color),
+              name: subject.name,
+              value: minutes(subject.thisWeek),
+              trailing: subject.lastWeekSpan > 0 ? _Delta(subject.delta) : null,
+              bar: AmountBar(
+                value: subject.thisWeek / subjectTop,
+                mark: subject.lastWeekSpan > 0
+                    ? subject.lastWeekSpan / subjectTop
+                    : null,
+                color: harmonize(subject.color, cs.primary),
+                surface: surface,
+                animate: animate,
               ),
             ),
         ],
@@ -262,27 +404,141 @@ class ReportCardView extends StatelessWidget {
             Text(minutes(0), style: TextStyle(color: cs.onSurfaceVariant))
           else
             for (final app in card.topApps)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.apps_rounded,
-                      size: 16,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: Gap.sm),
-                    Expanded(
-                      child: Text(
-                        app.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(minutes(app.minutes)),
-                  ],
+              _BarRow(
+                lead: Icon(
+                  Icons.apps_rounded,
+                  size: 16,
+                  color: cs.onSurfaceVariant,
+                ),
+                name: app.name,
+                value: minutes(app.minutes),
+                bar: AmountBar(
+                  value: app.minutes / appTop,
+                  color: cs.outline,
+                  surface: surface,
+                  animate: animate,
                 ),
               ),
+        ],
+        if (card.notes.isNotEmpty) ...[
+          const SizedBox(height: Gap.md),
+          Divider(height: 1, color: cs.outlineVariant),
+          const SizedBox(height: Gap.sm),
+          for (final note in card.notes)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(note.icon, size: 18, color: cs.primary),
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      note.copy.of(context),
+                      style: tt.bodyMedium?.copyWith(height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Study time over one period: the total, how it divides, and each subject's
+/// share.
+class BreakdownCardView extends StatelessWidget {
+  const BreakdownCardView({
+    super.key,
+    required this.card,
+    this.animate = false,
+  });
+
+  final BreakdownCard card;
+  final bool animate;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final locale = Localizations.localeOf(context);
+    String minutes(int m) => formatMinutes(m, locale: locale);
+    final shares = card.shares.take(6).toList();
+    final whole = math.max(1, card.shares.fold(0, (sum, s) => sum + s.minutes));
+    return _CardShell(
+      icon: Icons.donut_small_rounded,
+      title: card.title.of(context),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _Figure(
+                label: context.tr('Focus'),
+                value: card.goalMinutes > 0
+                    ? context.tr('{0} of {1}', [
+                        minutes(card.totalMinutes),
+                        minutes(card.goalMinutes),
+                      ])
+                    : minutes(card.totalMinutes),
+              ),
+            ),
+            if (card.goalMinutes > 0) ...[
+              const SizedBox(width: Gap.md),
+              GoalRing(
+                share: card.totalMinutes / card.goalMinutes,
+                animate: animate,
+              ),
+            ],
+          ],
+        ),
+        if (shares.isNotEmpty) ...[
+          const SizedBox(height: Gap.md),
+          PartsBar(
+            parts: [for (final s in shares) (s.minutes, s.color)],
+            animate: animate,
+          ),
+          const SizedBox(height: Gap.sm),
+          for (final share in shares)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+              child: Row(
+                children: [
+                  _Dot(share.color),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Text(
+                      share.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Text(
+                    minutes(share.minutes),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  SizedBox(
+                    width: MediaQuery.textScalerOf(context).scale(48),
+                    child: Text(
+                      formatPercent(share.minutes / whole, locale: locale),
+                      maxLines: 1,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ],
     );
@@ -296,10 +552,12 @@ class PlanCardView extends StatelessWidget {
     required this.saved,
     required this.onStart,
     required this.onSave,
+    this.animate = false,
   });
 
   final PlanCard card;
   final bool saved;
+  final bool animate;
   final VoidCallback onStart;
   final VoidCallback onSave;
 
@@ -313,6 +571,12 @@ class PlanCardView extends StatelessWidget {
       icon: Icons.event_note_rounded,
       title: context.tr('Today’s plan'),
       children: [
+        // The day's blocks in proportion, before the list spells them out.
+        PartsBar(
+          parts: [for (final b in card.blocks) (b.minutes, b.color)],
+          animate: animate,
+        ),
+        const SizedBox(height: Gap.sm),
         for (final (i, block) in card.blocks.indexed)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),

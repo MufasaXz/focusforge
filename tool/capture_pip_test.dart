@@ -159,9 +159,11 @@ void main() {
 
     for (var d = 0; d < 7; d++) {
       final last = DateTime(monday.year, monday.month, monday.day - 7 + d);
-      log(last, 'chemistry', 60, 18);
-      log(last, 'physics', 40, 19);
-      log(last, 'math', 30, 20);
+      // An uneven week, like a real one: a big Tuesday, a light Friday.
+      const shape = [1.0, 1.4, 0.9, 1.2, 0.5, 1.6, 0.4];
+      log(last, 'chemistry', (60 * shape[d]).round(), 18);
+      log(last, 'physics', (40 * shape[d]).round(), 19);
+      log(last, 'math', (30 * shape[d]).round(), 20);
     }
     for (var d = 0; d < today.weekday; d++) {
       final day = DateTime(monday.year, monday.month, monday.day + d);
@@ -320,6 +322,8 @@ void main() {
       for (final (name, action) in [
         ('report', const AssistantAction(Act.report)),
         ('plan', const AssistantAction(Act.plan)),
+        ('today', const AssistantAction(Act.periodStats, arg: 'day')),
+        ('month', const AssistantAction(Act.periodStats, arg: 'month')),
         ('lock', const AssistantAction(Act.distractions)),
         ('exam', const AssistantAction(Act.exam, arg: 'jee-main')),
         (

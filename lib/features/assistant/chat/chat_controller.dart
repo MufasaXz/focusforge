@@ -23,6 +23,23 @@ import '../nudges/pip_nudges.dart';
 
 enum ChatStatus { idle, thinking, typing }
 
+/// An online answer as plain chat text.
+///
+/// The model sometimes writes Markdown, and a bubble shows text exactly as it
+/// is, so headings and bold lose their marks, list items become bullets, and
+/// runs of blank lines close up.
+String tidyAnswer(String reply) {
+  final lines = [
+    for (final line in reply.replaceAll('\r\n', '\n').split('\n'))
+      line
+          .replaceFirst(RegExp(r'^\s{0,3}#{1,6}\s+'), '')
+          .replaceFirst(RegExp(r'^\s*[-*]\s+'), '• ')
+          .replaceAll(RegExp(r'\*\*|__|`'), '')
+          .trimRight(),
+  ];
+  return lines.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+}
+
 /// Where the chat wants to send the user next, once it has spoken.
 enum ChatDestination { focus, shield }
 
@@ -229,7 +246,7 @@ class ChatController extends Notifier<ChatState> {
       if (generation != _generation) return;
       await say(
         AssistantReply([
-          Say(Copy.raw(reply), online: true),
+          Say(Copy.raw(tidyAnswer(reply)), online: true),
         ], suggestions: brain.defaults(snapshot)),
         generation: generation,
       );

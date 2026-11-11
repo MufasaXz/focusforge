@@ -90,6 +90,17 @@ String formatWeekday(DateTime date, {ui.Locale? locale}) {
   return DateFormat.EEEE(_strings(locale).locale.languageCode).format(date);
 }
 
+/// A weekday at its shortest, for the foot of a chart column: M, T, W.
+String formatWeekdayNarrow(DateTime date, {ui.Locale? locale}) {
+  _ensureDateData();
+  return DateFormat.EEEEE(_strings(locale).locale.languageCode).format(date);
+}
+
+/// A share between 0 and 1 as a whole percentage: 48%.
+String formatPercent(double share, {ui.Locale? locale}) =>
+    NumberFormat.percentPattern(_strings(locale).locale.languageCode)
+        .format(share);
+
 /// A time of day, [minuteOfDay] minutes after midnight, the way the phone's
 /// language writes it: 5:00 PM, 17:00.
 String formatTimeOfDay(int minuteOfDay, {ui.Locale? locale}) {

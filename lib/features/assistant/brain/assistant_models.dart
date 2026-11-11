@@ -270,6 +270,15 @@ sealed class ChatCard {
   const ChatCard();
 }
 
+/// Something Pip noticed, shown as a line at the foot of a report.
+@immutable
+class ReportNote {
+  const ReportNote(this.icon, this.copy);
+
+  final IconData icon;
+  final Copy copy;
+}
+
 class ReportCard extends ChatCard {
   const ReportCard({
     required this.todayMinutes,
@@ -281,6 +290,10 @@ class ReportCard extends ChatCard {
     required this.usageReady,
     required this.distractingMinutes,
     required this.topApps,
+    this.days = const [0, 0, 0, 0, 0, 0, 0],
+    this.lastDays = const [0, 0, 0, 0, 0, 0, 0],
+    this.today = 0,
+    this.notes = const [],
   });
 
   final int todayMinutes;
@@ -292,6 +305,45 @@ class ReportCard extends ChatCard {
   final bool usageReady;
   final int distractingMinutes;
   final List<AppMinutes> topApps;
+
+  /// Minutes on each day of this week and of last week, Monday first, and
+  /// which of them is today.
+  final List<int> days;
+  final List<int> lastDays;
+  final int today;
+
+  /// What Pip noticed in these numbers.
+  final List<ReportNote> notes;
+}
+
+/// One slice of a [BreakdownCard]: a subject and its minutes.
+@immutable
+class Share {
+  const Share(this.name, this.color, this.minutes);
+
+  final String name;
+  final Color color;
+  final int minutes;
+}
+
+/// Study time over one period, split by subject.
+class BreakdownCard extends ChatCard {
+  const BreakdownCard({
+    required this.title,
+    required this.totalMinutes,
+    required this.shares,
+    this.goalMinutes = 0,
+  });
+
+  /// The period, such as "Today" or "This month".
+  final Copy title;
+  final int totalMinutes;
+
+  /// Subjects with time in the period, most first.
+  final List<Share> shares;
+
+  /// The goal the total counts toward, or 0 when there is none.
+  final int goalMinutes;
 }
 
 class PlanCard extends ChatCard {

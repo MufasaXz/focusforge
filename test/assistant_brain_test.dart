@@ -210,18 +210,70 @@ void main() {
         ],
       );
       final reply = brain.respond(const AssistantAction(Act.report), s);
-      final keys = [for (final say in reply.says) say.copy?.key];
-      expect(keys, contains('You’re {0} behind last week at this point.'));
-      expect(keys, contains('{0} is down {1} from last week.'));
+      // The most telling line is what Pip says; the rest sit in the card.
       expect(
-        reply.says.whereType<Say>().any((s) => s.card is ReportCard),
-        isTrue,
+        reply.says.first.copy?.key,
+        'You’re {0} behind last week at this point.',
+      );
+      final card = reply.says.map((s) => s.card).whereType<ReportCard>().single;
+      expect(reply.says, hasLength(2));
+      expect(
+        [for (final note in card.notes) note.copy.key],
+        ['{0} is down {1} from last week.'],
       );
       expect(
         reply.suggestions.first.action,
         const AssistantAction(Act.plan, arg: 'chemistry'),
       );
       expect(reply.thinking, isNotEmpty);
+    });
+
+    test('the report charts each day of the week against last week', () {
+      // A Thursday, with a block still running that the log has not got yet.
+      final s = StudySnapshot(
+        now: DateTime(2026, 11, 5, 15),
+        todayMinutes: 50,
+        weekMinutes: 170,
+        lastWeekSpanMinutes: 100,
+        lastWeekMinutes: 220,
+        weekDays: const [60, 0, 90, 20, 0, 0, 0],
+        lastWeekDays: const [30, 30, 20, 20, 40, 80, 0],
+      );
+      final card = brain
+          .respond(const AssistantAction(Act.report), s)
+          .says
+          .map((say) => say.card)
+          .whereType<ReportCard>()
+          .single;
+      expect(card.today, 3);
+      expect(card.days, [60, 0, 90, 50, 0, 0, 0]);
+      expect(card.lastDays, [30, 30, 20, 20, 40, 80, 0]);
+    });
+
+    test('a day or a month is answered in one line and one chart', () {
+      final s = snapshot(
+        todayMinutes: 80,
+        goalMinutes: 120,
+        subjects: [
+          subject('math', today: 20),
+          subject('physics', today: 60),
+          subject('chemistry'),
+        ],
+      );
+      final reply = brain.respond(
+        const AssistantAction(Act.periodStats, arg: 'day'),
+        s,
+      );
+      expect(reply.says, hasLength(2));
+      final card = reply.says.last.card! as BreakdownCard;
+      expect(card.title.key, 'Today');
+      expect(card.totalMinutes, 80);
+      expect(card.goalMinutes, 120);
+      // Most first, and a subject with no time is left out.
+      expect(
+        [for (final share in card.shares) share.name],
+        ['Physics', 'Math'],
+      );
     });
 
     test('an empty week asks for one small block instead of a report', () {

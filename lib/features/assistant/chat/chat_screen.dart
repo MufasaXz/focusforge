@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -100,7 +102,23 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scroll.hasClients) return;
-      final end = _scroll.position.maxScrollExtent;
+      var end = _scroll.position.maxScrollExtent;
+      // A reply taller than the screen is read from its top: stop where
+      // Pip's turn begins rather than at its last line.
+      final entries = ref.read(chatProvider).entries;
+      var start = entries.length;
+      while (start > 0 && entries[start - 1].fromPip) {
+        start--;
+      }
+      final turn = start < entries.length
+          ? _EntryKey(entries[start].id).currentContext?.findRenderObject()
+          : null;
+      if (turn != null && turn.attached) {
+        final top = RenderAbstractViewport.of(turn)
+            .getOffsetToReveal(turn, 0)
+            .offset;
+        end = math.min(end, math.max(0, top - Gap.sm));
+      }
       if (MediaQuery.disableAnimationsOf(context)) {
         _scroll.jumpTo(end);
       } else {
@@ -429,7 +447,7 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                         index == 1 ||
                         entries[index - 2].fromPip != entry.fromPip;
                     return _Appear(
-                      key: ValueKey(entry.id),
+                      key: _EntryKey(entry.id),
                       child: _EntryView(
                         entry: entry,
                         first: first,
@@ -477,6 +495,11 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
       ),
     );
   }
+}
+
+/// Finds an entry's place on screen by its id, so the list can scroll to it.
+class _EntryKey extends GlobalObjectKey {
+  const _EntryKey(int super.id);
 }
 
 /// Pip, full height, at the top of every conversation.
@@ -641,11 +664,17 @@ class _EntryView extends StatelessWidget {
     }
 
     final card = entry.card;
+    // A card that has just arrived draws its charts in; one scrolled back
+    // to is already drawn.
+    final at = entry.at;
+    final fresh = at != null && DateTime.now().difference(at) < _PipLine._fresh;
     final Widget content = switch (card) {
-      ReportCard() => ReportCardView(card: card),
+      ReportCard() => ReportCardView(card: card, animate: fresh),
+      BreakdownCard() => BreakdownCardView(card: card, animate: fresh),
       PlanCard() => PlanCardView(
         card: card,
         saved: saved,
+        animate: fresh,
         onStart: () => onStart(card.blocks.firstOrNull?.subjectId),
         onSave: () => onSave(card),
       ),
