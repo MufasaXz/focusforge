@@ -146,6 +146,8 @@ class LeaderboardEntry {
     this.group,
     this.level,
     this.avatarPhoto,
+    this.avatarIcon,
+    this.avatarColor,
   });
 
   final String uid;
@@ -153,6 +155,11 @@ class LeaderboardEntry {
   final double hours;
   final int? level;
   final String? avatarPhoto;
+
+  /// The glyph and colour the person chose for their avatar, or null for
+  /// initials on the board's own colours.
+  final String? avatarIcon;
+  final int? avatarColor;
   final bool isMe;
   final String? group;
 

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/models/icon_registry.dart';
 import '../../core/models/social.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/widgets/community_safety.dart';
@@ -300,7 +301,6 @@ class _BoardRowTile extends StatelessWidget {
         MediaQuery.sizeOf(context).width < 360 ||
         MediaQuery.textScalerOf(context).scale(14) > 19;
     final muted = cs.onSurfaceVariant;
-    final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
     final level = entry.level == null
         ? context.tr("Level unavailable")
         : context.tr("Level {0}", [entry.level]);
@@ -361,24 +361,10 @@ class _BoardRowTile extends StatelessWidget {
           if (!compact) ...[
             const SizedBox(width: Gap.sm),
             ExcludeSemantics(
-              child: CircleAvatar(
+              child: _BoardAvatar(
+                entry: entry,
                 radius: 19,
-                foregroundImage: photoBytes == null
-                    ? null
-                    : MemoryImage(photoBytes),
-                onForegroundImageError: photoBytes == null ? null : (_, _) {},
-                backgroundColor: entry.isMe
-                    ? cs.primary
-                    : cs.surfaceContainerHighest,
-                foregroundColor: entry.isMe
-                    ? cs.onPrimary
-                    : cs.onSurfaceVariant,
-                child: Text(
-                  entry.initials,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
-                  ),
-                ),
+                style: theme.textTheme.labelMedium,
               ),
             ),
           ],
@@ -531,7 +517,6 @@ class _PodiumSeat extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final photoBytes = ProfilePhoto.bytes(entry.avatarPhoto);
     final medal = _medal(rank, cs);
     final winner = rank == 1;
     final reduce = MediaQuery.disableAnimationsOf(context);
@@ -567,24 +552,11 @@ class _PodiumSeat extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(2),
-              child: CircleAvatar(
+              child: _BoardAvatar(
+                entry: entry,
                 radius: winner ? 32 : 25,
-                foregroundImage: photoBytes == null
-                    ? null
-                    : MemoryImage(photoBytes),
-                onForegroundImageError: photoBytes == null ? null : (_, _) {},
-                backgroundColor: entry.isMe
-                    ? cs.primary
-                    : cs.surfaceContainerHighest,
-                foregroundColor: entry.isMe
-                    ? cs.onPrimary
-                    : cs.onSurfaceVariant,
-                child: Text(
-                  entry.initials,
-                  style: (winner ? tt.titleMedium : tt.titleSmall)?.copyWith(
-                    color: entry.isMe ? cs.onPrimary : cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
+                style: (winner ? tt.titleMedium : tt.titleSmall)?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -1005,6 +977,50 @@ class _WeekCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A person's avatar on the board: their photo, else the symbol they chose,
+/// else their initials, on the colour they chose.
+///
+/// With no colour chosen the board keeps its own: the accent for the
+/// viewer's row, a quiet surface for everyone else's.
+class _BoardAvatar extends StatelessWidget {
+  const _BoardAvatar({
+    required this.entry,
+    required this.radius,
+    required this.style,
+  });
+
+  final LeaderboardEntry entry;
+  final double radius;
+
+  /// The text style of the initials; its colour is set here.
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final chosen = entry.avatarColor;
+    final color = chosen != null
+        ? Color(chosen)
+        : (entry.isMe ? cs.primary : cs.surfaceContainerHighest);
+    // A chosen colour is free, so its ink is picked by its own lightness.
+    final ink = chosen != null
+        ? (color.computeLuminance() > 0.45 ? Colors.black87 : Colors.white)
+        : (entry.isMe ? cs.onPrimary : cs.onSurfaceVariant);
+    final photo = ProfilePhoto.bytes(entry.avatarPhoto);
+    final icon = entry.avatarIcon;
+    return CircleAvatar(
+      radius: radius,
+      foregroundImage: photo == null ? null : MemoryImage(photo),
+      onForegroundImageError: photo == null ? null : (_, _) {},
+      backgroundColor: color,
+      foregroundColor: ink,
+      child: icon != null
+          ? Icon(AppIcons.resolve(icon), size: radius, color: ink)
+          : Text(entry.initials, style: style?.copyWith(color: ink)),
     );
   }
 }

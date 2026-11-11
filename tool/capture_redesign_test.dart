@@ -50,6 +50,8 @@ class _Board implements LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {}
   @override
   Stream<List<BoardRow>> watch(String week, {int limit = 100}) =>

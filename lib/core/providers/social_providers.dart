@@ -788,6 +788,8 @@ final leaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
         hours: row.minutes / 60,
         level: row.level,
         avatarPhoto: row.avatarPhoto,
+        avatarIcon: row.avatarIcon,
+        avatarColor: row.avatarColor,
         isMe: myUid != null && row.uid == myUid,
       ),
   ];
@@ -967,15 +969,17 @@ final leaderboardPublisherProvider = Provider<Future<void> Function()>((ref) {
 
     // Bounded as the rules bound them: a row over either limit is refused
     // whole, and would be retried every thirty seconds for good.
-    final minutes = (ref.read(leaderboardWeekHoursProvider) * 60)
-        .round()
-        .clamp(0, 10080);
+    final minutes = (ref.read(leaderboardWeekHoursProvider) * 60).round().clamp(
+      0,
+      10080,
+    );
     // A row reading 0m is not a standing; it is an absence with a name on it.
     if (minutes <= 0) return;
 
     final name = cappedDisplayName(ref.read(userProvider).displayName);
     final week = ref.read(currentWeekKeyProvider);
     final level = ref.read(statsProvider).level;
+    final user = ref.read(userProvider);
     await ref.read(boardPublishQueueProvider).run(() async {
       if (disposed ||
           ref.read(accountUidProvider) != uid ||
@@ -990,7 +994,11 @@ final leaderboardPublisherProvider = Provider<Future<void> Function()>((ref) {
         name: name.isEmpty ? 'A student' : name,
         minutes: minutes,
         level: level,
-        avatarPhoto: ref.read(userProvider).avatarPhoto,
+        avatarPhoto: user.avatarPhoto,
+        // The mark and colour chosen in the profile, checked the same way
+        // a reader checks them, so a row is never refused for its avatar.
+        avatarIcon: BoardRow.validIcon(user.avatarIcon),
+        avatarColor: BoardRow.validColor(user.avatarColor),
       );
     });
   }

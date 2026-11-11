@@ -121,6 +121,8 @@ class _Board implements LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {
     current = [
       BoardRow(

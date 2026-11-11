@@ -24,6 +24,8 @@ class _Board implements LeaderboardService {
   final publishedLevels = <int>[];
   final publishedNames = <String>[];
   final publishedMinutes = <int>[];
+  final publishedIcons = <String?>[];
+  final publishedColors = <int?>[];
   final withdrawn = <String>[];
   @override
   bool get available => true;
@@ -40,10 +42,14 @@ class _Board implements LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {
     publishedLevels.add(level);
     publishedNames.add(name);
     publishedMinutes.add(minutes);
+    publishedIcons.add(avatarIcon);
+    publishedColors.add(avatarColor);
   }
 
   @override
@@ -77,6 +83,8 @@ class _RetryBoard extends _Board {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {
     attempts++;
     if (attempts <= 2) throw StateError('Offline');
@@ -481,6 +489,169 @@ void main() {
       });
       expect(row!.toJson().containsKey('level'), isFalse);
     }
+  });
+
+  test('a board row keeps a chosen avatar mark and colour, and only those', () {
+    final row = BoardRow.fromJson('alex', {
+      'name': 'Alex',
+      'minutes': 60,
+      'avatarIcon': 'chemistry',
+      'avatarColor': 0xFF2196F3,
+    })!;
+    expect(row.avatarIcon, 'chemistry');
+    expect(row.avatarColor, 0xFF2196F3);
+    expect(row.toJson()['avatarIcon'], 'chemistry');
+    expect(row.toJson()['avatarColor'], 0xFF2196F3);
+
+    // An older row shares neither.
+    final legacy = BoardRow.fromJson('old', {'name': 'Old', 'minutes': 60})!;
+    expect(legacy.avatarIcon, isNull);
+    expect(legacy.avatarColor, isNull);
+
+    // Another phone wrote the row: an unknown glyph or a value that is not
+    // a colour is dropped, and a see-through colour is made solid.
+    for (final icon in ['not_an_icon', '', 7, null]) {
+      expect(BoardRow.validIcon(icon), isNull, reason: '$icon');
+    }
+    for (final color in [-1, 0x100000000, 1.5, '0xFF000000', null]) {
+      expect(BoardRow.validColor(color), isNull, reason: '$color');
+    }
+    expect(BoardRow.validColor(0x002196F3), 0xFF2196F3);
+  });
+
+  test('changing the avatar mark or colour republishes the row with it', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final service = _Board();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        leaderboardServiceProvider.overrideWithValue(service),
+        accountUidProvider.overrideWithValue('me'),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(sessionsProvider.notifier).hydrate([
+      FocusSession(
+        id: 'week-session',
+        subjectId: 'math',
+        startedAt: DateTime.now(),
+        minutes: 60,
+      ).toJson(),
+    ]);
+    container.read(leaderboardPublisherProvider);
+    await container.read(boardOptInProvider.notifier).set(true);
+    await container.pump();
+    // Nothing chosen yet: initials on the board's own colour.
+    expect(service.publishedIcons.last, isNull);
+    expect(service.publishedColors.last, isNull);
+
+    await container
+        .read(userProvider.notifier)
+        .setAvatar(icon: 'chemistry', color: 0xFF2196F3);
+    await container.pump();
+    expect(service.publishedIcons.last, 'chemistry');
+    expect(service.publishedColors.last, 0xFF2196F3);
+
+    await container.read(userProvider.notifier).setAvatarColor(0xFFE53935);
+    await container.pump();
+    expect(service.publishedIcons.last, 'chemistry');
+    expect(service.publishedColors.last, 0xFFE53935);
+
+    // Back to initials: the mark goes, the colour stays.
+    await container.read(userProvider.notifier).setAvatar(color: 0xFFE53935);
+    await container.pump();
+    expect(service.publishedIcons.last, isNull);
+    expect(service.publishedColors.last, 0xFFE53935);
+  });
+
+  testWidgets('the board draws each person’s chosen mark on their colour', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        leaderboardServiceProvider.overrideWithValue(_Board()),
+        accountUidProvider.overrideWithValue('me'),
+        weekBoardProvider.overrideWith(
+          (ref) => Stream.value(const [
+            BoardRow(
+              uid: 'sam',
+              name: 'Sam Lee',
+              minutes: 300,
+              avatarIcon: 'chemistry',
+              avatarColor: 0xFF2196F3,
+            ),
+            BoardRow(uid: 'kim', name: 'Kim Park', minutes: 240),
+            BoardRow(
+              uid: 'me',
+              name: 'Alex Morgan',
+              minutes: 180,
+              avatarColor: 0xFFFFEB3B,
+            ),
+            BoardRow(
+              uid: 'ravi',
+              name: 'Ravi Rao',
+              minutes: 120,
+              avatarIcon: 'math',
+              avatarColor: 0xFF4CAF50,
+            ),
+          ]),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(
+          const UserProfile(
+            uid: 'me',
+            displayName: 'Alex Morgan',
+            isAnonymous: false,
+          ),
+        );
+    await container.read(boardOptInProvider.notifier).set(true);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: const LeaderboardScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    CircleAvatar avatarWith(Finder mark) => tester.widget<CircleAvatar>(
+      find.ancestor(of: mark, matching: find.byType(CircleAvatar)).first,
+    );
+    // On the podium: a chosen mark on its colour, in ink that reads on it.
+    final sam = avatarWith(find.byIcon(Icons.science_rounded).first);
+    expect(sam.backgroundColor, const Color(0xFF2196F3));
+    expect(find.text('SL'), findsNothing);
+    // A light colour with initials gets dark ink.
+    final me = avatarWith(find.text('AM').first);
+    expect(me.backgroundColor, const Color(0xFFFFEB3B));
+    expect(me.foregroundColor, Colors.black87);
+    // No choice made: initials on the board's own surface, as before.
+    final kim = avatarWith(find.text('KP').first);
+    expect(
+      kim.backgroundColor,
+      AppTheme.light().colorScheme.surfaceContainerHighest,
+    );
+    // Below the podium, in the list.
+    final ravi = avatarWith(find.byIcon(Icons.square_foot_rounded).first);
+    expect(ravi.backgroundColor, const Color(0xFF4CAF50));
+    expect(tester.takeException(), isNull);
   });
 
   test('publisher shares the real level, updates on level-up, and respects opt-out', () async {

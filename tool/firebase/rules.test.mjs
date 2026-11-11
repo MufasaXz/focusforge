@@ -130,6 +130,22 @@ test('leaderboard photos stay bounded and belong to the row owner', async () => 
   await assertFails(setDoc(ref, {...summary, avatarPhoto:'https://untrusted.invalid/photo'}));
   await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), summary));
 });
+test('leaderboard accepts a chosen avatar mark and colour, and nothing else in their place', async () => {
+  const ref = doc(db('student'), 'leaderboard/2026-10-12/entries/student');
+  const summary = {ownerUid:'student',name:'Alex',minutes:60,level:3,updatedAt:now()};
+  await assertSucceeds(setDoc(ref, {...summary, avatarIcon:'chemistry', avatarColor:0xFF2196F3}));
+  await assertSucceeds(setDoc(ref, {...summary, avatarColor:0xFFFFFFFF}));
+  await assertSucceeds(setDoc(ref, {...summary, avatarIcon:'deepwork'}));
+  await assertSucceeds(setDoc(ref, {...summary, avatarPhoto:'/9j/AA==', avatarIcon:'chemistry', avatarColor:0}));
+  for (const avatarIcon of ['', 'Chemistry', 'https://untrusted.invalid/x', 'a'.repeat(41), 7, null]) {
+    await assertFails(setDoc(ref, {...summary, avatarIcon}));
+  }
+  for (const avatarColor of [-1, 0x100000000, 1.5, '#2196F3', null]) {
+    await assertFails(setDoc(ref, {...summary, avatarColor}));
+  }
+  await assertFails(setDoc(ref, {...summary, avatarEmoji:'x'}));
+  await assertFails(setDoc(doc(db('other'), 'leaderboard/2026-10-12/entries/student'), {...summary, avatarIcon:'chemistry'}));
+});
 test('leaderboard accepts bounded weekly summary and rejects invalid timestamp or totals', async () => {
   const ref=doc(db('student'),'leaderboard/2026-10-12/entries/student');
   await assertSucceeds(setDoc(ref,{ownerUid:'student',name:'Alex',minutes:10080,updatedAt:now()}));

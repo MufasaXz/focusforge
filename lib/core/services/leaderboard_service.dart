@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../models/icon_registry.dart';
 import 'profile_photo.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,8 +10,9 @@ import 'package:flutter/foundation.dart';
 
 /// One row of a week's board, as it is stored.
 ///
-/// The public weekly summary: display name, minutes and account level.
-/// Older clients did not share a level; those rows keep it unknown.
+/// The public weekly summary: display name, minutes, account level and the
+/// avatar the person chose. Older clients did not share a level or an avatar
+/// mark; those rows keep them unknown.
 @immutable
 class BoardRow {
   const BoardRow({
@@ -19,6 +21,8 @@ class BoardRow {
     required this.minutes,
     this.level,
     this.avatarPhoto,
+    this.avatarIcon,
+    this.avatarColor,
   });
 
   final String uid;
@@ -27,12 +31,31 @@ class BoardRow {
   final int? level;
   final String? avatarPhoto;
 
+  /// The avatar's glyph, as an `AppIcons` name, or null for initials.
+  final String? avatarIcon;
+
+  /// The avatar's colour as opaque ARGB, or null when none was chosen.
+  final int? avatarColor;
+
   Map<String, dynamic> toJson() => {
     'name': name,
     'minutes': minutes,
     if (level != null) 'level': level,
     if (avatarPhoto != null) 'avatarPhoto': avatarPhoto,
+    if (avatarIcon != null) 'avatarIcon': avatarIcon,
+    if (avatarColor != null) 'avatarColor': avatarColor,
   };
+
+  /// [raw] as an avatar glyph this build can draw, or null. The row is
+  /// written by someone else's phone, so a name outside the table is dropped
+  /// rather than drawn as a placeholder.
+  static String? validIcon(Object? raw) =>
+      raw is String && AppIcons.names.contains(raw) ? raw : null;
+
+  /// [raw] as a solid colour, or null. Alpha is forced full: a see-through
+  /// avatar would let a stranger's row blend into the page.
+  static int? validColor(Object? raw) =>
+      raw is int && raw >= 0 && raw <= 0xFFFFFFFF ? raw | 0xFF000000 : null;
 
   static BoardRow? fromJson(String uid, Object? raw) {
     if (raw is! Map) return null;
@@ -48,6 +71,8 @@ class BoardRow {
       minutes: minutes.toInt(),
       level: level is int && level > 0 ? level : null,
       avatarPhoto: ProfilePhoto.valid(raw['avatarPhoto']),
+      avatarIcon: validIcon(raw['avatarIcon']),
+      avatarColor: validColor(raw['avatarColor']),
     );
   }
 }
@@ -79,6 +104,8 @@ abstract class LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   });
 
   /// This week's rows, best first.
@@ -129,6 +156,8 @@ class FirebaseLeaderboardService implements LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {
     await _entries(week)
         .doc(uid)
@@ -136,6 +165,8 @@ class FirebaseLeaderboardService implements LeaderboardService {
           'ownerUid': uid,
           'name': name,
           'avatarPhoto': ?avatarPhoto,
+          'avatarIcon': ?avatarIcon,
+          'avatarColor': ?avatarColor,
           'minutes': minutes,
           'level': level,
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -215,6 +246,8 @@ class UnavailableLeaderboardService implements LeaderboardService {
     required int minutes,
     required int level,
     String? avatarPhoto,
+    String? avatarIcon,
+    int? avatarColor,
   }) async {}
 
   @override
