@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "ファイルを保存できませんでした。もう一度お試しください。",
   "Saves as {0}": "{0} として保存",
   "It includes the data of every account saved on this device.": "この端末に保存されているすべてのアカウントのデータが含まれます。",
-  "Save every stored key as a file, or copy it": "保存されたすべてのキーをファイルに保存、またはコピー"
+  "Save every stored key as a file, or copy it": "保存されたすべてのキーをファイルに保存、またはコピー",
+  "Good to see you, {0}. What shall we study today?": "会えてうれしいです、{0}さん。今日は何を勉強しますか？",
+  "Good to see you. What shall we study today?": "会えてうれしいです。今日は何を勉強しますか？",
+  "There you are, {0}! I saved your spot.": "来ましたね、{0}さん！席を取っておきましたよ。",
+  "There you are! I saved your spot.": "来ましたね！席を取っておきましたよ。",
+  "Not sure where to start? Tap me.": "何から始めるか迷っていますか？タップしてね。"
 }

@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Impossible d’enregistrer le fichier. Réessayez.",
   "Saves as {0}": "Enregistré sous {0}",
   "It includes the data of every account saved on this device.": "Elle inclut les données de chaque compte enregistré sur cet appareil.",
-  "Save every stored key as a file, or copy it": "Enregistrer chaque clé stockée dans un fichier, ou la copier"
+  "Save every stored key as a file, or copy it": "Enregistrer chaque clé stockée dans un fichier, ou la copier",
+  "Good to see you, {0}. What shall we study today?": "Content de vous voir, {0}. On étudie quoi aujourd’hui ?",
+  "Good to see you. What shall we study today?": "Content de vous voir. On étudie quoi aujourd’hui ?",
+  "There you are, {0}! I saved your spot.": "Vous voilà, {0} ! J’ai gardé votre place.",
+  "There you are! I saved your spot.": "Vous voilà ! J’ai gardé votre place.",
+  "Not sure where to start? Tap me.": "Vous ne savez pas par où commencer ? Touchez-moi."
 }

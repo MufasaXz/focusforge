@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "फ़ाइल सहेजी नहीं जा सकी। फिर से कोशिश करें।",
   "Saves as {0}": "{0} नाम से सहेजी जाएगी",
   "It includes the data of every account saved on this device.": "इसमें इस डिवाइस पर सहेजे गए हर खाते का डेटा शामिल है।",
-  "Save every stored key as a file, or copy it": "हर संग्रहीत कुंजी को फ़ाइल के रूप में सहेजें या कॉपी करें"
+  "Save every stored key as a file, or copy it": "हर संग्रहीत कुंजी को फ़ाइल के रूप में सहेजें या कॉपी करें",
+  "Good to see you, {0}. What shall we study today?": "आपको देखकर अच्छा लगा, {0}। आज क्या पढ़ें?",
+  "Good to see you. What shall we study today?": "आपको देखकर अच्छा लगा। आज क्या पढ़ें?",
+  "There you are, {0}! I saved your spot.": "आ गए आप, {0}! मैंने आपकी जगह बचाकर रखी है।",
+  "There you are! I saved your spot.": "आ गए आप! मैंने आपकी जगह बचाकर रखी है।",
+  "Not sure where to start? Tap me.": "समझ नहीं आ रहा कहाँ से शुरू करें? मुझे टैप करें।"
 }

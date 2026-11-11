@@ -1,6 +1,7 @@
 // Pip on the home screen.
 //
-// WHAT INVARIANT: Pip stands on Home and says hello once per launch; its tips
+// WHAT INVARIANT: Pip stands on Home and says hello once per launch, a hello
+// that takes turns with what Pip has noticed; its tips
 // are rare — none within three hours of the last, none with tips paused; left
 // alone it sits, thinks and falls asleep, and a touch wakes it; every
 // animation ends, so the page settles; a tap opens the chat.
@@ -164,6 +165,34 @@ void main() {
       ),
       lessThan(const Duration(hours: 1)),
     );
+  });
+
+  testWidgets('a hello takes turns with a thought, which is the only one', (
+    tester,
+  ) async {
+    // Back after four hours, with one hello already said: this launch opens
+    // with something Pip noticed instead of the same greeting.
+    final container = await pumpHome(
+      tester,
+      memory: AssistantMemory(
+        lastSeen: DateTime.now().subtract(const Duration(hours: 4)),
+        helloTurn: 1,
+        lastSaid: 'Welcome back!',
+      ),
+    );
+    await wait(tester, const Duration(seconds: 3));
+    expect(find.text(planTip), findsOneWidget);
+    final memory = container.read(assistantMemoryProvider);
+    expect(memory.helloTurn, 2);
+    expect(memory.lastSaid, planTip);
+    expect(memory.lastTipAt, isNotNull);
+
+    // The thought was this visit's tip: the idle think brings no second one.
+    await wait(tester, const Duration(seconds: 8));
+    expect(find.text(planTip), findsNothing);
+    await wait(tester, const Duration(seconds: 34));
+    expect(find.text(planTip), findsNothing);
+    expect(container.read(assistantMemoryProvider).tipTurn, 1);
   });
 
   testWidgets('with tips paused Pip still waves but stays silent', (

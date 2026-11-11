@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Impossibile salvare il file. Riprova.",
   "Saves as {0}": "Salvato come {0}",
   "It includes the data of every account saved on this device.": "Include i dati di ogni account salvato su questo dispositivo.",
-  "Save every stored key as a file, or copy it": "Salva ogni chiave memorizzata come file o copiala"
+  "Save every stored key as a file, or copy it": "Salva ogni chiave memorizzata come file o copiala",
+  "Good to see you, {0}. What shall we study today?": "Che bello vederti, {0}. Cosa studiamo oggi?",
+  "Good to see you. What shall we study today?": "Che bello vederti. Cosa studiamo oggi?",
+  "There you are, {0}! I saved your spot.": "Eccoti, {0}! Ti ho tenuto il posto.",
+  "There you are! I saved your spot.": "Eccoti! Ti ho tenuto il posto.",
+  "Not sure where to start? Tap me.": "Non sai da dove iniziare? Toccami."
 }

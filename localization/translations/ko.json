@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "파일을 저장할 수 없습니다. 다시 시도하세요.",
   "Saves as {0}": "{0}(으)로 저장됨",
   "It includes the data of every account saved on this device.": "이 기기에 저장된 모든 계정의 데이터가 포함됩니다.",
-  "Save every stored key as a file, or copy it": "저장된 모든 키를 파일로 저장하거나 복사"
+  "Save every stored key as a file, or copy it": "저장된 모든 키를 파일로 저장하거나 복사",
+  "Good to see you, {0}. What shall we study today?": "만나서 반가워요, {0}님. 오늘은 무엇을 공부할까요?",
+  "Good to see you. What shall we study today?": "만나서 반가워요. 오늘은 무엇을 공부할까요?",
+  "There you are, {0}! I saved your spot.": "오셨군요, {0}님! 자리를 맡아 두었어요.",
+  "There you are! I saved your spot.": "오셨군요! 자리를 맡아 두었어요.",
+  "Not sure where to start? Tap me.": "어디서부터 시작할지 모르겠나요? 저를 탭하세요."
 }

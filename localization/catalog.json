@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Could not save the file. Try again.",
   "Saves as {0}": "Saves as {0}",
   "It includes the data of every account saved on this device.": "It includes the data of every account saved on this device.",
-  "Save every stored key as a file, or copy it": "Save every stored key as a file, or copy it"
+  "Save every stored key as a file, or copy it": "Save every stored key as a file, or copy it",
+  "Good to see you, {0}. What shall we study today?": "Good to see you, {0}. What shall we study today?",
+  "Good to see you. What shall we study today?": "Good to see you. What shall we study today?",
+  "There you are, {0}! I saved your spot.": "There you are, {0}! I saved your spot.",
+  "There you are! I saved your spot.": "There you are! I saved your spot.",
+  "Not sure where to start? Tap me.": "Not sure where to start? Tap me."
 }

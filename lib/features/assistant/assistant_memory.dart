@@ -21,6 +21,8 @@ class AssistantMemory {
     this.examReminders = false,
     this.timetable,
     this.tipTurn = 0,
+    this.helloTurn = 0,
+    this.lastSaid,
     this.homeReminderOn,
     this.lastRank,
     this.reminders = const [],
@@ -59,6 +61,13 @@ class AssistantMemory {
   /// How many tips Pip has offered, so its thoughts take turns.
   final int tipTurn;
 
+  /// How many hellos Pip has said, so its greetings take turns too.
+  final int helloTurn;
+
+  /// The line Pip said last on the home screen, by its source key, so the
+  /// next thing it says is never the same one again.
+  final String? lastSaid;
+
   /// The day Pip last showed a due reminder on Home, so it says it once.
   final DateTime? homeReminderOn;
 
@@ -81,6 +90,8 @@ class AssistantMemory {
     Timetable? timetable,
     bool clearTimetable = false,
     int? tipTurn,
+    int? helloTurn,
+    String? lastSaid,
     DateTime? homeReminderOn,
     int? lastRank,
     List<StudyReminder>? reminders,
@@ -96,6 +107,8 @@ class AssistantMemory {
     examReminders: examReminders ?? this.examReminders,
     timetable: clearTimetable ? null : (timetable ?? this.timetable),
     tipTurn: tipTurn ?? this.tipTurn,
+    helloTurn: helloTurn ?? this.helloTurn,
+    lastSaid: lastSaid ?? this.lastSaid,
     homeReminderOn: homeReminderOn ?? this.homeReminderOn,
     lastRank: lastRank ?? this.lastRank,
     reminders: reminders ?? this.reminders,
@@ -113,6 +126,8 @@ class AssistantMemory {
     'examReminders': examReminders,
     'timetable': ?timetable?.toJson(),
     'tipTurn': tipTurn,
+    'helloTurn': helloTurn,
+    'lastSaid': ?lastSaid,
     'homeReminderOn': ?homeReminderOn?.toIso8601String(),
     'lastRank': ?lastRank,
     'reminders': [for (final r in reminders) r.toJson()],
@@ -137,6 +152,8 @@ class AssistantMemory {
       examReminders: json['examReminders'] == true,
       timetable: Timetable.fromJson(json['timetable']),
       tipTurn: json['tipTurn'] is int ? json['tipTurn'] as int : 0,
+      helloTurn: json['helloTurn'] is int ? json['helloTurn'] as int : 0,
+      lastSaid: json['lastSaid'] is String ? json['lastSaid'] as String : null,
       homeReminderOn: shown is String ? DateTime.tryParse(shown) : null,
       lastRank: json['lastRank'] is int ? json['lastRank'] as int : null,
       reminders: [
@@ -184,8 +201,14 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
 
   Future<void> markSeen(DateTime at) => _save(state.copyWith(lastSeen: at));
 
-  Future<void> markTipShown(DateTime at) =>
-      _save(state.copyWith(lastTipAt: at, tipTurn: state.tipTurn + 1));
+  /// Pip said hello with the line [said].
+  Future<void> markHello(String said) =>
+      _save(state.copyWith(helloTurn: state.helloTurn + 1, lastSaid: said));
+
+  /// Pip offered the thought [said] at [at].
+  Future<void> markTipShown(DateTime at, String said) => _save(
+    state.copyWith(lastTipAt: at, tipTurn: state.tipTurn + 1, lastSaid: said),
+  );
 
   Future<void> markIntroduced() => _save(state.copyWith(introduced: true));
 

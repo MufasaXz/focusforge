@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Не вдалося зберегти файл. Спробуйте ще раз.",
   "Saves as {0}": "Зберігається як {0}",
   "It includes the data of every account saved on this device.": "Містить дані всіх облікових записів, збережених на цьому пристрої.",
-  "Save every stored key as a file, or copy it": "Зберегти всі ключі у файл або скопіювати"
+  "Save every stored key as a file, or copy it": "Зберегти всі ключі у файл або скопіювати",
+  "Good to see you, {0}. What shall we study today?": "Радий вас бачити, {0}. Що вчитимемо сьогодні?",
+  "Good to see you. What shall we study today?": "Радий вас бачити. Що вчитимемо сьогодні?",
+  "There you are, {0}! I saved your spot.": "А ось і ви, {0}! Я притримав для вас місце.",
+  "There you are! I saved your spot.": "А ось і ви! Я притримав для вас місце.",
+  "Not sure where to start? Tap me.": "Не знаєте, з чого почати? Торкніться мене."
 }

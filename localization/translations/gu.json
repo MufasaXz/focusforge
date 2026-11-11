@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "ફાઇલ સાચવી શકાઈ નહીં. ફરી પ્રયાસ કરો.",
   "Saves as {0}": "{0} તરીકે સાચવાશે",
   "It includes the data of every account saved on this device.": "તેમાં આ ઉપકરણ પર સાચવેલા દરેક એકાઉન્ટનો ડેટા છે.",
-  "Save every stored key as a file, or copy it": "દરેક સંગ્રહિત કી ફાઇલ તરીકે સાચવો અથવા કૉપિ કરો"
+  "Save every stored key as a file, or copy it": "દરેક સંગ્રહિત કી ફાઇલ તરીકે સાચવો અથવા કૉપિ કરો",
+  "Good to see you, {0}. What shall we study today?": "તમને જોઈને આનંદ થયો, {0}. આજે શું ભણીએ?",
+  "Good to see you. What shall we study today?": "તમને જોઈને આનંદ થયો. આજે શું ભણીએ?",
+  "There you are, {0}! I saved your spot.": "આવી ગયા તમે, {0}! તમારી જગ્યા સાચવી રાખી છે.",
+  "There you are! I saved your spot.": "આવી ગયા તમે! તમારી જગ્યા સાચવી રાખી છે.",
+  "Not sure where to start? Tap me.": "ક્યાંથી શરૂ કરવું તે સમજાતું નથી? મને ટેપ કરો."
 }

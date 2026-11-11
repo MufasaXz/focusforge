@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "无法保存文件。请重试。",
   "Saves as {0}": "保存为 {0}",
   "It includes the data of every account saved on this device.": "其中包含此设备上保存的所有账号的数据。",
-  "Save every stored key as a file, or copy it": "将所有存储的键保存为文件或复制"
+  "Save every stored key as a file, or copy it": "将所有存储的键保存为文件或复制",
+  "Good to see you, {0}. What shall we study today?": "很高兴见到你，{0}。今天学什么？",
+  "Good to see you. What shall we study today?": "很高兴见到你。今天学什么？",
+  "There you are, {0}! I saved your spot.": "你来啦，{0}！我给你留了位置。",
+  "There you are! I saved your spot.": "你来啦！我给你留了位置。",
+  "Not sure where to start? Tap me.": "不知道从哪儿开始？点我。"
 }

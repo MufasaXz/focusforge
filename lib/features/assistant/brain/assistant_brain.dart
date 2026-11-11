@@ -2261,34 +2261,69 @@ class AssistantBrain {
 
   // -- Home -------------------------------------------------------------------
 
-  /// Pip's hello when the home screen opens, once per launch.
-  BuddyPrompt greeting(StudySnapshot s) {
+  /// Pip's hello when the home screen opens, once per launch: the line whose
+  /// turn it is among [hellos].
+  BuddyPrompt greeting(StudySnapshot s) =>
+      inTurn(hellos(s), s.memory.helloTurn, s.memory.lastSaid);
+
+  /// Whether [prompt] is a plain hello rather than an observation.
+  static bool isGreeting(BuddyPrompt prompt) =>
+      prompt.action.act == Act.greet || prompt.action.act == Act.intro;
+
+  /// The line at [turn] in [lines], or the one after it when that is what
+  /// Pip said [last], so the same line never comes twice running.
+  static BuddyPrompt inTurn(List<BuddyPrompt> lines, int turn, String? last) {
+    final at = turn % lines.length;
+    final line = lines[at];
+    if (lines.length == 1 || line.copy.key != last) return line;
+    return lines[(at + 1) % lines.length];
+  }
+
+  /// Everything Pip could open with: a hello, then something it noticed,
+  /// turn about. A first meeting is always the introduction.
+  List<BuddyPrompt> hellos(StudySnapshot s) {
     final seen = s.memory.lastSeen;
     if (seen == null && !s.hasHistory) {
-      return BuddyPrompt(
-        Copy('Hi! I’m {0}, your study buddy. Tap me anytime.', [
-          const Copy.raw(kBuddyName),
-        ]),
-        const AssistantAction(Act.intro),
-      );
+      return [
+        BuddyPrompt(
+          Copy('Hi! I’m {0}, your study buddy. Tap me anytime.', [
+            const Copy.raw(kBuddyName),
+          ]),
+          const AssistantAction(Act.intro),
+        ),
+      ];
     }
     final away = seen == null
         ? const Duration(days: 1)
         : s.now.difference(seen);
-    if (away >= const Duration(hours: 3)) {
-      return BuddyPrompt(
-        s.name.isEmpty
-            ? const Copy('Welcome back!')
-            : Copy('Welcome back, {0}!', [Copy.raw(s.name)]),
-        const AssistantAction(Act.greet),
-      );
-    }
-    return BuddyPrompt(
-      s.name.isEmpty
-          ? const Copy('Hi again. Ready for another round?')
-          : Copy('Hi again, {0}. Ready for another round?', [Copy.raw(s.name)]),
-      const AssistantAction(Act.greet),
-    );
+    final name = Copy.raw(s.name);
+    Copy named(String withName, String plain) =>
+        s.name.isEmpty ? Copy(plain) : Copy(withName, [name]);
+    final greetings = [
+      away >= const Duration(hours: 3)
+          ? named('Welcome back, {0}!', 'Welcome back!')
+          : named(
+              'Hi again, {0}. Ready for another round?',
+              'Hi again. Ready for another round?',
+            ),
+      named(
+        'Good to see you, {0}. What shall we study today?',
+        'Good to see you. What shall we study today?',
+      ),
+      named(
+        'There you are, {0}! I saved your spot.',
+        'There you are! I saved your spot.',
+      ),
+      const Copy('Not sure where to start? Tap me.'),
+    ];
+    final thoughts = homeTips(s);
+    return [
+      for (var i = 0; i < greetings.length || i < thoughts.length; i++) ...[
+        if (i < greetings.length)
+          BuddyPrompt(greetings[i], const AssistantAction(Act.greet)),
+        if (i < thoughts.length) thoughts[i],
+      ],
+    ];
   }
 
   /// Useful things Pip could say on the home screen, most useful first.

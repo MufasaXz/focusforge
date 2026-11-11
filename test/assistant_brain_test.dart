@@ -284,6 +284,50 @@ void main() {
       expect(soon.copy.key, 'Hi again, {0}. Ready for another round?');
     });
 
+    test('hellos take turns with what Pip noticed, never one line twice', () {
+      // Eight launches in a row, each remembering what the last one said.
+      var memory = AssistantMemory(lastSeen: DateTime(2026, 11, 5, 14));
+      final said = <String>[];
+      for (var launch = 0; launch < 8; launch++) {
+        final hello = brain.greeting(snapshot(memory: memory));
+        said.add(hello.copy.key);
+        memory = memory.copyWith(
+          helloTurn: memory.helloTurn + 1,
+          lastSaid: hello.copy.key,
+        );
+      }
+      expect(said.first, 'Hi again, {0}. Ready for another round?');
+      // A greeting, then an observation, then the next greeting.
+      expect(said[1], 'Want me to plan today’s study?');
+      expect(said[2], 'Good to see you, {0}. What shall we study today?');
+      for (var i = 1; i < said.length; i++) {
+        expect(said[i], isNot(said[i - 1]), reason: 'launch $i repeats');
+      }
+      expect(said.toSet().length, greaterThanOrEqualTo(5));
+    });
+
+    test(
+      'a line whose turn comes round right after it was said is skipped',
+      () {
+        BuddyPrompt line(String text) =>
+            BuddyPrompt(Copy(text), const AssistantAction(Act.greet));
+        final lines = [line('a'), line('b'), line('c')];
+        expect(AssistantBrain.inTurn(lines, 4, 'a').copy.key, 'b');
+        expect(AssistantBrain.inTurn(lines, 4, 'b').copy.key, 'c');
+        expect(AssistantBrain.inTurn(lines, 5, 'c').copy.key, 'a');
+        // With one line there is nothing else to say.
+        expect(AssistantBrain.inTurn([line('a')], 3, 'a').copy.key, 'a');
+      },
+    );
+
+    test('the memory of what Pip said survives a restart', () {
+      final memory = AssistantMemory.fromJson(
+        const AssistantMemory(helloTurn: 3, lastSaid: 'Welcome back!').toJson(),
+      );
+      expect(memory.helloTurn, 3);
+      expect(memory.lastSaid, 'Welcome back!');
+    });
+
     test('tips are real observations, the exam countdown first', () {
       final tips = brain.homeTips(
         snapshot(

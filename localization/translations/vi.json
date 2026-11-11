@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Không lưu được tệp. Hãy thử lại.",
   "Saves as {0}": "Lưu thành {0}",
   "It includes the data of every account saved on this device.": "Bao gồm dữ liệu của mọi tài khoản được lưu trên thiết bị này.",
-  "Save every stored key as a file, or copy it": "Lưu mọi khóa đã lưu thành tệp hoặc sao chép"
+  "Save every stored key as a file, or copy it": "Lưu mọi khóa đã lưu thành tệp hoặc sao chép",
+  "Good to see you, {0}. What shall we study today?": "Rất vui được gặp bạn, {0}. Hôm nay mình học gì nhỉ?",
+  "Good to see you. What shall we study today?": "Rất vui được gặp bạn. Hôm nay mình học gì nhỉ?",
+  "There you are, {0}! I saved your spot.": "Bạn đây rồi, {0}! Mình giữ chỗ cho bạn rồi đó.",
+  "There you are! I saved your spot.": "Bạn đây rồi! Mình giữ chỗ cho bạn rồi đó.",
+  "Not sure where to start? Tap me.": "Chưa biết bắt đầu từ đâu? Chạm vào mình nhé."
 }

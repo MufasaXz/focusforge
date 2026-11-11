@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "ఫైల్‌ను సేవ్ చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి.",
   "Saves as {0}": "{0} పేరుతో సేవ్ అవుతుంది",
   "It includes the data of every account saved on this device.": "ఈ పరికరంలో సేవ్ చేసిన ప్రతి ఖాతా డేటా ఇందులో ఉంటుంది.",
-  "Save every stored key as a file, or copy it": "నిల్వ ఉన్న ప్రతి కీని ఫైల్‌గా సేవ్ చేయండి లేదా కాపీ చేయండి"
+  "Save every stored key as a file, or copy it": "నిల్వ ఉన్న ప్రతి కీని ఫైల్‌గా సేవ్ చేయండి లేదా కాపీ చేయండి",
+  "Good to see you, {0}. What shall we study today?": "మిమ్మల్ని చూడటం ఆనందంగా ఉంది, {0}. ఈ రోజు ఏం చదువుదాం?",
+  "Good to see you. What shall we study today?": "మిమ్మల్ని చూడటం ఆనందంగా ఉంది. ఈ రోజు ఏం చదువుదాం?",
+  "There you are, {0}! I saved your spot.": "వచ్చేశారా, {0}! మీ చోటు అలాగే ఉంచాను.",
+  "There you are! I saved your spot.": "వచ్చేశారా! మీ చోటు అలాగే ఉంచాను.",
+  "Not sure where to start? Tap me.": "ఎక్కడ మొదలుపెట్టాలో తెలియడం లేదా? నన్ను ట్యాప్ చేయండి."
 }

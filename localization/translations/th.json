@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "บันทึกไฟล์ไม่ได้ ลองอีกครั้ง",
   "Saves as {0}": "บันทึกเป็น {0}",
   "It includes the data of every account saved on this device.": "รวมข้อมูลของทุกบัญชีที่บันทึกไว้ในอุปกรณ์นี้",
-  "Save every stored key as a file, or copy it": "บันทึกทุกคีย์ที่เก็บไว้เป็นไฟล์ หรือคัดลอก"
+  "Save every stored key as a file, or copy it": "บันทึกทุกคีย์ที่เก็บไว้เป็นไฟล์ หรือคัดลอก",
+  "Good to see you, {0}. What shall we study today?": "ดีใจที่ได้เจอนะ {0} วันนี้เรียนอะไรกันดี?",
+  "Good to see you. What shall we study today?": "ดีใจที่ได้เจอนะ วันนี้เรียนอะไรกันดี?",
+  "There you are, {0}! I saved your spot.": "มาแล้วเหรอ {0}! ฉันจองที่ไว้ให้แล้ว",
+  "There you are! I saved your spot.": "มาแล้วเหรอ! ฉันจองที่ไว้ให้แล้ว",
+  "Not sure where to start? Tap me.": "ไม่รู้จะเริ่มตรงไหนดี? แตะฉันได้เลย"
 }

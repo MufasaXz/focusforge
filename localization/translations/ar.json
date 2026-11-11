@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "تعذّر حفظ الملف. حاول مرة أخرى.",
   "Saves as {0}": "يُحفظ باسم {0}",
   "It includes the data of every account saved on this device.": "وتشمل بيانات كل حساب محفوظ على هذا الجهاز.",
-  "Save every stored key as a file, or copy it": "احفظ كل المفاتيح المخزنة في ملف أو انسخها"
+  "Save every stored key as a file, or copy it": "احفظ كل المفاتيح المخزنة في ملف أو انسخها",
+  "Good to see you, {0}. What shall we study today?": "سعيد برؤيتك يا {0}. ماذا ندرس اليوم؟",
+  "Good to see you. What shall we study today?": "سعيد برؤيتك. ماذا ندرس اليوم؟",
+  "There you are, {0}! I saved your spot.": "ها أنت ذا يا {0}! حجزت لك مكانك.",
+  "There you are! I saved your spot.": "ها أنت ذا! حجزت لك مكانك.",
+  "Not sure where to start? Tap me.": "لا تعرف من أين تبدأ؟ المسني."
 }

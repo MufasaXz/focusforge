@@ -182,10 +182,26 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
       return;
     }
     if (greet && mounted) {
-      _after(
-        const Duration(milliseconds: 500),
-        () => _show(_brain.greeting(s)),
+      // Hellos take turns with what Pip has noticed, so each launch can
+      // open with something different.
+      final hello = _brain.greeting(s);
+      unawaited(
+        ref.read(assistantMemoryProvider.notifier).markHello(hello.copy.key),
       );
+      // An observation said as the hello is this visit's one thought.
+      if (!AssistantBrain.isGreeting(hello)) _markThought(hello, s);
+      _after(const Duration(milliseconds: 500), () => _show(hello));
+    }
+  }
+
+  /// Remembers that Pip offered [tip], so the next thought waits its turn.
+  void _markThought(BuddyPrompt tip, StudySnapshot s) {
+    _tipShown = true;
+    final memory = ref.read(assistantMemoryProvider.notifier);
+    unawaited(memory.markTipShown(s.now, tip.copy.key));
+    final rank = s.boardRank;
+    if (rank != null && AssistantBrain.isClimb(tip)) {
+      unawaited(memory.setLastRank(rank));
     }
   }
 
@@ -203,14 +219,13 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     if (last != null && s.now.difference(last) < _tipCooldown) return;
     final tips = _brain.homeTips(s);
     if (tips.isEmpty) return;
-    _tipShown = true;
-    unawaited(ref.read(assistantMemoryProvider.notifier).markTipShown(s.now));
     // Thoughts take turns, so each visit can bring a different one.
-    final tip = tips[s.memory.tipTurn % tips.length];
-    final rank = s.boardRank;
-    if (rank != null && AssistantBrain.isClimb(tip)) {
-      unawaited(ref.read(assistantMemoryProvider.notifier).setLastRank(rank));
-    }
+    final tip = AssistantBrain.inTurn(
+      tips,
+      s.memory.tipTurn,
+      s.memory.lastSaid,
+    );
+    _markThought(tip, s);
     _show(tip);
   }
 

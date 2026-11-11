@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Tidak dapat menyimpan fail. Cuba lagi.",
   "Saves as {0}": "Disimpan sebagai {0}",
   "It includes the data of every account saved on this device.": "Ia termasuk data setiap akaun yang disimpan pada peranti ini.",
-  "Save every stored key as a file, or copy it": "Simpan setiap kunci tersimpan sebagai fail, atau salin"
+  "Save every stored key as a file, or copy it": "Simpan setiap kunci tersimpan sebagai fail, atau salin",
+  "Good to see you, {0}. What shall we study today?": "Gembira jumpa anda, {0}. Apa kita belajar hari ini?",
+  "Good to see you. What shall we study today?": "Gembira jumpa anda. Apa kita belajar hari ini?",
+  "There you are, {0}! I saved your spot.": "Anda sudah sampai, {0}! Saya simpankan tempat anda.",
+  "There you are! I saved your spot.": "Anda sudah sampai! Saya simpankan tempat anda.",
+  "Not sure where to start? Tap me.": "Tidak pasti mahu mula dari mana? Ketik saya."
 }

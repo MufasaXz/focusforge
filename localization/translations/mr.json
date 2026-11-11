@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "फाइल जतन करता आली नाही. पुन्हा प्रयत्न करा.",
   "Saves as {0}": "{0} नावाने जतन होईल",
   "It includes the data of every account saved on this device.": "यात या डिव्हाइसवर जतन केलेल्या प्रत्येक खात्याचा डेटा आहे.",
-  "Save every stored key as a file, or copy it": "प्रत्येक साठवलेली की फाइल म्हणून जतन करा किंवा कॉपी करा"
+  "Save every stored key as a file, or copy it": "प्रत्येक साठवलेली की फाइल म्हणून जतन करा किंवा कॉपी करा",
+  "Good to see you, {0}. What shall we study today?": "तुम्हाला पाहून आनंद झाला, {0}. आज काय अभ्यास करूया?",
+  "Good to see you. What shall we study today?": "तुम्हाला पाहून आनंद झाला. आज काय अभ्यास करूया?",
+  "There you are, {0}! I saved your spot.": "आलात तुम्ही, {0}! तुमची जागा राखून ठेवली आहे.",
+  "There you are! I saved your spot.": "आलात तुम्ही! तुमची जागा राखून ठेवली आहे.",
+  "Not sure where to start? Tap me.": "कुठून सुरू करावे ते कळत नाही? मला टॅप करा."
 }

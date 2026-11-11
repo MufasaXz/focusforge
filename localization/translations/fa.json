@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "فایل ذخیره نشد. دوباره امتحان کنید.",
   "Saves as {0}": "با نام {0} ذخیره می‌شود",
   "It includes the data of every account saved on this device.": "شامل داده‌های همه حساب‌های ذخیره‌شده روی این دستگاه است.",
-  "Save every stored key as a file, or copy it": "همه کلیدهای ذخیره‌شده را در فایل ذخیره یا کپی کنید"
+  "Save every stored key as a file, or copy it": "همه کلیدهای ذخیره‌شده را در فایل ذخیره یا کپی کنید",
+  "Good to see you, {0}. What shall we study today?": "از دیدنتان خوشحالم، {0}. امروز چه بخوانیم؟",
+  "Good to see you. What shall we study today?": "از دیدنتان خوشحالم. امروز چه بخوانیم؟",
+  "There you are, {0}! I saved your spot.": "آمدید، {0}! جایتان را نگه داشته‌ام.",
+  "There you are! I saved your spot.": "آمدید! جایتان را نگه داشته‌ام.",
+  "Not sure where to start? Tap me.": "نمی‌دانید از کجا شروع کنید؟ رویم بزنید."
 }

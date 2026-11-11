@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "ফাইলটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
   "Saves as {0}": "{0} নামে সংরক্ষিত হবে",
   "It includes the data of every account saved on this device.": "এতে এই ডিভাইসে সংরক্ষিত প্রতিটি অ্যাকাউন্টের ডেটা আছে।",
-  "Save every stored key as a file, or copy it": "সংরক্ষিত প্রতিটি কী ফাইল হিসেবে সংরক্ষণ করুন বা কপি করুন"
+  "Save every stored key as a file, or copy it": "সংরক্ষিত প্রতিটি কী ফাইল হিসেবে সংরক্ষণ করুন বা কপি করুন",
+  "Good to see you, {0}. What shall we study today?": "আপনাকে দেখে ভালো লাগল, {0}। আজ কী পড়ব?",
+  "Good to see you. What shall we study today?": "আপনাকে দেখে ভালো লাগল। আজ কী পড়ব?",
+  "There you are, {0}! I saved your spot.": "এই তো আপনি, {0}! আপনার জায়গাটা রেখে দিয়েছি।",
+  "There you are! I saved your spot.": "এই তো আপনি! আপনার জায়গাটা রেখে দিয়েছি।",
+  "Not sure where to start? Tap me.": "কোথা থেকে শুরু করবেন বুঝতে পারছেন না? আমাকে ট্যাপ করুন।"
 }

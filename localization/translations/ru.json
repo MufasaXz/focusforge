@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Не удалось сохранить файл. Попробуйте ещё раз.",
   "Saves as {0}": "Сохраняется как {0}",
   "It includes the data of every account saved on this device.": "Включает данные всех аккаунтов, сохранённых на этом устройстве.",
-  "Save every stored key as a file, or copy it": "Сохранить все ключи в файл или скопировать"
+  "Save every stored key as a file, or copy it": "Сохранить все ключи в файл или скопировать",
+  "Good to see you, {0}. What shall we study today?": "Рад вас видеть, {0}. Что будем учить сегодня?",
+  "Good to see you. What shall we study today?": "Рад вас видеть. Что будем учить сегодня?",
+  "There you are, {0}! I saved your spot.": "А вот и вы, {0}! Я придержал для вас место.",
+  "There you are! I saved your spot.": "А вот и вы! Я придержал для вас место.",
+  "Not sure where to start? Tap me.": "Не знаете, с чего начать? Нажмите на меня."
 }

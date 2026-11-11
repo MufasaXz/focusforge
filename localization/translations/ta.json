@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "கோப்பைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
   "Saves as {0}": "{0} எனச் சேமிக்கப்படும்",
   "It includes the data of every account saved on this device.": "இந்தச் சாதனத்தில் சேமிக்கப்பட்ட ஒவ்வொரு கணக்கின் தரவும் இதில் உள்ளது.",
-  "Save every stored key as a file, or copy it": "சேமித்த ஒவ்வொரு விசையையும் கோப்பாகச் சேமிக்கவும் அல்லது நகலெடுக்கவும்"
+  "Save every stored key as a file, or copy it": "சேமித்த ஒவ்வொரு விசையையும் கோப்பாகச் சேமிக்கவும் அல்லது நகலெடுக்கவும்",
+  "Good to see you, {0}. What shall we study today?": "உங்களைப் பார்த்ததில் மகிழ்ச்சி, {0}. இன்று என்ன படிக்கலாம்?",
+  "Good to see you. What shall we study today?": "உங்களைப் பார்த்ததில் மகிழ்ச்சி. இன்று என்ன படிக்கலாம்?",
+  "There you are, {0}! I saved your spot.": "வந்துவிட்டீர்களா, {0}! உங்கள் இடத்தை வைத்திருக்கிறேன்.",
+  "There you are! I saved your spot.": "வந்துவிட்டீர்களா! உங்கள் இடத்தை வைத்திருக்கிறேன்.",
+  "Not sure where to start? Tap me.": "எங்கே தொடங்குவது என்று தெரியவில்லையா? என்னைத் தட்டுங்கள்."
 }

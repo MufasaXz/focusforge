@@ -1639,5 +1639,10 @@
   "Could not save the file. Try again.": "Dosya kaydedilemedi. Yeniden deneyin.",
   "Saves as {0}": "{0} olarak kaydedilir",
   "It includes the data of every account saved on this device.": "Bu cihazda kayıtlı her hesabın verilerini içerir.",
-  "Save every stored key as a file, or copy it": "Kayıtlı tüm anahtarları dosyaya kaydedin veya kopyalayın"
+  "Save every stored key as a file, or copy it": "Kayıtlı tüm anahtarları dosyaya kaydedin veya kopyalayın",
+  "Good to see you, {0}. What shall we study today?": "Sizi görmek güzel, {0}. Bugün ne çalışalım?",
+  "Good to see you. What shall we study today?": "Sizi görmek güzel. Bugün ne çalışalım?",
+  "There you are, {0}! I saved your spot.": "İşte buradasınız, {0}! Yerinizi ayırdım.",
+  "There you are! I saved your spot.": "İşte buradasınız! Yerinizi ayırdım.",
+  "Not sure where to start? Tap me.": "Nereden başlayacağınızı bilmiyor musunuz? Bana dokunun."
 }
