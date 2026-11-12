@@ -20,7 +20,8 @@
   "kv_namespaces": [
     { "binding": "REPORTS", "id": "753636be5a7c4186a17e643bec18bd13" }
   ],
-  // Counted per Cloudflare location, which is close enough for a quota guard.
+  // Short-term burst limits per Cloudflare location. The website separately
+  // enforces an atomic daily allowance across locations and checks revocation.
   "ratelimits": [
     { "name": "PER_USER_LIMIT", "namespace_id": "4101", "simple": { "limit": 6, "period": 60 } },
     { "name": "ALL_USERS_LIMIT", "namespace_id": "4102", "simple": { "limit": 300, "period": 60 } },

@@ -184,4 +184,50 @@ void main() {
       AiFailure.timeout,
     );
   });
+  test('attestation is sent with both answers and reports', () async {
+    final requests = <http.Request>[];
+    final backend = AiBackendService(
+      endpoint: endpoint,
+      idToken: () async => 'id-token',
+      appCheckToken: () async => 'app-check-token',
+      client: MockClient((request) async {
+        requests.add(request);
+        return http.Response(jsonEncode({'reply': 'ok', 'ok': true}), 200);
+      }),
+    );
+    await backend.askAiAssistant(userMessage: 'hello');
+    await backend.reportReply(reply: 'fixture', reason: 'incorrect');
+    expect(requests.length, 2);
+    for (final request in requests) {
+      expect(request.headers['x-firebase-appcheck'], 'app-check-token');
+      expect(request.headers['authorization'], 'Bearer id-token');
+    }
+  });
+
+  test('consent withdrawn while attestation loads sends no question', () async {
+    var requests = 0;
+    var consent = true;
+    final attestation = Completer<String?>();
+    final started = Completer<void>();
+    final backend = AiBackendService(
+      endpoint: endpoint,
+      idToken: () async => 'id-token',
+      appCheckToken: () {
+        started.complete();
+        return attestation.future;
+      },
+      client: MockClient((request) async {
+        requests++;
+        return http.Response('{}', 200);
+      }),
+    );
+    final result = failureOf(
+      backend.askAiAssistant(userMessage: 'private', allowed: () => consent),
+    );
+    await started.future;
+    consent = false;
+    attestation.complete('app-check-token');
+    expect(await result, AiFailure.withdrawn);
+    expect(requests, 0);
+  });
 }

@@ -115,6 +115,8 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 dependencies {
+    // Fix GHSA-xxph-c9ww-hj94 in the transitive Firebase/Guava graph.
+    implementation("com.google.guava:guava:33.7.2-android")
     implementation("androidx.core:core:1.17.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation("junit:junit:4.13.2")

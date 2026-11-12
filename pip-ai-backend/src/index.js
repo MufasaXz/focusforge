@@ -24,7 +24,7 @@ import {
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
-  'access-control-allow-headers': 'authorization, content-type',
+  'access-control-allow-headers': 'authorization, content-type, x-firebase-appcheck',
   'access-control-max-age': '86400',
 };
 
@@ -141,7 +141,7 @@ async function handle(request, env, fetchImpl) {
   }
   const raw = await readBounded(request, LIMITS.bodyBytes);
   if (raw === null) return json(413, {error: 'invalid-argument'});
-  if (path === '/report') return report(raw, uid, env);
+  if (path === '/report') return report(raw, uid, env, request, fetchImpl);
   let parsed;
   try {
     parsed = parseRequest(JSON.parse(raw));
@@ -159,6 +159,9 @@ async function handle(request, env, fetchImpl) {
   if (!perUser.success || !everyone.success) {
     return json(429, {error: 'resource-exhausted', window: 'minute'}, {'retry-after': '60'});
   }
+
+  const authorization = await authorize(request, uid, 'answer', fetchImpl);
+  if (authorization) return authorization;
 
   const started = Date.now();
   const result = await answer(parsed, env, fetchImpl);
@@ -180,7 +183,7 @@ const REPORT_TTL_SECONDS = 90 * 24 * 60 * 60;
  * apps with generated content. Stored in KV for 90 days under a key that
  * sorts by time; review with `wrangler kv key list --binding REPORTS`.
  */
-async function report(raw, uid, env) {
+async function report(raw, uid, env, request, fetchImpl) {
   let parsed;
   try {
     parsed = parseReport(JSON.parse(raw));
@@ -192,6 +195,8 @@ async function report(raw, uid, env) {
   }
   const limit = await env.PER_USER_LIMIT.limit({key: `report:${uid}`});
   if (!limit.success) return json(429, {error: 'resource-exhausted', window: 'minute'});
+  const authorization = await authorize(request, uid, 'report', fetchImpl);
+  if (authorization) return authorization;
   const at = new Date().toISOString();
   await env.REPORTS.put(
     `${at}:${crypto.randomUUID()}`,
@@ -200,6 +205,26 @@ async function report(raw, uid, env) {
   );
   console.log(JSON.stringify({event: 'reported', reason: parsed.reason}));
   return json(200, {ok: true});
+}
+
+/** Current account status and a globally shared daily quota, both fail closed. */
+async function authorize(request, uid, operation, fetchImpl) {
+  const headers = {'content-type': 'application/json', authorization: request.headers.get('authorization')};
+  const attestation = request.headers.get('x-firebase-appcheck');
+  if (attestation) headers['x-firebase-appcheck'] = attestation;
+  try {
+    const response = await fetchImpl('https://www.focus-forge.in/api/ai-authorize', {
+      method: 'POST', headers, body: JSON.stringify({operation}),
+      signal: AbortSignal.timeout(5000), redirect: 'error',
+    });
+    const body = await response.json();
+    if (response.status === 200 && body.uid === uid) return null;
+    if (response.status === 429) return json(429, {error: 'resource-exhausted', window: 'day'});
+    if (response.status === 401 || response.status === 403) return json(401, {error: 'unauthenticated'});
+  } catch {
+    // No token, provider error body, or account detail is logged.
+  }
+  return json(503, {error: 'unavailable'}, {'retry-after': '30'});
 }
 
 export default {

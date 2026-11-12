@@ -17,6 +17,7 @@ import '../core/providers/study_providers.dart';
 import '../core/providers/usage_providers.dart';
 import '../core/providers/usage_stats_providers.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/app_attestation.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
 import '../core/services/local_store.dart';
@@ -221,6 +222,13 @@ Future<AuthService> _openAuthService(LocalStore store) async {
 
   try {
     await Firebase.initializeApp();
+    try {
+      await activateAppAttestation();
+    } catch (_) {
+      // Monitoring rollout: an attestation outage must not create a new guest
+      // identity for someone with an existing Firebase account.
+      debugPrint('[auth] App attestation unavailable.');
+    }
     // Configure native persistence before its first platform call, then
     // erase older disk data before opening cloud listeners.
     await prepareFirestoreCache(FirebaseFirestore.instance);

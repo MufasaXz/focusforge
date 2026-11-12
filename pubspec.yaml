@@ -50,6 +50,7 @@ dependencies:
   # Web only, behind a conditional import: the browser download for
   # "Export all data". Already in the graph through Firebase's web plugins.
   web: ^1.1.1
+  firebase_app_check: ^0.3.2
 dev_dependencies:
   shared_preferences_platform_interface: ^2.4.1
   cloud_firestore_platform_interface: ^6.6.12

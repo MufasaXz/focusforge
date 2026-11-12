@@ -270,14 +270,14 @@ class ChatController extends Notifier<ChatState> {
     }
   }
 
-  /// Online answers each user gets a day, counted on the phone. The phone's
-  /// own answers have no limit.
+  /// Local hint for the server's five-per-UTC-day quota. The backend is the
+  /// authority across installations; the phone's own answers have no limit.
   static const onlineAnswersPerDay = 5;
 
   /// Takes one of today's online answers, or false when they are used up.
   bool _claimOnlineAnswer() {
     final store = ref.read(localStoreProvider);
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final today = '${now.year}-${now.month}-${now.day}';
     final day = store.getMap(StoreKeys.assistantAiDay);
     final used = day?['day'] == today && day?['count'] is int

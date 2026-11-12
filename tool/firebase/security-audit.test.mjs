@@ -114,11 +114,22 @@ test('security audit: unauthenticated requests have no Firestore document access
   const paths = ['users/owner','users/owner/preferences/studyBackup','users/owner/sessionData/private-session',
     'users/owner/achievements/earned','leaderboard/2026-10-19/entries/owner',
     'studyGroups/private','studyGroups/private/members/owner','groupInvites/'+inviteCode,
-    'accountCleanup/schema','accountDeletions/owner','pairCodes/old'];
+    'accountCleanup/schema','accountDeletions/owner','pairCodes/old',
+    '_resetLimits/private-counter','_aiLimits/private-counter'];
   const anonymous = env.unauthenticatedContext().firestore();
   for (const path of paths) {
     await assertFails(getDoc(doc(anonymous,path)));
     await assertFails(setDoc(doc(anonymous,path),{ownerUid:'owner'}));
     await assertFails(deleteDoc(doc(anonymous,path)));
+  }
+});
+
+
+test('server rate and quota counters cannot be read or changed by authenticated clients', async () => {
+  const store = db('attacker');
+  for (const path of ['_resetLimits/private-counter', '_aiLimits/private-counter']) {
+    await assertFails(getDoc(doc(store, path)));
+    await assertFails(setDoc(doc(store, path), {day: '2026-11-12', count: 0}));
+    await assertFails(deleteDoc(doc(store, path)));
   }
 });

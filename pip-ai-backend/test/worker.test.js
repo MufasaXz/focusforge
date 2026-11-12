@@ -48,6 +48,7 @@ const groqOk = (text) =>
 /** Routes provider URLs to [gemini] and [groq] handlers. */
 function providers({gemini = () => geminiOk('Gemini says hi.'), groq = () => groqOk('Groq says hi.')} = {}) {
   return fakeFetch(signer.jwks, (url, init) => {
+    if (url === 'https://www.focus-forge.in/api/ai-authorize') return Response.json({uid: 'user-123'});
     if (url.startsWith('https://generativelanguage.googleapis.com/')) return gemini(url, init);
     if (url.startsWith('https://api.groq.com/')) return groq(url, init);
     throw new Error(`unexpected ${url}`);
@@ -217,4 +218,37 @@ test('a signed-in report is kept for review, and nothing else is asked', async (
   assert.equal((await ask({reason: 'x', reply: 'y'}, {vars, path: 'report'})).status, 400);
   assert.equal((await ask({reason: 'hate', reply: 'y'}, {vars, path: 'report', token: null})).status, 401);
   assert.equal((await ask({}, {vars, path: 'elsewhere'})).status, 404);
+});
+
+
+test('revoked, disabled, deleted, exhausted, and unavailable authorization never reach a provider', async () => {
+  for (const [status, body, expected] of [
+    [401, {error: 'unauthenticated'}, 401], [403, {error: 'app-check'}, 401],
+    [429, {error: 'resource-exhausted', window: 'day'}, 429],
+    [503, {error: 'unavailable'}, 503], [200, {uid: 'another-user'}, 503],
+  ]) {
+    const fetchImpl = fakeFetch(signer.jwks, () => Response.json(body, {status}));
+    for (const path of ['', 'report']) {
+      const payload = path ? {reason: 'harmful', reply: 'fixture'} : {message: 'hi'};
+      assert.equal((await ask(payload, {path, fetchImpl})).status, expected);
+    }
+    assert.ok(fetchImpl.calls.every(c => !c.url.includes('generativelanguage') && !c.url.includes('groq')));
+  }
+});
+
+test('authorization forwards attestation and the token, never question text', async () => {
+  const fetchImpl = providers();
+  await ask({message: 'private question'}, {fetchImpl, headers: {'x-firebase-appcheck': 'fixture-attestation'}});
+  const call = fetchImpl.calls.find(c => c.url.endsWith('/api/ai-authorize'));
+  assert.equal(call.init.headers['x-firebase-appcheck'], 'fixture-attestation');
+  assert.match(call.init.headers.authorization, /^Bearer /);
+  assert.deepEqual(JSON.parse(call.init.body), {operation: 'answer'});
+});
+
+test('authorization network failure and malformed responses fail closed', async () => {
+  for (const route of [() => { throw new Error('offline'); }, () => new Response('not-json')]) {
+    const fetchImpl = fakeFetch(signer.jwks, route);
+    assert.equal((await ask({message: 'hi'}, {fetchImpl})).status, 503);
+    assert.ok(fetchImpl.calls.every(c => !c.url.includes('generativelanguage') && !c.url.includes('groq')));
+  }
 });

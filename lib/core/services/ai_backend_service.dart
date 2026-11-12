@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'app_attestation.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,6 +91,7 @@ class AiBackendService implements AiBackend {
     required this.endpoint,
     required this._idToken,
     http.Client? client,
+    this._appCheckToken,
     this.timeout = const Duration(seconds: 25),
   }) : _client = client ?? http.Client();
 
@@ -105,6 +108,7 @@ class AiBackendService implements AiBackend {
 
   final Uri endpoint;
   final IdTokenSource _idToken;
+  final IdTokenSource? _appCheckToken;
   final http.Client _client;
   final Duration timeout;
 
@@ -129,6 +133,7 @@ class AiBackendService implements AiBackend {
     if (token == null || token.isEmpty) {
       throw const AiBackendException(AiFailure.signedOut);
     }
+    final attestation = await _appCheckToken?.call();
     // Getting a token can take a while; consent may be gone by now.
     if (allowed != null && !allowed()) {
       throw const AiBackendException(AiFailure.withdrawn);
@@ -141,6 +146,7 @@ class AiBackendService implements AiBackend {
             endpoint,
             headers: {
               'authorization': 'Bearer $token',
+              'x-firebase-appcheck': ?attestation,
               'content-type': 'application/json',
             },
             body: jsonEncode({
@@ -182,6 +188,7 @@ class AiBackendService implements AiBackend {
     if (token == null || token.isEmpty) {
       throw const AiBackendException(AiFailure.signedOut);
     }
+    final attestation = await _appCheckToken?.call();
     final http.Response response;
     try {
       response = await _client
@@ -189,6 +196,7 @@ class AiBackendService implements AiBackend {
             endpoint.resolve('report'),
             headers: {
               'authorization': 'Bearer $token',
+              'x-firebase-appcheck': ?attestation,
               'content-type': 'application/json',
             },
             body: jsonEncode({
@@ -248,5 +256,6 @@ final aiBackendProvider = Provider<AiBackend?>((ref) {
     endpoint: endpoint,
     // Throws where Firebase is not set up, which reads as signed out.
     idToken: () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+    appCheckToken: appAttestationToken,
   );
 });
