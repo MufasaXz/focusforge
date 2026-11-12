@@ -10,8 +10,8 @@ enum ResetMailResult { sent, invalidEmail, rateLimited, unavailable }
 /// Sends a password reset email for an address.
 typedef PasswordResetMailer = Future<ResetMailResult> Function(String email);
 
-/// Rate-limited reset request. Firebase sends the email and protects account
-/// existence; the endpoint never looks up an address with the Admin SDK.
+/// Rate-limited branded reset request. The website durably queues all addresses
+/// alike, then sends the FocusForge email after the public response.
 const passwordResetEndpoint = 'https://www.focus-forge.in/api/password-reset';
 
 /// Posts [email] to [passwordResetEndpoint]. Any network failure, timeout or

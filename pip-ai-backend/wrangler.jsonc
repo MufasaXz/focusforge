@@ -2,6 +2,7 @@
 // Secrets are set with `wrangler secret put`, never written here:
 //   GEMINI_API_KEY  Google AI Studio key (primary model)
 //   GROQ_API_KEY    Groq key (fallback model)
+//   RESET_DELIVERY_SIGNING_KEY  Ed25519 PKCS8 (base64), queue scheduler only
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pip-ai-backend",
@@ -10,6 +11,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
+  "triggers": { "crons": ["* * * * *"] },
   "vars": {
     "FIREBASE_PROJECT_ID": "focusforge-1edf7",
     "GEMINI_MODEL": "gemini-flash-lite-latest",

@@ -115,7 +115,7 @@ test('security audit: unauthenticated requests have no Firestore document access
     'users/owner/achievements/earned','leaderboard/2026-10-19/entries/owner',
     'studyGroups/private','studyGroups/private/members/owner','groupInvites/'+inviteCode,
     'accountCleanup/schema','accountDeletions/owner','pairCodes/old',
-    '_resetLimits/private-counter','_aiLimits/private-counter'];
+    '_resetLimits/private-counter','_aiLimits/private-counter','_resetMailQueue/private-job'];
   const anonymous = env.unauthenticatedContext().firestore();
   for (const path of paths) {
     await assertFails(getDoc(doc(anonymous,path)));
@@ -127,7 +127,7 @@ test('security audit: unauthenticated requests have no Firestore document access
 
 test('server rate and quota counters cannot be read or changed by authenticated clients', async () => {
   const store = db('attacker');
-  for (const path of ['_resetLimits/private-counter', '_aiLimits/private-counter']) {
+  for (const path of ['_resetLimits/private-counter', '_aiLimits/private-counter','_resetMailQueue/private-job']) {
     await assertFails(getDoc(doc(store, path)));
     await assertFails(setDoc(doc(store, path), {day: '2026-11-12', count: 0}));
     await assertFails(deleteDoc(doc(store, path)));

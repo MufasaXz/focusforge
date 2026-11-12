@@ -10,6 +10,7 @@
 // 4xx/5xx {error, window?} where error is a Firebase-style code the app maps.
 
 import {AuthError, verifyIdToken} from './auth.js';
+import {drainResetEmails} from './reset-delivery.js';
 import {
   InputError,
   LIMITS,
@@ -228,6 +229,11 @@ async function authorize(request, uid, operation, fetchImpl) {
 }
 
 export default {
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(drainResetEmails(env).catch(() => {
+      console.error(JSON.stringify({event: 'reset_scheduler_failed'}));
+    }));
+  },
   /** The Workers entry point. [fetchImpl] is swapped out in tests. */
   async fetch(request, env, _ctx, fetchImpl = fetch) {
     try {

@@ -17,15 +17,21 @@ short-term per-IP, per-user, and shared limits. `_aiLimits` and `_resetLimits`
 are server-only collections with no client rule grants. Their bounded expiry
 sweeps use document-version preconditions to preserve concurrent updates.
 
-Password recovery now uses Firebase's own privacy-protected email delivery via
-the website. No custom Admin account lookup or SMTP sender remains in the active
-reset path. Emails use Firebase's configured template/handler; the previous
-custom Gmail branding is no longer used. The website needs its existing
-`VITE_FIREBASE_API_KEY` or a separate `FIREBASE_WEB_API_KEY` at runtime, as well as
-`FIREBASE_SERVICE_ACCOUNT` for counters and AI authorization. Keep Firebase's
-improved email privacy enabled. Do not add account-specific errors to the public
-reset response. The app respects `429` and retains Firebase direct fallback for
-service failures, under Firebase's own quotas.
+Password recovery retains the original FocusForge HTML/text template and Gmail
+sender. The website durably queues an encrypted address for every valid request,
+ends the public response, then generates the Firebase action link and sends SMTP
+in the background. Account existence and delivery errors cannot shape that
+response. A signed minute cron in the existing Cloudflare Worker retries jobs
+with transactional leases, bounded backoff and a 15-minute expiry. The private
+scheduler key is only a Worker secret; the website commits its public verifier.
+No addresses or reset codes are sent to Cloudflare. See the website's
+`docs/account-emails.md` for delivery/retention details and secret rotation.
+
+Keep `FIREBASE_SERVICE_ACCOUNT`, `SMTP_USER` and `SMTP_PASS` on the website.
+Configure Worker secret `RESET_DELIVERY_SIGNING_KEY` as base64 PKCS8 Ed25519 to
+match the website public verifier. Deploy the website before the cron-enabled
+Worker. The app retains its existing native Firebase emergency fallback only
+when the website cannot accept a request; normal requests use the branded email.
 
 ## App Check rollout
 
@@ -81,7 +87,7 @@ first migrating that backend.
 Android explicitly selects `com.google.guava:guava:33.7.2-android`, fixing
 GHSA-xxph-c9ww-hj94. The retired Functions lockfile is refreshed to remove its
 reported dependency advisories; this does not reactivate or deploy Functions.
-The website drops unused SMTP dependencies and updates the vulnerable XML parser.
+The website retains SMTP for branded queued delivery and updates the vulnerable XML parser.
 
 Deploy/push the website first. Verify `/api/ai-authorize` exists and rejects
 unauthenticated POST requests. Then deploy the Worker. A Worker deployed before
