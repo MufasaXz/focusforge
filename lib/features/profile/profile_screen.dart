@@ -100,9 +100,15 @@ class ProfileScreen extends ConsumerWidget {
     final rankIndex = standings.indexWhere((e) => e.isMe);
     final rank = me == null || rankIndex < 0 ? null : rankIndex + 1;
 
-    // Every row carries its own live trailing value, so the list cannot drift
-    // from the data the destination screens show.
-    final settings = <_SettingSpec>[
+    // Both shortcuts and settings use the destination screens' live values.
+    final community = <_SettingSpec>[
+      _SettingSpec(
+        icon: Icons.leaderboard_outlined,
+        label: context.tr("Leaderboard"),
+        routeName: AppRoutes.leaderboard,
+        trailing: rank == null ? null : '#$rank',
+        locked: user.isAnonymous,
+      ),
       _SettingSpec(
         icon: Icons.groups_outlined,
         label: context.tr("Study Groups"),
@@ -110,18 +116,13 @@ class ProfileScreen extends ConsumerWidget {
         trailing: context.tr("{0} active", [groups.length]),
         locked: user.isAnonymous,
       ),
+    ];
+    final settings = <_SettingSpec>[
       _SettingSpec(
         icon: Icons.emoji_events_outlined,
         label: context.tr("Achievements"),
         routeName: AppRoutes.achievements,
         trailing: '$unlocked / ${achievements.length}',
-      ),
-      _SettingSpec(
-        icon: Icons.leaderboard_outlined,
-        label: context.tr("Leaderboard"),
-        routeName: AppRoutes.leaderboard,
-        trailing: rank == null ? null : '#$rank',
-        locked: user.isAnonymous,
       ),
       _SettingSpec(
         icon: Icons.lock_outlined,
@@ -193,6 +194,27 @@ class ProfileScreen extends ConsumerWidget {
             stagger(const _AnonymousCard()),
             const SizedBox(height: Gap.lg),
           ],
+          stagger(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, spec) in community.indexed) ...[
+                    if (i > 0) const SizedBox(width: Gap.sm),
+                    Expanded(
+                      child: _CommunityTile(
+                        key: ValueKey('profile-${spec.routeName}-tile'),
+                        spec: spec,
+                        onTap: () =>
+                            unawaited(_openSetting(context, ref, spec)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (wide) const SizedBox(height: Gap.xl),
         ];
 
         final prefs = <Widget>[
@@ -206,20 +228,20 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: Gap.xl),
         ];
         for (final group in [
-          (context.tr("Progress & community"), settings.take(3)),
-          (context.tr("Preferences"), settings.skip(3).take(2)),
-          (context.tr("App & privacy"), settings.skip(5)),
+          (context.tr("Progress"), Icons.explore_outlined, settings.take(1)),
+          (
+            context.tr("Preferences"),
+            Icons.settings_outlined,
+            settings.skip(1).take(2),
+          ),
+          (context.tr("App & privacy"), Icons.tune_rounded, settings.skip(3)),
         ]) {
           final section = prefStagger(
             _ProfileSection(
               title: group.$1,
-              icon: group.$1 == 'Progress & community'
-                  ? Icons.explore_outlined
-                  : group.$1 == 'Preferences'
-                  ? Icons.settings_outlined
-                  : Icons.tune_rounded,
+              icon: group.$2,
               children: [
-                for (final (i, spec) in group.$2.indexed) ...[
+                for (final (i, spec) in group.$3.indexed) ...[
                   if (i > 0)
                     Divider(
                       color: t.outlineVariant.withValues(alpha: 0.4),
@@ -235,7 +257,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           );
-          if (wide && group.$2.first == settings.first) {
+          if (wide && group.$3.first == settings.first) {
             identity.add(section);
           } else {
             prefs.add(section);
@@ -597,6 +619,7 @@ class _AnonymousCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
     return ContentCard(
+      key: const ValueKey('profile-local-account'),
       color: Color.alphaBlend(
         t.secondary.withValues(alpha: .06),
         t.surfaceContainerLow,
@@ -985,6 +1008,109 @@ class _SettingTile extends StatelessWidget {
   }
 }
 
+/// Compact community destinations beside each other, even at large text sizes.
+class _CommunityTile extends StatelessWidget {
+  const _CommunityTile({super.key, required this.spec, required this.onTap});
+
+  final _SettingSpec spec;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(28)),
+    );
+
+    return Semantics(
+      button: true,
+      label: spec.label,
+      value: spec.trailing,
+      hint: spec.locked ? context.tr("Sign in") : null,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        color: _tileColor(context),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: shape,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Gap.sm + 2,
+                vertical: Gap.md,
+              ),
+              child: Row(
+                children: [
+                  Stack(
+                    children: [
+                      IconBadge(
+                        icon: spec.icon,
+                        color: cs.primary,
+                        size: 40,
+                        radius: 20,
+                      ),
+                      if (spec.locked)
+                        PositionedDirectional(
+                          end: 0,
+                          bottom: 0,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: _tileColor(context),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: Icon(
+                                Icons.lock_outlined,
+                                size: 12,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          spec.label,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (spec.trailing != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            spec.trailing!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HeroStat extends StatelessWidget {
   const _HeroStat({required this.value, required this.label, this.accent});
 
@@ -1066,4 +1192,13 @@ class _TabEntranceState extends State<_TabEntrance> {
     if (!_entered && TickerMode.valuesOf(context).enabled) _entered = true;
     return _entered ? widget.child : const SizedBox.shrink();
   }
+}
+
+/// The tile surface: the low container in light, where it lifts off the page,
+/// and a step higher in dark, where the low container is the page's own tone.
+Color _tileColor(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return Theme.of(context).brightness == Brightness.dark
+      ? cs.surfaceContainerHigh
+      : cs.surfaceContainerLow;
 }

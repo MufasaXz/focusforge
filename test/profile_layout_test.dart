@@ -71,6 +71,28 @@ void main() {
           findsOneWidget,
         );
         expect(tester.takeException(), isNull);
+        final leaderboard = find.byKey(
+          const ValueKey('profile-leaderboard-tile'),
+        );
+        final groups = find.byKey(const ValueKey('profile-groups-tile'));
+        await tester.scrollUntilVisible(
+          leaderboard,
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        final left = tester.getRect(leaderboard);
+        final right = tester.getRect(groups);
+        expect(left.top, right.top);
+        expect(left.height, right.height);
+        expect(left.width, right.width);
+        expect(left.right, lessThan(right.left));
+        expect(left.left, greaterThanOrEqualTo(0));
+        expect(right.right, lessThanOrEqualTo(320));
+        expect(left.height, greaterThanOrEqualTo(48));
+        expect(find.text('Leaderboard'), findsOneWidget);
+        expect(find.text('Study Groups'), findsOneWidget);
+        expect(tester.takeException(), isNull);
         await tester.scrollUntilVisible(
           find.text('Tide'),
           220,

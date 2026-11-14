@@ -491,6 +491,18 @@ void main() {
         lessThanOrEqualTo(goals.top),
         reason: 'both columns start at the top of the page',
       );
+      final leaderboard = tester.getRect(
+        find.byKey(const ValueKey('profile-leaderboard-tile')),
+      );
+      final groups = tester.getRect(
+        find.byKey(const ValueKey('profile-groups-tile')),
+      );
+      expect(leaderboard.left, goals.left);
+      expect(groups.right, goals.right);
+      expect(leaderboard.top, greaterThan(goals.bottom));
+      expect(leaderboard.top, groups.top);
+      expect(leaderboard.width, groups.width);
+      expect(leaderboard.right, lessThan(groups.left));
       expect(tester.takeException(), isNull);
     });
 
