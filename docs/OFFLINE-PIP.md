@@ -45,6 +45,28 @@ long topic words. This does not amount to full multilingual tutoring; the
 expanded authored explanations are currently English. Existing translated
 timer/report flows remain unchanged.
 
+## Several questions in one message
+
+Pip answers up to four parts in order, each with its normal text and any report,
+plan or app-selection card. It splits question marks, newlines, numbered or
+bulleted lists, “and also”, “also”, “then” and “aur”. Plain “and” splits only
+between complete questions or explanation requests, so “acids and bases”,
+comparisons and “1 hour and 30 minutes” stay together. If more than four parts
+are present, Pip asks for the remaining parts in another message.
+
+Safety checks inspect the whole message before any split, including parts past
+the cap. Compound commands that would immediately change state, such as
+starting a timer or setting/removing reminders, each get a separate Confirm
+card. App locking, editable plans and timetables keep their existing card flows.
+A new message, chip choice, chat clear or account reset cancels the rest of the
+pending turn. Quiz follow-ups use the latest active lesson/question; contextual
+chips from earlier parts are not kept as stale controls.
+
+Unknown or empty submitted messages receive local guidance and three suggestion
+chips. A recognised part is still answered when another part is unknown.
+“Newton’s first law” resolves to Newton’s laws rather than thermodynamics, and
+“what is a cell” opens the cell-biology lesson.
+
 ## School topics added on 2026-11-14
 
 Electric current and power, gravitation, magnetism and electromagnetic
@@ -113,16 +135,18 @@ goal, or create a reminder. Existing explicit action chips retain those flows.
 
 The tutor has no HTTP, Firebase, native platform, model-runtime, or filesystem
 dependency. It receives a local study snapshot from the existing controller.
-Recognised tutoring messages stay local even with Cloud Study Coach enabled,
-and are excluded from later cloud conversation history. Optional account sync
-elsewhere in the app remains a separate feature.
+All Pip messages and answers stay on-device. Pip has no online answer path,
+cloud-consent dialog, or online toggle. Optional account sync elsewhere in the
+app remains a separate feature. Account export and deletion still include
+historical Pip server records, including old consent and feedback records;
+removing online coaching does not leave those records behind on deletion.
 
 The active lesson, question, hint/attempt state, and small practice score exist
 only in the controller’s memory. They expire for follow-up interpretation after
 20 minutes, and clear on chat clearing, account/provider reset, or an unrelated
 action. No new SharedPreferences/database key or tracking SDK was added.
 
-Fixed safety responses precede cloud routing and command execution for recognised
+Fixed safety responses precede tutoring and command execution for recognised
 self-harm, harmful-content, cheating, instruction-extraction, and unsafe
 all-night-study requests. Crisis copy encourages immediate support from a
 trusted person and local emergency services. These rules are conservative,
@@ -153,15 +177,27 @@ flutter analyze --no-pub
 flutter test --no-pub
 ```
 
+The compound regression suite also runs 200 seeded random/odd inputs through
+both the brain and chat controller, checks all requested English/Hinglish
+examples, and verifies safety, the cap, cancellation and individual action
+confirmation.
+
 Tests cover every lesson’s retrieval and answer-key shape, 213 real student
 messages in `test/pip_understanding_test.dart` (including 55 written after the
 fixes as a held-out check, and actions that must stay actions), 1,500 generated
 question variants, independently solved linear/quadratic equations, numerical
 derivative/integral cross-checks, every minute budget from 0–480, malformed and
-adversarial input, quiz scoring/expiry, signed numeric grading, cloud-history
-isolation, consent, Home cooldowns, and finite/reduced-motion animation behavior.
+adversarial input, quiz scoring/expiry, signed numeric grading, on-device-only chat, historical account-data cleanup,
+Home cooldowns, and finite/reduced-motion animation behavior.
 
-Verified on 2026-11-14: all 894 default Flutter tests passed, the separate
+Compound-turn verification on 2026-11-14: `flutter analyze --no-pub` reported
+no issues; all 1,154 tests passed with
+`flutter test --no-pub --experimental-faster-testing --concurrency=1`. The
+standard runner could not bind its localhost test socket in this sandbox; the
+SDK's built-in lightweight-engine runner runs without that socket. The focused
+compound and existing understanding suites also passed all 243 tests.
+
+Historical tutor-expansion verification on 2026-11-14: all 894 default Flutter tests passed, the separate
 light/dark/AMOLED capture harness passed, and `flutter analyze --no-pub`
 reported no issues. Review images are local build artifacts in `build/pip/`,
 including `chat-offline-{lesson,quiz,maths,budget}-{light,dark,amoled}.png`.
