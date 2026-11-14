@@ -161,6 +161,113 @@ class MascotPainter extends CustomPainter {
   final MascotColors colors;
   final bool headOnly;
 
+  // Paints, shaders and paths that do not change from frame to frame. The
+  // painter outlives every repaint the rig asks for (it only changes with
+  // the theme), so building these once keeps each frame to the shapes that
+  // actually move instead of re-creating a dozen gradients sixty times a
+  // second. Shaders are in the drawing's own units, so the canvas transforms
+  // that tilt and lift each part still apply to them.
+  late final Paint _torsoPaint = Paint()
+    ..shader = LinearGradient(
+      begin: const Alignment(-0.45, -1),
+      end: const Alignment(0.45, 1),
+      colors: [colors.torso, colors.torsoLow],
+    ).createShader(_torsoBounds);
+  late final Paint _neckShadePaint = Paint()
+    ..shader = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        colors.footShade.withValues(alpha: 0.45),
+        colors.footShade.withValues(alpha: 0),
+      ],
+    ).createShader(_neckShade);
+  late final Paint _pocketPaint = Paint()..color = colors.pocket;
+  late final Paint _pocketShadePaint = Paint()
+    ..shader = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        colors.handRim.withValues(alpha: 0.32),
+        colors.handRim.withValues(alpha: 0),
+      ],
+      stops: const [0, 0.32],
+    ).createShader(_pocketBounds);
+  late final Paint _armShadePaint = Paint()..color = colors.armShade;
+  late final Paint _armPaint = Paint()..color = colors.arm;
+  late final Paint _handRimPaint = Paint()
+    ..color = colors.handRim
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 6;
+  late final Paint _limbPaint = Paint()..color = colors.limb;
+  late final Paint _stemPaint = Paint()
+    ..color = colors.limb
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 11
+    ..strokeCap = StrokeCap.round;
+  late final Paint _headPaint = Paint()
+    ..shader = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [colors.bodyLight, colors.body, colors.headLow],
+      stops: const [0, 0.5, 1],
+    ).createShader(_headRect);
+  late final Paint _shinePaint = Paint()
+    ..color = colors.face.withValues(alpha: 0.22);
+  late final Paint _ringPaint = Paint()
+    ..shader = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [colors.face, colors.face, colors.face.withValues(alpha: 0.5)],
+      stops: const [0, 0.5, 1],
+    ).createShader(Rect.fromCircle(center: _ringCentre, radius: 136))
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 31
+    ..strokeCap = StrokeCap.round;
+  late final Paint _eyeLinePaint = Paint()
+    ..color = colors.face
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 13
+    ..strokeCap = StrokeCap.round;
+  late final Paint _pupilPaint = Paint()..color = colors.pupil;
+  late final Paint _glintPaint = Paint()..color = colors.face;
+  late final Paint _smilePaint = Paint()
+    ..color = colors.pupil
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 8
+    ..strokeCap = StrokeCap.round;
+
+  static const Rect _torsoBounds = Rect.fromLTRB(393, 626, 631, 816);
+  static const Rect _neckShade = Rect.fromLTRB(393, 640, 631, 676);
+  static const Rect _pocketBounds = Rect.fromLTRB(440, 718, 584, 780);
+  static const Rect _headRect = Rect.fromLTWH(290, 244, 444, 400);
+  static final RRect _headShape = RRect.fromRectAndRadius(
+    _headRect,
+    const Radius.circular(112),
+  );
+  static const Offset _ringCentre = Offset(512, 452);
+  static final Path _ring = Path()
+    ..addArc(
+      Rect.fromCircle(center: _ringCentre, radius: 122),
+      -57 * math.pi / 180,
+      294 * math.pi / 180,
+    );
+  static final Path _stem = Path()
+    ..moveTo(512, 250)
+    ..quadraticBezierTo(510, 214, 530, 186);
+  static final Path _happyEye = Path()
+    ..moveTo(470, 456)
+    ..quadraticBezierTo(512, 396, 554, 456);
+  static final Path _closedEye = Path()
+    ..moveTo(474, 440)
+    ..quadraticBezierTo(512, 470, 550, 440);
+  static final Path _sleepySmile = Path()
+    ..moveTo(498, 522)
+    ..quadraticBezierTo(512, 530, 526, 522);
+  static final Path _smile = Path()
+    ..moveTo(492, 518)
+    ..quadraticBezierTo(512, 536, 532, 518);
+
   /// Room for the whole figure, a raised arm and a drifting "z".
   static const Rect fullBox = Rect.fromLTWH(237, 120, 550, 780);
 
@@ -367,52 +474,18 @@ class MascotPainter extends CustomPainter {
     ..close();
 
   void _body(Canvas canvas) {
-    const bounds = Rect.fromLTRB(393, 626, 631, 816);
-    canvas.drawPath(
-      _torso,
-      Paint()
-        ..shader = LinearGradient(
-          begin: const Alignment(-0.45, -1),
-          end: const Alignment(0.45, 1),
-          colors: [colors.torso, colors.torsoLow],
-        ).createShader(bounds),
-    );
+    canvas.drawPath(_torso, _torsoPaint);
     // The head's shade on the body, just below it.
     canvas.save();
     canvas.clipPath(_torso);
-    const neck = Rect.fromLTRB(393, 640, 631, 676);
-    canvas.drawRect(
-      neck,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colors.footShade.withValues(alpha: 0.45),
-            colors.footShade.withValues(alpha: 0),
-          ],
-        ).createShader(neck),
-    );
+    canvas.drawRect(_neckShade, _neckShadePaint);
     canvas.restore();
 
-    const pocket = Rect.fromLTRB(440, 718, 584, 780);
-    canvas.drawPath(_pocket, Paint()..color = colors.pocket);
+    canvas.drawPath(_pocket, _pocketPaint);
     // A little shade inside the opening, so the pocket reads as a pocket.
     canvas.save();
     canvas.clipPath(_pocket);
-    canvas.drawRect(
-      pocket,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colors.handRim.withValues(alpha: 0.32),
-            colors.handRim.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.32],
-        ).createShader(pocket),
-    );
+    canvas.drawRect(_pocketBounds, _pocketShadePaint);
     canvas.restore();
   }
 
@@ -442,13 +515,12 @@ class MascotPainter extends CustomPainter {
       var bow = Offset(-along.dy, along.dx) / along.distance;
       if (side * bow.dx + 0.5 * bow.dy < 0) bow = -bow;
       final bend = (root + hand) / 2 + bow * (along.distance * 0.16);
-      final shade = Paint()..color = colors.armShade;
-      canvas.drawPath(_taper(root, bend, hand, 46, 36), shade);
+      canvas.drawPath(_taper(root, bend, hand, 46, 36), _armShadePaint);
       // A round shoulder, in case a tilted head uncovers the arm's top.
-      canvas.drawCircle(root, 23, shade);
+      canvas.drawCircle(root, 23, _armShadePaint);
       canvas.drawPath(
         _taper(root, bend, hand, 36, 28).shift(const Offset(-2.5, -3)),
-        Paint()..color = colors.arm,
+        _armPaint,
       );
       hands.add(hand);
     }
@@ -490,18 +562,11 @@ class MascotPainter extends CustomPainter {
           stops: const [0.5, 1],
         ).createShader(Rect.fromCircle(center: at, radius: radius)),
     );
-    canvas.drawCircle(
-      at,
-      radius,
-      Paint()
-        ..color = colors.handRim
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 6,
-    );
+    canvas.drawCircle(at, radius, _handRimPaint);
   }
 
   void _head(Canvas canvas, MascotPose p) {
-    final limb = Paint()..color = colors.limb;
+    final limb = _limbPaint;
 
     // Ears sit behind the head.
     for (final x in const [262.0, 718.0]) {
@@ -520,16 +585,7 @@ class MascotPainter extends CustomPainter {
     canvas.translate(512, 250);
     canvas.rotate(p.sway);
     canvas.translate(-512, -250);
-    canvas.drawPath(
-      Path()
-        ..moveTo(512, 250)
-        ..quadraticBezierTo(510, 214, 530, 186),
-      Paint()
-        ..color = colors.limb
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 11
-        ..strokeCap = StrokeCap.round,
-    );
+    canvas.drawPath(_stem, _stemPaint);
     const bulb = Offset(536, 170);
     if (p.antenna > 0.01) {
       canvas.drawCircle(
@@ -550,18 +606,8 @@ class MascotPainter extends CustomPainter {
     canvas.restore();
 
     // Head: the app icon's rounded square, lit from above.
-    const head = Rect.fromLTWH(290, 244, 444, 400);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(head, const Radius.circular(112)),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [colors.bodyLight, colors.body, colors.headLow],
-          stops: const [0, 0.5, 1],
-        ).createShader(head),
-    );
-    final shine = Paint()..color = colors.face.withValues(alpha: 0.22);
+    canvas.drawRRect(_headShape, _headPaint);
+    final shine = _shinePaint;
     canvas.save();
     canvas.translate(372, 304);
     canvas.rotate(-24 * math.pi / 180);
@@ -573,28 +619,7 @@ class MascotPainter extends CustomPainter {
     canvas.drawCircle(const Offset(436, 282), 8, shine);
 
     // Face: the logo's open ring, its lower half softening into the face.
-    const ring = Offset(512, 452);
-    canvas.drawPath(
-      Path()..addArc(
-        Rect.fromCircle(center: ring, radius: 122),
-        -57 * math.pi / 180,
-        294 * math.pi / 180,
-      ),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colors.face,
-            colors.face,
-            colors.face.withValues(alpha: 0.5),
-          ],
-          stops: const [0, 0.5, 1],
-        ).createShader(Rect.fromCircle(center: ring, radius: 136))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 31
-        ..strokeCap = StrokeCap.round,
-    );
+    canvas.drawPath(_ring, _ringPaint);
 
     _eye(canvas, p);
     _mouth(canvas, p);
@@ -602,31 +627,23 @@ class MascotPainter extends CustomPainter {
   }
 
   void _eye(Canvas canvas, MascotPose p) {
-    final closed = math.max(p.blink, _smooth(0.25, 0.75, p.sleep));
-    final line = Paint()
-      ..color = colors.face
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 13
-      ..strokeCap = StrokeCap.round;
+    // On the way to a happy squint the eye narrows first, so the swap to
+    // the arch at the halfway mark lands on a slit rather than popping from
+    // a full round eye.
+    final closed = math.max(
+      math.max(p.blink, _smooth(0.25, 0.75, p.sleep)),
+      0.7 * _smooth(0.1, 0.5, p.squint),
+    );
+    final line = _eyeLinePaint;
 
     if (p.squint > 0.5) {
       // Happy: a soft arch.
-      canvas.drawPath(
-        Path()
-          ..moveTo(470, 456)
-          ..quadraticBezierTo(512, 396, 554, 456),
-        line,
-      );
+      canvas.drawPath(_happyEye, line);
       return;
     }
     if (closed >= 0.85) {
       // Asleep or mid-blink: a gentle curve.
-      canvas.drawPath(
-        Path()
-          ..moveTo(474, 440)
-          ..quadraticBezierTo(512, 470, 550, 440),
-        line,
-      );
+      canvas.drawPath(_closedEye, line);
       return;
     }
 
@@ -646,19 +663,15 @@ class MascotPainter extends CustomPainter {
         ).createShader(Rect.fromCircle(center: _eyeCentre, radius: white)),
     );
     final pupil = Offset(516 + 15 * p.lookX, 444 + 13 * p.lookY);
-    canvas.drawCircle(
-      pupil,
-      33 - 9 * p.surprise,
-      Paint()..color = colors.pupil,
-    );
-    final glint = Paint()..color = colors.face;
+    canvas.drawCircle(pupil, 33 - 9 * p.surprise, _pupilPaint);
+    final glint = _glintPaint;
     canvas.drawCircle(pupil + const Offset(14, -15), 11, glint);
     canvas.drawCircle(pupil + const Offset(-11, 13), 5, glint);
     canvas.restore();
   }
 
   void _mouth(Canvas canvas, MascotPose p) {
-    final ink = Paint()..color = colors.pupil;
+    final ink = _pupilPaint;
     if (p.surprise > 0.05) {
       canvas.drawOval(
         Rect.fromCenter(
@@ -683,20 +696,7 @@ class MascotPainter extends CustomPainter {
       return;
     }
     final sleepy = p.sleep > 0.5;
-    canvas.drawPath(
-      sleepy
-          ? (Path()
-              ..moveTo(498, 522)
-              ..quadraticBezierTo(512, 530, 526, 522))
-          : (Path()
-              ..moveTo(492, 518)
-              ..quadraticBezierTo(512, 536, 532, 518)),
-      Paint()
-        ..color = colors.pupil
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
-        ..strokeCap = StrokeCap.round,
-    );
+    canvas.drawPath(sleepy ? _sleepySmile : _smile, _smilePaint);
   }
 
   /// Rosy cheeks that fade into the face, a little warmer when Pip smiles.

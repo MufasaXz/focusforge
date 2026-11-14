@@ -16,7 +16,7 @@ import 'package:focusforge/features/assistant/mascot/mascot_rig.dart';
 
 void main() {
   /// Plays [ms] milliseconds frame by frame; the rig caps one frame's step
-  /// at a quarter second, so one long pump would not get there.
+  /// at [MascotRig.maxFrameStep], so one long pump would not get there.
   Future<void> play(WidgetTester tester, int ms) async {
     for (var t = 0; t < ms; t += 16) {
       await tester.pump(const Duration(milliseconds: 16));
@@ -44,7 +44,11 @@ void main() {
     rig.swingFeet();
     await play(tester, 400);
     expect(rig.pose.kick, isNot(0));
+    final swinging = rig.pose.kick;
     rig.standUp();
+    // Standing up eases the swing out rather than snapping the feet still.
+    expect(rig.pose.kick, swinging);
+    await play(tester, 320);
     expect(rig.pose.kick, 0);
     await tester.pumpAndSettle();
     rig.yawn();

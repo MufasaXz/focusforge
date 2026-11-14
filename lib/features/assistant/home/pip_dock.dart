@@ -63,6 +63,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   Timer? _idle;
   Timer? _bubbleTimer;
   Timer? _gazeRelease;
+  Timer? _unduck;
 
   BuddyPrompt? _bubble;
   bool _typing = false;
@@ -113,6 +114,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     _idle?.cancel();
     _bubbleTimer?.cancel();
     _gazeRelease?.cancel();
+    _unduck?.cancel();
     _life.dispose();
     _rig.dispose();
     super.dispose();
@@ -375,12 +377,17 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     if (notification.metrics.axis != Axis.vertical) return false;
     if (notification is ScrollUpdateNotification &&
         (notification.scrollDelta ?? 0).abs() > 0.5) {
+      // A new scroll cancels a rise that was still waiting from the last
+      // one. Otherwise a quick second flick lets Pip pop up mid-scroll and
+      // duck straight back down, a bob nobody asked for.
+      _unduck?.cancel();
       _poke();
       _hideBubble();
       if (!_ducked) setState(() => _ducked = true);
     } else if (notification is ScrollEndNotification && _ducked) {
-      _after(const Duration(milliseconds: 650), () {
-        if (_ducked) setState(() => _ducked = false);
+      _unduck?.cancel();
+      _unduck = Timer(const Duration(milliseconds: 650), () {
+        if (mounted && _ducked) setState(() => _ducked = false);
       });
     }
     return false;

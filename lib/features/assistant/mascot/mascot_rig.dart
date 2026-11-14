@@ -75,6 +75,11 @@ class MascotPose {
 }
 
 /// A damped spring that eases one value toward a target.
+///
+/// Stepped with the closed-form solution of a damped oscillator rather than
+/// by numerical integration, so the path it takes is the same at 30, 60 or
+/// 120 frames a second, and a long frame lands exactly where a run of short
+/// ones would have.
 class _Spring {
   _Spring(this.value, {this.stiffness = 180, this.ratio = 0.8})
     : target = value;
@@ -91,14 +96,36 @@ class _Spring {
       (target - value).abs() < 0.0008 && velocity.abs() < 0.0008;
 
   void step(double dt) {
-    final damping = 2 * ratio * math.sqrt(stiffness);
-    final force = stiffness * (target - value) - damping * velocity;
-    velocity += force * dt;
-    value += velocity * dt;
+    if (dt <= 0) return;
     if (settled) {
-      value = target;
-      velocity = 0;
+      snap();
+      return;
     }
+    final w0 = math.sqrt(stiffness);
+    final x = value - target;
+    final v = velocity;
+    double nx;
+    double nv;
+    if (ratio >= 0.999) {
+      // Critically damped: (A + Bt)·e^(−ω₀t).
+      final b = v + w0 * x;
+      final e = math.exp(-w0 * dt);
+      nx = (x + b * dt) * e;
+      nv = (b - w0 * (x + b * dt)) * e;
+    } else {
+      // Underdamped: e^(−ζω₀t)·(A cos ωt + B sin ωt).
+      final a = ratio * w0;
+      final wd = w0 * math.sqrt(1 - ratio * ratio);
+      final e = math.exp(-a * dt);
+      final c = math.cos(wd * dt);
+      final s = math.sin(wd * dt);
+      final b = (v + a * x) / wd;
+      nx = e * (x * c + b * s);
+      nv = e * (v * c - (a * b + wd * x) * s);
+    }
+    value = target + nx;
+    velocity = nv;
+    if (settled) snap();
   }
 
   void snap() {
@@ -108,19 +135,62 @@ class _Spring {
 }
 
 /// One timed gesture: when it began and how long it lasts, on the rig's clock.
+///
+/// A gesture that has to make way for another is not cut off where it
+/// stands, which would snap the head or the feet back in one frame. It is
+/// [fade]d instead: its own timing carries on while [weightAt] eases its
+/// contribution to nothing over a fraction of a second.
 class _Clip {
   double start = -1;
   double length = 0;
+  double _fadeFrom = -1;
+  double _end = double.infinity;
 
-  bool activeAt(double now) => start >= 0 && now - start < length;
+  bool activeAt(double now) => start >= 0 && now - start < length && now < _end;
+
+  /// Playing and not on its way out, so another gesture should wait for it.
+  bool liveAt(double now) => activeAt(now) && _fadeFrom < 0;
+
   double progressAt(double now) =>
       start < 0 ? 1 : ((now - start) / length).clamp(0.0, 1.0);
+
+  /// How much of the gesture shows: 1 while it plays, easing to 0 as it
+  /// fades out.
+  double weightAt(double now) {
+    if (_fadeFrom < 0) return 1;
+    final t = ((now - _fadeFrom) / (_end - _fadeFrom)).clamp(0.0, 1.0);
+    return 1 - t * t * (3 - 2 * t);
+  }
+
   void play(double now, double seconds) {
     start = now;
     length = seconds;
+    _fadeFrom = -1;
+    _end = double.infinity;
   }
 
-  void stop() => start = -1;
+  /// Plays on for at least [seconds] more without restarting, so whatever
+  /// the gesture is doing carries straight on.
+  void extend(double now, double seconds) {
+    length = math.max(length, now - start + seconds);
+  }
+
+  /// Eases the gesture out over [seconds] instead of cutting it.
+  void fade(double now, [double seconds = 0.26]) {
+    if (!activeAt(now)) {
+      stop();
+      return;
+    }
+    if (_fadeFrom >= 0) return;
+    _fadeFrom = now;
+    _end = math.min(start + length, now + seconds);
+  }
+
+  void stop() {
+    start = -1;
+    _fadeFrom = -1;
+    _end = double.infinity;
+  }
 }
 
 /// Drives Pip: springs for the states it holds, short clips for gestures.
@@ -223,25 +293,30 @@ class MascotRig extends ChangeNotifier {
 
   /// True while a small idle gesture plays, so another waits its turn.
   bool get fidgeting =>
-      _yawn.activeAt(_clock) ||
-      _wiggle.activeAt(_clock) ||
-      _curious.activeAt(_clock) ||
-      _shift.activeAt(_clock) ||
-      _swing.activeAt(_clock);
+      _yawn.liveAt(_clock) ||
+      _wiggle.liveAt(_clock) ||
+      _curious.liveAt(_clock) ||
+      _shift.liveAt(_clock) ||
+      _swing.liveAt(_clock);
 
   /// Idle gestures yield to intentional actions so Pip does not stretch,
   /// wave, and lean in incompatible directions at the same time.
   bool get gesturing =>
       fidgeting ||
-      _wave.activeAt(_clock) ||
-      _hop.activeAt(_clock) ||
-      _cheer.activeAt(_clock) ||
-      _nod.activeAt(_clock) ||
-      _talk.activeAt(_clock);
+      _wave.liveAt(_clock) ||
+      _hop.liveAt(_clock) ||
+      _cheer.liveAt(_clock) ||
+      _nod.liveAt(_clock) ||
+      _talk.liveAt(_clock);
 
+  /// Eases out the idle gestures that would fight a new posture or action.
   void _settleIdleGestures() {
     for (final clip in [_curious, _shift, _swing, _yawn, _wiggle, _nod]) {
-      clip.stop();
+      if (_reduceMotion) {
+        clip.stop();
+      } else {
+        clip.fade(_clock);
+      }
     }
   }
 
@@ -300,18 +375,23 @@ class MascotRig extends ChangeNotifier {
     ticker.start();
   }
 
+  /// The longest step one frame may take.
+  ///
+  /// Pip keeps to the wall clock through an ordinary dropped frame or two,
+  /// but a longer stall (a route push, a ticker resuming after its tab was
+  /// hidden) slows Pip down for that one frame instead of jumping a hop or a
+  /// wave a quarter of a second ahead.
+  static const double maxFrameStep = 1 / 20;
+
   void _onTick(Duration elapsed) {
-    // Pip keeps to the wall clock, so a dropped frame skips ahead instead of
-    // slowing everything down. The springs integrate in small steps to stay
-    // stable whatever the gap between frames.
-    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.25);
+    final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(
+      0.0,
+      maxFrameStep,
+    );
     _last = elapsed;
     _clock += dt;
-    for (var left = dt; left > 0; left -= 1 / 120) {
-      final step = math.min(left, 1 / 120);
-      for (final spring in _springs) {
-        spring.step(step);
-      }
+    for (final spring in _springs) {
+      spring.step(dt);
     }
     // The landing jolts the antenna once.
     if (!_landed && _hop.start >= 0 && _clock - _hop.start >= _landAt) {
@@ -356,7 +436,7 @@ class MascotRig extends ChangeNotifier {
   // -- Gestures ---------------------------------------------------------------
 
   void blink() {
-    if (_sleeping || _reduceMotion) return;
+    if (_sleeping || _reduceMotion || _blink.activeAt(_clock)) return;
     _blink.play(_clock, 0.19);
     _run();
   }
@@ -366,7 +446,14 @@ class MascotRig extends ChangeNotifier {
     if (_sleeping) return;
     _settleIdleGestures();
     _rightArm.target = waveArm;
-    if (!_reduceMotion) _wave.play(_clock, seconds);
+    if (_reduceMotion) {
+      // Nothing plays.
+    } else if (_wave.liveAt(_clock)) {
+      // Already waving: keep the same beat going rather than restart it.
+      _wave.extend(_clock, seconds);
+    } else {
+      _wave.play(_clock, seconds);
+    }
     _run();
     if (_reduceMotion) {
       // No motion: a raised hand, put back down on the next change.
@@ -376,7 +463,9 @@ class MascotRig extends ChangeNotifier {
 
   /// A quick hop with a squint, for a tap or a finished task.
   void cheer() {
-    if (_sleeping || _reduceMotion) return;
+    // A second cheer mid-hop would restart the jump from the floor and drop
+    // Pip out of the air in one frame; the first one is still going.
+    if (_sleeping || _reduceMotion || _hop.activeAt(_clock)) return;
     _settleIdleGestures();
     _wave.stop();
     _playHop(0.74);
@@ -391,20 +480,25 @@ class MascotRig extends ChangeNotifier {
   /// Opens and closes the mouth for [seconds], as if speaking.
   void talk({double seconds = 1.1}) {
     if (_sleeping || _reduceMotion) return;
-    _talk.play(_clock, seconds);
+    if (_talk.liveAt(_clock)) {
+      // Keep talking from the same mouth shape instead of snapping it shut.
+      _talk.extend(_clock, seconds);
+    } else {
+      _talk.play(_clock, seconds);
+    }
     _run();
   }
 
   /// One slow breath: the head and body rise and settle.
   void breathe() {
-    if (_sleeping || _reduceMotion) return;
+    if (_sleeping || _reduceMotion || _breath.activeAt(_clock)) return;
     _breath.play(_clock, 2.2);
     _run();
   }
 
   /// One gentle sleeping "z", drifting up from the head.
   void puff() {
-    if (!_sleeping || _reduceMotion) return;
+    if (!_sleeping || _reduceMotion || _puff.activeAt(_clock)) return;
     _puff.play(_clock, 1.7);
     _run();
   }
@@ -421,7 +515,7 @@ class MascotRig extends ChangeNotifier {
 
   /// A slow yawn with a stretch, arms up: before a nap, or on waking.
   void yawn() {
-    if (_sleeping || _reduceMotion) return;
+    if (_sleeping || _reduceMotion || _yawn.activeAt(_clock)) return;
     _yawn.play(_clock, 2.1);
     _kick(0.6);
     _run();
@@ -429,7 +523,7 @@ class MascotRig extends ChangeNotifier {
 
   /// A happy little shimmy, eyes smiling, for good news.
   void wiggle() {
-    if (_sleeping || _reduceMotion) return;
+    if (_sleeping || _reduceMotion || _wiggle.activeAt(_clock)) return;
     _wiggle.play(_clock, 1.3);
     _run();
   }
@@ -437,7 +531,7 @@ class MascotRig extends ChangeNotifier {
   /// Tilts its head to one side, [side] −1 for left and 1 for right, the
   /// way a toddler looks at something new.
   void tiltCurious([double side = 1]) {
-    if (_sleeping || _reduceMotion) return;
+    if (_sleeping || _reduceMotion || _curious.activeAt(_clock)) return;
     _curiousSide = side < 0 ? -1 : 1;
     _curious.play(_clock, 1.7);
     _kick(-0.5 * _curiousSide);
@@ -446,7 +540,9 @@ class MascotRig extends ChangeNotifier {
 
   /// Shifts its weight from one foot to the other while it stands about.
   void shiftWeight([double side = 1]) {
-    if (_sleeping || _sitting || _reduceMotion) return;
+    if (_sleeping || _sitting || _reduceMotion || _shift.activeAt(_clock)) {
+      return;
+    }
     _shiftSide = side < 0 ? -1 : 1;
     _shift.play(_clock, 2.6);
     _run();
@@ -454,7 +550,9 @@ class MascotRig extends ChangeNotifier {
 
   /// Swings its feet while sitting.
   void swingFeet() {
-    if (!_sitting || _sleeping || _reduceMotion) return;
+    if (!_sitting || _sleeping || _reduceMotion || _swing.activeAt(_clock)) {
+      return;
+    }
     _swing.play(_clock, 3.4);
     _run();
   }
@@ -494,7 +592,17 @@ class MascotRig extends ChangeNotifier {
         _lookY.target = 0;
       }
     }
-    if (value && !_reduceMotion) _antenna.play(_clock, 2.4);
+    if (value && !_reduceMotion) {
+      if (_antenna.activeAt(_clock)) {
+        // Still pulsing from the last think: carry on for whole beats, so
+        // the light ends dim instead of jumping back to the start.
+        const beat = 1 / 1.25;
+        final wanted = _clock - _antenna.start + 2.4;
+        _antenna.length = (wanted / beat).ceil() * beat;
+      } else {
+        _antenna.play(_clock, 2.4);
+      }
+    }
     _run();
   }
 
@@ -521,8 +629,14 @@ class MascotRig extends ChangeNotifier {
 
   void fallAsleep() {
     if (_sleeping) return;
+    // Whatever was playing eases out as the eyes close, rather than every
+    // joint snapping back at once.
     for (final clip in _clips) {
-      clip.stop();
+      if (_reduceMotion) {
+        clip.stop();
+      } else {
+        clip.fade(_clock, 0.35);
+      }
     }
     _presenting = false;
     _sitting = true;
@@ -559,21 +673,29 @@ class MascotRig extends ChangeNotifier {
 
   MascotPose get pose {
     final now = _clock;
+    // A clip on its way out still plays, scaled down by its fade.
+    double w(_Clip clip) => clip.weightAt(now);
 
     var blink = 0.0;
     if (_blink.activeAt(now)) {
       // Lids drop fast and lift a little slower, both eased.
       final d = now - _blink.start;
-      blink = d < 0.07
-          ? Curves.easeIn.transform(d / 0.07)
-          : 1 - Curves.easeOutCubic.transform(((d - 0.07) / 0.12).clamp(0, 1));
+      blink =
+          (d < 0.07
+              ? Curves.easeIn.transform(d / 0.07)
+              : 1 -
+                    Curves.easeOutCubic.transform(
+                      ((d - 0.07) / 0.12).clamp(0, 1),
+                    )) *
+          w(_blink);
     }
 
     var rightArm = _rightArm.value;
     var tilt = _tilt.value;
     if (_wave.activeAt(now)) {
       final d = now - _wave.start;
-      final envelope = _smooth(d / 0.25) * _smooth((_wave.length - d) / 0.3);
+      final envelope =
+          _smooth(d / 0.25) * _smooth((_wave.length - d) / 0.3) * w(_wave);
       rightArm += math.sin(2 * math.pi * 2.6 * d) * 0.3 * envelope;
       // The head sways along, at half the hand's beat.
       tilt += math.sin(2 * math.pi * 1.3 * d) * 0.035 * envelope;
@@ -610,6 +732,10 @@ class MascotRig extends ChangeNotifier {
             : -0.1 * math.sin(math.pi * (v - 0.45) / 0.55);
         headLag = 6 * math.sin(math.pi * v) * (1 - v);
       }
+      final fade = w(_hop);
+      hop *= fade;
+      squash *= fade;
+      headLag *= fade;
     }
 
     var shiftX = 0.0;
@@ -623,14 +749,14 @@ class MascotRig extends ChangeNotifier {
     if (_yawn.activeAt(now)) {
       // Mouth opens slowly, holds, closes; arms reach up; the body stretches.
       final p = _yawn.progressAt(now);
-      yawning = _smooth(p / 0.35) * (1 - _smooth((p - 0.72) / 0.28));
+      yawning = _smooth(p / 0.35) * (1 - _smooth((p - 0.72) / 0.28)) * w(_yawn);
       armsUp = math.max(armsUp, 0.8 * yawning);
       squash = math.min(squash, -0.24 * yawning);
       tilt -= 0.05 * yawning;
     }
     if (_wiggle.activeAt(now)) {
       final t = now - _wiggle.start;
-      final env = _bell(_wiggle.progressAt(now));
+      final env = _bell(_wiggle.progressAt(now)) * w(_wiggle);
       tilt += 0.09 * math.sin(2 * math.pi * 2.6 * t) * env;
       shiftX += 0.035 * math.sin(2 * math.pi * 1.3 * t) * env;
       step += 0.6 * math.sin(2 * math.pi * 2.6 * t) * env;
@@ -638,12 +764,13 @@ class MascotRig extends ChangeNotifier {
     }
     if (_curious.activeAt(now)) {
       final p = _curious.progressAt(now);
-      final hold = _smooth(p / 0.25) * (1 - _smooth((p - 0.7) / 0.3));
+      final hold =
+          _smooth(p / 0.25) * (1 - _smooth((p - 0.7) / 0.3)) * w(_curious);
       tilt += 0.16 * _curiousSide * hold;
       lookShift += 0.5 * _curiousSide * hold;
     }
     if (_shift.activeAt(now)) {
-      final lean = _bell(_shift.progressAt(now)) * _shiftSide;
+      final lean = _bell(_shift.progressAt(now)) * _shiftSide * w(_shift);
       tilt += 0.035 * lean;
       shiftX += 0.015 * lean;
       step += 0.35 * lean;
@@ -651,14 +778,18 @@ class MascotRig extends ChangeNotifier {
     if (_swing.activeAt(now)) {
       final t = now - _swing.start;
       kick =
-          0.3 * math.sin(2 * math.pi * 1.4 * t) * _bell(_swing.progressAt(now));
+          0.3 *
+          math.sin(2 * math.pi * 1.4 * t) *
+          _bell(_swing.progressAt(now)) *
+          w(_swing);
     }
     if (_nod.activeAt(now)) {
       final t = now - _nod.start;
       headLag +=
           7 *
           (0.5 - 0.5 * math.cos(2 * math.pi * 2.2 * t)) *
-          _bell(_nod.progressAt(now));
+          _bell(_nod.progressAt(now)) *
+          w(_nod);
     }
     final leftArm = _lerp(_leftArm.value, 2.5, armsUp);
     rightArm = _lerp(rightArm, 2.5, armsUp);
@@ -666,32 +797,38 @@ class MascotRig extends ChangeNotifier {
     var mouth = 0.0;
     if (_talk.activeAt(now)) {
       final d = now - _talk.start;
-      final envelope = _smooth((_talk.length - d) / 0.18);
+      final envelope = _smooth((_talk.length - d) / 0.18) * w(_talk);
       mouth = (0.5 - 0.5 * math.cos(2 * math.pi * 4.2 * d)) * envelope;
     }
 
     mouth = math.max(mouth, 1.35 * yawning);
 
     var squint = 0.0;
-    if (_squint.activeAt(now)) squint = _bell(_squint.progressAt(now));
+    if (_squint.activeAt(now)) {
+      squint = _bell(_squint.progressAt(now)) * w(_squint);
+    }
 
     var surprise = 0.0;
     if (_startle.activeAt(now)) {
       // Startled at once, calm again slowly.
       final p = _startle.progressAt(now);
-      surprise = p < 0.18
-          ? Curves.easeOutCubic.transform(p / 0.18)
-          : 1 - _smooth((p - 0.18) / 0.82);
+      surprise =
+          (p < 0.18
+              ? Curves.easeOutCubic.transform(p / 0.18)
+              : 1 - _smooth((p - 0.18) / 0.82)) *
+          w(_startle);
     }
     squint = math.max(squint, math.max(happy, 0.8 * yawning));
 
     var breath = 0.0;
-    if (_breath.activeAt(now)) breath = _bell(_breath.progressAt(now));
+    if (_breath.activeAt(now)) {
+      breath = _bell(_breath.progressAt(now)) * w(_breath);
+    }
 
     var antenna = 0.0;
     if (_antenna.activeAt(now)) {
       final d = now - _antenna.start;
-      antenna = 0.5 - 0.5 * math.cos(2 * math.pi * 1.25 * d);
+      antenna = (0.5 - 0.5 * math.cos(2 * math.pi * 1.25 * d)) * w(_antenna);
     } else if (_thinking) {
       antenna = _reduceMotion ? 1 : 0;
     }
