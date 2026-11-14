@@ -537,9 +537,13 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       if (context.mounted) {
         showAppSnack(
           context,
-          context.tr(
-            "Deletion could not finish. Your local history is kept. Please retry or use the account-deletion page for help.",
-          ),
+          deleted
+              ? context.tr(
+                  'Your cloud account was deleted, but device cleanup could not finish. Clear FocusForge app storage in Android Settings to remove remaining local files.',
+                )
+              : context.tr(
+                  "Deletion could not finish. Your local history is kept. Please retry or use the account-deletion page for help.",
+                ),
         );
       }
     } finally {

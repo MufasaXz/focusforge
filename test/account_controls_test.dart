@@ -446,6 +446,34 @@ void main() {
     expect(find.text('Welcome'), findsOneWidget);
   });
 
+  testWidgets(
+    'native cleanup failure distinguishes completed cloud deletion from remaining local files',
+    (tester) async {
+      auth.passwordProvider = false;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('dev.focusforge/privacy'),
+        (call) async {
+          if (call.method == 'erase')
+            throw PlatformException(code: 'cleanup-failed');
+          return <String, dynamic>{};
+        },
+      );
+      await tester.pumpWidget(routed());
+      await openDeletion(tester);
+      await confirmDeletion(tester);
+      await tester.pumpAndSettle();
+      expect(auth.operations, ['google', 'delete']);
+      expect(
+        find.textContaining(
+          'Your cloud account was deleted, but device cleanup could not finish.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Welcome'), findsNothing);
+      expect(container.read(accountMutationProvider), isFalse);
+    },
+  );
+
   testWidgets('local-only erase needs no external credential check', (
     tester,
   ) async {
