@@ -119,12 +119,6 @@ class ProfileScreen extends ConsumerWidget {
     ];
     final settings = <_SettingSpec>[
       _SettingSpec(
-        icon: Icons.emoji_events_outlined,
-        label: context.tr("Achievements"),
-        routeName: AppRoutes.achievements,
-        trailing: '$unlocked / ${achievements.length}',
-      ),
-      _SettingSpec(
         icon: Icons.lock_outlined,
         label: context.tr("Strict Mode"),
         routeName: AppRoutes.strictMode,
@@ -195,23 +189,50 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: Gap.lg),
           ],
           stagger(
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (i, spec) in community.indexed) ...[
-                    if (i > 0) const SizedBox(width: Gap.sm),
-                    Expanded(
-                      child: _CommunityTile(
-                        key: ValueKey('profile-${spec.routeName}-tile'),
-                        spec: spec,
-                        onTap: () =>
-                            unawaited(_openSetting(context, ref, spec)),
-                      ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Leave enough room for the full labels at larger text sizes.
+                final stacked =
+                    constraints.maxWidth <
+                    300 * MediaQuery.textScalerOf(context).scale(12) / 12;
+                final tileWidth = stacked
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - Gap.sm) / 2;
+                final diameters = [
+                  for (final spec in community)
+                    _CommunityTile.diameterFor(
+                      context,
+                      stacked ? [spec] : community,
+                      tileWidth,
                     ),
+                ];
+                final tiles = [
+                  for (final (i, spec) in community.indexed)
+                    _CommunityTile(
+                      diameter: diameters[i],
+                      key: ValueKey('profile-${spec.routeName}-tile'),
+                      spec: spec,
+                      onTap: () => unawaited(_openSetting(context, ref, spec)),
+                    ),
+                ];
+                if (stacked) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      tiles.first,
+                      const SizedBox(height: Gap.sm),
+                      tiles.last,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: tiles.first),
+                    const SizedBox(width: Gap.sm),
+                    Expanded(child: tiles.last),
                   ],
-                ],
-              ),
+                );
+              },
             ),
           ),
           if (wide) const SizedBox(height: Gap.xl),
@@ -228,13 +249,12 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: Gap.xl),
         ];
         for (final group in [
-          (context.tr("Progress"), Icons.explore_outlined, settings.take(1)),
           (
             context.tr("Preferences"),
             Icons.settings_outlined,
-            settings.skip(1).take(2),
+            settings.take(2),
           ),
-          (context.tr("App & privacy"), Icons.tune_rounded, settings.skip(3)),
+          (context.tr("App & privacy"), Icons.tune_rounded, settings.skip(2)),
         ]) {
           final section = prefStagger(
             _ProfileSection(
@@ -257,11 +277,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           );
-          if (wide && group.$3.first == settings.first) {
-            identity.add(section);
-          } else {
-            prefs.add(section);
-          }
+          prefs.add(section);
         }
 
         return Align(
@@ -342,79 +358,93 @@ class _HeroCard extends StatelessWidget {
     final t = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Premium hero: a soft primary wash with a quiet lift, so the identity
-        // card reads as the page's cover rather than another flat tile.
-        return HeroSurface(
+        return DecoratedBox(
           key: const ValueKey('profile-hero'),
-          accentStrength: 0.10,
-          child: Column(
-            children: [
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Eyebrow(
-                  context.tr("YOUR SPACE"),
-                  icon: Icons.person_outline_rounded,
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-              // Avatar left, identity beside it, edit affordance on the right —
-              // the arrangement the compact card reads best at. The only case
-              // that still stacks is a viewport so narrow, or text so large,
-              // that the name cannot share the row.
-              // The level and its progress sit under the name, beside the
-              // avatar, so the identity reads as one block rather than a
-              // name floating over empty space.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _Avatar(user: user, level: stats.level),
-                  const SizedBox(width: Gap.lg),
-                  Expanded(
-                    child: _ProfileIdentity(user: user, stats: stats),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  const _EditProfileButton(),
-                ],
-              ),
-              const SizedBox(height: Gap.xl),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: t.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(Radii.item),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: Gap.lg,
-                    horizontal: Gap.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _HeroStat(
-                          value: _hours(stats.totalFocusHours),
-                          label: context.tr("Total focus"),
-                        ),
-                      ),
-                      _Divider(t: t),
-                      Expanded(
-                        child: _HeroStat(
-                          value: '$streak',
-                          label: context.tr("Day streak"),
-                          accent: t.tertiary,
-                        ),
-                      ),
-                      _Divider(t: t),
-                      Expanded(
-                        child: _HeroStat(
-                          value: '$unlocked/$totalBadges',
-                          label: context.tr("Badges"),
-                        ),
-                      ),
-                    ],
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.alphaBlend(t.primary.withValues(alpha: .10), t.surface),
+                t.surface,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(Radii.hero),
+            border: Border.all(color: t.primary.withValues(alpha: .22)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(Gap.lg),
+            child: Column(
+              children: [
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Eyebrow(
+                    context.tr("YOUR SPACE"),
+                    icon: Icons.person_outline_rounded,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: Gap.xl),
+                // Avatar left, identity beside it, edit affordance on the right —
+                // the arrangement the compact card reads best at. The only case
+                // that still stacks is a viewport so narrow, or text so large,
+                // that the name cannot share the row.
+                // The level and its progress sit under the name, beside the
+                // avatar, so the identity reads as one block rather than a
+                // name floating over empty space.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _Avatar(user: user, level: stats.level),
+                    const SizedBox(width: Gap.lg),
+                    Expanded(
+                      child: _ProfileIdentity(user: user, stats: stats),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                    const _EditProfileButton(),
+                  ],
+                ),
+                const SizedBox(height: Gap.xl),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: t.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(
+                      Radii.concentric(Radii.hero, Gap.lg),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Gap.lg,
+                      horizontal: Gap.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _HeroStat(
+                            value: _hours(stats.totalFocusHours),
+                            label: context.tr("Total focus"),
+                          ),
+                        ),
+                        _Divider(t: t),
+                        Expanded(
+                          child: _HeroStat(
+                            value: '$streak',
+                            label: context.tr("Day streak"),
+                            accent: t.tertiary,
+                          ),
+                        ),
+                        _Divider(t: t),
+                        Expanded(
+                          child: _HeroStat(
+                            value: '$unlocked/$totalBadges',
+                            label: context.tr("Badges"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -446,50 +476,9 @@ class _ProfileIdentity extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Gap.sm),
-        // A wrap, not a row: at large text sizes the XP falls under the
-        // level instead of pushing past the edge of the card.
-        // The level at the start of the bar and the XP at its end, so the two
-        // read as the bar's own labels rather than one crowded phrase. A wrap
-        // still, so at large text the XP drops under the level.
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          spacing: Gap.lg,
-          runSpacing: 2,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            // One run of text with the icon inline, so it wraps like text.
-            Text.rich(
-              TextSpan(
-                children: [
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(end: Gap.xs),
-                      child: Icon(
-                        Icons.military_tech_rounded,
-                        size: 16,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ),
-                  TextSpan(text: context.tr("Level {0}", [stats.level])),
-                ],
-              ),
-              style: tt.labelLarge?.copyWith(
-                color: cs.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              stats.isMaxLevel
-                  ? context.tr("{0} XP · Max level", [stats.xp])
-                  : context.tr("{0} / {1} XP", [stats.xp, stats.xpForNext]),
-              style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-        const SizedBox(height: Gap.sm),
         Semantics(
+          key: const ValueKey('profile-achievements'),
+          button: true,
           label: stats.isMaxLevel
               ? context.tr("Level {0}, maximum level. {1} XP", [
                   stats.level,
@@ -500,22 +489,91 @@ class _ProfileIdentity extends StatelessWidget {
                   stats.xp,
                   stats.xpForNext,
                 ]),
+          hint: context.tr("Achievements"),
           value: context.tr("{0} percent", [
             (stats.levelProgress * 100).round(),
           ]),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(Radii.pill),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: stats.levelProgress),
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : Motion.deliberate,
-              curve: Motion.emphasized,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                color: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
-                minHeight: 6,
+          excludeSemantics: true,
+          onTap: () => context.goNamed(AppRoutes.achievements),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: () => context.goNamed(AppRoutes.achievements),
+              borderRadius: BorderRadius.circular(
+                Radii.concentric(Radii.hero, Gap.lg),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      spacing: Gap.lg,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // One run of text with the icon inline, so it wraps like text.
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    end: Gap.xs,
+                                  ),
+                                  child: Icon(
+                                    Icons.military_tech_rounded,
+                                    size: 16,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                              ),
+                              TextSpan(
+                                text: context.tr("Level {0}", [stats.level]),
+                              ),
+                            ],
+                          ),
+                          style: tt.labelLarge?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          stats.isMaxLevel
+                              ? context.tr("{0} XP · Max level", [stats.xp])
+                              : context.tr("{0} / {1} XP", [
+                                  stats.xp,
+                                  stats.xpForNext,
+                                ]),
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: stats.levelProgress),
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : Motion.deliberate,
+                        curve: Motion.emphasized,
+                        builder: (context, value, _) => LinearProgressIndicator(
+                          value: value,
+                          color: cs.primary,
+                          backgroundColor: cs.surfaceContainerHighest,
+                          minHeight: 6,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -570,12 +628,13 @@ class _EditProfileButton extends StatelessWidget {
         onTap: open,
         child: SizedBox.square(
           dimension: 48,
-          child: Center(
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
             child: IconBadge(
               icon: Icons.edit_rounded,
               color: t.primary,
               size: 36,
-              radius: 11,
+              radius: Radii.concentric(Radii.hero, Gap.lg),
             ),
           ),
         ),
@@ -625,7 +684,7 @@ class _AnonymousCard extends ConsumerWidget {
         t.surfaceContainerLow,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
+        padding: const EdgeInsets.all(Gap.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -636,7 +695,7 @@ class _AnonymousCard extends ConsumerWidget {
                   icon: Icons.smartphone_rounded,
                   color: t.primary,
                   size: 40,
-                  radius: 12,
+                  radius: Radii.concentric(Radii.card, Gap.md),
                 ),
                 const SizedBox(width: Gap.md),
                 Expanded(
@@ -685,6 +744,14 @@ class _AnonymousCard extends ConsumerWidget {
             // absorbed by the card's node and the whole card came out as one
             // button whose name was every word on it.
             FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    Radii.concentric(Radii.card, Gap.md),
+                  ),
+                ),
+              ),
               onPressed: () => unawaited(_link(context, ref)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -723,8 +790,13 @@ class _AppearanceCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ContentCard(
+      key: const ValueKey('profile-appearance'),
+      // 28 - 12 = the shared segmented control's 16 dp track radius.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.item + Gap.md),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
+        padding: const EdgeInsets.all(Gap.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -843,7 +915,12 @@ class _PaletteSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    final color = palette.lightSeed;
+    final swatchScheme = ColorScheme.fromSeed(
+      seedColor: palette.seedFor(Theme.of(context).brightness),
+      brightness: Theme.of(context).brightness,
+    );
+    final color = swatchScheme.primary;
+    final outerRadius = Radii.concentric(Radii.item, Gap.xs);
 
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
@@ -857,7 +934,7 @@ class _PaletteSwatch extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.tile),
+        borderRadius: BorderRadius.circular(Radii.item),
         child: Padding(
           padding: const EdgeInsets.all(Gap.xs),
           child: Column(
@@ -868,11 +945,14 @@ class _PaletteSwatch extends StatelessWidget {
                 curve: Motion.decelerate,
                 width: 48,
                 height: 48,
-                padding: const EdgeInsets.all(Gap.xs),
+                // The 2 dp border plus 2 dp padding make a 4 dp inset.
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(selected ? 18 : 24),
+                  borderRadius: BorderRadius.circular(outerRadius),
                   border: Border.all(
-                    color: selected ? t.onSurface : Colors.transparent,
+                    color: selected
+                        ? t.onSurface
+                        : t.onSurface.withValues(alpha: 0),
                     width: 2,
                   ),
                 ),
@@ -881,17 +961,15 @@ class _PaletteSwatch extends StatelessWidget {
                   curve: Motion.decelerate,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(selected ? 12 : 20),
+                    borderRadius: BorderRadius.circular(
+                      Radii.concentric(outerRadius, Gap.xs),
+                    ),
                   ),
                   child: selected
                       ? Icon(
                           Icons.check_rounded,
                           size: 18,
-                          color:
-                              ThemeData.estimateBrightnessForColor(color) ==
-                                  Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
+                          color: swatchScheme.onPrimary,
                         )
                       : null,
                 ),
@@ -979,12 +1057,14 @@ class _SettingTile extends StatelessWidget {
     final t = Theme.of(context).colorScheme;
     return ListTile(
       onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: Gap.md),
       minVerticalPadding: Gap.md,
+      minTileHeight: 64,
       leading: IconBadge(
         icon: spec.icon,
         color: t.primary,
         size: 40,
-        radius: Radii.tile,
+        radius: Radii.concentric(Radii.card, Gap.md),
       ),
       title: Text(spec.label, style: Theme.of(context).textTheme.titleSmall),
       subtitle: spec.trailing == null
@@ -1008,20 +1088,66 @@ class _SettingTile extends StatelessWidget {
   }
 }
 
-/// Compact community destinations beside each other, even at large text sizes.
+/// Concentric community pills that grow with their labels.
 class _CommunityTile extends StatelessWidget {
-  const _CommunityTile({super.key, required this.spec, required this.onTap});
+  const _CommunityTile({
+    super.key,
+    required this.spec,
+    required this.onTap,
+    required this.diameter,
+  });
 
   final _SettingSpec spec;
   final VoidCallback onTap;
+  final double diameter;
+
+  // A larger circle consumes some label width. Measure until the two agree,
+  // so neither scaled text nor the circle can overflow the stadium's ends.
+  static double diameterFor(
+    BuildContext context,
+    List<_SettingSpec> specs,
+    double width,
+  ) {
+    final tt = Theme.of(context).textTheme;
+    double measure(String text, TextStyle? style, double available) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+        maxLines: 2,
+        ellipsis: '…',
+      )..layout(maxWidth: available.clamp(0, double.infinity));
+      final height = painter.height;
+      painter.dispose();
+      return height;
+    }
+
+    var diameter = 40.0;
+    // Each label has at most two lines. Starting small and only growing
+    // reaches a stable size, shared by both tiles when they occupy a row.
+    for (var pass = 0; pass < specs.length * 4; pass++) {
+      final available = width - Gap.sm * 3 - diameter;
+      var height = 0.0;
+      for (final spec in specs) {
+        final measured =
+            measure(spec.label, tt.labelMedium, available) +
+            (spec.trailing == null
+                ? 0
+                : 2 + measure(spec.trailing!, tt.bodySmall, available));
+        if (measured > height) height = measured;
+      }
+      if (height <= diameter) break;
+      diameter = height.ceilToDouble();
+    }
+    return diameter;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    const shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(28)),
-    );
+    const shape = StadiumBorder();
 
     return Semantics(
       button: true,
@@ -1037,53 +1163,58 @@ class _CommunityTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           customBorder: shape,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
+          child: SizedBox(
+            height: diameter + Gap.sm * 2,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Gap.sm + 2,
-                vertical: Gap.md,
-              ),
+              padding: const EdgeInsets.all(Gap.sm),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Stack(
-                    children: [
-                      IconBadge(
-                        icon: spec.icon,
-                        color: cs.primary,
-                        size: 40,
-                        radius: 20,
-                      ),
-                      if (spec.locked)
-                        PositionedDirectional(
-                          end: 0,
-                          bottom: 0,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: _tileColor(context),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(2),
-                              child: Icon(
-                                Icons.lock_outlined,
-                                size: 12,
-                                color: cs.onSurfaceVariant,
+                  SizedBox.square(
+                    dimension: diameter,
+                    child: Stack(
+                      children: [
+                        IconBadge(
+                          icon: spec.icon,
+                          color: cs.primary,
+                          size: diameter,
+                          radius: Radii.concentric(
+                            diameter / 2 + Gap.sm,
+                            Gap.sm,
+                          ),
+                        ),
+                        if (spec.locked)
+                          PositionedDirectional(
+                            end: 0,
+                            bottom: 0,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: _tileColor(context),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  Icons.lock_outlined,
+                                  size: 12,
+                                  color: cs.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(width: Gap.sm),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           spec.label,
-                          style: theme.textTheme.titleSmall,
+                          style: theme.textTheme.labelMedium,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),

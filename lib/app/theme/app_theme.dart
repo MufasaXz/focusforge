@@ -201,9 +201,8 @@ class AppTheme {
       listTileTheme: ListTileThemeData(
         iconColor: cs.onSurfaceVariant,
         titleTextStyle: AppType.build(cs).titleSmall,
-        subtitleTextStyle: AppType.build(
-          cs,
-        ).bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        subtitleTextStyle: AppType.build(cs).bodySmall
+            ?.copyWith(color: cs.onSurfaceVariant),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.tile),
         ),
@@ -297,6 +296,11 @@ class AppTheme {
 /// move independently of whatever number they happen to share today.
 class Radii {
   const Radii._();
+
+  /// Nested corners share a center when their radii differ by the inset.
+  /// Keep small controls rounded; callers should reduce excessive insets.
+  static double concentric(double outer, double inset) =>
+      (outer - inset).clamp(8.0, double.infinity);
 
   static const double hero = 26;
   static const double card = 22;

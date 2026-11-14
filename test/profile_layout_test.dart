@@ -10,6 +10,7 @@ import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/profile/profile_screen.dart';
+import 'package:focusforge/shared/widgets/icon_badge.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -83,10 +84,23 @@ void main() {
         await tester.pumpAndSettle();
         final left = tester.getRect(leaderboard);
         final right = tester.getRect(groups);
-        expect(left.top, right.top);
-        expect(left.height, right.height);
+        expect(right.top, greaterThan(left.bottom));
+        expect(left.left, right.left);
         expect(left.width, right.width);
-        expect(left.right, lessThan(right.left));
+        for (final tile in [leaderboard, groups]) {
+          final material = tester.widget<Material>(
+            find.descendant(of: tile, matching: find.byType(Material)),
+          );
+          expect(material.shape, isA<StadiumBorder>());
+          final outer = tester.getRect(tile);
+          final badge = tester.getRect(
+            find.descendant(of: tile, matching: find.byType(IconBadge)),
+          );
+          expect(badge.left - outer.left, closeTo(8, .01));
+          expect(badge.top - outer.top, closeTo(8, .01));
+          expect(outer.bottom - badge.bottom, closeTo(8, .01));
+          expect(badge.width, closeTo(badge.height, .01));
+        }
         expect(left.left, greaterThanOrEqualTo(0));
         expect(right.right, lessThanOrEqualTo(320));
         expect(left.height, greaterThanOrEqualTo(48));

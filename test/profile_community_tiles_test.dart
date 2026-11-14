@@ -14,6 +14,7 @@ import 'package:focusforge/core/providers/usage_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/settings/leaderboard_screen.dart';
+import 'package:focusforge/shared/widgets/icon_badge.dart';
 import 'package:focusforge/features/settings/study_groups_screen.dart';
 
 void main() {
@@ -101,6 +102,25 @@ void main() {
     expect(left.top, right.top);
     expect(left.width, right.width);
     expect(left.height, right.height);
+    expect(left.height, greaterThanOrEqualTo(56));
+    for (final route in [AppRoutes.leaderboard, AppRoutes.groups]) {
+      final material = tester.widget<Material>(
+        find.descendant(of: tile(route), matching: find.byType(Material)),
+      );
+      final ink = tester.widget<InkWell>(
+        find.descendant(of: tile(route), matching: find.byType(InkWell)),
+      );
+      expect(material.shape, isA<StadiumBorder>());
+      expect(ink.customBorder, isA<StadiumBorder>());
+      final outer = tester.getRect(tile(route));
+      final badge = tester.getRect(
+        find.descendant(of: tile(route), matching: find.byType(IconBadge)),
+      );
+      expect(badge.width, outer.height - 16);
+      expect(badge.left - outer.left, 8);
+      expect(badge.top - outer.top, 8);
+      expect(outer.bottom - badge.bottom, 8);
+    }
     expect(left.right, lessThan(right.left));
     expect(left.left, hero.left);
     expect(right.right, hero.right);
@@ -138,6 +158,60 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  for (final maxLevel in [false, true]) {
+    testWidgets('level, XP and progress open achievements, max=$maxLevel', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final stats = GamificationStats(xp: 25, level: maxLevel ? 50 : 3);
+      container.read(statsProvider.notifier).hydrate(stats);
+      await pumpProfile(tester, anonymous: true);
+      final region = find.byKey(const ValueKey('profile-achievements'));
+      expect(tester.getSize(region).height, greaterThanOrEqualTo(48));
+      expect(
+        tester.getSemantics(region),
+        matchesSemantics(
+          label: maxLevel
+              ? 'Level 50, maximum level. 25 XP'
+              : 'Level 3, 25 of 55 XP',
+          value: maxLevel ? '100 percent' : '45 percent',
+          hint: 'Achievements',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(find.text('Achievements'), findsNothing);
+      expect(find.text('Progress'), findsNothing);
+      final router = container.read(routerProvider);
+      final targets = [
+        find.textContaining('Level ${stats.level}', findRichText: true),
+        find.text(maxLevel ? '25 XP · Max level' : '25 / 55 XP'),
+        find.byType(LinearProgressIndicator),
+      ];
+      for (final target in targets) {
+        expect(find.descendant(of: region, matching: target), findsOneWidget);
+        await tester.tap(target);
+        await tester.pumpAndSettle();
+        expect(
+          router.routeInformationProvider.value.uri.path,
+          '/profile/achievements',
+        );
+        router.goNamed(AppRoutes.profile);
+        await tester.pumpAndSettle();
+      }
+      await tester.scrollUntilVisible(
+        find.text('About FocusForge'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Achievements'), findsNothing);
+      expect(find.text('Progress'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      semantics.dispose();
+    });
+  }
 
   testWidgets('community values stay live and expose full button semantics', (
     tester,

@@ -1,6 +1,8 @@
 // Reproducible UI review captures with bundled fonts and fictional local data.
-// Run: flutter test tool/capture_ui_test.dart
-// Writes PNGs to build/ui-review; never changes a user's stored data.
+// Run with a second test file to keep Flutter's socket-free runner enabled:
+// flutter test --no-pub --experimental-faster-testing --concurrency=1 \
+//   tool/capture_lowdpi_test.dart test/profile_community_tiles_test.dart
+// Writes PNGs to build/lowdpi; never changes a user's stored data.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -138,6 +140,8 @@ void main() {
       child: RepaintBoundary(key: boundary, child: child),
     );
     Future<void> capture(String name) async {
+      // Build newly visible list children before advancing their entrance timers.
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -171,12 +175,29 @@ void main() {
           expect(container.read(timerProvider).subjectId, 'math');
         }
         if (route == 'profile') {
+          for (final route in ['leaderboard', 'groups']) {
+            expect(
+              tester
+                  .getSize(find.byKey(ValueKey('profile-$route-tile')))
+                  .height,
+              56,
+            );
+          }
           await tester.scrollUntilVisible(
-            find.text('Tide'),
+            find.byKey(const ValueKey('profile-appearance')),
             180,
             scrollable: find.byType(Scrollable).last,
           );
+          await tester.ensureVisible(
+            find.byKey(const ValueKey('profile-appearance')),
+          );
           await capture('appearance-${mode.name}');
+          await tester.scrollUntilVisible(
+            find.text('About FocusForge'),
+            180,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await capture('profile-settings-${mode.name}');
         }
       }
     }
@@ -218,6 +239,21 @@ void main() {
     await capture('dashboard-tablet');
     container.read(routerProvider).go('/profile');
     await capture('profile-tablet');
+    tester.view.physicalSize = const Size(320, 800);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await capture('profile-large-text');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('profile-leaderboard-tile')),
+      180,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pump();
+    await Scrollable.ensureVisible(
+      tester.element(find.byKey(const ValueKey('profile-leaderboard-tile'))),
+      alignment: .1,
+    );
+    await capture('profile-community-large-text');
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }
