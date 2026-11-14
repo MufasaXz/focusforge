@@ -59,4 +59,6 @@ object ShieldEvents {
     fun detach() {
         sink = null
     }
+
+    fun clear() = synchronized(pending) { pending.clear() }
 }

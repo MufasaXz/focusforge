@@ -1,4 +1,5 @@
 import {FieldValue, Timestamp} from 'firebase-admin/firestore';
+import {createHash} from 'node:crypto';
 
 export function requireDeletionIdentity(auth, now=Date.now()) {
   if (!auth?.uid) throw Error('authentication required');
@@ -34,6 +35,11 @@ export async function cleanupAccount(db, uid, deleteAuth) {
     return true;
   });
   if (!pending) return;
+  // Same fenced report storage used by the website/Worker. Keep alternate
+  // trusted deletion paths from leaving new auxiliary records behind.
+  await deleteMatching(db,db.collection('pipReports').where('ownerUid','==',uid));
+  const hash=value=>createHash('sha256').update(value).digest('hex');
+  await deleteRefs(db,[db.doc('_aiLimits/'+hash(uid)),db.doc('_resetLimits/'+hash('privacy:'+uid))]);
   const groups=await db.collection('studyGroups').where('memberIds','array-contains',uid).get();
   for(const group of groups.docs) {
     await db.runTransaction(async tx=>{
@@ -71,8 +77,9 @@ export async function cleanupAccount(db, uid, deleteAuth) {
   await db.recursiveDelete(db.doc('users/'+uid));
   // Auth removal is last; any prior failure leaves a credential for retry.
   await deleteAuth(uid);
-  // Retain only UID/time for 24h: revoked ID tokens remain usable for ~1h.
+  // Retain only UID/time for seven days: stale ID tokens and racing writes
+  // must not recreate erased records.
   // Enable Firestore TTL on expiresAt; no email/profile is retained here.
   await marker.set({status:'complete',completedAt:FieldValue.serverTimestamp(),
-    expiresAt:Timestamp.fromMillis(Date.now()+24*60*60*1000)}, {merge:true});
+    expiresAt:Timestamp.fromMillis(Date.now()+7*24*60*60*1000)}, {merge:true});
 }

@@ -14,6 +14,7 @@ import 'auth_service.dart';
 import 'local_store.dart';
 import 'password_reset_mailer.dart';
 import 'study_backup_service.dart';
+import 'account_data_service.dart';
 
 /// The Firebase-backed implementation of [AuthService].
 ///
@@ -36,11 +37,13 @@ class FirebaseAuthService extends AuthService {
     GoogleSignIn? googleSignIn,
     PasswordResetMailer? resetMailer,
     this.studyBackup,
+    AccountData? accountData,
   }) : _auth = firebaseAuth ?? FirebaseAuth.instance,
        _resetMailer = resetMailer ?? sendFocusForgeResetEmail,
        _firestoreOverride = firestore,
        _cleanupOverride = accountCleanup,
-       _googleClient = googleSignIn {
+       _googleClient = googleSignIn,
+       _accountDataOverride = accountData {
     final credential = _auth.currentUser;
     _credentialUid = credential?.uid;
     if (credential != null &&
@@ -86,6 +89,19 @@ class FirebaseAuthService extends AuthService {
   }
 
   final LocalStore _store;
+  final AccountData? _accountDataOverride;
+  AccountData? _accountDataClient;
+  AccountData get _accountData => _accountDataClient ??=
+      _accountDataOverride ??
+      AccountDataService(idToken: () async => _auth.currentUser?.getIdToken());
+
+  @override
+  Future<Map<String, dynamic>> exportCloudData() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) return {};
+    return _accountData.export();
+  }
+
   final FirebaseAuth _auth;
   final FirebaseFirestore? _firestoreOverride;
   final FirestoreAccountCleanup? _cleanupOverride;
@@ -615,6 +631,7 @@ class FirebaseAuthService extends AuthService {
     }
     try {
       await user.getIdToken(true);
+      if (!user.isAnonymous) await _accountData.erase();
       await (_cleanupOverride ?? FirestoreAccountCleanup(db)).deleteUserData(
         user.uid,
       );
@@ -668,6 +685,7 @@ class FirebaseAuthService extends AuthService {
     _credentialGeneration++;
     recoveryState.dispose();
     studyBackup?.dispose();
+    if (_accountDataClient case final AccountDataService client) client.close();
     final sub = _authSub;
     if (sub != null) unawaited(sub.cancel());
     _controller.close();

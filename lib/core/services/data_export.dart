@@ -64,6 +64,10 @@ class DataExport {
       // The id of an account deleted from this phone, kept only so its
       // signed-in session cannot come back. It is nobody's data to export.
       if (key == 'auth.deletedCredential') continue;
+      if (key == StoreKeys.assistantReports &&
+          !own.contains(_decode(entry.value)['ownerUid'])) {
+        continue; // Legacy/unattributed feedback is not another user's export.
+      }
       final prefix = _accountKeyPrefixes
           .where((prefix) => key.startsWith(prefix))
           .firstOrNull;

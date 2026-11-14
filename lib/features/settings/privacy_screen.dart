@@ -21,6 +21,7 @@ import '../../core/providers/usage_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/data_export.dart';
 import '../../core/services/local_store.dart';
+import '../../core/services/native_privacy.dart';
 import '../../core/services/study_backup_service.dart';
 import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/app_page.dart';
@@ -28,6 +29,8 @@ import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/privacy_policy_link.dart';
 import 'settings_support.dart';
+import '../assistant/assistant_memory.dart';
+import '../assistant/chat/chat_controller.dart';
 
 /// Data & Privacy — the screen that has to tell the truth about storage.
 ///
@@ -102,9 +105,29 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   icon: Icons.ios_share,
                   title: context.tr("Export all data (JSON)"),
                   subtitle: DataExport.supported
-                      ? context.tr("Save every stored key as a file, or copy it")
+                      ? context.tr(
+                          "Save every stored key as a file, or copy it",
+                        )
                       : context.tr("Preview and copy every stored key"),
                   onTap: _busy ? null : () => _export(context, ref),
+                ),
+                SwitchListTile(
+                  secondary: Icon(
+                    Icons.cloud_outlined,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  title: Text(context.tr('Pip Cloud Study Coach')),
+                  subtitle: Text(
+                    context.tr(
+                      'Optional cloud coaching sends redacted questions, recent messages and study totals. Keep personal details out of questions. Off uses local coaching. A linked account is needed online.',
+                    ),
+                  ),
+                  value: ref.watch(assistantMemoryProvider).aiConsent == true,
+                  onChanged: _busy
+                      ? null
+                      : (on) => ref
+                            .read(chatProvider.notifier)
+                            .setOnlineAnswers(on),
                 ),
                 // Withdrawing is one tap, as granting was. Off clears the
                 // in-memory list at once; the next Shield visit asks again.
@@ -252,12 +275,32 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
   // -- Export ---------------------------------------------------------------
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
+    setState(() => _busy = true);
+    Map<String, dynamic> cloud;
+    try {
+      cloud = await ref.read(authServiceProvider).exportCloudData();
+      cloud['native'] = await NativePrivacy.export();
+    } catch (_) {
+      if (context.mounted) {
+        showAppSnack(
+          context,
+          context.tr(
+            'Cloud export could not finish. Your data is kept. Connect to the internet, sign in and retry.',
+          ),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!context.mounted) return;
     // Only this account's data: the store also holds a snapshot for every
     // other account that has signed in on this phone.
     final data = DataExport.forAccount(
       ref.read(localStoreProvider).exportAll(),
       ref.read(userProvider).uid,
     );
+    if (cloud.isNotEmpty) data['cloud'] = cloud;
     final json = const JsonEncoder.withIndent('  ').convert(data);
     final name = DataExport.fileName(DateTime.now());
 
@@ -468,7 +511,13 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       }
       await resetPersistedState(container);
       _dismissDeletionProgress();
-      if (context.mounted) context.goNamed(AppRoutes.onboarding);
+      if (context.mounted) {
+        showAppSnack(
+          context,
+          context.tr('Your account and app data have been deleted.'),
+        );
+        context.goNamed(AppRoutes.onboarding);
+      }
     } on AuthException catch (error) {
       if (context.mounted) {
         showAppSnack(

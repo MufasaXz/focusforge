@@ -20,6 +20,22 @@ import 'package:focusforge/features/settings/privacy_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const privacyChannel = MethodChannel('dev.focusforge/privacy');
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          privacyChannel,
+          (call) async => call.method == 'export'
+              ? {
+                  'pip_nudges': {'items': '[]'},
+                }
+              : null,
+        );
+  });
+  tearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(privacyChannel, null),
+  );
   const channel = MethodChannel('dev.focusforge/export');
 
   test('the file name carries the date', () {

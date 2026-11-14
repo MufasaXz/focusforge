@@ -165,6 +165,9 @@ abstract class AuthService {
   /// Deletes the credential and wipes every local record.
   Future<void> deleteAccount();
 
+  /// Device-only sessions have no remote records to export.
+  Future<Map<String, dynamic>> exportCloudData() async => {};
+
   /// Persists [profile]; the record on the device is the source of truth.
   Future<void> updateProfile(UserProfile profile);
 

@@ -21,6 +21,7 @@ import '../core/services/app_attestation.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_cache.dart';
 import '../core/services/local_store.dart';
+import '../core/services/native_privacy.dart';
 import '../core/services/study_backup_service.dart';
 import '../features/assistant/assistant_memory.dart';
 import '../features/assistant/chat/chat_controller.dart';
@@ -380,7 +381,8 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   // deleted account too, and its reminders are already set with Android.
   container.invalidate(assistantMemoryProvider);
   container.invalidate(chatProvider);
-  unawaited(PipNudges.clear());
+  await PipNudges.clear();
+  await NativePrivacy.erase();
   if (deletedCredential != null) {
     await store.setString('auth.deletedCredential', deletedCredential);
   }

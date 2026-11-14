@@ -10,6 +10,7 @@ import dev.focusforge.focusforge.assistant.PipNudges
 import dev.focusforge.focusforge.shield.AppBlockingService
 import dev.focusforge.focusforge.shield.FocusAccessibilityService
 import dev.focusforge.focusforge.shield.ShieldBridge
+import dev.focusforge.focusforge.shield.ShieldEvents
 import dev.focusforge.focusforge.widgets.FocusLiveActivity
 import dev.focusforge.focusforge.widgets.FocusWidget
 import io.flutter.embedding.android.FlutterActivity
@@ -106,6 +107,30 @@ class MainActivity : FlutterActivity() {
         }
 
         val saver = DataExport(this).also { export = it }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.focusforge/privacy").setMethodCallHandler { call, result ->
+            val stores = listOf("focusforge_shield", "pip_nudges", "focusforge_live_activity")
+            when (call.method) {
+                "export" -> result.success(stores.associateWith { name ->
+                    getSharedPreferences(name, MODE_PRIVATE).all
+                })
+                "erase" -> {
+                    PipNudges.clear(applicationContext)
+                    stopService(Intent(this, AppBlockingService::class.java))
+                    ShieldEvents.clear()
+                    Thread {
+                        val outcome = runCatching {
+                            for (name in stores) check(getSharedPreferences(name, MODE_PRIVATE).edit().clear().commit())
+                            for (file in cacheDir.listFiles().orEmpty()) check(file.deleteRecursively())
+                        }
+                        runOnUiThread {
+                            if (outcome.isSuccess) result.success(null)
+                            else result.error("cleanup-failed", "Local cleanup could not finish. Please retry.", null)
+                        }
+                    }.start()
+                }
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DataExport.CHANNEL).setMethodCallHandler { call, result ->
             val name = call.argument<String>("name")
             val json = call.argument<String>("json")

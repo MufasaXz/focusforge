@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -80,6 +81,14 @@ void main() {
   );
 
   setUp(() async {
+    for (final name in ['dev.focusforge/privacy', 'dev.focusforge/pip']) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            MethodChannel(name),
+            (call) async =>
+                call.method == 'export' ? <String, dynamic>{} : null,
+          );
+    }
     SharedPreferences.setMockInitialValues({});
     store = await LocalStore.open();
     await store.clearAll();

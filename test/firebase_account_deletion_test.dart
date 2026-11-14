@@ -1,3 +1,5 @@
+import 'package:focusforge/core/services/account_data_service.dart';
+
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -219,6 +221,7 @@ void main() {
       firestore: firestore,
       accountCleanup: cleanup,
       googleSignIn: google,
+      accountData: _AccountData(),
     );
     await service.restore();
   });
@@ -318,6 +321,7 @@ void main() {
         firestore: firestore,
         accountCleanup: cleanup,
         googleSignIn: google,
+        accountData: _AccountData(),
         studyBackup: backup,
       );
       addTearDown(linked.dispose);
@@ -386,6 +390,7 @@ void main() {
         firestore: firestore,
         accountCleanup: cleanup,
         googleSignIn: google,
+        accountData: _AccountData(),
       );
       expect(await service.restore(), isNull);
       expect(service.signedIn, isFalse);
@@ -495,4 +500,11 @@ void main() {
       expect(store.getList(StoreKeys.sessions), isEmpty);
     },
   );
+}
+
+class _AccountData implements AccountData {
+  @override
+  Future<void> erase() async {}
+  @override
+  Future<Map<String, dynamic>> export() async => {};
 }
