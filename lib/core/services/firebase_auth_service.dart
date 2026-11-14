@@ -13,6 +13,7 @@ import '../models/user.dart';
 import 'auth_service.dart';
 import 'local_store.dart';
 import 'password_reset_mailer.dart';
+import 'verification_mailer.dart';
 import 'study_backup_service.dart';
 import 'account_data_service.dart';
 
@@ -36,10 +37,13 @@ class FirebaseAuthService extends AuthService {
     FirestoreAccountCleanup? accountCleanup,
     GoogleSignIn? googleSignIn,
     PasswordResetMailer? resetMailer,
+    VerificationMailer? verificationMailer,
     this.studyBackup,
     AccountData? accountData,
   }) : _auth = firebaseAuth ?? FirebaseAuth.instance,
        _resetMailer = resetMailer ?? sendFocusForgeResetEmail,
+       _verificationMailer =
+           verificationMailer ?? sendFocusForgeVerificationEmail,
        _firestoreOverride = firestore,
        _cleanupOverride = accountCleanup,
        _googleClient = googleSignIn,
@@ -89,6 +93,7 @@ class FirebaseAuthService extends AuthService {
   }
 
   final LocalStore _store;
+  final VerificationMailer _verificationMailer;
   final AccountData? _accountDataOverride;
   AccountData? _accountDataClient;
   AccountData get _accountData => _accountDataClient ??=
@@ -153,7 +158,17 @@ class FirebaseAuthService extends AuthService {
     if (next != null && DateTime.now().isBefore(next)) {
       throw const AuthException(AuthFailure.tooManyRequests);
     }
-    await _guard(() => user.sendEmailVerification());
+    final token = await _guard(() => user.getIdToken());
+    final delivery = token == null
+        ? VerificationMailResult.unavailable
+        : await _verificationMailer(token);
+    if (delivery == VerificationMailResult.rateLimited) {
+      throw const AuthException(AuthFailure.tooManyRequests);
+    }
+    if (delivery != VerificationMailResult.sent) {
+      // A temporary website outage still leaves Firebase's verified delivery.
+      await _guard(() => user.sendEmailVerification());
+    }
     _verificationSentAt = DateTime.now();
     _verificationSentUid = user.uid;
   }

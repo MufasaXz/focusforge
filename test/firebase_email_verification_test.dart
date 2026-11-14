@@ -11,6 +11,7 @@ import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/firebase_auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/password_reset_mailer.dart';
+import 'package:focusforge/core/services/verification_mailer.dart';
 import 'package:focusforge/core/services/study_backup_service.dart';
 
 class _Backup implements StudyBackupBackend {
@@ -154,6 +155,7 @@ void main() {
   late FirebaseAuthService service;
   late List<String> mailed;
   late ResetMailResult mailResult;
+  late VerificationMailResult verificationResult;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     store = await LocalStore.open();
@@ -170,10 +172,11 @@ void main() {
     auth = _Auth();
     mailed = [];
     mailResult = ResetMailResult.unavailable;
+    verificationResult = VerificationMailResult.unavailable;
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
-
+      verificationMailer: (_) async => verificationResult,
       resetMailer: (email) async {
         mailed.add(email);
         return mailResult;
@@ -217,6 +220,33 @@ void main() {
     expect(store.getString('assistant.private'), 'private question');
   });
 
+  test(
+    'branded verification succeeds without sending a second Firebase email',
+    () async {
+      verificationResult = VerificationMailResult.sent;
+      await service.sendEmailVerification();
+      expect(auth.user.emails, 0);
+      expect(service.verificationResendAvailableAt, isNotNull);
+    },
+  );
+  test(
+    'branded verification rate limit never falls back to bypass the limit',
+    () async {
+      verificationResult = VerificationMailResult.rateLimited;
+      await expectLater(
+        service.sendEmailVerification(),
+        throwsA(
+          isA<AuthException>().having(
+            (error) => error.failure,
+            'failure',
+            AuthFailure.tooManyRequests,
+          ),
+        ),
+      );
+      expect(auth.user.emails, 0);
+      expect(service.verificationResendAvailableAt, isNull);
+    },
+  );
   test('password reset uses the FocusForge email when it is sent', () async {
     mailResult = ResetMailResult.sent;
     await service.sendPasswordReset(' person@example.com ');
@@ -305,7 +335,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       expect(service.signedIn, isTrue);
@@ -350,7 +380,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: backup,
       );
       await service.restore();
@@ -394,7 +424,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
-
+          verificationMailer: (_) async => VerificationMailResult.unavailable,
           studyBackup: backup,
         );
         await service.restore();
@@ -429,7 +459,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: backup,
       );
       final events = <UserProfile?>[];
@@ -510,7 +540,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
-
+          verificationMailer: (_) async => VerificationMailResult.unavailable,
           studyBackup: backup,
         );
         final profile = await service.restore();
@@ -534,7 +564,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: backup,
       );
       final profile = await service.restore();
@@ -567,7 +597,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
-
+          verificationMailer: (_) async => VerificationMailResult.unavailable,
           studyBackup: backup,
         );
         if (localFallback) {
@@ -667,7 +697,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       final pending = service.restore().then(
@@ -694,7 +724,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: backup,
       );
       await service.restore();
@@ -718,7 +748,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
-
+      verificationMailer: (_) async => VerificationMailResult.unavailable,
       studyBackup: StudyBackupService(store, backend),
     );
     await expectLater(service.restore(), throwsA(isA<AuthException>()));
@@ -746,7 +776,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       final profile = await service.restore();
@@ -770,7 +800,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       expect((await service.restore())?.uid, 'email-account');
@@ -788,7 +818,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       await expectLater(
@@ -813,7 +843,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
-
+      verificationMailer: (_) async => VerificationMailResult.unavailable,
       studyBackup: StudyBackupService(store, backend),
     );
     final first = service.restore();
@@ -835,7 +865,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
-
+      verificationMailer: (_) async => VerificationMailResult.unavailable,
       studyBackup: StudyBackupService(store, backend),
     );
     final first = service.restore().then<Object?>(
@@ -892,7 +922,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
-
+      verificationMailer: (_) async => VerificationMailResult.unavailable,
       studyBackup: StudyBackupService(store, backend),
     );
     await service.restore();
@@ -935,7 +965,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
-
+        verificationMailer: (_) async => VerificationMailResult.unavailable,
         studyBackup: StudyBackupService(store, backend),
       );
       final signingIn = service.signInWithEmail(
