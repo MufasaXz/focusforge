@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- This file applies only to release. Debug builds keep Gradle's own flag. -->
+    <application
+        tools:ignore="HardcodedDebugMode"
+        android:debuggable="false"
+        android:usesCleartextTraffic="false"
+        android:allowBackup="false" />
+</manifest>

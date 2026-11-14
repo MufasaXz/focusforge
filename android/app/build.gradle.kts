@@ -62,12 +62,14 @@ android {
 
     buildTypes {
         release {
+            isDebuggable = false
             signingConfig = signingConfigs.getByName("release")
             // Flutter supplies the optimized Android defaults and its plugin
             // consumer rules. Keep R8 enabled so Play receives its metadata
             // and the exact mapping for this bundle.
             isMinifyEnabled = true
             isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         }
     }
