@@ -1,3 +1,4 @@
+import 'offline_lessons_school.dart';
 import 'offline_text.dart';
 
 /// Authored study notes, not generated facts. Questions have explicit answer
@@ -46,6 +47,15 @@ abstract final class OfflineKnowledge {
     return null;
   }
 
+  /// Every word that appears in some alias. A correctly spelled topic word is
+  /// never treated as a typo of a different one: "revolution" is one edit
+  /// from "evolution", but it names the French Revolution, not Darwin.
+  static final Set<String> _known = {
+    for (final lesson in lessons)
+      for (final alias in lesson.aliases)
+        ...OfflineText.normalize(alias).split(' '),
+  };
+
   /// Require a whole alias, or a single edit in a sufficiently long alias.
   /// Long phrases outrank their components (conditional probability before
   /// probability, for example). No nearest-answer fallback on unrelated text.
@@ -62,7 +72,9 @@ abstract final class OfflineKnowledge {
             ? 100 + alias.length
             : !alias.contains(' ') &&
                   alias.length >= 7 &&
-                  words.any((w) => OfflineText.close(w, alias))
+                  words.any(
+                    (w) => !_known.contains(w) && OfflineText.close(w, alias),
+                  )
             ? 60
             : 0;
         if (score > best) best = score;
@@ -92,7 +104,9 @@ abstract final class OfflineKnowledge {
     return [for (final match in matches) match.$1];
   }
 
-  static const lessons = <OfflineLesson>[
+  static const lessons = <OfflineLesson>[..._core, ...schoolLessons];
+
+  static const _core = <OfflineLesson>[
     OfflineLesson(
       'fractions',
       'Fractions',
@@ -315,7 +329,13 @@ abstract final class OfflineKnowledge {
     OfflineLesson(
       'trigonometry',
       'Trigonometry',
-      ['trigonometry', 'trig', 'sine cosine', 'त्रिकोणमिति'],
+      [
+        'trigonometry',
+        'trig',
+        'sine cosine',
+        'trigonometric ratios',
+        'त्रिकोणमिति',
+      ],
       'In a right triangle, sin θ = opposite/hypotenuse, cos θ = adjacent/hypotenuse, and tan θ = opposite/adjacent. On the unit circle, coordinates are (cos θ, sin θ).',
       'For a 3–4–5 triangle with opposite side 3, sin θ = 3/5. The identity sin²θ + cos²θ = 1 holds for every real angle.',
       'Check whether angles are in degrees or radians. sin(a + b) is not sin a + sin b.',
@@ -808,7 +828,16 @@ abstract final class OfflineKnowledge {
     OfflineLesson(
       'cells',
       'Cells and organelles',
-      ['cell biology', 'cell organelles', 'organelles', 'कोशिका'],
+      [
+        'cell biology',
+        'cell organelles',
+        'organelles',
+        'cell structure',
+        'structure of cell',
+        'plant cell',
+        'animal cell',
+        'कोशिका',
+      ],
       'Cells are the basic units of life. The cell membrane regulates exchange. In eukaryotes, the nucleus contains most DNA, ribosomes make proteins, and mitochondria support aerobic respiration.',
       'A typical plant cell also has a cellulose cell wall and a large central vacuole; photosynthetic cells contain chloroplasts.',
       'Not every cell has a nucleus or chloroplasts. Bacteria lack a membrane-bound nucleus but do have DNA and ribosomes.',
@@ -1239,7 +1268,15 @@ abstract final class OfflineKnowledge {
     OfflineLesson(
       'notes',
       'Useful study notes',
-      ['cornell notes', 'note taking', 'study notes', 'make notes'],
+      [
+        'cornell notes',
+        'note taking',
+        'study notes',
+        'make notes',
+        'good notes',
+        'take notes',
+        'notes making',
+      ],
       'Write short explanations, worked examples, and questions that will test understanding later. A cue column and brief summary can make Cornell-style notes useful for recall.',
       'For each page, keep one main idea, one worked example, one common error, and three closed-book questions.',
       'Copying everything neatly can feel productive without testing learning. Use notes to support practice, not replace it.',
@@ -1349,6 +1386,12 @@ abstract final class OfflineKnowledge {
         'stop scrolling',
         'phone distraction',
         'attention residue',
+        'focus better',
+        'improve focus',
+        'concentrate',
+        'concentration tips',
+        'improve concentration',
+        'lack of concentration',
       ],
       'Reduce avoidable interruptions before a block. Put distracting devices out of reach, prepare the material you need, and keep a small place to jot down unrelated thoughts.',
       'Choose one outcome, silence nonessential interruptions, and leave a note saying exactly where to restart after the break.',
