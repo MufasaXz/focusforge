@@ -330,8 +330,21 @@ class AssistantBrain {
     final howMuch =
         _score(text, tokens, _keywords[Act.report]!) > 0 ||
         _score(text, tokens, _amountWords) > 0;
-    if (howMuch && period != null && period != 'week') {
-      return AssistantAction(Act.periodStats, arg: period);
+    // "How much time on Instagram today" is about the phone, not study.
+    final apps = _score(text, tokens, _keywords[Act.distractions]!) > 0;
+    if (howMuch && !apps) {
+      if (_score(text, tokens, const ['yesterday', 'yesterdays']) > 0) {
+        return const AssistantAction(Act.periodStats, arg: 'yesterday');
+      }
+      if (period != null && period != 'week') {
+        return AssistantAction(Act.periodStats, arg: period);
+      }
+      // "How many hours did I study this week" asks for the week's total,
+      // which the weekly report leads with.
+      if (period == 'week' &&
+          _score(text, tokens, const ['did', 'studied', 'have', 'padha']) > 0) {
+        return const AssistantAction(Act.report);
+      }
     }
     return null;
   }
@@ -492,6 +505,7 @@ class AssistantBrain {
       'time table',
       'routine',
       'what should i study',
+      'should i study',
       'what to study',
       'what do i study',
       'organise',
@@ -1894,6 +1908,24 @@ class AssistantBrain {
   /// "How much did I study today", "monthly performance", "total study".
   AssistantReply _periodStats(StudySnapshot s, String period) {
     if (period == 'week') return _report(s);
+    if (period == 'yesterday') {
+      final today = s.now.weekday - 1;
+      final minutes = today == 0 ? s.lastWeekDays[6] : s.weekDays[today - 1];
+      return AssistantReply(
+        [
+          Say(Copy('{0} · {1}', [const Copy('Yesterday'), Minutes(minutes)])),
+        ],
+        suggestions: [
+          const Suggestion(
+            Copy('Today'),
+            Icons.today_outlined,
+            AssistantAction(Act.periodStats, arg: 'day'),
+          ),
+          _reportChip,
+          if (minutes == 0) _startChip,
+        ],
+      );
+    }
     final lines = <Say>[];
     switch (period) {
       case 'day':

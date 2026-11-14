@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'assistant_models.dart';
+import 'offline_guide.dart';
 import 'offline_knowledge.dart';
 import 'offline_math.dart';
 import 'offline_planner.dart';
@@ -106,39 +107,88 @@ abstract final class OfflineTutor {
     ])) {
       return false;
     }
-    if (OfflinePlanner.recognizes(input) || OfflineMath.recognizes(input)) {
+    if (OfflineGuide.app(input) != null ||
+        OfflinePlanner.recognizes(input) ||
+        OfflineMath.recognizes(input)) {
       return true;
     }
     final lessons = OfflineKnowledge.find(input);
-    return lessons.isNotEmpty &&
-        (OfflineText.any(text, const [
-              'explain',
-              'teach',
-              'learn',
-              'quiz',
-              'test me',
-              'practice',
-              'practise',
-              'question',
-              'questions',
-              'revise',
-              'help',
-              'what is',
-              'what are',
-              'difference',
-              'compare',
-              'vs',
-              'versus',
-              'how',
-              'samjhao',
-              'kya',
-              'समझाओ',
-              'क्या',
-              'बताओ',
-            ]) ||
-            lessons.any(
-              (l) => l.aliases.any((a) => OfflineText.normalize(a) == text),
-            ));
+    if (lessons.isEmpty || !_asksLesson(text, lessons)) {
+      return OfflineGuide.habit(input) != null;
+    }
+    return true;
+  }
+
+  /// Fillers ignored when judging whether a message is just a topic's name.
+  static const _filler = {
+    'the',
+    'a',
+    'an',
+    'of',
+    'on',
+    'in',
+    'about',
+    'me',
+    'i',
+    'am',
+    'please',
+    'pls',
+    'plz',
+    'and',
+    'to',
+    'my',
+  };
+
+  /// Whether a message that names a lesson topic is asking about it: a
+  /// question word, the alias alone, or the alias plus a word or two
+  /// ("newtons laws of motion", "organic chemistry basics").
+  static bool _asksLesson(String text, List<OfflineLesson> lessons) {
+    final words = text.split(' ').where((w) => !_filler.contains(w)).length;
+    return OfflineText.any(text, const [
+          'explain',
+          'teach',
+          'learn',
+          'quiz',
+          'test me',
+          'practice',
+          'practise',
+          'question',
+          'questions',
+          'revise',
+          'help',
+          'what is',
+          'what are',
+          'difference',
+          'compare',
+          'vs',
+          'versus',
+          'how',
+          'samjhao',
+          'kya',
+          'basics',
+          'formula',
+          'formulas',
+          'define',
+          'definition',
+          'meaning',
+          'tell me about',
+          'notes on',
+          'why',
+          'what causes',
+          'causes of',
+          'what happened',
+          'batao',
+          'समझाओ',
+          'क्या',
+          'बताओ',
+        ]) ||
+        lessons.any(
+          (l) => l.aliases.any((a) {
+            final alias = OfflineText.normalize(a);
+            return OfflineText.has(text, alias) &&
+                words - alias.split(' ').length <= 2;
+          }),
+        );
   }
 
   static bool isFollowUp(String input, OfflineContext? context, DateTime now) {
@@ -176,11 +226,19 @@ abstract final class OfflineTutor {
         isFollowUp(input, previous, s.now)) {
       return _followUp(input, text, s, previous);
     }
+    if (OfflineGuide.app(input) case final topic?) {
+      return OfflineTurn(OfflineGuide.reply(topic));
+    }
     if (OfflinePlanner.recognizes(input)) return OfflineTurn(_plan(input, s));
     if (OfflineMath.recognizes(input)) {
       return OfflineTurn(_text(OfflineMath.answer(input)));
     }
     final lessons = OfflineKnowledge.find(input);
+    if (lessons.isEmpty || !_asksLesson(text, lessons)) {
+      if (OfflineGuide.habit(input) case final topic?) {
+        return OfflineTurn(OfflineGuide.reply(topic));
+      }
+    }
     if (lessons.length >= 2 &&
         OfflineText.any(text, const [
           'vs',
