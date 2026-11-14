@@ -311,7 +311,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
               if (value == 0) {
                 _chat.clear();
                 unawaited(_chat.open());
-
               } else if (value == 3) {
                 unawaited(_setReminders(off: !remindersOff));
               } else {
@@ -437,31 +436,28 @@ class _Welcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    // The header already names Pip, so the welcome is the figure, one line
+    // of what it is for and an honest note — not a second title.
     return Padding(
-      padding: const EdgeInsets.only(top: Gap.lg, bottom: Gap.xl),
+      padding: const EdgeInsets.only(top: Gap.md, bottom: Gap.lg),
       child: Column(
         children: [
-          ExcludeSemantics(child: Mascot(rig: rig, width: 84)),
+          ExcludeSemantics(child: Mascot(rig: rig, width: 64)),
           const SizedBox(height: Gap.sm),
-          Text(kBuddyName, style: tt.titleLarge),
-          const SizedBox(height: 2),
           Text(
             context.tr('Your study buddy'),
-            style: tt.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: Gap.md),
+          const SizedBox(height: Gap.xs),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 320),
+            constraints: const BoxConstraints(maxWidth: 300),
             child: Text(
               context.tr(
-                'Pip is an AI study assistant. Suggestions are meant for planning and motivation. Always check your school and exam schedules.',
+                'Pip works on this phone. Suggestions are for planning and motivation, so check your school and exam schedules too.',
               ),
               textAlign: TextAlign.center,
-              style: tt.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ],
@@ -559,13 +555,15 @@ class _EntryView extends StatelessWidget {
           child: _CopyOnHold(
             text: said,
             child: DecoratedBox(
+              // A soft tonal bubble rather than solid primary: the user's
+              // words are easy to find without shouting over Pip's.
               decoration: BoxDecoration(
-                color: cs.primary,
+                color: cs.primaryContainer,
                 borderRadius: const BorderRadiusDirectional.only(
-                  topStart: Radius.circular(20),
-                  topEnd: Radius.circular(20),
-                  bottomStart: Radius.circular(20),
-                  bottomEnd: Radius.circular(6),
+                  topStart: Radius.circular(22),
+                  topEnd: Radius.circular(22),
+                  bottomStart: Radius.circular(22),
+                  bottomEnd: Radius.circular(8),
                 ),
               ),
               child: Padding(
@@ -576,7 +574,7 @@ class _EntryView extends StatelessWidget {
                 child: Text(
                   said,
                   style: tt.bodyLarge?.copyWith(
-                    color: cs.onPrimary,
+                    color: cs.onPrimaryContainer,
                     height: 1.35,
                   ),
                 ),
@@ -622,7 +620,7 @@ class _EntryView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(
         top: top,
-        right: card == null ? width * 0.12 : 0,
+        right: card == null ? width * 0.04 : 0,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,10 +645,7 @@ BorderRadiusDirectional _pipBubble({required bool first}) =>
 
 /// One line of Pip's, written in as it arrives. Hold to copy.
 class _PipLine extends StatelessWidget {
-  const _PipLine({
-    required this.entry,
-    required this.first,
-  });
+  const _PipLine({required this.entry, required this.first});
 
   final ChatEntry entry;
   final bool first;
@@ -668,25 +663,143 @@ class _PipLine extends StatelessWidget {
         at != null &&
         DateTime.now().difference(at) < _fresh &&
         !MediaQuery.disableAnimationsOf(context);
-    final bubble = _CopyOnHold(
+    final style = tt.bodyLarge?.copyWith(color: cs.onSurface, height: 1.45);
+    final blocks = _Blocks.parse(text);
+    // Pip's words sit on the page beside its face, the way current
+    // assistants read: no grey bubble around every line. Longer answers
+    // keep their structure — a title, then labelled paragraphs.
+    return _CopyOnHold(
       text: text,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: _pipBubble(first: first),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: _WriteIn(
-            text: text,
-            animate: fresh,
-            style: tt.bodyLarge?.copyWith(color: cs.onSurface, height: 1.4),
-          ),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 2),
+        child: blocks == null
+            ? _WriteIn(text: text, animate: fresh, style: style)
+            : _FadeIn(
+                animate: fresh,
+                child: _StructuredText(blocks: blocks, style: style),
+              ),
       ),
     );
-    return bubble;
   }
+}
+
+/// A reply split into a title and paragraphs, some led by a label such as
+/// "Example:" or "Watch out:". Null when the text is a plain line.
+class _Blocks {
+  const _Blocks(this.title, this.paragraphs);
+
+  final String? title;
+  final List<(String?, String)> paragraphs;
+
+  static final _label = RegExp(
+    r"^([A-Z][A-Za-z ’'-]{1,22}):\s+(.+)$",
+    dotAll: true,
+  );
+
+  static _Blocks? parse(String text) {
+    final parts = text
+        .split(RegExp(r'\n\s*\n'))
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.length < 2) return null;
+    String? title;
+    final first = parts.first;
+    if (first.length <= 60 &&
+        !first.contains('\n') &&
+        !RegExp(r'[.!?]$').hasMatch(first)) {
+      title = first;
+      parts.removeAt(0);
+    }
+    final paragraphs = <(String?, String)>[
+      for (final p in parts)
+        if (_label.firstMatch(p) case final m?)
+          (m.group(1), m.group(2)!)
+        else
+          (null, p),
+    ];
+    return _Blocks(title, paragraphs);
+  }
+}
+
+class _StructuredText extends StatelessWidget {
+  const _StructuredText({required this.blocks, required this.style});
+
+  final _Blocks blocks;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (blocks.title case final title?) ...[
+          Text(
+            title,
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: Gap.sm),
+        ],
+        for (final (i, (label, body)) in blocks.paragraphs.indexed) ...[
+          if (i > 0) const SizedBox(height: Gap.md),
+          if (label == null)
+            Text(body, style: style)
+          else
+            // A labelled paragraph gets a quiet rule down its side, so
+            // "Example" and "Watch out" read as asides at a glance.
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: BorderDirectional(
+                  start: BorderSide(
+                    color: cs.primary.withValues(alpha: .5),
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: Gap.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: tt.labelLarge?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(body, style: style),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Fades a structured reply in once, instead of writing it letter by letter.
+class _FadeIn extends StatelessWidget {
+  const _FadeIn({required this.animate, required this.child});
+
+  final bool animate;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => !animate
+      ? child
+      : TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 320),
+          curve: Motion.decelerate,
+          builder: (context, value, child) =>
+              Opacity(opacity: value, child: child),
+          child: child,
+        );
 }
 
 /// Writes [text] in from start to end, the way a reply streams in.
@@ -1086,58 +1199,70 @@ class _Composer extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final canSend = controller.text.trim().isNotEmpty;
     final pip = MascotColors.of(Theme.of(context));
+    // One field with the send button inside it, as messaging apps draw
+    // it, instead of a pill and a separate round button beside it.
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.md, Gap.xs, Gap.sm, Gap.md),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
-                decoration: InputDecoration(
-                  hintText: context.tr('Message {0}', [kBuddyName]),
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+        padding: const EdgeInsets.fromLTRB(Gap.md, Gap.xs, Gap.md, Gap.md),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: cs.surfaceContainerHigh,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: Gap.sm, end: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSend(),
+                    decoration: InputDecoration(
+                      hintText: context.tr('Message {0}', [kBuddyName]),
+                      filled: false,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: Gap.md,
+                        vertical: 14,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
                   ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  // Pip's own orange with a white arrow, the same in light
+                  // and dark, rather than the pale primary of a dark scheme.
+                  child: IconButton.filled(
+                    onPressed: canSend ? onSend : null,
+                    tooltip: context.tr('Send'),
+                    style: IconButton.styleFrom(
+                      backgroundColor: pip.bodyDeep,
+                      foregroundColor: pip.face,
+                      disabledBackgroundColor: cs.onSurface.withValues(
+                        alpha: .08,
+                      ),
+                      disabledForegroundColor: cs.onSurface.withValues(
+                        alpha: .38,
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: Gap.sm),
-            // Pip's own orange with a white arrow, the same in light and
-            // dark themes, rather than the pale primary of a dark scheme.
-            IconButton.filled(
-              onPressed: canSend ? onSend : null,
-              tooltip: context.tr('Send'),
-              style: IconButton.styleFrom(
-                backgroundColor: pip.bodyDeep,
-                foregroundColor: pip.face,
-                disabledBackgroundColor: cs.onSurface.withValues(alpha: .12),
-                disabledForegroundColor: cs.onSurface.withValues(alpha: .38),
-              ),
-              icon: const Icon(Icons.arrow_upward_rounded),
-            ),
-          ],
+          ),
         ),
       ),
     );

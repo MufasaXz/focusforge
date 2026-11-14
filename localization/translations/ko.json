@@ -1647,5 +1647,6 @@
   "Shows a pause screen over the apps you choose.": "선택한 앱 위에 일시정지 화면을 보여 줍니다.",
   "Keeps your running timer in a quiet notification.": "실행 중인 타이머를 조용한 알림으로 보여 줍니다.",
   "Shows your screen time and spots the apps you limit.": "화면 사용 시간을 보여 주고 제한한 앱을 감지합니다.",
-  "See your screen time and let your app limits work. It stays on this phone.": "화면 사용 시간을 확인하고 앱 제한을 켜세요. 이 휴대폰에만 저장됩니다."
+  "See your screen time and let your app limits work. It stays on this phone.": "화면 사용 시간을 확인하고 앱 제한을 켜세요. 이 휴대폰에만 저장됩니다.",
+  "Pip works on this phone. Suggestions are for planning and motivation, so check your school and exam schedules too.": "Pip은 이 휴대폰에서 작동합니다. 제안은 계획과 동기 부여를 위한 것이니 학교와 시험 일정도 함께 확인하세요."
 }

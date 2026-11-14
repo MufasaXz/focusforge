@@ -38,7 +38,7 @@ import 'package:focusforge/features/assistant/mascot/mascot_rig.dart';
 void main() {
   testWidgets('capture Pip', (tester) async {
     debugDisableShadows = false;
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = Platform.environment["PIP_PHONE"] == "small" ? const Size(360, 800) : const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     // Store screenshots: room for a status bar and gesture bar, rendered big.
     if (_storeScale != null) {
