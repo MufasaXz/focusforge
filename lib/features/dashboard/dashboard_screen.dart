@@ -724,53 +724,40 @@ class _PlanGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    // A compact invitation: icon, the ask and one line beside it, then the
-    // action. The centred stack it replaces spent half a small screen on a
-    // single button.
+    // Premium empty state: a soft primary wash with a quiet lift, so the
+    // first-run goal reads as an invitation rather than an empty card.
     return HeroSurface(
-      accentStrength: 0.08,
-      padding: const EdgeInsets.all(Gap.lg + 4),
+      accentStrength: 0.12,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconBadge(
-                icon: Icons.flag_outlined,
-                color: cs.primary,
-                size: 44,
-                radius: 14,
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      savedGoalMinutes == null
-                          ? context.tr("Make room for focus")
-                          : context.tr("Your goal · {0}", [
-                              formatMinutes(savedGoalMinutes!),
-                            ]),
-                      style: tt.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      savedGoalMinutes == null
-                          ? context.tr(
-                              "Choose your focus time for today. Subject targets are optional.",
-                            )
-                          : context.tr(
-                              "Your saved target is ready whenever you are.",
-                            ),
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Center(
+            child: IconBadge(
+              icon: Icons.flag_outlined,
+              color: cs.primary,
+              size: 52,
+              radius: 17,
+            ),
+          ),
+          const SizedBox(height: Gap.md),
+          Text(
+            savedGoalMinutes == null
+                ? context.tr("Make room for focus")
+                : context.tr("Your goal · {0}", [
+                    formatMinutes(savedGoalMinutes!),
+                  ]),
+            textAlign: TextAlign.center,
+            style: tt.headlineSmall,
+          ),
+          const SizedBox(height: Gap.sm),
+          Text(
+            savedGoalMinutes == null
+                ? context.tr(
+                    "Choose your focus time for today. Subject targets are optional.",
+                  )
+                : context.tr("Your saved target is ready whenever you are."),
+            textAlign: TextAlign.center,
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: Gap.lg),
           FilledButton.icon(

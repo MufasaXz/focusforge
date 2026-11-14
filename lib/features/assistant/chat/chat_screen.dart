@@ -255,12 +255,11 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     });
 
     final quiet = ref.watch(assistantMemoryProvider.select((m) => m.quiet));
-    // At rest the header says where answers come from, so it is known
-    // before anything is typed.
+    // Only a working Pip needs a second line; at rest the header is its name.
     final status = switch (chat.status) {
       ChatStatus.thinking => chat.step?.of(context) ?? context.tr('Thinking…'),
       ChatStatus.typing => context.tr('Typing…'),
-      ChatStatus.idle => context.tr('Answers stay on this phone'),
+      ChatStatus.idle => null,
     };
     final remindersOff = ref.watch(
       assistantMemoryProvider.select((m) => m.remindersOff),
@@ -289,15 +288,20 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
                         : Motion.quick,
-                    child: Text(
-                      status,
-                      key: ValueKey(status),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: chat.busy ? cs.primary : cs.onSurfaceVariant,
-                      ),
-                    ),
+                    child: status == null
+                        ? const SizedBox.shrink()
+                        : Text(
+                            status,
+                            key: ValueKey(status),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: chat.busy
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
+                                ),
+                          ),
                   ),
                 ],
               ),
