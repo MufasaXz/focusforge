@@ -47,6 +47,12 @@ Future<ProviderContainer> bootstrap() async {
   // is what the `changes` bridge and every screen will read, and the choice
   // must be settled before the first frame.
   final authService = await _openAuthService(store);
+  // Migrate the older sign-out behaviour before any screen hydrates it.
+  if (!authService.signedIn &&
+      !authService.restorationPending &&
+      store.hasLinkedActiveProfile) {
+    await store.suspendAccount();
+  }
 
   final container = ProviderContainer(
     overrides: [
@@ -54,6 +60,9 @@ Future<ProviderContainer> bootstrap() async {
       authServiceProvider.overrideWithValue(authService),
     ],
   );
+
+  authService.onSessionCleared = () =>
+      resetPersistedState(container, preserveSignedOutAccounts: true);
 
   // -- Account & preferences -------------------------------------------------
   container
@@ -255,7 +264,13 @@ void watchAssistantOwner(ProviderContainer container, LocalStore store) {
     from,
     to,
   ) async {
-    if (from == null || from == to || from.isEmpty) return;
+    if (store.restoredAccountUid == to) {
+      store.restoredAccountUid = null;
+      container.invalidate(assistantMemoryProvider);
+      container.invalidate(chatProvider);
+      return;
+    }
+    if (from == null || from == to || from.isEmpty || to.isEmpty) return;
     // A guest that was never linked becoming an account is the same person,
     // and keeps what they told Pip, as the backup keeps their study.
     if (store.getBool('achievements.linked.$from') == false) return;
@@ -271,6 +286,42 @@ void watchAssistantOwner(ProviderContainer container, LocalStore store) {
 
 /// Restore the private account snapshot before publishing its linked profile.
 void hydrateStudyAccount(ProviderContainer container, LocalStore store) {
+  if (store.restoredAccountUid != null &&
+      store.restoredAccountUid == store.getMap(StoreKeys.user)?['uid']) {
+    container
+        .read(themeSettingsProvider.notifier)
+        .hydrate(
+          store.getString(StoreKeys.theme),
+          store.getString(StoreKeys.palette),
+          store.getBool(StoreKeys.amoled),
+        );
+    container
+        .read(clockFaceProvider.notifier)
+        .hydrate(store.getString(StoreKeys.clockFace));
+    container
+        .read(whitelistProvider.notifier)
+        .hydrate(store.getList(StoreKeys.whitelistTiers));
+    container
+        .read(youtubeRulesProvider.notifier)
+        .hydrate(store.getMap(StoreKeys.youtubeRules));
+    container
+        .read(strictModeProvider.notifier)
+        .hydrate(store.getMap(StoreKeys.strictMode));
+    container
+        .read(breathEventsProvider.notifier)
+        .hydrate(store.getList(StoreKeys.breathEvents));
+    container
+        .read(appListConsentProvider.notifier)
+        .hydrate(store.getBool(StoreKeys.appListConsent));
+    container
+        .read(notificationsProvider.notifier)
+        .hydrate(store.getMap(StoreKeys.notifications));
+    container
+        .read(volumesProvider.notifier)
+        .hydrate(store.getDoubleMap(StoreKeys.ambientVolumes));
+    container.invalidate(planLibraryProvider);
+    container.invalidate(usageCategoryOverridesProvider);
+  }
   container
       .read(sessionsProvider.notifier)
       .hydrate(store.getList(StoreKeys.sessions));
@@ -307,7 +358,10 @@ void hydrateStudyAccount(ProviderContainer container, LocalStore store) {
 /// Call this after account deletion. Reset live providers before clearing
 /// persistence, then retain the deleted-credential marker and empty subject
 /// catalogue so the next onboarding flow starts from the blank state.
-Future<void> resetPersistedState(ProviderContainer container) async {
+Future<void> resetPersistedState(
+  ProviderContainer container, {
+  bool preserveSignedOutAccounts = false,
+}) async {
   final store = container.read(localStoreProvider);
   final deletedCredential = store.getString('auth.deletedCredential');
   await container.read(achievementsProvider.notifier).suspendForDeletion();
@@ -371,7 +425,7 @@ Future<void> resetPersistedState(ProviderContainer container) async {
   timer.setPreset(0);
   timer.setSubject(null);
 
-  await store.clearAll();
+  await store.clearAll(preserveSignedOutAccounts: preserveSignedOutAccounts);
   // These notifiers read the store in build(). Rebuild after the wipe so Home
   // cannot carry a deleted user's target or app groups into the welcome flow,
   // or write those groups back with the next change.

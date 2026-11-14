@@ -614,6 +614,25 @@ void main() {
     },
   );
 
+  test(
+    'signout reset clears live state but preserves a private owner snapshot',
+    () async {
+      watchAssistantOwner(container, store);
+      await container.read(assistantMemoryProvider.notifier).setExam('neet');
+      await store.suspendAccount();
+      await resetPersistedState(container, preserveSignedOutAccounts: true);
+      expect(container.read(userProvider).uid, isEmpty);
+      expect(container.read(sessionsProvider), isEmpty);
+      expect(container.read(assistantMemoryProvider).examId, isNull);
+      expect(store.exportAll().toString(), isNot(contains('Sam Rivera')));
+      await store.restoreSignedOutAccount('sam');
+      hydrateStudyAccount(container, store);
+      container.read(userProvider.notifier).hydrate(profile);
+      expect(container.read(assistantMemoryProvider).examId, 'neet');
+      expect(store.getList(StoreKeys.sessions).single['id'], 'kept');
+    },
+  );
+
   test('deletion reset clears live timer and sharing consent', () async {
     await container.read(boardOptInProvider.notifier).set(true);
     await container

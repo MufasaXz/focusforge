@@ -218,10 +218,70 @@ class LocalStore {
 
   // -- Maintenance -----------------------------------------------------------
 
+  // Signed-out snapshots are outside the active/export namespace. They are
+  // only reopened after Firebase proves ownership of the matching UID.
+  static const _accountPrefix = 'focusforge.signedOut.';
+  String? restoredAccountUid;
+
+  bool get hasLinkedActiveProfile {
+    final profile = getMap(StoreKeys.user);
+    final uid = profile?['uid'];
+    return profile != null &&
+        (profile['isAnonymous'] == false ||
+            getBool('achievements.linked.$uid') == true);
+  }
+
+  Future<void> suspendAccount() async {
+    final uid = getMap(StoreKeys.user)?['uid'];
+    if (uid is String && uid.isNotEmpty && hasLinkedActiveProfile) {
+      if (!await _prefs.setString(
+        '$_accountPrefix$uid',
+        jsonEncode(
+          exportAll()
+            ..remove(StoreKeys.presets)
+            ..remove(StoreKeys.ambientActive),
+        ),
+      )) {
+        throw StateError('Account snapshot could not be saved');
+      }
+    }
+    await clearAll(preserveSignedOutAccounts: true);
+  }
+
+  /// Called only for a verified Firebase credential, never for a guest.
+  Future<void> restoreSignedOutAccount(String uid) async {
+    final raw = _prefs.getString('$_accountPrefix$uid');
+    if (raw == null) return;
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+    final profile = jsonDecode(data[StoreKeys.user] as String) as Map;
+    if (profile['uid'] != uid) throw StateError('Account snapshot mismatch');
+    await clearAll(preserveSignedOutAccounts: true);
+    for (final entry in data.entries) {
+      final value = entry.value;
+      final ok = switch (value) {
+        String v => await _prefs.setString(_k(entry.key), v),
+        bool v => await _prefs.setBool(_k(entry.key), v),
+        int v => await _prefs.setInt(_k(entry.key), v),
+        double v => await _prefs.setDouble(_k(entry.key), v),
+        _ => throw StateError('Unsupported account snapshot'),
+      };
+      if (!ok) throw StateError('Account snapshot could not be restored');
+    }
+    restoredAccountUid = uid;
+    await _prefs.remove('$_accountPrefix$uid');
+  }
+
   /// Clears the app's own keys. Deliberately not `prefs.clear()` — that would
   /// take out anything a plugin stored under its own namespace.
-  Future<void> clearAll() async {
-    final keys = _prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
+  Future<void> clearAll({bool preserveSignedOutAccounts = false}) async {
+    final keys = _prefs
+        .getKeys()
+        .where(
+          (k) =>
+              k.startsWith(_prefix) ||
+              (!preserveSignedOutAccounts && k.startsWith(_accountPrefix)),
+        )
+        .toList();
     for (final k in keys) {
       await _prefs.remove(k);
     }

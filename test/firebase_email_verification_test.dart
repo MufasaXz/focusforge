@@ -173,6 +173,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
+
       resetMailer: (email) async {
         mailed.add(email);
         return mailResult;
@@ -183,6 +184,39 @@ void main() {
     service.dispose();
     await auth.controller.close();
   });
+  test('signout isolates guest identity, study, badges and Pip; relogin restores owner', () async {
+    auth.user.verified = true;
+    final owner = await service.signInWithEmail(
+      'person@example.com',
+      'password',
+    );
+    await store.setList(StoreKeys.sessions, [
+      {'id': 'private-session'},
+    ]);
+    await store.setMap(StoreKeys.stats, {'level': 12});
+    await store.setBoolMap(StoreKeys.achievements, {'first_session': true});
+    await store.setString('assistant.private', 'private question');
+    await service.signOut();
+    final guest = await service.signInAnonymously();
+    expect(guest.uid, isNot(owner.uid));
+    expect(guest.displayName, isEmpty);
+    expect(guest.onboardingComplete, isFalse);
+    expect(store.getList(StoreKeys.sessions), isEmpty);
+    expect(store.getMap(StoreKeys.stats), isNull);
+    expect(store.getBoolMap(StoreKeys.achievements), isEmpty);
+    expect(jsonEncode(store.exportAll()), isNot(contains('private question')));
+    final restored = await service.signInWithEmail(
+      'person@example.com',
+      'password',
+    );
+    expect(restored.uid, owner.uid);
+    expect(restored.displayName, owner.displayName);
+    expect(restored.onboardingComplete, isTrue);
+    expect(store.getList(StoreKeys.sessions).single['id'], 'private-session');
+    expect(store.getMap(StoreKeys.stats)?['level'], 12);
+    expect(store.getString('assistant.private'), 'private question');
+  });
+
   test('password reset uses the FocusForge email when it is sent', () async {
     mailResult = ResetMailResult.sent;
     await service.sendPasswordReset(' person@example.com ');
@@ -271,6 +305,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       expect(service.signedIn, isTrue);
@@ -315,6 +350,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: backup,
       );
       await service.restore();
@@ -358,6 +394,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
+
           studyBackup: backup,
         );
         await service.restore();
@@ -392,6 +429,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: backup,
       );
       final events = <UserProfile?>[];
@@ -417,6 +455,10 @@ void main() {
       expect(service.signedIn, isFalse);
       expect(backend.saves, 0);
       expect(events.whereType<UserProfile>(), isEmpty);
+      expect(store.getMap('study.account.email-account'), isNull);
+      expect(store.exportAll(), isEmpty);
+      // Only an authenticated restore can reopen the private snapshot.
+      await store.restoreSignedOutAccount('email-account');
       expect(store.getMap('study.account.email-account'), isNotNull);
     },
   );
@@ -468,6 +510,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
+
           studyBackup: backup,
         );
         final profile = await service.restore();
@@ -491,6 +534,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: backup,
       );
       final profile = await service.restore();
@@ -523,6 +567,7 @@ void main() {
         service = FirebaseAuthService(
           store,
           firebaseAuth: auth,
+
           studyBackup: backup,
         );
         if (localFallback) {
@@ -607,11 +652,11 @@ void main() {
     expect(auth.user.emails, 1);
     expect(service.signedIn, isFalse);
   });
-  test('signout exits verification without losing local setup', () async {
+  test('signout exits verification with a blank active session', () async {
     await service.signOut();
     expect(service.needsEmailVerification, isFalse);
     expect(service.current, isNull);
-    expect(store.getMap(StoreKeys.user)?['onboardingComplete'], isTrue);
+    expect(store.getMap(StoreKeys.user), isNull);
   });
   test(
     'canceled cloud recovery cannot reopen the gate after signout',
@@ -622,6 +667,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       final pending = service.restore().then(
@@ -648,6 +694,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: backup,
       );
       await service.restore();
@@ -657,6 +704,10 @@ void main() {
       await service.signOut();
       expect(auth.closed, isTrue);
       expect(service.current, isNull);
+      expect(store.getMap('study.account.email-account'), isNull);
+      expect(store.exportAll(), isEmpty);
+      // Only an authenticated restore can reopen the private snapshot.
+      await store.restoreSignedOutAccount('email-account');
       expect(store.getMap('study.account.email-account'), isNotNull);
     },
   );
@@ -667,6 +718,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
+
       studyBackup: StudyBackupService(store, backend),
     );
     await expectLater(service.restore(), throwsA(isA<AuthException>()));
@@ -694,6 +746,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       final profile = await service.restore();
@@ -717,6 +770,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       expect((await service.restore())?.uid, 'email-account');
@@ -734,6 +788,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       await expectLater(
@@ -758,6 +813,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
+
       studyBackup: StudyBackupService(store, backend),
     );
     final first = service.restore();
@@ -779,6 +835,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
+
       studyBackup: StudyBackupService(store, backend),
     );
     final first = service.restore().then<Object?>(
@@ -835,6 +892,7 @@ void main() {
     service = FirebaseAuthService(
       store,
       firebaseAuth: auth,
+
       studyBackup: StudyBackupService(store, backend),
     );
     await service.restore();
@@ -877,6 +935,7 @@ void main() {
       service = FirebaseAuthService(
         store,
         firebaseAuth: auth,
+
         studyBackup: StudyBackupService(store, backend),
       );
       final signingIn = service.signInWithEmail(

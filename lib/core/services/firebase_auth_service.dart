@@ -267,11 +267,16 @@ class FirebaseAuthService extends AuthService {
       if (_requiresEmailVerification(user)) {
         throw const AuthException(AuthFailure.emailVerificationRequired);
       }
-      return _persist(_profileFor(user));
+      if (user.isAnonymous) return _persist(_profileFor(user));
+      await signOut();
     }
     // Guest study needs no network credential. A local identity is promoted
     // when the user later proves ownership of an email/Google account.
     _returning = false;
+    if (_store.hasLinkedActiveProfile) {
+      await _store.suspendAccount();
+      await onSessionCleared?.call();
+    }
     final stored = _store.getMap(StoreKeys.user);
     final base = stored == null
         ? UserProfile(
@@ -502,6 +507,8 @@ class FirebaseAuthService extends AuthService {
     }
     studyBackup?.disconnect();
     await _guard(() => _auth.signOut());
+    await _store.suspendAccount();
+    await onSessionCleared?.call();
     try {
       await _googleSignIn().signOut();
     } catch (_) {
@@ -871,7 +878,13 @@ class FirebaseAuthService extends AuthService {
       throw const AuthException(AuthFailure.cancelled);
     }
     profile = profile.copyWith(isAnonymous: credential?.isAnonymous ?? true);
-    if (!profileEdit && credential != null) profile = _profileFor(credential);
+    if (!profileEdit && credential != null) {
+      if (!credential.isAnonymous) {
+        await _store.restoreSignedOutAccount(credential.uid);
+        checkCurrent();
+      }
+      profile = _profileFor(credential);
+    }
     final backup = studyBackup;
     var resumeLocally = false;
     if (!profile.isAnonymous && backup != null) {

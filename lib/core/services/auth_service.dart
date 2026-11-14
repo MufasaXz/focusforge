@@ -76,6 +76,8 @@ enum AccountRecoveryStage { connecting, restoring, retrying }
 /// credential is remote. Separate services back up earned badge IDs and
 /// handle optional aggregate sharing; detailed session logs stay local.
 abstract class AuthService {
+  /// Bootstrap clears live notifiers after the credential and disk session close.
+  Future<void> Function()? onSessionCleared;
   final recoveryState = ValueNotifier<AccountRecoveryStage?>(null);
 
   /// A credential exists, but its private study snapshot still needs recovery.
@@ -183,10 +185,18 @@ class GuestOnlyAuthService extends LocalAuthService {
   Future<UserProfile?> restore() async {
     final profile = await super.restore();
     if (profile == null) return null;
-    if (profile.isAnonymous) return profile;
-    final guest = profile.copyWith(isAnonymous: true);
-    await updateProfile(guest);
-    return guest;
+    if (profile.isAnonymous && !_store.hasLinkedActiveProfile) return profile;
+    await _store.suspendAccount();
+    _current = null;
+    return null;
+  }
+
+  @override
+  Future<void> signOut() async {
+    await _store.suspendAccount();
+    _current = null;
+    await onSessionCleared?.call();
+    _controller.add(null);
   }
 
   @override
@@ -287,8 +297,13 @@ class LocalAuthService extends AuthService {
   /// and goal since the first skip, and a fresh uid would silently orphan all
   /// of it.
   @override
-  Future<UserProfile> signInAnonymously() async =>
-      _persist(await _baseProfile());
+  Future<UserProfile> signInAnonymously() async {
+    if (_store.hasLinkedActiveProfile) {
+      await _store.suspendAccount();
+      await onSessionCleared?.call();
+    }
+    return _persist(await _baseProfile());
+  }
 
   /// Signs in — or, since the local build keeps no account registry, upgrades
   /// whatever profile is on the device. The stored record is the base either

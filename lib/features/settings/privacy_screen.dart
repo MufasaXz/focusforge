@@ -545,7 +545,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       context: context,
       title: context.tr("Sign out?"),
       message: context.tr(
-        "Your study data stays on this device. Your profile, level and achievements are privately backed up to your account; pending changes sync when you sign in again. Your shared leaderboard row stays visible.",
+        "Your saved study data will be kept separately for this account. Guests cannot access it. Sign back in to restore it. Your cloud account and shared leaderboard row stay intact.",
       ),
       confirmLabel: context.tr("Sign out"),
       icon: Icons.logout_rounded,
@@ -556,16 +556,13 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
       await ref.read(achievementsProvider.notifier).flushLocal();
       await ref.read(achievementSyncProvider)();
       await ref.read(authServiceProvider).signOut();
-      // The local profile remains the base for a later sign-in, but cloud
-      // features should stop presenting it as a connected credential.
-      await ref
-          .read(userProvider.notifier)
-          .save(ref.read(userProvider).copyWith(isAnonymous: true));
       if (context.mounted) {
         context.goNamed(AppRoutes.auth);
         showAppSnack(
           context,
-          context.tr("Signed out. Your focus history is safe on this device."),
+          context.tr(
+            "Signed out. Your saved data is separate from guest mode.",
+          ),
         );
       }
     } catch (_) {
