@@ -35,7 +35,7 @@ export function resetKeyCache() {
 }
 
 async function downloadKeys(fetchImpl, nowMs) {
-  const response = await fetchImpl(JWKS_URL);
+  const response = await fetchImpl(JWKS_URL, {redirect: 'error', signal: AbortSignal.timeout(5000)});
   if (!response.ok) throw new AuthError(`signing keys: HTTP ${response.status}`);
   const body = await response.json();
   if (!Array.isArray(body?.keys)) throw new AuthError('signing keys: bad body');

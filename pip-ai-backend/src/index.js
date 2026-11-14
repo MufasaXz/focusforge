@@ -13,6 +13,7 @@ import {AuthError, verifyIdToken} from './auth.js';
 import {drainResetEmails} from './reset-delivery.js';
 import {
   InputError,
+  isInstructionAttack,
   LIMITS,
   buildGeminiRequest,
   buildGroqRequest,
@@ -23,11 +24,29 @@ import {
 } from './pip.js';
 
 const CORS = {
-  'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
   'access-control-allow-headers': 'authorization, content-type, x-firebase-appcheck',
   'access-control-max-age': '86400',
 };
+
+const BROWSER_ORIGINS = new Set([
+  'https://www.focus-forge.in',
+  'https://focus-forge.in',
+  'https://focusforgeorg.vercel.app',
+  'https://focusforge-1edf7.web.app',
+  'https://focusforge-1edf7.firebaseapp.com',
+]);
+
+function secureResponse(response, origin) {
+  response.headers.set('vary', 'Origin');
+  response.headers.set('x-content-type-options', 'nosniff');
+  response.headers.set('referrer-policy', 'no-referrer');
+  response.headers.set('strict-transport-security', 'max-age=31536000');
+  response.headers.set('content-security-policy', "default-src 'none'; frame-ancestors 'none'");
+  response.headers.set('cache-control', 'no-store');
+  if (BROWSER_ORIGINS.has(origin)) response.headers.set('access-control-allow-origin', origin);
+  return response;
+}
 
 /** Time allowed for each provider, so a full fallback fits the app's 25 s. */
 const PROVIDER_TIMEOUT_MS = 9000;
@@ -47,7 +66,7 @@ function json(status, body, extra = {}) {
 /** One provider's outcome: `{text}`, `{blocked}`, or `{failed, timedOut?, status?}`. */
 async function callProvider(name, url, init, read, fetchImpl) {
   try {
-    const response = await fetchImpl(url, {...init, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS)});
+    const response = await fetchImpl(url, {...init, redirect: 'error', signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS)});
     if (!response.ok) {
       console.warn(JSON.stringify({event: 'provider_error', provider: name, status: response.status}));
       return {failed: true, status: response.status};
@@ -118,7 +137,7 @@ export async function answer(request, env, fetchImpl = fetch) {
 async function handle(request, env, fetchImpl) {
   if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: CORS});
   const path = new URL(request.url).pathname;
-  if (path !== '/' && path !== '/report') return json(404, {error: 'not-found'});
+  if (path !== '/' && path !== '/report' && path !== '/data') return json(404, {error: 'not-found'});
   if (request.method !== 'POST') return json(405, {error: 'method-not-allowed'}, {allow: 'POST, OPTIONS'});
 
   // Checking a token can mean downloading Google's signing keys, so callers
@@ -142,6 +161,7 @@ async function handle(request, env, fetchImpl) {
   }
   const raw = await readBounded(request, LIMITS.bodyBytes);
   if (raw === null) return json(413, {error: 'invalid-argument'});
+  if (path === '/data') return legacyData(raw, uid, env, request, fetchImpl);
   if (path === '/report') return report(raw, uid, env, request, fetchImpl);
   let parsed;
   try {
@@ -161,6 +181,10 @@ async function handle(request, env, fetchImpl) {
     return json(429, {error: 'resource-exhausted', window: 'minute'}, {'retry-after': '60'});
   }
 
+  if (isInstructionAttack(parsed.message) || parsed.history.some(t => isInstructionAttack(t.text))) {
+    return json(422, {error: 'failed-precondition', blocked: true});
+  }
+
   const authorization = await authorize(request, uid, 'answer', fetchImpl);
   if (authorization) return authorization;
 
@@ -176,36 +200,62 @@ async function handle(request, env, fetchImpl) {
     : json(503, {error: 'unavailable'}, {'retry-after': '30'});
 }
 
-/** How long a report is kept for review. */
-const REPORT_TTL_SECONDS = 90 * 24 * 60 * 60;
-
-/**
- * Keeps a user's report of an answer for review, as Google Play asks of
- * apps with generated content. Stored in KV for 90 days under a key that
- * sorts by time; review with `wrangler kv key list --binding REPORTS`.
- */
+/** New reports use a transactional account-deletion fence in Firestore.
+ * Legacy KV reports are read-only and remain exportable/erasable below. */
 async function report(raw, uid, env, request, fetchImpl) {
   let parsed;
-  try {
-    parsed = parseReport(JSON.parse(raw));
-  } catch (error) {
-    if (error instanceof SyntaxError || error instanceof InputError) {
-      return json(400, {error: 'invalid-argument'});
-    }
-    throw error;
+  try { parsed = parseReport(JSON.parse(raw)); }
+  catch { return json(400, {error: 'invalid-argument'}); }
+  if (!(await env.PER_USER_LIMIT.limit({key: `report:${uid}`})).success) {
+    return json(429, {error: 'resource-exhausted', window: 'minute'});
   }
-  const limit = await env.PER_USER_LIMIT.limit({key: `report:${uid}`});
-  if (!limit.success) return json(429, {error: 'resource-exhausted', window: 'minute'});
-  const authorization = await authorize(request, uid, 'report', fetchImpl);
-  if (authorization) return authorization;
-  const at = new Date().toISOString();
-  await env.REPORTS.put(
-    `${at}:${crypto.randomUUID()}`,
-    JSON.stringify({...parsed, uid, at}),
-    {expirationTtl: REPORT_TTL_SECONDS},
-  );
-  console.log(JSON.stringify({event: 'reported', reason: parsed.reason}));
-  return json(200, {ok: true});
+  try {
+    const response = await fetchImpl('https://www.focus-forge.in/api/account-data', {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(9000),
+      headers: forwardingHeaders(request), body: JSON.stringify({operation: 'report', ...parsed}),
+    });
+    if (response.status === 200 && (await response.json()).ok === true) return json(200, {ok: true});
+    if (response.status === 429) return json(429, {error: 'resource-exhausted', window: 'day'});
+    if ([401, 403].includes(response.status)) return json(401, {error: 'unauthenticated'});
+  } catch { /* No provider details or credentials in errors. */ }
+  return json(503, {error: 'unavailable'});
+}
+
+function forwardingHeaders(request) {
+  const headers = {'content-type': 'application/json', authorization: request.headers.get('authorization')};
+  const attestation = request.headers.get('x-firebase-appcheck');
+  if (attestation) headers['x-firebase-appcheck'] = attestation;
+  return headers;
+}
+
+/** Paged, owner-filtered access to historical KV reports. Cursors identify a
+ * scan position, never an account. No cross-account contents are returned. */
+async function legacyData(raw, uid, env, request, fetchImpl) {
+  let body;
+  try {
+    body = JSON.parse(raw);
+    if (!body || Array.isArray(body) || Object.keys(body).some(k => !['operation', 'cursor'].includes(k)) ||
+        !['export', 'delete'].includes(body.operation) ||
+        (body.cursor !== undefined && (typeof body.cursor !== 'string' || body.cursor.length > 1024))) throw Error();
+  } catch { return json(400, {error: 'invalid-argument'}); }
+  if (!(await env.PER_USER_LIMIT.limit({key: `privacy:${uid}`})).success) {
+    return json(429, {error: 'resource-exhausted', window: 'minute'});
+  }
+  const denied = await authorize(request, uid, `privacy-${body.operation}`, fetchImpl);
+  if (denied) return denied;
+  // Listing and ownership checks include the original time-based keys.
+  const page = await env.REPORTS.list({limit: 100, ...(body.cursor ? {cursor: body.cursor} : {})});
+  const records = [];
+  for (let start = 0; start < page.keys.length; start += 10) {
+    const rows = await Promise.all(page.keys.slice(start, start + 10).map(async ({name}) => {
+      const value = await env.REPORTS.get(name, {type: 'json'});
+      if (value?.uid !== uid) return null;
+      if (body.operation === 'delete') await env.REPORTS.delete(name);
+      return {key: name, data: value};
+    }));
+    if (body.operation === 'export') records.push(...rows.filter(Boolean));
+  }
+  return json(200, {records, cursor: page.list_complete ? null : page.cursor});
 }
 
 /** Current account status and a globally shared daily quota, both fail closed. */
@@ -236,11 +286,17 @@ export default {
   },
   /** The Workers entry point. [fetchImpl] is swapped out in tests. */
   async fetch(request, env, _ctx, fetchImpl = fetch) {
+    const origin = request.headers.get('origin');
     try {
-      return await handle(request, env, fetchImpl);
+      // Native clients have no Origin; they still need verified Firebase auth
+      // and every quota check. CORS is browser defence, never authentication.
+      const response = origin !== null && !BROWSER_ORIGINS.has(origin)
+        ? json(403, {error: 'permission-denied'})
+        : await handle(request, env, fetchImpl);
+      return secureResponse(response, origin);
     } catch (error) {
-      console.error(JSON.stringify({event: 'crash', name: error?.name}));
-      return json(500, {error: 'internal'});
+      console.error(JSON.stringify({event: 'crash'}));
+      return secureResponse(json(500, {error: 'internal'}), origin);
     }
   },
 };

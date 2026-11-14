@@ -17,8 +17,9 @@
     "GEMINI_MODEL": "gemini-flash-lite-latest",
     "GROQ_MODEL": "openai/gpt-oss-20b"
   },
-  // Reports of answers, kept 90 days for review (Google Play's rule for
-  // generated content). List them with `wrangler kv key list --binding REPORTS`.
+  // Reports expire after 90 days under FocusForge's retention setting.
+  // Google Play requires reporting controls, not this particular retention period.
+  // List them with `wrangler kv key list --binding REPORTS`.
   "kv_namespaces": [
     { "binding": "REPORTS", "id": "753636be5a7c4186a17e643bec18bd13" }
   ],
