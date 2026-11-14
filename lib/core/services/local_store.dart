@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'widget_service.dart';
 import 'achievement_service.dart';
+import 'ai_privacy.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,7 +32,22 @@ class LocalStore {
     final existing = _instance;
     if (existing != null) return existing;
     final prefs = await SharedPreferences.getInstance();
-    return _instance = LocalStore._(prefs);
+    final store = LocalStore._(prefs);
+    if (store.getMap(StoreKeys.assistantReports) case final reports?) {
+      final profile = store.getMap(StoreKeys.user);
+      await store.setMap(
+        StoreKeys.assistantReports,
+        AiPrivacy.reports(
+          reports,
+          now: DateTime.now(),
+          privateValues: [
+            for (final field in ['displayName', 'email', 'uid'])
+              if (profile?[field] is String) profile![field] as String,
+          ],
+        ),
+      );
+    }
+    return _instance = store;
   }
 
   static const _prefix = 'ff.';
@@ -79,7 +95,9 @@ class LocalStore {
   bool? getBool(String key) => _read<bool>(key);
 
   Future<void> setBool(String key, bool value) async {
-    await _prefs.setBool(_k(key), value);
+    if (!await _prefs.setBool(_k(key), value)) {
+      throw StateError('Local data could not be saved');
+    }
     _changes.add(key);
     if (key == StoreKeys.amoled) await WidgetService.refresh();
   }

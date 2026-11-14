@@ -77,7 +77,7 @@ void main() {
             200,
           );
         }).askAiAssistant(
-          userMessage: '  ${'a' * 400}  ',
+          userMessage: '  ${'z' * 400}  ',
           extraContext: {'exam': 'NEET-UG'},
           history: const [
             {'role': 'pip', 'text': 'Hi!'},
@@ -91,7 +91,7 @@ void main() {
     expect(sent.headers['authorization'], 'Bearer id-token');
     final body = jsonDecode(sent.body) as Map<String, dynamic>;
     expect((body['message'] as String).length, 300);
-    expect(body['context'], {'exam': 'NEET-UG'});
+    expect(body['context'], isEmpty);
     expect(body['locale'], 'hi');
     expect(body['history'], hasLength(1));
   });

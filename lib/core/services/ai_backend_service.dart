@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'app_attestation.dart';
+import 'ai_privacy.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -120,7 +121,8 @@ class AiBackendService implements AiBackend {
     String locale = 'en',
     bool Function()? allowed,
   }) async {
-    final message = userMessage.trim();
+    _requireHttps();
+    final message = AiPrivacy.text(userMessage, maxChars: maxMessageChars);
     if (message.isEmpty) {
       throw const AiBackendException(AiFailure.invalid, 'Empty message');
     }
@@ -141,24 +143,30 @@ class AiBackendService implements AiBackend {
 
     final http.Response response;
     try {
-      response = await _client
-          .post(
-            endpoint,
-            headers: {
-              'authorization': 'Bearer $token',
-              'x-firebase-appcheck': ?attestation,
-              'content-type': 'application/json',
-            },
-            body: jsonEncode({
-              'message': message.length > maxMessageChars
-                  ? message.substring(0, maxMessageChars)
-                  : message,
-              'context': extraContext ?? const <String, dynamic>{},
-              'history': history,
-              'locale': locale,
-            }),
-          )
-          .timeout(timeout);
+      response = await _post(
+        endpoint,
+        headers: {
+          'authorization': 'Bearer $token',
+          'x-firebase-appcheck': ?attestation,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message.length > maxMessageChars
+              ? message.substring(0, maxMessageChars)
+              : message,
+          'context': AiPrivacy.studyContext(extraContext),
+          'history': [
+            for (final turn in history.skip(
+              history.length > 8 ? history.length - 8 : 0,
+            ))
+              {
+                'role': turn['role'] == 'pip' ? 'pip' : 'user',
+                'text': AiPrivacy.text(turn['text'] ?? ''),
+              },
+          ],
+          'locale': locale,
+        }),
+      ).timeout(timeout);
     } on TimeoutException {
       throw const AiBackendException(AiFailure.timeout);
     } catch (error) {
@@ -184,6 +192,7 @@ class AiBackendService implements AiBackend {
     required String reason,
     String? question,
   }) async {
+    _requireHttps();
     final token = await _idToken().catchError((_) => null);
     if (token == null || token.isEmpty) {
       throw const AiBackendException(AiFailure.signedOut);
@@ -191,21 +200,20 @@ class AiBackendService implements AiBackend {
     final attestation = await _appCheckToken?.call();
     final http.Response response;
     try {
-      response = await _client
-          .post(
-            endpoint.resolve('report'),
-            headers: {
-              'authorization': 'Bearer $token',
-              'x-firebase-appcheck': ?attestation,
-              'content-type': 'application/json',
-            },
-            body: jsonEncode({
-              'reason': reason,
-              'reply': reply,
-              'question': ?question,
-            }),
-          )
-          .timeout(timeout);
+      response = await _post(
+        endpoint.resolve('report'),
+        headers: {
+          'authorization': 'Bearer $token',
+          'x-firebase-appcheck': ?attestation,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'reason': reason,
+          'reply': AiPrivacy.text(reply, maxChars: 900),
+          if (question != null)
+            'question': AiPrivacy.text(question, maxChars: 300),
+        }),
+      ).timeout(timeout);
     } on TimeoutException {
       throw const AiBackendException(AiFailure.timeout);
     } catch (error) {
@@ -216,6 +224,27 @@ class AiBackendService implements AiBackend {
         failureFor(response.statusCode, _decode(response.body)),
       );
     }
+  }
+
+  void _requireHttps() {
+    if (endpoint.scheme != 'https' ||
+        endpoint.host.isEmpty ||
+        endpoint.userInfo.isNotEmpty) {
+      throw const AiBackendException(AiFailure.notReady);
+    }
+  }
+
+  Future<http.Response> _post(
+    Uri url, {
+    required Map<String, String> headers,
+    required String body,
+  }) async {
+    // Never forward credentials or private text to a redirected host or URL.
+    final request = http.Request('POST', url)
+      ..followRedirects = false
+      ..headers.addAll(headers)
+      ..body = body;
+    return http.Response.fromStream(await _client.send(request));
   }
 
   static Map<String, Object?> _decode(String text) {
@@ -249,7 +278,10 @@ class AiBackendService implements AiBackend {
 /// Overridden in tests with a fake.
 final aiBackendProvider = Provider<AiBackend?>((ref) {
   final endpoint = Uri.tryParse(AiBackendService.defaultEndpoint);
-  if (endpoint == null || !endpoint.hasScheme || endpoint.host.isEmpty) {
+  if (endpoint == null ||
+      endpoint.scheme != 'https' ||
+      endpoint.host.isEmpty ||
+      endpoint.userInfo.isNotEmpty) {
     return null;
   }
   return AiBackendService(
