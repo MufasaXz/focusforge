@@ -2,7 +2,7 @@
 //
 // WHAT INVARIANT: Pip stands on Home and says hello once per launch, a hello
 // that takes turns with what Pip has noticed; its tips
-// are rare — none within three hours of the last, none with tips paused; left
+// are rare — none within six hours of the last, none with tips paused; left
 // alone it sits, thinks and falls asleep, and a touch wakes it; every
 // animation ends, so the page settles; a tap opens the chat.
 //
@@ -135,7 +135,7 @@ void main() {
     expect(rigOf(tester).sitting, isFalse);
   });
 
-  testWidgets('tips are rare: none within three hours, none when paused', (
+  testWidgets('tips are rare: none within six hours, none when paused', (
     tester,
   ) async {
     // Seen a minute ago, so no hello either; a tip an hour ago.
@@ -156,7 +156,7 @@ void main() {
       tester,
       memory: AssistantMemory(
         lastSeen: DateTime.now().subtract(const Duration(minutes: 1)),
-        lastTipAt: DateTime.now().subtract(const Duration(hours: 4)),
+        lastTipAt: DateTime.now().subtract(const Duration(hours: 7)),
       ),
     );
     await wait(tester, const Duration(seconds: 40));
@@ -168,6 +168,36 @@ void main() {
       ),
       lessThan(const Duration(hours: 1)),
     );
+  });
+
+  testWidgets('a new launch cannot bypass the six-hour speech cooldown', (
+    tester,
+  ) async {
+    final container = await pumpHome(
+      tester,
+      memory: AssistantMemory(
+        lastSeen: DateTime.now().subtract(const Duration(hours: 4)),
+        lastTipAt: DateTime.now().subtract(const Duration(hours: 4)),
+        helloTurn: 1,
+      ),
+    );
+    await wait(tester, const Duration(seconds: 45));
+    expect(find.text(intro), findsNothing);
+    expect(find.text(planTip), findsNothing);
+    expect(container.read(assistantMemoryProvider).helloTurn, 1);
+    expect(container.read(assistantMemoryProvider).tipTurn, 0);
+  });
+
+  testWidgets('a greeting uses the visit’s speech allowance too', (
+    tester,
+  ) async {
+    final container = await pumpHome(tester);
+    await wait(tester, const Duration(seconds: 3));
+    expect(find.text(intro), findsOneWidget);
+    expect(container.read(assistantMemoryProvider).tipTurn, 1);
+    await wait(tester, const Duration(seconds: 42));
+    expect(find.text(planTip), findsNothing);
+    expect(container.read(assistantMemoryProvider).tipTurn, 1);
   });
 
   testWidgets('a hello takes turns with a thought, which is the only one', (

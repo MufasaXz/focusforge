@@ -144,13 +144,13 @@ class MascotRig extends ChangeNotifier {
   /// The left arm out toward a speech bubble.
   static const double presentArm = 1.45;
 
-  final _sit = _Spring(0, stiffness: 90, ratio: 0.75);
+  final _sit = _Spring(0, stiffness: 90, ratio: 0.9);
   final _sleep = _Spring(0, stiffness: 50, ratio: 1);
   final _lookX = _Spring(0, stiffness: 320, ratio: 0.9);
   final _lookY = _Spring(0, stiffness: 320, ratio: 0.9);
   final _tilt = _Spring(0, stiffness: 120, ratio: 0.7);
-  final _leftArm = _Spring(restArm, stiffness: 160, ratio: 0.62);
-  final _rightArm = _Spring(restArm, stiffness: 160, ratio: 0.62);
+  final _leftArm = _Spring(restArm, stiffness: 140, ratio: 0.82);
+  final _rightArm = _Spring(restArm, stiffness: 140, ratio: 0.82);
   final _think = _Spring(0, stiffness: 140, ratio: 0.9);
 
   /// The antenna: light and loosely damped, so it wobbles after a move.
@@ -228,6 +228,22 @@ class MascotRig extends ChangeNotifier {
       _curious.activeAt(_clock) ||
       _shift.activeAt(_clock) ||
       _swing.activeAt(_clock);
+
+  /// Idle gestures yield to intentional actions so Pip does not stretch,
+  /// wave, and lean in incompatible directions at the same time.
+  bool get gesturing =>
+      fidgeting ||
+      _wave.activeAt(_clock) ||
+      _hop.activeAt(_clock) ||
+      _cheer.activeAt(_clock) ||
+      _nod.activeAt(_clock) ||
+      _talk.activeAt(_clock);
+
+  void _settleIdleGestures() {
+    for (final clip in [_curious, _shift, _swing, _yawn, _wiggle, _nod]) {
+      clip.stop();
+    }
+  }
 
   /// True while a frame is being asked for. Exposed for tests.
   bool get moving => _ticker?.isActive ?? false;
@@ -348,6 +364,7 @@ class MascotRig extends ChangeNotifier {
   /// A raised right hand, waving.
   void wave({double seconds = 1.6}) {
     if (_sleeping) return;
+    _settleIdleGestures();
     _rightArm.target = waveArm;
     if (!_reduceMotion) _wave.play(_clock, seconds);
     _run();
@@ -360,6 +377,8 @@ class MascotRig extends ChangeNotifier {
   /// A quick hop with a squint, for a tap or a finished task.
   void cheer() {
     if (_sleeping || _reduceMotion) return;
+    _settleIdleGestures();
+    _wave.stop();
     _playHop(0.74);
     _squint.play(_clock, 0.95);
     _cheer.play(_clock, 0.74);
@@ -461,6 +480,7 @@ class MascotRig extends ChangeNotifier {
   set thinking(bool value) {
     if (_thinking == value) return;
     _thinking = value;
+    if (value) _settleIdleGestures();
     _think.target = value ? 1 : 0;
     _tilt.target = value ? -0.07 : (_sleeping ? 0.09 : 0);
     _kick(value ? 0.8 : -0.6);
@@ -480,6 +500,7 @@ class MascotRig extends ChangeNotifier {
 
   void sitDown() {
     if (_sitting) return;
+    _settleIdleGestures();
     _sitting = true;
     _sit.target = 1;
     _leftArm.target = _presenting ? presentArm : _armRest;
@@ -489,6 +510,7 @@ class MascotRig extends ChangeNotifier {
 
   void standUp() {
     if (!_sitting && !_sleeping) return;
+    _settleIdleGestures();
     if (_sleeping) wake();
     _sitting = false;
     _sit.target = 0;
@@ -499,6 +521,10 @@ class MascotRig extends ChangeNotifier {
 
   void fallAsleep() {
     if (_sleeping) return;
+    for (final clip in _clips) {
+      clip.stop();
+    }
+    _presenting = false;
     _sitting = true;
     _sleeping = true;
     _thinking = false;
@@ -558,7 +584,7 @@ class MascotRig extends ChangeNotifier {
     var headLag = 0.0;
     if (_hop.activeAt(now)) {
       final p = _hop.progressAt(now);
-      final height = _startle.activeAt(now) ? 18.0 : 42.0;
+      final height = _startle.activeAt(now) ? 12.0 : 34.0;
       final crouch = _crouch;
       final airEnd = _airEnd;
       if (p < crouch) {
@@ -617,7 +643,7 @@ class MascotRig extends ChangeNotifier {
       lookShift += 0.5 * _curiousSide * hold;
     }
     if (_shift.activeAt(now)) {
-      final lean = math.sin(math.pi * _shift.progressAt(now)) * _shiftSide;
+      final lean = _bell(_shift.progressAt(now)) * _shiftSide;
       tilt += 0.035 * lean;
       shiftX += 0.015 * lean;
       step += 0.35 * lean;

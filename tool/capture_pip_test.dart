@@ -111,8 +111,15 @@ void main() {
         accountUidProvider.overrideWith((ref) => 'me'),
       ],
     );
-    addTearDown(container.dispose);
-    addTearDown(engine.dispose);
+    var disposed = false;
+    void close() {
+      if (disposed) return;
+      disposed = true;
+      container.dispose();
+      engine.dispose();
+    }
+
+    addTearDown(close);
 
     container
         .read(userProvider.notifier)
@@ -298,6 +305,12 @@ void main() {
       }
     }
 
+    if (only?.startsWith('poses') ?? false) {
+      close();
+      debugDisableShadows = true;
+      return;
+    }
+
     // -- Home and chat --------------------------------------------------------
     for (final MapEntry(key: label, value: theme) in themes.entries) {
       final dark = theme.brightness == Brightness.dark;
@@ -316,6 +329,9 @@ void main() {
       await capture('home-$label');
 
       container.read(chatProvider.notifier).clear();
+      await container
+          .read(assistantMemoryProvider.notifier)
+          .setAiConsent(false);
       container.read(routerProvider).push('/assistant');
       await frames(const Duration(seconds: 6));
       await capture('chat-intro-$label');
@@ -348,6 +364,17 @@ void main() {
         }
         await capture('chat-$name-$label');
       }
+      for (final (name, question) in [
+        ('lesson', 'explain derivatives'),
+        ('quiz', 'quiz me on genetics advanced'),
+        ('maths', 'solve x^2-5x+6=0'),
+        ('budget', 'I have 1 hour 30 minutes for Physics'),
+      ]) {
+        container.read(chatProvider.notifier).clear();
+        unawaited(container.read(chatProvider.notifier).send(question));
+        await frames(const Duration(seconds: 7));
+        await capture('chat-offline-$name-$label');
+      }
       container.read(chatProvider.notifier).clear();
       await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
       await frames(const Duration(milliseconds: 100));
@@ -366,6 +393,8 @@ void main() {
       await frames(const Duration(milliseconds: 600));
     }
     await tester.pumpWidget(const SizedBox.shrink());
+    close();
+    await tester.pump();
     debugDisableShadows = true;
   });
 }

@@ -2351,7 +2351,7 @@ class AssistantBrain {
       ),
       const Copy('Not sure where to start? Tap me.'),
     ];
-    final thoughts = homeTips(s);
+    final thoughts = homeThoughts(s);
     return [
       for (var i = 0; i < greetings.length || i < thoughts.length; i++) ...[
         if (i < greetings.length)
@@ -2360,6 +2360,112 @@ class AssistantBrain {
       ],
     ];
   }
+
+  /// Observations retain priority; the larger learning bank gives quiet
+  /// visits variety. PipDock applies one shared cooldown to every line.
+  List<BuddyPrompt> homeThoughts(StudySnapshot s) => [
+    ...homeTips(s),
+    if (!s.timerRunning) ..._learningThoughts,
+  ];
+
+  static const _learningThoughts = <BuddyPrompt>[
+    BuddyPrompt(
+      Copy('Could you explain one idea without looking at your notes?'),
+      AssistantAction(Act.coach, said: 'explain active recall'),
+    ),
+    BuddyPrompt(
+      Copy('A mistake can show you exactly what to practise next.'),
+      AssistantAction(Act.coach, said: 'explain error log'),
+    ),
+    BuddyPrompt(
+      Copy('One small question is a good place to start.'),
+      AssistantAction(Act.coach, said: 'explain procrastination'),
+    ),
+    BuddyPrompt(
+      Copy('Mix familiar question types and practise choosing the method.'),
+      AssistantAction(Act.coach, said: 'explain interleaving'),
+    ),
+    BuddyPrompt(
+      Copy('A short review tomorrow can help today’s learning stick.'),
+      AssistantAction(Act.coach, said: 'explain spaced repetition'),
+    ),
+    BuddyPrompt(
+      Copy('Want a practice question? We can do it entirely offline.'),
+      AssistantAction(Act.coach, said: 'quiz me on fractions'),
+    ),
+    BuddyPrompt(
+      Copy('Try teaching one idea in your own words.'),
+      AssistantAction(Act.coach, said: 'explain feynman'),
+    ),
+    BuddyPrompt(
+      Copy('Keep a question beside your notes, not just a heading.'),
+      AssistantAction(Act.coach, said: 'explain study notes'),
+    ),
+    BuddyPrompt(
+      Copy('A useful plan leaves room for breaks.'),
+      AssistantAction(Act.coach, said: 'I have 40 minutes'),
+    ),
+    BuddyPrompt(
+      Copy('You can ask me for a hint before seeing an answer.'),
+      AssistantAction(Act.coach, said: 'quiz me on probability'),
+    ),
+    BuddyPrompt(
+      Copy('Check the units as well as the number.'),
+      AssistantAction(Act.coach, said: 'explain kinematics'),
+    ),
+    BuddyPrompt(
+      Copy('Rest is part of a study plan, too.'),
+      AssistantAction(Act.coach, said: 'explain burnout'),
+    ),
+    BuddyPrompt(
+      Copy('An example and a counterexample can make an idea clearer.'),
+      AssistantAction(Act.coach, said: 'explain functions'),
+    ),
+    BuddyPrompt(
+      Copy('Before rereading, see what you can remember.'),
+      AssistantAction(Act.coach, said: 'explain active recall'),
+    ),
+    BuddyPrompt(
+      Copy('Write down the next step before you take a break.'),
+      AssistantAction(Act.coach, said: 'explain distraction habits'),
+    ),
+    BuddyPrompt(
+      Copy('A clear explanation is better than extra jargon.'),
+      AssistantAction(Act.coach, said: 'explain essay'),
+    ),
+    BuddyPrompt(
+      Copy('Check an answer by putting it back into the equation.'),
+      AssistantAction(Act.coach, said: 'solve 2*x + 3 = 11'),
+    ),
+    BuddyPrompt(
+      Copy('A graph can tell a story. Ask what each axis means.'),
+      AssistantAction(Act.coach, said: 'explain statistics'),
+    ),
+    BuddyPrompt(
+      Copy('Try one harder question after the basics feel clear.'),
+      AssistantAction(Act.coach, said: 'quiz me on derivatives advanced'),
+    ),
+    BuddyPrompt(
+      Copy('Small, repeatable steps can fit a busy day.'),
+      AssistantAction(Act.coach, said: 'explain smart goals'),
+    ),
+    BuddyPrompt(
+      Copy('Look for the claim, then ask what evidence supports it.'),
+      AssistantAction(Act.coach, said: 'explain critical reading'),
+    ),
+    BuddyPrompt(
+      Copy('You do not need a perfect session to make progress.'),
+      AssistantAction(Act.coach, said: 'explain procrastination'),
+    ),
+    BuddyPrompt(
+      Copy('A tricky question is a chance to check your method.'),
+      AssistantAction(Act.coach, said: 'explain error log'),
+    ),
+    BuddyPrompt(
+      Copy('Your study totals show effort. Practice checks understanding.'),
+      AssistantAction(Act.coach, said: 'explain weekly review'),
+    ),
+  ];
 
   /// Useful things Pip could say on the home screen, most useful first.
   ///

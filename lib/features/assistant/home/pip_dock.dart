@@ -26,7 +26,7 @@ import '../nudges/pip_nudges.dart';
 /// Pip on the home screen, standing on the navigation pill.
 ///
 /// Pip waves hello once per launch and stays mostly quiet after that: its
-/// tips are rare by design — at most one a visit, never within three hours of
+/// tips are rare by design — at most one a visit, never within six hours of
 /// the last, and none at all with tips paused. Left alone, Pip sits down, has
 /// a think, and falls asleep; any touch wakes it. Its eyes follow a finger,
 /// and it ducks behind the bar while the page scrolls.
@@ -51,7 +51,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   static const _thinkAfter = Duration(seconds: 36);
   static const _yawnAfter = Duration(seconds: 61);
   static const _sleepAfter = Duration(seconds: 65);
-  static const _tipCooldown = Duration(hours: 3);
+  static const _tipCooldown = Duration(hours: 6);
   static const _greetAfterAway = Duration(minutes: 20);
 
   final _rig = MascotRig();
@@ -62,6 +62,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   final _timers = <Timer>{};
   Timer? _idle;
   Timer? _bubbleTimer;
+  Timer? _gazeRelease;
 
   BuddyPrompt? _bubble;
   bool _typing = false;
@@ -111,6 +112,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     }
     _idle?.cancel();
     _bubbleTimer?.cancel();
+    _gazeRelease?.cancel();
     _life.dispose();
     _rig.dispose();
     super.dispose();
@@ -133,8 +135,12 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
       _life.start();
       _restartIdle();
     } else {
+      _rests++;
       _life.stop();
       _idle?.cancel();
+      _gazeRelease?.cancel();
+      _life.holdGaze = false;
+      _rig.thinking = false;
       _hideBubble();
     }
   }
@@ -142,6 +148,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   // -- Hello and tips ---------------------------------------------------------
 
   void _hello() {
+    if (!_active) return;
     if (ref.read(assistantGreetedProvider)) {
       _rig.blink();
       return;
@@ -156,6 +163,8 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     final greet =
         !_quiet(s) &&
         !coachPending &&
+        (s.memory.lastTipAt == null ||
+            s.now.difference(s.memory.lastTipAt!) >= _tipCooldown) &&
         (away == null || away >= _greetAfterAway);
     unawaited(_speakHello(s, greet: greet));
     unawaited(ref.read(assistantMemoryProvider.notifier).markSeen(s.now));
@@ -188,9 +197,13 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
       unawaited(
         ref.read(assistantMemoryProvider.notifier).markHello(hello.copy.key),
       );
-      // An observation said as the hello is this visit's one thought.
-      if (!AssistantBrain.isGreeting(hello)) _markThought(hello, s);
-      _after(const Duration(milliseconds: 500), () => _show(hello));
+      // Greetings share the same cooldown as observations, including across
+      // launches. Otherwise repeated app opens could bypass the quiet period.
+      _after(const Duration(milliseconds: 500), () {
+        if (!_active || _quiet(StudySnapshot.capture(ref.read))) return;
+        _markThought(hello, s);
+        _show(hello);
+      });
     }
   }
 
@@ -217,7 +230,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     if (_quiet(s)) return;
     final last = s.memory.lastTipAt;
     if (last != null && s.now.difference(last) < _tipCooldown) return;
-    final tips = _brain.homeTips(s);
+    final tips = _brain.homeThoughts(s);
     if (tips.isEmpty) return;
     // Thoughts take turns, so each visit can bring a different one.
     final tip = AssistantBrain.inTurn(
@@ -230,7 +243,9 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   }
 
   void _show(BuddyPrompt prompt) {
-    if (!_active || _rig.sleeping) return;
+    if (!_active || _rig.sleeping || _quiet(StudySnapshot.capture(ref.read))) {
+      return;
+    }
     _bubbleTimer?.cancel();
     final typing = !MediaQuery.disableAnimationsOf(context);
     setState(() {
@@ -329,6 +344,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   }
 
   void _lookToward(Offset global) {
+    _gazeRelease?.cancel();
     final box = _mascotKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached || _rig.sleeping) return;
     final now = DateTime.now();
@@ -347,7 +363,9 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
   }
 
   void _releaseGaze() {
-    _after(const Duration(milliseconds: 1200), () {
+    _gazeRelease?.cancel();
+    _gazeRelease = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted || !_active) return;
       _life.holdGaze = false;
       if (!_rig.thinking) _rig.lookAhead();
     });
@@ -374,7 +392,7 @@ class _PipDockState extends ConsumerState<PipDock> with WidgetsBindingObserver {
     unawaited(HapticFeedback.lightImpact());
     _hideBubble();
     _rig.standUp();
-    _rig.cheer();
+    _rig.nod();
     _after(const Duration(milliseconds: 180), () {
       context.push(AppRoutes.paths[AppRoutes.assistant]!, extra: action);
     });

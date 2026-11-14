@@ -35,7 +35,7 @@ class AssistantMemory {
   /// When the user last had Pip on screen, for "welcome back".
   final DateTime? lastSeen;
 
-  /// When Pip last offered a tip on the home screen. Tips are rare on
+  /// When Pip last offered a greeting or thought on Home. Speech is rare on
   /// purpose: a character that keeps talking becomes something to dismiss.
   final DateTime? lastTipAt;
 
@@ -217,7 +217,7 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   Future<void> markHello(String said) =>
       _save(state.copyWith(helloTurn: state.helloTurn + 1, lastSaid: said));
 
-  /// Pip offered the thought [said] at [at].
+  /// Pip offered an unsolicited Home greeting or thought [said] at [at].
   Future<void> markTipShown(DateTime at, String said) => _save(
     state.copyWith(lastTipAt: at, tipTurn: state.tipTurn + 1, lastSaid: said),
   );

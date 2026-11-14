@@ -35,6 +35,35 @@ void main() {
     return rig;
   }
 
+  testWidgets('posture changes and sleep clear incompatible idle gestures', (
+    tester,
+  ) async {
+    final rig = await pumpPip(tester);
+    rig.sitDown();
+    await tester.pumpAndSettle();
+    rig.swingFeet();
+    await play(tester, 400);
+    expect(rig.pose.kick, isNot(0));
+    rig.standUp();
+    expect(rig.pose.kick, 0);
+    await tester.pumpAndSettle();
+    rig.yawn();
+    await play(tester, 400);
+    rig.thinking = true;
+    expect(rig.fidgeting, isFalse);
+    rig.thinking = false;
+    rig.wave();
+    rig.fallAsleep();
+    await tester.pumpAndSettle();
+    expect(rig.gesturing, isFalse);
+    expect(rig.sleeping, isTrue);
+    expect(rig.moving, isFalse);
+    rig.wake();
+    await tester.pumpAndSettle();
+    expect(rig.sleeping, isFalse);
+    expect(rig.gesturing, isFalse);
+  });
+
   testWidgets('every small gesture plays once and comes to rest', (
     tester,
   ) async {

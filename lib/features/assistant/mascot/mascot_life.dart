@@ -16,6 +16,7 @@ class MascotLife {
   final math.Random _random;
   final _timers = <Timer>{};
   bool _running = false;
+  int _lastFidget = -1;
 
   /// While true, Pip keeps its eyes where they were sent, such as on a finger.
   bool holdGaze = false;
@@ -29,7 +30,7 @@ class MascotLife {
     _later(6000, 12000, _glance);
     _later(4000, 9000, _breathe);
     _later(2400, 2800, _puff);
-    _later(5000, 9000, _fidget);
+    _later(12000, 20000, _fidget);
   }
 
   void stop() {
@@ -62,20 +63,24 @@ class MascotLife {
   }
 
   void _glance() {
-    if (!rig.sleeping && !rig.thinking && !holdGaze) {
+    if (!rig.sleeping &&
+        !rig.thinking &&
+        !rig.presenting &&
+        !rig.gesturing &&
+        !holdGaze) {
       rig.lookAt(
         _random.nextDouble() * 1.6 - 0.8,
         _random.nextDouble() * 0.9 - 0.4,
       );
       _later(1100, 1700, () {
-        if (!holdGaze && !rig.thinking) rig.lookAhead();
+        if (!holdGaze && !rig.thinking && !rig.sleeping) rig.lookAhead();
       });
     }
     _later(7000, 14000, _glance);
   }
 
   void _breathe() {
-    if (!rig.sleeping && !rig.thinking) rig.breathe();
+    if (!rig.sleeping && !rig.thinking && !rig.gesturing) rig.breathe();
     _later(4500, 7500, _breathe);
   }
 
@@ -86,20 +91,30 @@ class MascotLife {
         !rig.sleeping &&
         !rig.thinking &&
         !rig.presenting &&
-        !rig.fidgeting &&
+        !rig.gesturing &&
         !holdGaze;
     if (free) {
-      final roll = _random.nextDouble();
+      var choice = _random.nextInt(3);
+      if (choice == _lastFidget) choice = (choice + 1) % 3;
+      _lastFidget = choice;
       final side = _random.nextBool() ? 1.0 : -1.0;
       if (rig.sitting) {
-        if (roll < 0.6) rig.swingFeet();
-      } else if (roll < 0.45) {
+        if (choice == 0) {
+          rig.swingFeet();
+        } else if (choice == 1) {
+          rig.tiltCurious(side);
+        } else {
+          rig.nod();
+        }
+      } else if (choice == 0) {
         rig.shiftWeight(side);
-      } else if (roll < 0.7) {
+      } else if (choice == 1) {
         rig.tiltCurious(side);
+      } else {
+        rig.nod();
       }
     }
-    _later(6000, 11000, _fidget);
+    _later(14000, 24000, _fidget);
   }
 
   void _puff() {
