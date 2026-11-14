@@ -17,7 +17,6 @@ import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/stagger.dart';
@@ -769,126 +768,148 @@ class _AnonymousCard extends ConsumerWidget {
   }
 }
 
-/// Everything about how the app looks: light/dark/system, the seed palette,
-/// and true black for OLED panels.
+/// How the app looks: Day or Dark (true black), the accent palette and the
+/// timer's clock face.
 ///
-/// The badge and the trailing label both read from the live settings, so the
-/// row states the current choice without a second tap.
+/// The two themes are shown as they are, as small live previews built from
+/// the real colour schemes, rather than as words in a switch. Every nested
+/// shape follows [Radii.concentric], so corners run parallel to the card's.
 class _AppearanceCard extends ConsumerWidget {
   const _AppearanceCard();
 
+  static const _inset = Gap.md;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final settings = ref.watch(themeSettingsProvider);
     final notifier = ref.read(themeSettingsProvider.notifier);
-
-    // The *resolved* brightness, not the preference: with `system` selected,
-    // the AMOLED switch has to follow what the device is actually doing, and
-    // by this point the theme has already resolved it. Showing the switch in
-    // light mode would offer a control that cannot do anything.
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inner = Radii.concentric(Radii.card, _inset);
+    final face = ref.watch(clockFaceProvider);
 
     return ContentCard(
       key: const ValueKey('profile-appearance'),
-      // 28 - 12 = the shared segmented control's 16 dp track radius.
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.item + Gap.md),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(Gap.md),
+        padding: const EdgeInsets.all(_inset),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              context.tr("Theme"),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: Gap.md),
-            AppSegmentedControl<ThemePreference>(
-              options: {
-                for (final p in ThemePreference.values) p: context.tr(p.label),
-              },
-              selected: settings.mode,
-              onChanged: notifier.setMode,
-            ),
-            const SizedBox(height: Gap.lg),
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    context.tr("Accent color"),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Text(
-                  context.tr(settings.palette.label),
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: t.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            // Wrap rather than Row: six swatches fit on the tablet this app
-            // is built for, but a 320dp phone would clip the last one, and a
-            // picker that hides a choice is worse than one that uses two
-            // lines.
-            Wrap(
-              spacing: Gap.sm,
-              runSpacing: Gap.sm,
-              children: [
-                for (final p in AppPalette.values)
-                  _PaletteSwatch(
-                    palette: p,
-                    selected: p == settings.palette,
-                    onTap: () => notifier.setPalette(p),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            Divider(height: 1, color: t.outlineVariant.withValues(alpha: .4)),
-            const SizedBox(height: Gap.sm),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.timer_outlined, color: t.onSurfaceVariant),
-              title: Text(context.tr("Clock face")),
-              subtitle: Text(context.tr(ref.watch(clockFaceProvider).label)),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => context.goNamed(AppRoutes.clockFace),
-            ),
-            if (isDark) ...[
-              const SizedBox(height: Gap.sm),
-              Row(
-                children: [
+                for (final (i, mode) in ThemePreference.choices.indexed) ...[
+                  if (i > 0) const SizedBox(width: Gap.sm),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr("True black"),
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        Text(
-                          context.tr("Use a black background in dark mode."),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: t.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  // The row's heading is the switch's name; without this it
-                  // is announced as an unlabelled switch next to some text.
-                  Semantics(
-                    label: context.tr("True black"),
-                    child: Switch(
-                      value: settings.amoled,
-                      onChanged: notifier.setAmoled,
+                    child: _ModePreview(
+                      mode: mode,
+                      palette: settings.palette,
+                      selected: settings.mode == mode,
+                      radius: inner,
+                      onTap: () => notifier.setMode(mode),
                     ),
                   ),
                 ],
+              ],
+            ),
+            const SizedBox(height: Gap.md),
+            // The accent panel shares the previews' radius: one inset, one
+            // inner corner, everywhere inside this card.
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(inner),
               ),
-            ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Gap.md,
+                  Gap.md,
+                  Gap.md,
+                  Gap.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.tr("Accent color"),
+                            style: tt.titleSmall,
+                          ),
+                        ),
+                        Text(
+                          context.tr(settings.palette.label),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        for (final p in AppPalette.choices)
+                          Flexible(
+                            child: _PaletteSwatch(
+                              palette: p,
+                              selected: p == settings.palette,
+                              onTap: () => notifier.setPalette(p),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            Material(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(inner),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => context.goNamed(AppRoutes.clockFace),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gap.md,
+                      vertical: Gap.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        IconBadge(
+                          icon: Icons.timer_outlined,
+                          color: cs.primary,
+                          size: 36,
+                          radius: Radii.concentric(inner, Gap.sm),
+                        ),
+                        const SizedBox(width: Gap.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr("Clock face"),
+                                style: tt.titleSmall,
+                              ),
+                              Text(
+                                context.tr(face.label),
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const AppChevron(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -896,11 +917,222 @@ class _AppearanceCard extends ConsumerWidget {
   }
 }
 
-/// One palette in the picker — the seed every colour in the app derives from.
-///
-/// Drawn as the *light* seed: the two seeds are the same hue, so showing both
-/// would be two circles pretending to be one choice. The dark seed still shows
-/// up, on the switch above, the moment the app goes dark.
+/// A theme drawn as a tiny screen in its own colours: an avatar and name, a
+/// card with a progress bar, and an action pill. What you pick is what you
+/// see.
+class _ModePreview extends StatelessWidget {
+  const _ModePreview({
+    required this.mode,
+    required this.palette,
+    required this.selected,
+    required this.radius,
+    required this.onTap,
+  });
+
+  final ThemePreference mode;
+  final AppPalette palette;
+  final bool selected;
+  final double radius;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final scheme =
+        (mode == ThemePreference.light
+                ? AppTheme.light(palette: palette)
+                : AppTheme.dark(palette: palette, amoled: true))
+            .colorScheme;
+    const pad = Gap.sm;
+    final innerRadius = Radii.concentric(radius, pad);
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : Motion.base;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      label: context.tr(mode.label),
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: duration,
+            curve: Motion.decelerate,
+            padding: const EdgeInsets.all(pad),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: selected ? cs.primary : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The miniature screen.
+                AspectRatio(
+                  aspectRatio: 1.35,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(innerRadius),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: .5),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Gap.sm),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _Dot(color: scheme.primary, size: 12),
+                              const SizedBox(width: 6),
+                              _Bar(
+                                color: scheme.onSurface.withValues(alpha: .7),
+                                width: 34,
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _Bar(
+                                  color: scheme.onSurfaceVariant.withValues(
+                                    alpha: .6,
+                                  ),
+                                  width: 26,
+                                ),
+                                const SizedBox(height: 5),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Container(
+                                          height: 4,
+                                          color: scheme.primary,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Container(
+                                          height: 4,
+                                          color: scheme.surfaceContainerHighest,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Container(
+                              width: 30,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: scheme.primary,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Gap.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: duration,
+                      child: Icon(
+                        selected ? Icons.check_circle_rounded : mode.icon,
+                        key: ValueKey(selected),
+                        size: 16,
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        context.tr(mode.label),
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.labelLarge?.copyWith(
+                          color: selected ? cs.primary : cs.onSurface,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
+
+class _Bar extends StatelessWidget {
+  const _Bar({required this.color, required this.width});
+
+  final Color color;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: 4,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
+}
+
+/// One palette: its own colour in a circle, with a ring and a tick when it
+/// is the chosen one, and its name under it. The circle shows the seed for
+/// the current brightness, so it matches what the app turns into.
 class _PaletteSwatch extends StatelessWidget {
   const _PaletteSwatch({
     required this.palette,
@@ -914,14 +1146,8 @@ class _PaletteSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final swatchScheme = ColorScheme.fromSeed(
-      seedColor: palette.seedFor(Theme.of(context).brightness),
-      brightness: Theme.of(context).brightness,
-    );
-    final color = swatchScheme.primary;
-    final outerRadius = Radii.concentric(Radii.item, Gap.xs);
-
+    final cs = Theme.of(context).colorScheme;
+    final color = palette.seedFor(Theme.of(context).brightness);
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : Motion.base;
@@ -934,42 +1160,44 @@ class _PaletteSwatch extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.item),
+        customBorder: const StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.all(Gap.xs),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.xs,
+            vertical: Gap.xs,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Ring and fill are concentric circles: a 3 dp gap between
+              // them at every point.
               AnimatedContainer(
                 duration: duration,
                 curve: Motion.decelerate,
                 width: 48,
                 height: 48,
-                // The 2 dp border plus 2 dp padding make a 4 dp inset.
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(outerRadius),
+                  shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected
-                        ? t.onSurface
-                        : t.onSurface.withValues(alpha: 0),
+                    color: selected ? cs.onSurface : Colors.transparent,
                     width: 2,
                   ),
                 ),
-                child: AnimatedContainer(
-                  duration: duration,
-                  curve: Motion.decelerate,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(
-                      Radii.concentric(outerRadius, Gap.xs),
-                    ),
+                    shape: BoxShape.circle,
                   ),
                   child: selected
                       ? Icon(
                           Icons.check_rounded,
-                          size: 18,
-                          color: swatchScheme.onPrimary,
+                          size: 20,
+                          color:
+                              ThemeData.estimateBrightnessForColor(color) ==
+                                  Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
                         )
                       : null,
                 ),
@@ -977,7 +1205,12 @@ class _PaletteSwatch extends StatelessWidget {
               const SizedBox(height: Gap.xs),
               Text(
                 context.tr(palette.label),
-                style: Theme.of(context).textTheme.labelSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ],
           ),

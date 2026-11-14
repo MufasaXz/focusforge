@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'social_providers.dart';
@@ -145,10 +147,12 @@ class ThemeSettingsNotifier extends Notifier<ThemeSettings> {
     state = ThemeSettings(
       mode: ThemePreference.fromName(mode),
       palette: AppPalette.fromName(palette),
-      // An install that never touched the switch has nothing stored and takes
-      // the shipped default; one that turned it off keeps that.
-      amoled: amoled ?? ThemeSettings.defaultAmoled,
+      // Dark is always true black now. An install that had turned the old
+      // switch off is moved over, and the stored flag (which the home-screen
+      // widget reads) is corrected so the widget matches.
+      amoled: true,
     );
+    if (amoled == false) unawaited(_store.setBool(StoreKeys.amoled, true));
   }
 
   Future<void> setMode(ThemePreference mode) async {

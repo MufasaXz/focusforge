@@ -27,9 +27,22 @@ void main() {
       expect(AppPalette.fromName('chartreuse'), AppPalette.parchment);
     });
 
-    test('round-trips by name', () {
-      for (final palette in AppPalette.values) {
+    test('round-trips the offered palettes by name', () {
+      for (final palette in AppPalette.choices) {
         expect(AppPalette.fromName(palette.name), palette);
+      }
+    });
+
+    test('only Parchment, Tide, Grove and Rose are offered', () {
+      expect(AppPalette.choices, [
+        AppPalette.parchment,
+        AppPalette.tide,
+        AppPalette.grove,
+        AppPalette.rose,
+      ]);
+      // A retired choice stored by an older build falls back to the default.
+      for (final retired in ['ember', 'iris', 'slate']) {
+        expect(AppPalette.fromName(retired), AppPalette.parchment);
       }
     });
 
@@ -109,13 +122,19 @@ void main() {
     test('the defaults are the ones the app ships with', () {
       const settings = ThemeSettings();
 
-      expect(settings.mode, ThemePreference.system);
+      expect(settings.mode, ThemePreference.dark);
       expect(settings.palette, AppPalette.parchment);
-      expect(
-        settings.amoled,
-        isFalse,
-        reason: 'charcoal glass ships in dark mode; true black is optional',
-      );
+      expect(settings.amoled, isTrue, reason: 'dark is always true black');
+    });
+
+    test('only Day and Dark are offered; an old System reads as Dark', () {
+      expect(ThemePreference.choices, [
+        ThemePreference.light,
+        ThemePreference.dark,
+      ]);
+      expect(ThemePreference.fromName('system'), ThemePreference.dark);
+      expect(ThemePreference.fromName(null), ThemePreference.dark);
+      expect(ThemePreference.fromName('light'), ThemePreference.light);
     });
 
     test('copyWith keeps the fields it is not given', () {

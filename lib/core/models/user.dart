@@ -17,15 +17,17 @@ enum ThemePreference {
   final IconData icon;
   final ThemeMode mode;
 
-  /// The stored preference, or [ThemePreference.system] when there is none.
+  /// The two the picker offers. `system` is kept only so an old stored value
+  /// still parses; it now reads as [dark].
+  static const choices = [light, dark];
+
+  /// The stored preference, or [ThemePreference.dark] when there is none.
   ///
-  /// The fallback is the same one [ThemeNotifier.build] uses, so a first launch
-  /// and an unreadable stored value land in the same place — the device
-  /// setting — rather than one of them snapping to light.
-  static ThemePreference fromName(String? name) => values.firstWhere(
-    (v) => v.name == name,
-    orElse: () => ThemePreference.system,
-  );
+  /// Dark (true black) is the app's look by default. A stored `system` from
+  /// an older build, or an unreadable value, lands there too; a stored `light`
+  /// keeps the user's choice.
+  static ThemePreference fromName(String? name) =>
+      name == ThemePreference.light.name ? light : dark;
 }
 
 /// A named seed pair the whole palette derives from.
@@ -57,10 +59,13 @@ enum AppPalette {
   Color seedFor(Brightness brightness) =>
       brightness == Brightness.dark ? darkSeed : lightSeed;
 
-  /// The stored palette, or [AppPalette.parchment] when there is none — the same
-  /// fallback a cold install gets, so an unreadable value cannot land the app
-  /// on a colour the user never chose.
-  static AppPalette fromName(String? name) => values.firstWhere(
+  /// The palettes the picker offers. Ember stays defined because Pip's own
+  /// orange is derived from it; Ember, Iris and Slate are no longer choices.
+  static const choices = [parchment, tide, grove, rose];
+
+  /// The stored palette, or [AppPalette.parchment] when there is none or it is
+  /// no longer offered — the same fallback a cold install gets.
+  static AppPalette fromName(String? name) => choices.firstWhere(
     (v) => v.name == name,
     orElse: () => AppPalette.parchment,
   );
@@ -127,13 +132,13 @@ enum ClockFace {
 /// notifier rather than three that would each have to be read at the root.
 class ThemeSettings {
   const ThemeSettings({
-    this.mode = ThemePreference.system,
+    this.mode = ThemePreference.dark,
     this.palette = AppPalette.parchment,
     this.amoled = defaultAmoled,
   });
 
-  /// Charcoal glass ships by default. True black remains opt-in.
-  static const defaultAmoled = false;
+  /// Dark is always true black; there is no longer a switch for it.
+  static const defaultAmoled = true;
 
   final ThemePreference mode;
   final AppPalette palette;
