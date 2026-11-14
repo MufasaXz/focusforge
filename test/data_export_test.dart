@@ -74,6 +74,12 @@ void main() {
       'achievements.linkedOwners': jsonEncode({'me': true, 'other': true}),
       'achievements.aliases': jsonEncode({'local-1': 'me', 'local-9': 'other'}),
       'auth.deletedCredential': 'gone',
+      StoreKeys.assistantReports: jsonEncode({
+        'ownerUid': 'other',
+        'items': [
+          {'reply': 'private other feedback'},
+        ],
+      }),
     };
 
     final mine = DataExport.forAccount(all, 'me');
@@ -83,6 +89,11 @@ void main() {
     expect(text, isNot(contains('Ravi')));
     expect(text, isNot(contains('local-9')));
     expect(mine.containsKey('auth.deletedCredential'), isFalse);
+    expect(mine.containsKey(StoreKeys.assistantReports), isFalse);
+    final ownFeedback = DataExport.forAccount({
+      StoreKeys.assistantReports: jsonEncode({'ownerUid': 'me', 'items': []}),
+    }, 'me');
+    expect(ownFeedback.containsKey(StoreKeys.assistantReports), isTrue);
     // Everything that is this account's is still there.
     expect(mine['user'], all['user']);
     expect(mine['sessions'], '[]');
