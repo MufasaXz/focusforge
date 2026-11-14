@@ -8,12 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/models/focus_goal.dart';
 import '../../../core/models/study.dart';
-import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
-import '../../../core/services/ai_backend_service.dart';
-import '../../../core/services/ai_privacy.dart';
-import '../../../core/services/local_store.dart';
 import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
@@ -24,23 +20,6 @@ import '../brain/timetable.dart';
 import '../nudges/pip_nudges.dart';
 
 enum ChatStatus { idle, thinking, typing }
-
-/// An online answer as plain chat text.
-///
-/// The model sometimes writes Markdown, and a bubble shows text exactly as it
-/// is, so headings and bold lose their marks, list items become bullets, and
-/// runs of blank lines close up.
-String tidyAnswer(String reply) {
-  final lines = [
-    for (final line in reply.replaceAll('\r\n', '\n').split('\n'))
-      line
-          .replaceFirst(RegExp(r'^\s{0,3}#{1,6}\s+'), '')
-          .replaceFirst(RegExp(r'^\s*[-*]\s+'), '• ')
-          .replaceAll(RegExp(r'\*\*|__|`'), '')
-          .trimRight(),
-  ];
-  return lines.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
-}
 
 /// Where the chat wants to send the user next, once it has spoken.
 enum ChatDestination { focus, shield }
@@ -54,8 +33,6 @@ class ChatEntry {
     this.copy,
     this.text,
     this.card,
-    this.online = false,
-    this.localOnly = false,
     this.at,
   });
 
@@ -66,13 +43,6 @@ class ChatEntry {
   /// What the user typed, shown exactly as typed.
   final String? text;
   final ChatCard? card;
-
-  /// Whether Pip's line came from the online model.
-  final bool online;
-
-  /// Tutor prompts and answers remain local even if a later message uses
-  /// cloud coaching. They are not included in the cloud conversation history.
-  final bool localOnly;
 
   /// When the line was added, so only new lines animate in.
   final DateTime? at;
@@ -145,12 +115,6 @@ class ChatController extends Notifier<ChatState> {
   int _turn = 0;
   OfflineContext? _offlineContext;
 
-  /// A question held while the user answers the online-answers question.
-  String? _pending;
-
-  /// Whether this conversation has already suggested signing in.
-  bool _suggestedSignIn = false;
-
   /// Whether the user asked for exam reminders before Pip knew the date.
   bool _pendingExamReminder = false;
 
@@ -166,8 +130,6 @@ class ChatController extends Notifier<ChatState> {
     // Whatever was still on its way belongs to the old conversation: moving
     // the generation on stops it, and the half-asked questions go with it.
     _generation++;
-    _pending = null;
-    _suggestedSignIn = false;
     _pendingExamReminder = false;
     _pendingReminder = null;
     _offlineContext = null;
@@ -198,241 +160,14 @@ class ChatController extends Notifier<ChatState> {
         id: _ids++,
         fromPip: false,
         text: said,
-        localOnly: local.act == Act.coach,
       ),
     );
     if (local.act != Act.coach) _offlineContext = null;
-    if (!brain.wantsOnline(said, local)) return run(local);
-
-    // Online answers need a signed-in account, the backend and the user's
-    // say-so. Without any of them the phone answers, as it always can.
-    final consent = ref.read(assistantMemoryProvider).aiConsent;
-    if (consent != true) return run(local);
-    final backend = ref.read(aiBackendProvider);
-    if (ref.read(accountUidProvider) == null) {
-      if (!_suggestedSignIn) {
-        _suggestedSignIn = true;
-        await say(AssistantReply([Say(brain.aiNote(AiFailure.signedOut))]));
-      }
-      return run(local);
-    }
-    if (backend == null) return run(local);
-    if (!_claimOnlineAnswer()) return _outOfEnergy(local);
-    return _askOnline(said, local, backend);
-  }
-
-  /// Asks the online model, then falls back to the phone if it cannot.
-  Future<void> _askOnline(
-    String said,
-    AssistantAction local,
-    AiBackend backend,
-  ) async {
-    final generation = ++_generation;
-    final history = _history();
-    const reading = Copy('Reading your sessions…');
-    state = state.copyWith(
-      suggestions: const [],
-      status: ChatStatus.thinking,
-      step: reading,
-      trail: const [],
-    );
-    final snapshot = await StudySnapshot.gather(ref.read);
-    await _pause(fast ? 60 : 380);
-    if (generation != _generation) return;
-    // Consent can be withdrawn, or the account signed out, while the study
-    // summary is read: nothing leaves the phone unless both still hold now.
-    if (ref.read(assistantMemoryProvider).aiConsent != true ||
-        ref.read(accountUidProvider) == null) {
-      state = state.copyWith(status: ChatStatus.idle, clearStep: true);
-      return run(local);
-    }
-    state = state.copyWith(step: const Copy('Thinking…'), trail: [reading]);
-    try {
-      final reply = await backend.askAiAssistant(
-        userMessage: _privateText(said, maxChars: 300),
-        extraContext: brain.aiContext(snapshot),
-        history: history,
-        locale: _locale().languageCode,
-        allowed: () =>
-            generation == _generation &&
-            ref.read(assistantMemoryProvider).aiConsent == true &&
-            ref.read(accountUidProvider) != null,
-      );
-      if (generation != _generation) return;
-      await say(
-        AssistantReply([
-          Say(Copy.raw(tidyAnswer(reply)), online: true),
-        ], suggestions: brain.defaults(snapshot)),
-        generation: generation,
-      );
-    } on AiBackendException catch (error) {
-      if (generation != _generation) return;
-      if (error.failure == AiFailure.withdrawn) {
-        // Turned off before sending: the phone answers, with nothing to say
-        // about the online brain.
-        state = state.copyWith(status: ChatStatus.idle, clearStep: true);
-        return run(local);
-      }
-      final phoneAnswers =
-          brain.fallsBackLocally(error.failure) && local.act != Act.unknown;
-      await say(
-        AssistantReply([
-          Say(brain.aiNote(error.failure)),
-        ], suggestions: phoneAnswers ? const [] : brain.defaults(snapshot)),
-        generation: generation,
-      );
-      if (phoneAnswers && generation == _generation) await run(local);
-    }
-  }
-
-  /// Local hint for the server's five-per-UTC-day quota. The backend is the
-  /// authority across installations; the phone's own answers have no limit.
-  static const onlineAnswersPerDay = 5;
-
-  /// Takes one of today's online answers, or false when they are used up.
-  bool _claimOnlineAnswer() {
-    final store = ref.read(localStoreProvider);
-    final now = DateTime.now().toUtc();
-    final today = '${now.year}-${now.month}-${now.day}';
-    final day = store.getMap(StoreKeys.assistantAiDay);
-    final used = day?['day'] == today && day?['count'] is int
-        ? day!['count'] as int
-        : 0;
-    if (used >= onlineAnswersPerDay) return false;
-    unawaited(
-      store.setMap(StoreKeys.assistantAiDay, {
-        'day': today,
-        'count': used + 1,
-        if (day?['day'] == today && day?['told'] == true) 'told': true,
-      }),
-    );
-    return true;
-  }
-
-  /// Says once a day that the online answers are used up, then answers on
-  /// the phone as usual.
-  Future<void> _outOfEnergy(AssistantAction local) async {
-    final store = ref.read(localStoreProvider);
-    final day = {...?store.getMap(StoreKeys.assistantAiDay)};
-    if (day['told'] != true) {
-      day['told'] = true;
-      unawaited(store.setMap(StoreKeys.assistantAiDay, day));
-      await say(
-        const AssistantReply([
-          Say(
-            Copy(
-              'Daily Pip energy used up! Focus on your study block and come back tomorrow.',
-            ),
-          ),
-        ]),
-      );
-    }
-    if (local.act != Act.unknown) return run(local);
-  }
-
-  /// Sends a report of Pip's online answer in entry [entryId] for review,
-  /// and keeps a copy on the phone. True once the report is on its way.
-  Future<bool> report(int entryId, String reason) async {
-    final entries = state.entries;
-    final index = entries.indexWhere((e) => e.id == entryId);
-    if (index < 0) return false;
-    final strings = AppStrings(_locale());
-    final reply = _privateText(
-      entries[index].copy?.resolve(strings) ?? '',
-      maxChars: 900,
-    );
-    final rawQuestion = entries
-        .take(index)
-        .lastWhere((e) => !e.fromPip, orElse: () => entries[index])
-        .text;
-    final question = rawQuestion == null
-        ? null
-        : _privateText(rawQuestion, maxChars: 300);
-    final store = ref.read(localStoreProvider);
-    final now = DateTime.now();
-    final owner = ref.read(userProvider).uid;
-    final cached = store.getMap(StoreKeys.assistantReports);
-    final kept = AiPrivacy.reports(
-      cached?['ownerUid'] == owner ? cached : null,
-      now: now,
-    )['items'];
-    await store.setMap(StoreKeys.assistantReports, {
-      'ownerUid': owner,
-      'items': [
-        // The most recent 50, this one included.
-        if (kept is List) ...kept.skip(kept.length > 49 ? kept.length - 49 : 0),
-        {
-          'reason': reason,
-          'reply': reply,
-          'question': ?question,
-          'at': now.toIso8601String(),
-        },
-      ],
-    });
-    // Only a report that reached the review service counts as sent; the
-    // copy on the phone is no review.
-    final backend = ref.read(aiBackendProvider);
-    if (backend == null) return false;
-    try {
-      await backend.reportReply(
-        reply: reply,
-        reason: reason,
-        question: question,
-      );
-      return true;
-    } on AiBackendException {
-      return false;
-    }
-  }
-
-  /// The last few lines of the conversation, oldest first, without the
-  /// message being asked now.
-  ///
-  /// Only the user's own words and Pip's online answers go: Pip's answers
-  /// from the phone can carry the user's name, or other people's from the
-  /// leaderboard, and the consent promises never to send a name.
-  List<Map<String, String>> _history() {
-    final strings = AppStrings(_locale());
-    final lines = state.entries.toList();
-    if (lines.isNotEmpty && !lines.last.fromPip) lines.removeLast();
-    final turns = <Map<String, String>>[
-      for (final entry in lines)
-        if (!entry.localOnly &&
-            entry.card == null &&
-            (!entry.fromPip || entry.online))
-          if ((entry.text ?? entry.copy?.resolve(strings)) case final text?
-              when text.trim().isNotEmpty)
-            {
-              'role': entry.fromPip ? 'pip' : 'user',
-              'text': _privateText(text),
-            },
-    ];
-    return turns.length > 8 ? turns.sublist(turns.length - 8) : turns;
-  }
-
-  String _privateText(String text, {int maxChars = 500}) {
-    final profile = ref.read(userProvider);
-    return AiPrivacy.text(
-      text,
-      maxChars: maxChars,
-      privateValues: [profile.displayName, profile.uid],
-    );
+    return run(local);
   }
 
   static ui.Locale _locale() =>
       AppStrings.resolve(ui.PlatformDispatcher.instance.locales);
-
-  /// Turns online answers on or off from the chat menu.
-  Future<void> setOnlineAnswers(bool allowed) async {
-    // Retire any in-flight answer immediately on withdrawal. Already sent
-    // requests cannot be recalled, but no late result is displayed or reused.
-    if (!allowed) {
-      _generation++;
-      _pending = null;
-      state = state.copyWith(status: ChatStatus.idle, clearStep: true);
-    }
-    await ref.read(assistantMemoryProvider.notifier).setAiConsent(allowed);
-  }
 
   Future<void> choose(Suggestion suggestion) async {
     _add(
@@ -440,7 +175,6 @@ class ChatController extends Notifier<ChatState> {
         id: _ids++,
         fromPip: false,
         copy: suggestion.label,
-        localOnly: suggestion.action.act == Act.coach,
       ),
     );
     await run(suggestion.action);
@@ -515,32 +249,6 @@ class ChatController extends Notifier<ChatState> {
             generation,
           );
         }
-      case Act.aiAllow:
-        await memory.setAiConsent(true);
-        final question = _pending;
-        _pending = null;
-        final backend = ref.read(aiBackendProvider);
-        if (question != null && backend != null) {
-          return _askOnline(question, brain.parse(question), backend);
-        }
-      case Act.aiDecline:
-        await memory.setAiConsent(false);
-        final question = _pending;
-        _pending = null;
-        await say(
-          const AssistantReply([
-            Say(
-              Copy(
-                'Okay, I’ll keep everything on this phone. You can change this from the menu.',
-              ),
-            ),
-          ]),
-          generation: generation,
-        );
-        if (question != null && generation == _generation) {
-          return run(brain.parse(question));
-        }
-        return;
       default:
         break;
     }
@@ -607,7 +315,6 @@ class ChatController extends Notifier<ChatState> {
           fromPip: true,
           copy: item.copy,
           card: item.card,
-          online: item.online,
           at: DateTime.now(),
         ),
       );
@@ -878,8 +585,6 @@ class ChatController extends Notifier<ChatState> {
   int _typingMs(Say item) {
     if (fast) return 90;
     if (item.card != null) return 650;
-    // Online answers were already waited for; the line writes itself in.
-    if (item.online) return 320;
     final length = item.copy?.key.length ?? 24;
     return (300 + length * 6).clamp(380, 900);
   }

@@ -10,9 +10,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/localization/app_strings.dart';
-import '../../../core/providers/app_providers.dart' show accountUidProvider;
-import '../../../core/services/ai_backend_service.dart'
-    show aiBackendProvider, reportReasons;
 import '../../../core/models/shield.dart';
 import '../../../core/providers/shield_providers.dart';
 import '../../../core/services/permission_manager.dart';
@@ -31,7 +28,6 @@ import '../mascot/mascot_rig.dart';
 import '../nudges/pip_nudges.dart';
 import 'chat_cards.dart';
 import 'chat_controller.dart';
-import 'cloud_consent_dialog.dart';
 
 /// The conversation with Pip.
 ///
@@ -74,11 +70,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
   }
 
   Future<void> _openChat() async {
-    if (ref.read(assistantMemoryProvider).aiConsent == null) {
-      final choice = await showPipCloudConsent(context);
-      if (!mounted) return;
-      if (choice != null) await _chat.setOnlineAnswers(choice);
-    }
     if (mounted) await _chat.open(action: widget.initial);
   }
 
@@ -192,24 +183,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     await _chat.setExamDate(picked);
   }
 
-  /// Asks why the user is reporting Pip's answer in entry [id], then sends it.
-  Future<void> _report(int id) async {
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (context) => const _ReportDialog(),
-    );
-    if (reason == null || !mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    final thanks = context.tr('Thanks. This answer will be reviewed.');
-    final failed = context.tr(
-      'Could not send the report. Check your connection and try again.',
-    );
-    final sent = await _chat.report(id, reason);
-    messenger
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(sent ? thanks : failed)));
-  }
-
   Future<void> _pickReminderDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -262,14 +235,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     await PipNudges.sync(ref.read, strings);
   }
 
-  /// Turning online answers on says first what would be sent, as Pip's
-  /// own question does; turning them off needs no confirmation.
-  Future<void> _changeOnlineAnswers(bool on) async {
-    if (!on) return _chat.setOnlineAnswers(false);
-    final choice = await showPipCloudConsent(context);
-    if (choice != null && mounted) await _chat.setOnlineAnswers(choice);
-  }
-
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider);
@@ -290,24 +255,12 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
     });
 
     final quiet = ref.watch(assistantMemoryProvider.select((m) => m.quiet));
-    final online = ref.watch(
-      assistantMemoryProvider.select((m) => m.aiConsent == true),
-    );
-    // What a question sent now would actually use: consent alone is not
-    // enough without a linked account and the service.
-    final answersOnline =
-        online &&
-        ref.watch(accountUidProvider) != null &&
-        ref.watch(aiBackendProvider) != null;
     // At rest the header says where answers come from, so it is known
     // before anything is typed.
     final status = switch (chat.status) {
       ChatStatus.thinking => chat.step?.of(context) ?? context.tr('Thinking…'),
       ChatStatus.typing => context.tr('Typing…'),
-      ChatStatus.idle =>
-        answersOnline
-            ? context.tr('Online answers on')
-            : context.tr('Answers stay on this phone'),
+      ChatStatus.idle => context.tr('Answers stay on this phone'),
     };
     final remindersOff = ref.watch(
       assistantMemoryProvider.select((m) => m.remindersOff),
@@ -358,8 +311,7 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
               if (value == 0) {
                 _chat.clear();
                 unawaited(_chat.open());
-              } else if (value == 2) {
-                unawaited(_changeOnlineAnswers(!online));
+
               } else if (value == 3) {
                 unawaited(_setReminders(off: !remindersOff));
               } else {
@@ -370,14 +322,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
             },
             itemBuilder: (context) => [
               PopupMenuItem(value: 0, child: Text(context.tr('Clear chat'))),
-              PopupMenuItem(
-                value: 2,
-                child: Text(
-                  online
-                      ? context.tr('Keep answers on this phone')
-                      : context.tr('Answer with AI when online'),
-                ),
-              ),
               PopupMenuItem(
                 value: 1,
                 child: Text(
@@ -447,7 +391,6 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
                             unawaited(_chat.useTimetableToday(timetable)),
                         onRemoveReminder: (id) =>
                             unawaited(_chat.deleteReminder(id)),
-                        onReport: (id) => unawaited(_report(id)),
                         onGoal: (minutes) => unawaited(
                           _chat.choose(
                             Suggestion(
@@ -585,7 +528,6 @@ class _EntryView extends StatelessWidget {
     required this.onSaveTimetable,
     required this.onUseTimetable,
     required this.onRemoveReminder,
-    required this.onReport,
     required this.onGoal,
   });
 
@@ -599,7 +541,6 @@ class _EntryView extends StatelessWidget {
   final ValueChanged<Timetable> onSaveTimetable;
   final ValueChanged<Timetable> onUseTimetable;
   final ValueChanged<int> onRemoveReminder;
-  final ValueChanged<int> onReport;
   final ValueChanged<int> onGoal;
 
   @override
@@ -675,7 +616,7 @@ class _EntryView extends StatelessWidget {
         onUseToday: onUseTimetable,
       ),
       ActionCard() => ActionCardView(card: card, onAction: onAction),
-      null => _PipLine(entry: entry, first: first, onReport: onReport),
+      null => _PipLine(entry: entry, first: first),
     };
 
     return Padding(
@@ -709,12 +650,10 @@ class _PipLine extends StatelessWidget {
   const _PipLine({
     required this.entry,
     required this.first,
-    required this.onReport,
   });
 
   final ChatEntry entry;
   final bool first;
-  final ValueChanged<int> onReport;
 
   /// Lines older than this were already seen and appear whole.
   static const _fresh = Duration(seconds: 3);
@@ -746,75 +685,7 @@ class _PipLine extends StatelessWidget {
         ),
       ),
     );
-    if (!entry.online) return bubble;
-    // Generated answers carry a way to report them.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(child: bubble),
-        IconButton(
-          tooltip: context.tr('Report this answer'),
-          onPressed: () => onReport(entry.id),
-          icon: Icon(
-            Icons.flag_outlined,
-            size: 18,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Why the user is reporting an answer: returns one of [reportReasons].
-class _ReportDialog extends StatefulWidget {
-  const _ReportDialog();
-
-  @override
-  State<_ReportDialog> createState() => _ReportDialogState();
-}
-
-class _ReportDialogState extends State<_ReportDialog> {
-  String? _reason;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = {
-      'harmful': context.tr('Inappropriate or harmful content'),
-      'hate': context.tr('Harassment or hate speech'),
-      'incorrect': context.tr('Incorrect or misleading advice'),
-    };
-    return AlertDialog(
-      title: Text(context.tr('Report this answer')),
-      content: RadioGroup<String>(
-        groupValue: _reason,
-        onChanged: (value) => setState(() => _reason = value),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final reason in reportReasons)
-              RadioListTile<String>(
-                value: reason,
-                contentPadding: EdgeInsets.zero,
-                title: Text(labels[reason]!),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.tr('Cancel')),
-        ),
-        FilledButton(
-          onPressed: _reason == null
-              ? null
-              : () => Navigator.of(context).pop(_reason),
-          child: Text(context.tr('Report')),
-        ),
-      ],
-    );
+    return bubble;
   }
 }
 

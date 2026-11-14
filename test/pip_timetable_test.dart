@@ -174,9 +174,6 @@ void main() {
       expect(brain.parse('remind me about my exam').act, Act.examReminder);
       expect(brain.parse('set a reminder for neet').act, Act.examReminder);
       expect(brain.parse('stop exam reminders').act, Act.examReminderOff);
-      for (final said in ['make a timetable', 'remind me about my exam']) {
-        expect(brain.wantsOnline(said, brain.parse(said)), isFalse);
-      }
     });
 
     test('a timetable reply carries the hours the user typed', () {

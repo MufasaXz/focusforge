@@ -29,8 +29,6 @@ import '../../shared/widgets/glass_surface.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/privacy_policy_link.dart';
 import 'settings_support.dart';
-import '../assistant/assistant_memory.dart';
-import '../assistant/chat/chat_controller.dart';
 
 /// Data & Privacy — the screen that has to tell the truth about storage.
 ///
@@ -110,24 +108,6 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                         )
                       : context.tr("Preview and copy every stored key"),
                   onTap: _busy ? null : () => _export(context, ref),
-                ),
-                SwitchListTile(
-                  secondary: Icon(
-                    Icons.cloud_outlined,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  title: Text(context.tr('Pip Cloud Study Coach')),
-                  subtitle: Text(
-                    context.tr(
-                      'Optional cloud coaching sends redacted questions, recent messages and study totals. Keep personal details out of questions. Off uses local coaching. A linked account is needed online.',
-                    ),
-                  ),
-                  value: ref.watch(assistantMemoryProvider).aiConsent == true,
-                  onChanged: _busy
-                      ? null
-                      : (on) => ref
-                            .read(chatProvider.notifier)
-                            .setOnlineAnswers(on),
                 ),
                 // Withdrawing is one tap, as granting was. Off clears the
                 // in-memory list at once; the next Shield visit asks again.

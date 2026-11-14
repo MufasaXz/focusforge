@@ -150,10 +150,6 @@ enum Act {
   periodStats,
   examPlan,
 
-  // Answers to the one-time question about online answers.
-  aiAllow,
-  aiDecline,
-
   // Steps that need the screen: a permission, a picker or a tab.
   usageAccess,
   appList,
@@ -422,14 +418,12 @@ class ActionCard extends ChatCard {
 /// One thing Pip says: a line, a card, or both.
 @immutable
 class Say {
-  const Say(this.copy, {this.online = false}) : card = null;
-  const Say.card(this.card) : copy = null, online = false;
+  const Say(this.copy) : card = null;
+  const Say.card(this.card) : copy = null;
 
   final Copy? copy;
   final ChatCard? card;
 
-  /// Whether the line came from the online model rather than the phone.
-  final bool online;
 }
 
 /// Pip's whole answer to one request.

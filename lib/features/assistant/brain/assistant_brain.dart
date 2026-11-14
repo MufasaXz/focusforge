@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/services/ai_backend_service.dart';
 import '../mascot/mascot.dart' show kBuddyName;
 import 'assistant_models.dart';
 import 'exam_guide.dart';
@@ -734,8 +733,6 @@ class AssistantBrain {
         Act.examReminderOff => AssistantReply(const [
           Say(Copy('Okay, no more exam reminders.')),
         ], suggestions: defaults(s)),
-        Act.aiAllow ||
-        Act.aiDecline ||
         Act.usageAccess ||
         Act.appList ||
         Act.openShield ||
@@ -2213,118 +2210,6 @@ class AssistantBrain {
     ),
     Say.card(GoalCard(currentMinutes: s.goalMinutes)),
   ]);
-
-  // -- Online answers ---------------------------------------------------------
-
-  /// Whether a typed message is better answered by the online model.
-  ///
-  /// Things Pip does — lock, start, set a goal — and small talk always stay on
-  /// the phone, so they work offline and instantly. A short request for a
-  /// report, a plan or an exam card is answered here too. Anything Pip does
-  /// not recognise, and any longer, more nuanced question, goes online.
-  bool wantsOnline(String text, AssistantAction local) {
-    switch (local.act) {
-      case Act.unknown:
-        return true;
-      case Act.coach ||
-          Act.lock ||
-          Act.leaderboard ||
-          Act.subjectStats ||
-          Act.periodStats ||
-          Act.examPlan ||
-          Act.reminder ||
-          Act.reminders ||
-          Act.reminderOff ||
-          Act.timetable ||
-          Act.timetableOff ||
-          Act.examReminder ||
-          Act.examReminderOff ||
-          Act.focusNow ||
-          Act.goal ||
-          Act.goalSet ||
-          Act.greet ||
-          Act.thanks ||
-          Act.bye ||
-          Act.help ||
-          Act.intro:
-        return false;
-      default:
-        final words = normalize(text).split(' ').where((w) => w.isNotEmpty);
-        return words.length >= 7;
-    }
-  }
-
-  /// The one-time question before anything is sent online.
-  AssistantReply aiConsentAsk() => const AssistantReply([
-    Say(
-      Copy(
-        'Cloud Study Coach is optional. Redacted questions, recent messages and study totals are processed online. Keep personal details out of questions. Offline coaching is always available. You can switch modes in Settings.',
-      ),
-    ),
-    Say.card(
-      ActionCard([
-        Suggestion(
-          Copy('Allow'),
-          Icons.check_rounded,
-          AssistantAction(Act.aiAllow),
-        ),
-        Suggestion(
-          Copy('Keep it on this phone'),
-          Icons.phone_android_rounded,
-          AssistantAction(Act.aiDecline),
-        ),
-      ]),
-    ),
-  ]);
-
-  /// What Pip says when an online answer fails.
-  Copy aiNote(AiFailure failure) => switch (failure) {
-    AiFailure.signedOut => const Copy(
-      'Sign in with your account and I can answer your study questions when you’re online. Here’s what I can do on this phone.',
-    ),
-    AiFailure.rateLimited => const Copy(
-      'That’s a lot of questions in a minute. Give me a moment, then ask again.',
-    ),
-    AiFailure.dailyLimit => const Copy(
-      'I’ve answered a lot today. Let’s pick this up tomorrow.',
-    ),
-    AiFailure.blocked => const Copy(
-      'I can’t help with that one. Let’s get back to your studies.',
-    ),
-    AiFailure.invalid => const Copy(
-      'I couldn’t read that. Try saying it another way.',
-    ),
-    AiFailure.unavailable ||
-    AiFailure.timeout ||
-    AiFailure.notReady ||
-    AiFailure.withdrawn => const Copy(
-      'I can’t reach my online brain right now, so here’s what I can do on this phone.',
-    ),
-  };
-
-  /// Whether the phone should still answer after an online failure.
-  bool fallsBackLocally(AiFailure failure) => switch (failure) {
-    AiFailure.unavailable ||
-    AiFailure.timeout ||
-    AiFailure.notReady ||
-    AiFailure.signedOut ||
-    AiFailure.withdrawn => true,
-    _ => false,
-  };
-
-  /// Numeric study totals only. Custom labels can contain personal details;
-  /// app-usage metrics are covered by a local-only permission disclosure.
-  Map<String, dynamic> aiContext(StudySnapshot s) {
-    final days = s.daysToExam;
-    return {
-      'daysToExam': ?days,
-      'todayMinutes': s.todayMinutes,
-      'goalMinutes': s.goalMinutes,
-      'weekMinutes': s.weekMinutes,
-      'lastWeekSameDaysMinutes': s.lastWeekSpanMinutes,
-      'streak': s.streak,
-    };
-  }
 
   // -- Home -------------------------------------------------------------------
 

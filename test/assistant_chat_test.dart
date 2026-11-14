@@ -4,9 +4,7 @@
 // a chip carries its request in any language; a typed "lock instagram" finds
 // the app and, on one tap, puts it in Shield's focus tier; a plan saved as
 // today's goal counts what is already done; "start a block" starts the timer
-// on the plan's first subject. A longer question goes online only after the
-// user agrees and only for a signed-in account, carries no name, and falls
-// back to the phone's answer when the network fails.
+// on the plan's first subject. Every answer stays on the phone.
 //
 // WHY IT MATTERS: these are the moments the assistant does real work. A lock
 // that only says "locked", or a plan that drops the morning's study from the
@@ -30,7 +28,6 @@ import 'package:focusforge/core/providers/goal_planner_providers.dart';
 import 'package:focusforge/core/providers/shield_providers.dart';
 import 'package:focusforge/core/providers/study_providers.dart';
 import 'package:focusforge/core/providers/usage_providers.dart';
-import 'package:focusforge/core/services/ai_backend_service.dart';
 import 'package:focusforge/core/services/app_catalog.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
@@ -55,9 +52,7 @@ void main() {
 
   Future<ProviderContainer> pumpChat(
     WidgetTester tester, {
-    AiBackend? backend,
     String? uid,
-    bool? firstChoice = false,
   }) async {
     tester.view.physicalSize = const Size(420, 900);
     tester.view.devicePixelRatio = 1;
@@ -67,7 +62,6 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         localStoreProvider.overrideWithValue(store),
-        aiBackendProvider.overrideWithValue(backend),
         pipNotificationAccessProvider.overrideWithValue(
           const _NoNotifications(),
         ),
@@ -126,13 +120,6 @@ void main() {
       ),
     );
     await tester.pump();
-    if (firstChoice != null &&
-        find.text('Enable Cloud Study Coach?').evaluate().isNotEmpty) {
-      await tester.tap(
-        find.text(firstChoice ? 'Agree & Enable' : 'Disagree (Offline Mode)'),
-      );
-      await tester.pump();
-    }
     return container;
   }
 
@@ -245,52 +232,11 @@ void main() {
     },
   );
 
-  const question = 'I have not studied this week, what should I do tonight?';
-
   Future<void> ask(WidgetTester tester, String text) async {
     await tester.enterText(find.byType(TextField), text);
     await tester.testTextInput.receiveAction(TextInputAction.send);
     await wait(tester);
   }
-
-  testWidgets(
-    'offline tutoring handles follow-ups without calling an available cloud backend',
-    (tester) async {
-      final backend = _FakeBackend(reply: 'This should not be requested.');
-      final container = await pumpChat(
-        tester,
-        backend: backend,
-        uid: 'u1',
-        firstChoice: true,
-      );
-      await wait(tester);
-      await ask(tester, 'explain derivatives');
-      await ask(tester, 'quiz me');
-      await ask(tester, 'hint');
-      expect(find.textContaining('Hint:', findRichText: true), findsOneWidget);
-      await ask(tester, 'show answer');
-      expect(
-        find.textContaining('Practice check:', findRichText: true),
-        findsOneWidget,
-      );
-      expect(backend.questions, isEmpty);
-      expect(
-        container
-            .read(chatProvider)
-            .entries
-            .where((e) => !e.fromPip)
-            .every((e) => e.localOnly),
-        isTrue,
-      );
-      await ask(tester, question);
-      expect(backend.questions, [question]);
-      expect(
-        backend.histories.single,
-        isEmpty,
-        reason: 'Local tutoring never enters a later cloud request',
-      );
-    },
-  );
 
   testWidgets('clearing chat discards the pending local quiz', (tester) async {
     final container = await pumpChat(tester);
@@ -303,261 +249,6 @@ void main() {
       find.textContaining('Practice check:', findRichText: true),
       findsNothing,
     );
-  });
-
-  testWidgets('a long question goes online once the user agrees', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(
-      reply: 'One 40 minute block of Physics tonight. Start small.',
-    );
-    final container = await pumpChat(
-      tester,
-      backend: backend,
-      uid: 'u1',
-      firstChoice: null,
-    );
-    expect(find.text('Enable Cloud Study Coach?'), findsOneWidget);
-    expect(backend.questions, isEmpty);
-    await tester.tap(find.text('Agree & Enable'));
-    await wait(tester);
-    await ask(tester, question);
-
-    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
-    expect(backend.questions, [question]);
-    expect(
-      find.text('One 40 minute block of Physics tonight. Start small.'),
-      findsOneWidget,
-    );
-    // The study summary carries numbers, never who the user is.
-    expect(jsonOf(backend.contexts.single), isNot(contains('Rivera')));
-    expect(backend.histories.single, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets(
-    'known profile identifiers stay out of online questions and history',
-    (tester) async {
-      final backend = _FakeBackend(reply: 'Study in short blocks.');
-      final container = await pumpChat(tester, backend: backend, uid: 'u1');
-      await container
-          .read(userProvider.notifier)
-          .save(
-            const UserProfile(
-              uid: 'account-private-id',
-              displayName: 'Sam Lee',
-              isAnonymous: false,
-            ),
-          );
-      await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-      await wait(tester);
-      const personal =
-          'Sam Lee student@example.com account-private-id asks for revision advice';
-      await ask(tester, personal);
-      await ask(tester, question);
-      final sent =
-          '${backend.questions} ${backend.histories} ${backend.contexts}';
-      for (final value in [
-        'Sam Lee',
-        'student@example.com',
-        'account-private-id',
-      ]) {
-        expect(sent, isNot(contains(value)));
-      }
-      expect(
-        container
-            .read(chatProvider)
-            .entries
-            .any((entry) => entry.text == personal),
-        isTrue,
-      );
-    },
-  );
-
-  testWidgets('only the user\'s words and online answers are sent', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(reply: 'Short blocks, then a long one.');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-    await wait(tester);
-    await ask(tester, 'what is my top subject');
-
-    await ask(tester, question);
-    expect(backend.questions, [question]);
-    final sent = backend.histories.single;
-    expect(sent.where((turn) => turn['role'] == 'pip'), isEmpty);
-    expect(jsonOf(sent), isNot(contains('Sam')));
-  });
-
-  testWidgets('the header says where answers come from, and going online '
-      'asks first without losing the draft', (tester) async {
-    final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await wait(tester);
-    expect(find.text('Answers stay on this phone'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField), 'half-typed question');
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Answer with AI when online'));
-    await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Redaction may miss personal details'),
-      findsOneWidget,
-      reason: 'what would be sent is said before it is allowed',
-    );
-    await tester.tap(find.text('Disagree (Offline Mode)'));
-    await tester.pumpAndSettle();
-    expect(container.read(assistantMemoryProvider).aiConsent, isNot(true));
-    expect(find.text('Answers stay on this phone'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Answer with AI when online'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Agree & Enable'));
-    await tester.pumpAndSettle();
-    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
-    expect(find.text('Online answers on'), findsOneWidget);
-    expect(find.text('half-typed question'), findsOneWidget);
-    expect(backend.questions, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('turning online answers off before sending keeps it here', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-    await wait(tester);
-
-    await tester.enterText(find.byType(TextField), question);
-    await tester.testTextInput.receiveAction(TextInputAction.send);
-    await tester.pump(const Duration(milliseconds: 20));
-    await container.read(chatProvider.notifier).setOnlineAnswers(false);
-    await wait(tester);
-    expect(backend.questions, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('offline, Pip says so and the phone answers', (tester) async {
-    final backend = _FakeBackend(failure: AiFailure.unavailable);
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-    await wait(tester);
-
-    await ask(tester, 'can you please make a study plan for me today');
-    expect(backend.questions, hasLength(1));
-    expect(
-      find.textContaining('can’t reach my online brain', findRichText: true),
-      findsOneWidget,
-    );
-    expect(find.text('Save as today’s goal'), findsOneWidget);
-  });
-
-  testWidgets('a guest gets one sign-in note and the phone’s answers', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(
-      tester,
-      backend: backend,
-      firstChoice: true,
-    );
-    await wait(tester);
-
-    await ask(tester, question);
-    await ask(tester, 'what should I study first tomorrow morning then?');
-    expect(backend.questions, isEmpty);
-    final notes = container
-        .read(chatProvider)
-        .entries
-        .where(
-          (e) => e.copy?.key.startsWith('Sign in with your account') ?? false,
-        );
-    expect(notes, hasLength(1));
-    // The phone still answered both questions.
-    expect(
-      container.read(chatProvider).entries.where((e) => e.fromPip).length,
-      greaterThan(3),
-    );
-  });
-
-  testWidgets('after “keep it on this phone” nothing goes online', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(
-      tester,
-      backend: backend,
-      uid: 'u1',
-      firstChoice: null,
-    );
-    await wait(tester);
-
-    await tester.ensureVisible(find.text('Disagree (Offline Mode)'));
-    await tester.tap(find.text('Disagree (Offline Mode)'));
-    await wait(tester);
-    await ask(tester, 'what should I study first tomorrow morning then?');
-
-    expect(container.read(assistantMemoryProvider).aiConsent, isFalse);
-    expect(backend.questions, isEmpty);
-  });
-  testWidgets('an offline choice does not prompt again when the chat reopens', (
-    tester,
-  ) async {
-    await pumpChat(tester);
-    await wait(tester);
-    await tester.pumpWidget(const SizedBox());
-    await pumpChat(tester);
-    await wait(tester);
-    expect(find.text('Enable Cloud Study Coach?'), findsNothing);
-    expect(store.getBool('pip_cloud_consent'), isFalse);
-  });
-
-  testWidgets(
-    'withdrawing cloud consent discards an in-flight reply and blocks later calls',
-    (tester) async {
-      final backend = _FakeBackend(reply: 'Late cloud response');
-      final c = await pumpChat(
-        tester,
-        backend: backend,
-        uid: 'u1',
-        firstChoice: true,
-      );
-      await wait(tester);
-      final controller = c.read(chatProvider.notifier);
-      final response = controller.send(question);
-      for (var i = 0; i < 30 && backend.questions.isEmpty; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-      expect(backend.questions, hasLength(1));
-      await controller.setOnlineAnswers(false);
-      await wait(tester);
-      await response;
-      expect(c.read(chatProvider).entries.where((e) => e.online), isEmpty);
-      final local = controller.send(
-        'what should I study first tomorrow morning then?',
-      );
-      await wait(tester);
-      await local;
-      expect(backend.questions, hasLength(1));
-    },
-  );
-
-  test('an online answer loses its Markdown marks and keeps its list', () {
-    expect(
-      tidyAnswer(
-        '## Tonight\r\n\r\n\r\n**Start small:**\n- one `40 minute` block\n'
-        '* ten questions\n\nThen rest.  ',
-      ),
-      'Tonight\n\nStart small:\n• one 40 minute block\n• ten questions\n\n'
-      'Then rest.',
-    );
-    // Plain answers pass through, a multiplication sign included.
-    expect(tidyAnswer('2 * 3 is 6. Keep going.'), '2 * 3 is 6. Keep going.');
   });
 
   testWidgets('a typed timetable is saved and becomes today’s focus plan', (
@@ -693,100 +384,6 @@ void main() {
     );
     expect(find.text('Open leaderboard'), findsOneWidget);
   });
-  testWidgets('five online answers a day, then the phone answers', (
-    tester,
-  ) async {
-    final backend = _FakeBackend(reply: 'Online answer.');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-    await wait(tester);
-
-    for (var i = 0; i < ChatController.onlineAnswersPerDay + 2; i++) {
-      await ask(tester, 'please tell me one good way to revise physics');
-    }
-    expect(backend.questions, hasLength(ChatController.onlineAnswersPerDay));
-    final energy = container
-        .read(chatProvider)
-        .entries
-        .where(
-          (e) => e.copy?.key.startsWith('Daily Pip energy used up!') ?? false,
-        );
-    expect(energy, hasLength(1));
-  });
-
-  testWidgets('an online answer can be reported, and the study summary '
-      'names no apps', (tester) async {
-    final backend = _FakeBackend(reply: 'An answer to report.');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
-    await wait(tester);
-    expect(find.textContaining('Pip is an AI study assistant'), findsOneWidget);
-
-    await ask(tester, question);
-    expect(backend.contexts.single!.containsKey('topDistractingApps'), isFalse);
-    expect(
-      backend.contexts.single!.containsKey('distractingMinutesToday'),
-      isFalse,
-    );
-    expect(backend.contexts.single!.containsKey('subjects'), isFalse);
-
-    await tester.tap(find.byTooltip('Report this answer'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Incorrect or misleading advice'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Report'));
-    // The report is saved and sent before the thanks shows.
-    await wait(tester, 1);
-
-    expect(backend.reports.single.$1, 'incorrect');
-    expect(backend.reports.single.$2, 'An answer to report.');
-    expect(backend.reports.single.$3, question);
-    expect(find.text('Thanks. This answer will be reviewed.'), findsOneWidget);
-    final kept =
-        container
-                .read(localStoreProvider)
-                .getMap(StoreKeys.assistantReports)!['items']
-            as List;
-    expect(kept.single['reason'], 'incorrect');
-  });
-}
-
-String jsonOf(Object? value) => '$value';
-
-/// Answers or fails like the online backend, recording what it was sent.
-class _FakeBackend implements AiBackend {
-  _FakeBackend({this.reply, this.failure});
-
-  final String? reply;
-  final AiFailure? failure;
-  final questions = <String>[];
-  final contexts = <Map<String, dynamic>?>[];
-  final histories = <List<Map<String, String>>>[];
-
-  @override
-  Future<String> askAiAssistant({
-    required String userMessage,
-    Map<String, dynamic>? extraContext,
-    List<Map<String, String>> history = const [],
-    String locale = 'en',
-    bool Function()? allowed,
-  }) async {
-    questions.add(userMessage);
-    contexts.add(extraContext);
-    histories.add(history);
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    if (failure case final failure?) throw AiBackendException(failure);
-    return reply!;
-  }
-
-  @override
-  Future<void> reportReply({
-    required String reply,
-    required String reason,
-    String? question,
-  }) async => reports.add((reason, reply, question));
-
-  final reports = <(String, String, String?)>[];
 }
 
 /// A phone that has not let FocusForge notify.

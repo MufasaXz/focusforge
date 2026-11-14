@@ -646,7 +646,6 @@ void main() {
   test('deletion reset forgets what the user told Pip', () async {
     final memory = container.read(assistantMemoryProvider.notifier);
     await memory.setExam('neet');
-    await memory.setAiConsent(true);
     await memory.addReminder(
       title: 'Physics exam',
       at: DateTime(2030, 1, 1),
@@ -659,7 +658,6 @@ void main() {
     final fresh = container.read(assistantMemoryProvider);
     expect(fresh.examId, isNull);
     expect(fresh.reminders, isEmpty);
-    expect(fresh.aiConsent, isNull);
     expect(container.read(chatProvider).entries, isEmpty);
     // A later change must not write the deleted memory back.
     await container.read(assistantMemoryProvider.notifier).setQuiet(true);
@@ -675,7 +673,6 @@ void main() {
     await store.setBool('achievements.linked.alice', true);
     final memory = container.read(assistantMemoryProvider.notifier);
     await memory.setExam('neet');
-    await memory.setAiConsent(true);
     container.read(chatProvider.notifier);
 
     container
@@ -683,7 +680,6 @@ void main() {
         .hydrate(const UserProfile(uid: 'bob', isAnonymous: false));
     await pumpEventQueue();
     expect(container.read(assistantMemoryProvider).examId, isNull);
-    expect(container.read(assistantMemoryProvider).aiConsent, isNull);
     expect(container.read(chatProvider).entries, isEmpty);
 
     await store.setBool('achievements.linked.bob', true);
@@ -692,7 +688,6 @@ void main() {
         .hydrate(const UserProfile(uid: 'alice', isAnonymous: false));
     await pumpEventQueue();
     expect(container.read(assistantMemoryProvider).examId, 'neet');
-    expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
   });
 
   test('a reply still being written does not land in a reset chat', () async {

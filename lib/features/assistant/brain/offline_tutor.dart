@@ -10,7 +10,7 @@ import 'offline_safety.dart';
 import 'offline_text.dart';
 import 'study_snapshot.dart';
 
-/// Ephemeral tutoring state, never persisted or sent as cloud context. The
+/// Ephemeral tutoring state, never persisted. The
 /// controller clears it on account reset, chat clear, or an unrelated action.
 class OfflineContext {
   const OfflineContext({

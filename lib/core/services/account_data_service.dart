@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'ai_backend_service.dart' show AiBackendService, IdTokenSource;
 import 'app_attestation.dart';
+
+typedef IdTokenSource = Future<String?> Function();
 
 abstract interface class AccountData {
   Future<Map<String, dynamic>> export();
   Future<void> erase();
 }
 
-/// Account control is independent of Pip consent: no model is called here.
+/// Account controls also export and erase historical Pip feedback.
 /// A failed page aborts export/deletion instead of reporting partial success.
 class AccountDataService implements AccountData {
   AccountDataService({
@@ -26,7 +27,14 @@ class AccountDataService implements AccountData {
            Uri.parse('https://www.focus-forge.in/api/account-data'),
        _legacy =
            legacyEndpoint ??
-           Uri.parse(AiBackendService.defaultEndpoint).resolve('/data');
+           Uri.parse(legacyPipEndpoint).resolve('/data');
+
+  // Preserve the old endpoint override for installations with legacy records.
+  // Only the data route is used; Pip has no answer or report client.
+  static const legacyPipEndpoint = String.fromEnvironment(
+    'PIP_AI_URL',
+    defaultValue: 'https://pip-ai-backend.pip-ai-backend.workers.dev/',
+  );
 
   final IdTokenSource idToken;
   final IdTokenSource _appCheckToken;

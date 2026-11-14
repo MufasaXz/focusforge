@@ -25,7 +25,6 @@ void main() {
       expect(OfflineKnowledge.find(prompt).first.id, lesson.id);
       final action = brain.parse(prompt);
       expect(action.act, Act.coach);
-      expect(brain.wantsOnline(prompt, action), isFalse);
       final response = ask(prompt);
       expect(words(response), contains(lesson.title));
       expect(words(response), contains(lesson.example));
@@ -187,7 +186,6 @@ void main() {
       ]) {
         final action = brain.parse(prompt);
         expect(action.act, Act.coach, reason: prompt);
-        expect(brain.wantsOnline(prompt, action), isFalse);
         final text = words(ask(prompt));
         expect(text, isNot(contains('Here is how')));
         expect(text, isNot(contains(prompt)));

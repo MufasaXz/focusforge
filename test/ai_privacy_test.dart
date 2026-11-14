@@ -1,10 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:focusforge/core/services/ai_backend_service.dart';
 import 'package:focusforge/core/services/ai_privacy.dart';
 import 'package:focusforge/core/services/local_store.dart';
 
@@ -73,85 +70,6 @@ void main() {
       'Study 25 minutes, rest 5 minutes.',
     );
   });
-
-  test('only bounded numeric study totals leave the client, including history and reports', () async {
-    final requests = <http.Request>[];
-    final backend = AiBackendService(
-      endpoint: Uri.parse('https://pip.example.workers.dev/'),
-      idToken: () async => 'fixture-token',
-      client: MockClient((request) async {
-        requests.add(request);
-        return http.Response(
-          jsonEncode({'reply': 'Study in small blocks.'}),
-          200,
-        );
-      }),
-    );
-    const privateText =
-        'student@example.com com.instagram.android 123456789012345';
-    await backend.askAiAssistant(
-      userMessage: privateText,
-      extraContext: {
-        'todayMinutes': 25,
-        'weekMinutes': 200000,
-        'streak': -1,
-        'exam': privateText,
-        'subjects': [
-          {'name': privateText},
-        ],
-        'distractingMinutesToday': 40,
-      },
-      history: const [
-        {'role': 'user', 'text': privateText},
-      ],
-    );
-    await backend.reportReply(
-      reply: privateText,
-      question: privateText,
-      reason: 'harmful',
-    );
-    final body = jsonDecode(requests.first.body) as Map;
-    expect(body['context'], {'todayMinutes': 25, 'weekMinutes': 100000});
-    for (final request in requests) {
-      expect(request.followRedirects, isFalse);
-      for (final value in [
-        'student@example.com',
-        'com.instagram.android',
-        '123456789012345',
-        'distractingMinutesToday',
-      ]) {
-        expect(request.body, isNot(contains(value)));
-      }
-    }
-  });
-
-  test(
-    'unsafe endpoint fails before acquiring or transmitting a credential',
-    () async {
-      var calls = 0;
-      for (final url in [
-        'http://pip.example/',
-        'https://user:password@pip.example/',
-      ]) {
-        final backend = AiBackendService(
-          endpoint: Uri.parse(url),
-          idToken: () async {
-            calls++;
-            return 'private-token';
-          },
-        );
-        await expectLater(
-          backend.askAiAssistant(userMessage: 'help'),
-          throwsA(isA<AiBackendException>()),
-        );
-        await expectLater(
-          backend.reportReply(reply: 'help', reason: 'incorrect'),
-          throwsA(isA<AiBackendException>()),
-        );
-      }
-      expect(calls, 0);
-    },
-  );
 
   test('local review cache expires old, future and malformed reports and redacts retained content', () {
     final now = DateTime.utc(2026, 11, 14);

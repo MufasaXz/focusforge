@@ -333,7 +333,7 @@ abstract final class OfflineGuide {
         'tracking me',
       ],
       'Your study history is stored on your phone.\n\n'
-          'Without a linked account nothing is uploaded. With one, a private backup is kept so you can restore on a new phone. Your name and weekly hours appear on the leaderboard only if you turn on sharing, and in groups only to members. You → Account shows what is in the cloud, lets you export everything as JSON, and can delete your account. I answer offline unless you turn on the optional Cloud Study Coach.',
+          'Without a linked account nothing is uploaded. With one, a private backup is kept so you can restore on a new phone. Your name and weekly hours appear on the leaderboard only if you turn on sharing, and in groups only to members. You → Account shows what is in the cloud, lets you export everything as JSON, and can delete your account. All my answers stay on this phone.',
     ),
     GuideTopic(
       'sounds',

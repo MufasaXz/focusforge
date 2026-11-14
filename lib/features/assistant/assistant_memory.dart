@@ -16,7 +16,6 @@ class AssistantMemory {
     this.lastTipAt,
     this.introduced = false,
     this.quiet = false,
-    this.aiConsent,
     this.remindersOff = false,
     this.examReminders = false,
     this.timetable,
@@ -44,9 +43,6 @@ class AssistantMemory {
 
   /// Whether Pip keeps its tips to itself on the home screen.
   final bool quiet;
-
-  /// Whether the user agreed to online answers: null until asked.
-  final bool? aiConsent;
 
   /// Whether the user turned Pip's evening reminders off.
   final bool remindersOff;
@@ -84,7 +80,6 @@ class AssistantMemory {
     DateTime? lastTipAt,
     bool? introduced,
     bool? quiet,
-    bool? aiConsent,
     bool? remindersOff,
     bool? examReminders,
     Timetable? timetable,
@@ -102,7 +97,6 @@ class AssistantMemory {
     lastTipAt: lastTipAt ?? this.lastTipAt,
     introduced: introduced ?? this.introduced,
     quiet: quiet ?? this.quiet,
-    aiConsent: aiConsent ?? this.aiConsent,
     remindersOff: remindersOff ?? this.remindersOff,
     examReminders: examReminders ?? this.examReminders,
     timetable: clearTimetable ? null : (timetable ?? this.timetable),
@@ -121,7 +115,6 @@ class AssistantMemory {
     'lastTipAt': ?lastTipAt?.millisecondsSinceEpoch,
     'introduced': introduced,
     'quiet': quiet,
-    'aiConsent': ?aiConsent,
     'remindersOff': remindersOff,
     'examReminders': examReminders,
     'timetable': ?timetable?.toJson(),
@@ -147,7 +140,6 @@ class AssistantMemory {
       lastTipAt: tip is int ? DateTime.fromMillisecondsSinceEpoch(tip) : null,
       introduced: json['introduced'] == true,
       quiet: json['quiet'] == true,
-      aiConsent: json['aiConsent'] is bool ? json['aiConsent'] as bool : null,
       remindersOff: json['remindersOff'] == true,
       examReminders: json['examReminders'] == true,
       timetable: Timetable.fromJson(json['timetable']),
@@ -169,28 +161,18 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
 
   @override
   AssistantMemory build() {
-    final saved = AssistantMemory.fromJson(_store.getMap(StoreKeys.assistant));
-    // Preserve existing choices when upgrading. The active-account mirror is
-    // replaced on account switch, so one student's choice cannot enable
-    // cloud processing for another student on a shared device.
-    return saved.copyWith(
-      aiConsent: _store.getBool('pip_cloud_consent') ?? saved.aiConsent,
-    );
+    // Legacy consent fields and keys are deliberately never read.
+    return AssistantMemory.fromJson(_store.getMap(StoreKeys.assistant));
   }
 
   Future<void> _save(AssistantMemory next) async {
     state = next;
-    if (next.aiConsent case final allowed?) {
-      await _store.setBool('pip_cloud_consent', allowed);
-    } else {
-      await _store.remove('pip_cloud_consent');
-    }
     await _store.setMap(StoreKeys.assistant, next.toJson());
   }
 
   /// Moves Pip's memory from account [from] to account [to] on this device.
   ///
-  /// What Pip knows (chat consent, exam, timetable, reminders) belongs to an
+  /// What Pip knows (exam, timetable, reminders) belongs to an
   /// account. The outgoing account's memory is kept for it, and the incoming
   /// one gets its own back, or starts empty.
   Future<void> switchAccount(String from, String to) async {
@@ -225,9 +207,6 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   Future<void> markIntroduced() => _save(state.copyWith(introduced: true));
 
   Future<void> setQuiet(bool quiet) => _save(state.copyWith(quiet: quiet));
-
-  Future<void> setAiConsent(bool allowed) =>
-      _save(state.copyWith(aiConsent: allowed));
 
   Future<void> setRemindersOff(bool off) =>
       _save(state.copyWith(remindersOff: off));

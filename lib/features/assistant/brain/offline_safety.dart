@@ -1,6 +1,6 @@
 import 'offline_text.dart';
 
-/// Fixed, age-appropriate replies, checked before command execution or cloud
+/// Fixed, age-appropriate replies, checked before command execution or local
 /// routing. This is a conservative local guard, not a claim to detect every
 /// harmful request in every language.
 abstract final class OfflineSafety {
