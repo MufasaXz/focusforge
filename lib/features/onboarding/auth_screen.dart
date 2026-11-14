@@ -34,9 +34,15 @@ import 'onboarding_chrome.dart';
 /// onboarding flow around it — hence [embedded], which suppresses the scaffold
 /// the flow already provides.
 class AuthScreen extends ConsumerStatefulWidget {
-  const AuthScreen({super.key, this.embedded = false, this.onAuthenticated});
+  const AuthScreen({
+    super.key,
+    this.embedded = false,
+    this.onAuthenticated,
+    this.onLinked,
+  });
 
   final bool embedded;
+  final ValueChanged<UserProfile>? onLinked;
 
   /// Called after any successful path. Standalone, the screen sends the user
   /// into the rest of the onboarding flow instead.
@@ -131,11 +137,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       return;
     }
     final profile = ref.read(userProvider);
+    if (widget.onLinked != null) {
+      widget.onLinked!(profile);
+      return;
+    }
     if (profile.onboardingComplete) {
-      // Setup is skipped for a returning account, but this phone may never
-      // have granted its permissions. Home asks once.
-      ref.read(askPermissionsAfterSignInProvider.notifier).state = true;
-      context.goNamed(AppRoutes.dashboard);
+      // Saved setup belongs to the account; permissions belong to this phone.
+      ref.read(askPermissionsAfterSignInProvider.notifier).state = false;
+      context.goNamed(AppRoutes.permissions);
       showAppSnack(
         context,
         tr("{0} Your setup and focus history are ready.", [
@@ -170,7 +179,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   /// simply moves on.
   Future<void> _skip() async {
     if (_busy != null) return;
-    if (ref.read(userProvider).uid.isNotEmpty) {
+    if (_auth.signedIn && _auth.current?.isAnonymous == true) {
       _finish();
       return;
     }
@@ -179,7 +188,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _email() async {
     if (_busy != null) return;
-    setState(() => _busy = 'email');
+    setState(() => _busy = 'email-form');
     try {
       if (!mounted) return;
       final profile = await showModalBottomSheet<UserProfile>(
@@ -220,7 +229,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
-            child: content,
+            child: Column(
+              children: [
+                OnboardingFlowHeader(
+                  index: 1,
+                  total: 7,
+                  title: context.tr('Account'),
+                  onBack: widget.onLinked == null
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                ),
+                Expanded(child: content),
+              ],
+            ),
           ),
         ),
       ),
@@ -353,7 +374,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     index: 5,
                     child: Center(
                       child: TextButton(
-                        onPressed: _busy == null ? _skip : null,
+                        onPressed: _busy == null
+                            ? (widget.onLinked == null
+                                  ? _skip
+                                  : () => Navigator.of(context).pop())
+                            : null,
                         style: TextButton.styleFrom(
                           minimumSize: const Size(48, 48),
                           foregroundColor: cs.onSurface,
@@ -366,7 +391,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(context.tr("Continue without an account")),
+                            : Text(
+                                context.tr(
+                                  widget.onLinked == null
+                                      ? "Continue without an account"
+                                      : "Keep using guest mode",
+                                ),
+                              ),
                       ),
                     ),
                   ),

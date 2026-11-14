@@ -24,7 +24,7 @@ class EmailVerificationScreen extends ConsumerWidget {
                   ref.read(userProvider.notifier).hydrate(profile);
                   context.goNamed(
                     profile.onboardingComplete
-                        ? AppRoutes.dashboard
+                        ? AppRoutes.permissions
                         : AppRoutes.onboarding,
                   );
                 },

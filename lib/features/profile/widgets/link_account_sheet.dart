@@ -1,145 +1,15 @@
-import '../../../core/localization/app_strings.dart';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/shell/app_shell.dart';
-import '../../../app/theme/app_theme.dart';
 import '../../../core/models/user.dart';
-import '../../../core/providers/app_providers.dart';
-import '../../../core/services/auth_service.dart';
-import '../../../shared/widgets/email_auth_sheet.dart';
-import '../../../shared/widgets/form_controls.dart';
-import '../../../shared/widgets/provider_marks.dart';
-import '../../../shared/widgets/sheet_chrome.dart';
-import '../../../shared/widgets/privacy_policy_link.dart';
+import '../../onboarding/auth_screen.dart';
 
-/// Opens the sheet that puts a real credential behind a device-only account.
-///
-/// Returns the profile the credential produced, or null if the user backed
-/// out. The sheet runs the sign-in itself rather than handing the choice back:
-/// the profile screen only decides *when* it opens, and the two paths — a
-/// Google round-trip and an email form — are the same two the sign-in screen
-/// offers.
-///
-/// This is the fix for a card that used to report success on tap. Linking is a
-/// sign-in; a button that says "linked" without ever asking for a credential
-/// is telling the user something that is not true, and it left study groups
-/// and the leaderboard unlocked against an account that did not exist.
+/// The same account screen as onboarding, retaining the guest-link contract.
 Future<UserProfile?> showLinkAccountSheet(BuildContext context) {
-  return showModalBottomSheet<UserProfile>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    // The email form inside needs room for the keyboard.
-    isScrollControlled: true,
-    builder: (_) => const _LinkSheet(),
+  return Navigator.of(context, rootNavigator: true).push<UserProfile>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (context) =>
+          AuthScreen(onLinked: (profile) => Navigator.of(context).pop(profile)),
+    ),
   );
-}
-
-class _LinkSheet extends ConsumerStatefulWidget {
-  const _LinkSheet();
-
-  @override
-  ConsumerState<_LinkSheet> createState() => _LinkSheetState();
-}
-
-class _LinkSheetState extends ConsumerState<_LinkSheet> {
-  /// Which row is in flight, so only that one spins.
-  String? _busy;
-
-  AuthService get _auth => ref.read(authServiceProvider);
-
-  Future<void> _run(String id, Future<UserProfile> Function() action) async {
-    if (_busy != null) return;
-    setState(() => _busy = id);
-    try {
-      final profile = await action();
-      if (!mounted) return;
-      Navigator.of(context).pop(profile);
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = null);
-      showAppSnack(
-        context,
-        e.friendly,
-        icon: Icons.error_outline_rounded,
-        danger: true,
-      );
-    }
-  }
-
-  Future<void> _email() async {
-    final profile = await showModalBottomSheet<UserProfile>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (_) => EmailAuthSheet(service: _auth),
-    );
-    if (profile == null || !mounted) return;
-    Navigator.of(context).pop(profile);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final providers = ref.watch(authServiceProvider).supportedProviders;
-    final googleLive = providers.contains('google');
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Gap.lg,
-        Gap.lg,
-        Gap.lg,
-        // The sheet lives under the floating nav bar, so it clears it the same
-        // way the profile's scroll view does.
-        kNavBarClearance + MediaQuery.paddingOf(context).bottom,
-      ),
-      child: SheetSurface(
-        borderRadius: BorderRadius.circular(Radii.hero),
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SheetHandle(),
-            const SizedBox(height: Gap.lg),
-            Text(
-              context.tr("Link an account"),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: Gap.xs),
-            Text(
-              context.tr(
-                "Sign in to back up your profile, level and achievements and use groups and the leaderboard. Your study setup on this device is kept.",
-              ),
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: Gap.lg),
-            ProviderRow(
-              label: context.tr("Continue with Google"),
-              leading: const GoogleMark(),
-              busy: _busy == 'google',
-              onTap: googleLive
-                  ? () => _run(
-                      'google',
-                      () => _auth.linkAccount(provider: 'google'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: Gap.md),
-            ProviderRow(
-              label: context.tr("Continue with Email"),
-              leading: const MailMark(),
-              busy: _busy == 'email',
-              onTap: providers.contains('email') ? _email : null,
-            ),
-            const SizedBox(height: Gap.sm),
-            const PrivacyPolicyLink(),
-          ],
-        ),
-      ),
-    );
-  }
 }

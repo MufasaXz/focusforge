@@ -614,6 +614,40 @@ void main() {
     },
   );
 
+  testWidgets(
+    'returning Google sign-in opens permissions with the shared steps header',
+    (tester) async {
+      final router = container.read(routerProvider);
+      router.goNamed(AppRoutes.auth);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.text('Step 1 of 7'), findsOneWidget);
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/profile/permissions',
+      );
+      expect(container.read(userProvider).displayName, profile.displayName);
+      expect(container.read(userProvider).dailyGoalMinutes, 45);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test(
     'signout reset clears live state but preserves a private owner snapshot',
     () async {

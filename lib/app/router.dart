@@ -109,10 +109,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final recovered = recovering && ref.read(authServiceProvider).signedIn;
       recovering = false;
       if (location == '/verify-email') {
-        return onboarded ? '/dashboard' : '/onboarding';
+        return onboarded ? '/profile/permissions' : '/auth';
       }
       if (location == '/auth' && onboarded && recovered) {
-        return '/dashboard';
+        return '/profile/permissions';
       }
       final inOnboarding =
           location.startsWith('/onboarding') ||
@@ -277,7 +277,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 640),
                             child: PermissionsStep(
-                              onNext: () => context.goNamed(AppRoutes.profile),
+                              onNext: () =>
+                                  context.goNamed(AppRoutes.dashboard),
                             ),
                           ),
                         ),

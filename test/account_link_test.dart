@@ -158,10 +158,7 @@ void main() {
     addTearDown(router.dispose);
     return UncontrolledProviderScope(
       container: container,
-      child: MaterialApp.router(
-        theme: AppTheme.light(),
-        routerConfig: router,
-      ),
+      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );
   }
 
@@ -210,11 +207,7 @@ void main() {
       isTrue,
       reason: 'opening the choice is not a sign-in',
     );
-    expect(
-      auth.calls,
-      isEmpty,
-      reason: 'no credential has been presented yet',
-    );
+    expect(auth.calls, isEmpty, reason: 'no credential has been presented yet');
     expect(tester.takeException(), isNull);
   });
 
@@ -231,11 +224,9 @@ void main() {
     await tester.tap(find.text('Continue with Google'));
     await settle(tester);
 
-    expect(
-      auth.calls,
-      ['google'],
-      reason: 'the row that was tapped is the provider that gets linked',
-    );
+    expect(auth.calls, [
+      'google',
+    ], reason: 'the row that was tapped is the provider that gets linked');
     expect(container.read(userProvider).isAnonymous, isFalse);
     expect(
       storedIsAnonymous(),
@@ -297,8 +288,8 @@ void main() {
     await tester.tap(find.text('Link an account'));
     await settle(tester);
 
-    // The barrier above the sheet: a tap on it dismisses without choosing.
-    await tester.tapAt(const Offset(210, 40));
+    // The shared account screen has an explicit Back affordance.
+    await tester.tap(find.byTooltip('Back'));
     await settle(tester);
 
     expect(container.read(userProvider).isAnonymous, isTrue);

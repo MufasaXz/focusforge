@@ -205,3 +205,206 @@ class _StepFooter extends StatelessWidget {
   Widget build(BuildContext context) =>
       ColoredBox(color: Theme.of(context).colorScheme.surface, child: child);
 }
+
+/// Back affordance plus a per-stage stepper. The user should always know how
+/// much setup is left — an open-ended onboarding is one people abandon.
+///
+/// A single progress track keeps the header quiet while stating the step.
+class OnboardingFlowHeader extends StatelessWidget {
+  const OnboardingFlowHeader({
+    super.key,
+    required this.index,
+    required this.total,
+    required this.title,
+    required this.onBack,
+  });
+
+  final int index;
+  final int total;
+  final String title;
+
+  /// Null on the first interactive step, which has nowhere to go back to.
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        onBack == null ? Gap.xl : Gap.sm,
+        Gap.sm,
+        Gap.lg,
+        Gap.sm,
+      ),
+      child: Row(
+        children: [
+          if (onBack != null) ...[
+            IconButton(
+              onPressed: onBack,
+              tooltip: context.tr("Back"),
+              icon: const Icon(Icons.arrow_back_rounded, size: 20),
+            ),
+            const SizedBox(width: Gap.sm),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: theme.textTheme.labelLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                    Text(
+                      context.tr("Step {0} of {1}", [index, total]),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gap.sm),
+                Semantics(
+                  label: context.tr("Setup progress, {0}", [title]),
+                  value: context.tr("Step {0} of {1}", [index, total]),
+                  child: ExcludeSemantics(
+                    child: _StepTrack(index: index, total: total),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The setup progress as a journey rather than a fill: a thin rail with one
+/// dot per step and the current step stretched into a pill that travels along
+/// it. Done steps keep a filled dot; coming steps are outlines. The travel is
+/// an implicit animation, so a back-tap rewinds the pill instead of jumping.
+class _StepTrack extends StatelessWidget {
+  const _StepTrack({required this.index, required this.total});
+
+  final int index;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final count = total + 1;
+
+    return SizedBox(
+      height: 14,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          // The dots and the travelling pill must never run off the track. On
+          // very narrow widths or large text the available width shrinks, so
+          // the dots are inset by a fixed margin and the spacing is derived
+          // from that inset span rather than the raw width — otherwise the
+          // first and last dots, and the pill over them, bleed past the edge.
+          const edgeInset = 6.0;
+          final span = (w - edgeInset * 2).clamp(0.0, w);
+          final gap = count <= 1 ? 0.0 : span / (count - 1);
+          double x(int i) => edgeInset + i * gap;
+          final pillW = (gap).clamp(14.0, 30.0);
+          final pillLeft = (x(index) - pillW / 2).clamp(
+            0.0,
+            (w - pillW).clamp(0.0, w),
+          );
+
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              // rail
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 6,
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // done portion of the rail
+              Positioned(
+                left: 0,
+                top: 6,
+                child: AnimatedContainer(
+                  duration: reduce ? Duration.zero : Motion.base,
+                  curve: Motion.emphasized,
+                  width: x(index),
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .65),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // step dots
+              for (var i = 0; i < count; i++)
+                Positioned(
+                  left: x(i) - 4,
+                  top: 3,
+                  child: AnimatedContainer(
+                    duration: reduce ? Duration.zero : Motion.base,
+                    curve: Motion.emphasized,
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i < index
+                          ? cs.primary
+                          : i == index
+                          ? cs.primary
+                          : cs.surfaceContainerHighest,
+                      border: i <= index
+                          ? null
+                          : Border.all(color: cs.outlineVariant),
+                    ),
+                  ),
+                ),
+              // the travelling current-step pill over the active dot
+              AnimatedPositioned(
+                duration: reduce ? Duration.zero : Motion.base,
+                curve: Motion.emphasized,
+                left: pillLeft,
+                top: 0,
+                child: AnimatedContainer(
+                  duration: reduce ? Duration.zero : Motion.base,
+                  curve: Motion.emphasized,
+                  width: pillW,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: .55),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
