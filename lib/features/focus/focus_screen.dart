@@ -253,7 +253,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         // what is left is the dial's.
         final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14)
             .clamp(1.0, 1.6);
-        final chrome = 150 * textScale + 110 + Gap.xl;
+        // Rows above, the caption and the Full screen button below.
+        final chrome = 150 * textScale + 84 + Gap.xl;
         final byHeight =
             constraints.maxHeight -
             MediaQuery.paddingOf(context).top -
@@ -276,65 +277,43 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           // Preset ------------------------------------------------------
           Stagger(
             index: 0,
-            // The preset in the middle, full screen at the end of the same
-            // row: the button used to sit under the clock, where it cost a
-            // whole row of height on a short phone.
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48),
-                  child: Center(
-                    child: Semantics(
-                      button: true,
-                      label: context.tr("Preset: {0}. Change preset", [
-                        presetDisplayName(context, preset),
-                      ]),
-                      excludeSemantics: true,
-                      onTap: () => _showPresetSheet(context),
-                      child: FilterChip(
-                        onSelected: (_) => _showPresetSheet(context),
-                        // A menu trigger, not a filter: a selected state and a
-                        // checkmark would misstate what the chip does.
-                        showCheckmark: false,
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(preset.icon, size: 15, color: accent),
-                            const SizedBox(width: 7),
-                            Flexible(
-                              child: Text(
-                                presetDisplayName(context, preset),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.expand_more_rounded,
-                              size: 16,
-                              color: t.onSurfaceVariant,
-                            ),
-                          ],
+            child: Center(
+              child: Semantics(
+                button: true,
+                label: context.tr("Preset: {0}. Change preset", [
+                  presetDisplayName(context, preset),
+                ]),
+                excludeSemantics: true,
+                onTap: () => _showPresetSheet(context),
+                child: FilterChip(
+                  onSelected: (_) => _showPresetSheet(context),
+                  // A menu trigger, not a filter: a selected state and a
+                  // checkmark would misstate what the chip does.
+                  showCheckmark: false,
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(preset.icon, size: 15, color: accent),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          presetDisplayName(context, preset),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.expand_more_rounded,
+                        size: 16,
+                        color: t.onSurfaceVariant,
+                      ),
+                    ],
                   ),
                 ),
-                // A visible, keyboard-accessible alternative to the clock's
-                // double tap.
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: IconButton(
-                    onPressed: () => showFullscreenClock(context),
-                    tooltip: context.tr("Full screen"),
-                    icon: const Icon(Icons.open_in_full_rounded, size: 20),
-                    color: t.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: Gap.md),
+          const SizedBox(height: Gap.lg),
 
           // Subject tags ------------------------------------------------
           Stagger(index: 1, child: SubjectPicker(accent: accent)),
@@ -425,6 +404,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 ClockFace.retro ||
                                 ClockFace.analog => _AnalogFace(
                                   face: face,
+                                  maxSide: wide ? 340 : byHeight,
                                   remaining: timer.remaining,
                                   accent: accent,
                                   phase: timer.phase,
@@ -487,6 +467,19 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               },
                       ),
                     ),
+                  ),
+                ),
+                // A visible, keyboard-accessible alternative to the
+                // clock's double tap, kept under its figures.
+                const SizedBox(height: Gap.sm),
+                TextButton.icon(
+                  onPressed: () => showFullscreenClock(context),
+                  icon: const Icon(Icons.open_in_full_rounded, size: 15),
+                  label: Text(context.tr("Full screen")),
+                  style: TextButton.styleFrom(
+                    foregroundColor: t.onSurfaceVariant,
+                    minimumSize: const Size(48, 48),
+                    textStyle: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
               ],
@@ -1245,6 +1238,7 @@ class _AnalogFace extends StatelessWidget {
     required this.cycleDone,
     required this.currentDot,
     required this.progress,
+    this.maxSide = 340,
   });
 
   final ClockFace face;
@@ -1256,6 +1250,9 @@ class _AnalogFace extends StatelessWidget {
   final int currentDot;
   final double progress;
 
+  /// The tallest the dial may be; see the height budget in the screen.
+  final double maxSide;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -1263,7 +1260,12 @@ class _AnalogFace extends StatelessWidget {
         // A dial is square, so it is measured against the width it was handed
         // the way the board is. The bounds keep the hands legible on the
         // narrowest phone and stop it swallowing a tablet.
-        final side = (constraints.maxWidth * 0.92).clamp(220.0, 340.0);
+        // As wide as the column allows, but never taller than the room left
+        // above the dock on a short phone, so the caption stays in view.
+        final side = math
+            .min((constraints.maxWidth * 0.92).clamp(220.0, 340.0), maxSide)
+            .clamp(176.0, 340.0)
+            .toDouble();
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
