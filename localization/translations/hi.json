@@ -95,7 +95,7 @@
   "App list allowed · stays on this phone": "ऐप सूची की अनुमति है · इसी फ़ोन पर रहती है",
   "App names and time totals stay on this device. Message content is never read.": "ऐप के नाम और कुल समय इस डिवाइस पर रहते हैं। संदेश सामग्री कभी नहीं पढ़ी जाती.",
   "App usage is off": "ऐप का उपयोग बंद है",
-  "Appearance": "उपस्थिति",
+  "Appearance": "रूप-रंग",
   "Apps blocked": "ऐप्स ब्लॉक किए गए",
   "April": "अप्रैल",
   "Arms both switches while a focus block runs. YouTube is free the rest of the day.": "फोकस ब्लॉक चलने के दौरान दोनों स्विच को आर्म करता है। शेष दिन YouTube मुफ़्त है।",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "आपको देखकर अच्छा लगा। आज क्या पढ़ें?",
   "There you are, {0}! I saved your spot.": "आ गए आप, {0}! मैंने आपकी जगह बचाकर रखी है।",
   "There you are! I saved your spot.": "आ गए आप! मैंने आपकी जगह बचाकर रखी है।",
-  "Not sure where to start? Tap me.": "समझ नहीं आ रहा कहाँ से शुरू करें? मुझे टैप करें।"
+  "Not sure where to start? Tap me.": "समझ नहीं आ रहा कहाँ से शुरू करें? मुझे टैप करें।",
+  "On": "चालू"
 }

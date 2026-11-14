@@ -95,7 +95,7 @@
   "App list allowed · stays on this phone": "อนุญาตรายการแอปแล้ว · อยู่ในโทรศัพท์เครื่องนี้",
   "App names and time totals stay on this device. Message content is never read.": "ชื่อแอปและเวลารวมของ จะยังคงอยู่ในอุปกรณ์นี้ เนื้อหาข้อความไม่เคยถูกอ่าน",
   "App usage is off": "การใช้งานแอป ปิดอยู่",
-  "Appearance": "ลักษณะที่ปรากฏของ",
+  "Appearance": "รูปลักษณ์",
   "Apps blocked": "แอป ถูกบล็อก",
   "April": "เมษายน",
   "Arms both switches while a focus block runs. YouTube is free the rest of the day.": "เปิดสวิตช์ทั้งสองขณะที่บล็อกโฟกัสทำงาน YouTube ให้บริการฟรีตลอดทั้งวัน",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "ดีใจที่ได้เจอนะ วันนี้เรียนอะไรกันดี?",
   "There you are, {0}! I saved your spot.": "มาแล้วเหรอ {0}! ฉันจองที่ไว้ให้แล้ว",
   "There you are! I saved your spot.": "มาแล้วเหรอ! ฉันจองที่ไว้ให้แล้ว",
-  "Not sure where to start? Tap me.": "ไม่รู้จะเริ่มตรงไหนดี? แตะฉันได้เลย"
+  "Not sure where to start? Tap me.": "ไม่รู้จะเริ่มตรงไหนดี? แตะฉันได้เลย",
+  "On": "เปิด"
 }

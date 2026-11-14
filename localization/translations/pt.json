@@ -544,7 +544,7 @@
   "OPTIONAL ACCESS": "ACESSO OPCIONAL",
   "Ocean": "Oceano",
   "October": "outubro",
-  "Off": "desligado",
+  "Off": "Desligado",
   "Off — no score is published to this board": "Off — nenhuma pontuação é publicada neste fórum",
   "Off — notifications arrive at any hour": "desligado – as notificações chegam a qualquer hora",
   "On this device": "Neste dispositivo",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "Que bom te ver. O que vamos estudar hoje?",
   "There you are, {0}! I saved your spot.": "Aí está você, {0}! Guardei o seu lugar.",
   "There you are! I saved your spot.": "Aí está você! Guardei o seu lugar.",
-  "Not sure where to start? Tap me.": "Não sabe por onde começar? Toque em mim."
+  "Not sure where to start? Tap me.": "Não sabe por onde começar? Toque em mim.",
+  "On": "Ligado"
 }

@@ -95,7 +95,7 @@
   "App list allowed · stays on this phone": "Lista de apps permitida · se queda en este teléfono",
   "App names and time totals stay on this device. Message content is never read.": "Los nombres de las aplicaciones y el tiempo total permanecen en este dispositivo. El contenido del mensaje nunca se lee.",
   "App usage is off": "El uso de la aplicación está desactivado",
-  "Appearance": "Aspecto de",
+  "Appearance": "Apariencia",
   "Apps blocked": "Aplicaciones bloqueadas",
   "April": "abril",
   "Arms both switches while a focus block runs. YouTube is free the rest of the day.": "Arma ambos interruptores mientras se ejecuta un bloque de enfoque. YouTube es gratis el resto del día.",
@@ -544,7 +544,7 @@
   "OPTIONAL ACCESS": "ACCESO OPCIONAL",
   "Ocean": "Océano",
   "October": "Octubre",
-  "Off": "apagado",
+  "Off": "Apagado",
   "Off — no score is published to this board": "desactivado: no se publica ninguna puntuación en este foro",
   "Off — notifications arrive at any hour": "desactivado: las notificaciones llegan a cualquier hora",
   "On this device": "En este dispositivo",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "Qué gusto verte. ¿Qué estudiamos hoy?",
   "There you are, {0}! I saved your spot.": "¡Aquí estás, {0}! Te guardé el sitio.",
   "There you are! I saved your spot.": "¡Aquí estás! Te guardé el sitio.",
-  "Not sure where to start? Tap me.": "¿No sabes por dónde empezar? Tócame."
+  "Not sure where to start? Tap me.": "¿No sabes por dónde empezar? Tócame.",
+  "On": "Encendido"
 }

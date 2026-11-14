@@ -170,10 +170,12 @@ void main() {
         }
         if (route == 'profile') {
           await tester.scrollUntilVisible(
-            find.text('Tide'),
+            find.text('About FocusForge'),
             180,
             scrollable: find.byType(Scrollable).last,
           );
+          await capture('profile-end-${mode.name}');
+          container.read(routerProvider).go('/profile/appearance');
           await capture('appearance-${mode.name}');
         }
       }

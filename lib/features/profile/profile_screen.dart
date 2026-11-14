@@ -17,7 +17,6 @@ import '../../core/providers/shield_providers.dart';
 import '../../core/providers/social_providers.dart';
 import '../../core/providers/study_providers.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/app_segmented_control.dart';
 import '../../shared/widgets/icon_badge.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../shared/widgets/stagger.dart';
@@ -100,84 +99,113 @@ class ProfileScreen extends ConsumerWidget {
     final rankIndex = standings.indexWhere((e) => e.isMe);
     final rank = me == null || rankIndex < 0 ? null : rankIndex + 1;
 
-    // Every row carries its own live trailing value, so the list cannot drift
-    // from the data the destination screens show.
-    final settings = <_SettingSpec>[
-      _SettingSpec(
-        icon: Icons.groups_outlined,
-        label: context.tr("Study Groups"),
-        routeName: AppRoutes.groups,
-        trailing: context.tr("{0} active", [groups.length]),
-        locked: user.isAnonymous,
+    final theme = ref.watch(themeSettingsProvider);
+
+    // Every row carries its own live value, so the list cannot drift from the
+    // data the destination screens show. The value sits at the row's end, as
+    // in a phone's own settings app, so each row is one line rather than two.
+    final achievementsRow = _SettingSpec(
+      icon: Icons.emoji_events_outlined,
+      label: context.tr("Achievements"),
+      routeName: AppRoutes.achievements,
+      value: '$unlocked / ${achievements.length}',
+    );
+    final leaderboardRow = _SettingSpec(
+      icon: Icons.leaderboard_outlined,
+      label: context.tr("Leaderboard"),
+      routeName: AppRoutes.leaderboard,
+      value: rank == null ? null : '#$rank',
+      locked: user.isAnonymous,
+    );
+    final groupsRow = _SettingSpec(
+      icon: Icons.groups_outlined,
+      label: context.tr("Study Groups"),
+      routeName: AppRoutes.groups,
+      value: user.isAnonymous
+          ? null
+          : context.tr("{0} active", [groups.length]),
+      locked: user.isAnonymous,
+    );
+    final appearanceRow = _SettingSpec(
+      icon: Icons.palette_outlined,
+      label: context.tr("Appearance"),
+      routeName: AppRoutes.appearance,
+      value: context.tr(theme.palette.label),
+    );
+    final notificationsRow = _SettingSpec(
+      icon: Icons.notifications_none_rounded,
+      label: context.tr("Notifications"),
+      routeName: AppRoutes.notifications,
+    );
+    final strictRow = _SettingSpec(
+      icon: Icons.lock_outlined,
+      label: context.tr("Strict Mode"),
+      routeName: AppRoutes.strictMode,
+      value: strict.isActive ? context.tr("On") : context.tr("Off"),
+      valueColor: strict.isActive ? t.error : null,
+    );
+    final accessRow = _SettingSpec(
+      icon: Icons.key_outlined,
+      label: context.tr("App access"),
+      routeName: AppRoutes.permissions,
+    );
+    final accountRow = _SettingSpec(
+      icon: Icons.manage_accounts_outlined,
+      label: context.tr("Account"),
+      routeName: AppRoutes.privacy,
+      value: user.isAnonymous
+          ? context.tr("On this device")
+          : context.tr("Linked"),
+    );
+    final aboutRow = _SettingSpec(
+      icon: Icons.info_outlined,
+      label: context.tr("About FocusForge"),
+      routeName: AppRoutes.about,
+      value: 'v$_appVersion',
+    );
+
+    // Three short groups instead of a card per topic. Appearance used to be
+    // a tall card of its own here; it is one row now, and its controls live
+    // on their own page.
+    final progressGroup = (
+      context.tr("Progress & community"),
+      [achievementsRow, leaderboardRow, groupsRow],
+    );
+    final otherGroups = [
+      (
+        context.tr("Preferences"),
+        [appearanceRow, notificationsRow, strictRow, accessRow],
       ),
-      _SettingSpec(
-        icon: Icons.emoji_events_outlined,
-        label: context.tr("Achievements"),
-        routeName: AppRoutes.achievements,
-        trailing: '$unlocked / ${achievements.length}',
-      ),
-      _SettingSpec(
-        icon: Icons.leaderboard_outlined,
-        label: context.tr("Leaderboard"),
-        routeName: AppRoutes.leaderboard,
-        trailing: rank == null ? null : '#$rank',
-        locked: user.isAnonymous,
-      ),
-      _SettingSpec(
-        icon: Icons.lock_outlined,
-        label: context.tr("Strict Mode"),
-        routeName: AppRoutes.strictMode,
-        trailing: strict.isActive ? 'On' : context.tr("Off"),
-        trailingColor: strict.isActive ? t.error : null,
-      ),
-      _SettingSpec(
-        icon: Icons.notifications_active_outlined,
-        label: context.tr("Notifications"),
-        routeName: AppRoutes.notifications,
-      ),
-      _SettingSpec(
-        icon: Icons.key_outlined,
-        label: context.tr("App access"),
-        routeName: AppRoutes.permissions,
-        trailing: context.tr("Manage"),
-      ),
-      _SettingSpec(
-        icon: Icons.manage_accounts_outlined,
-        label: context.tr("Account"),
-        routeName: AppRoutes.privacy,
-        trailing: user.isAnonymous
-            ? context.tr("On this device")
-            : context.tr("Linked"),
-      ),
-      _SettingSpec(
-        icon: Icons.info_outlined,
-        label: context.tr("About FocusForge"),
-        routeName: AppRoutes.about,
-        trailing: 'v$_appVersion',
-      ),
+      (context.tr("App & privacy"), [accountRow, aboutRow]),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= Layout.wide;
 
-        // Stagger plays once per element lifetime. The tab's branch is built the
-        // first time it is shown (go_router does not preload branches), so the
-        // entrance lands on the first visit and never on a rebuild.
+        // Stagger plays once per element lifetime. The tab's branch is built
+        // the first time it is shown (go_router does not preload branches),
+        // so the entrance lands on the first visit and never on a rebuild.
         //
         // Two counters when the columns are side by side, one when they are
-        // stacked: the entrance is a single sweep down the page, so the numbering
-        // has to follow the order the eye reads rather than the order the code
-        // builds. Side by side, that is the left column first.
+        // stacked: the entrance is a single sweep down the page, so the
+        // numbering follows the order the eye reads. Side by side, that is
+        // the left column first.
         var index = 0;
         var prefIndex = 0;
         Widget stagger(Widget child) => Stagger(index: index++, child: child);
         Widget prefStagger(Widget child) =>
             Stagger(index: wide ? prefIndex++ : index++, child: child);
 
-        // Identity and progress in one column, everything that is a setting in the
-        // other. Stacked — which is every phone — it is the same page it has
-        // always been, in the same order.
+        Widget group((String, List<_SettingSpec>) g) => _SettingsGroup(
+          title: g.$1,
+          specs: g.$2,
+          onOpen: (spec) => unawaited(_openSetting(context, ref, spec)),
+        );
+
+        // Identity and progress in one column, everything that is a setting
+        // in the other. Stacked — which is every phone — it reads top to
+        // bottom: who you are, how you are doing, then the settings.
         final identity = <Widget>[
           stagger(
             _HeroCard(
@@ -193,54 +221,13 @@ class ProfileScreen extends ConsumerWidget {
             stagger(const _AnonymousCard()),
             const SizedBox(height: Gap.lg),
           ],
+          const SizedBox(height: Gap.sm),
+          stagger(group(progressGroup)),
         ];
 
         final prefs = <Widget>[
-          prefStagger(
-            SectionHeader(
-              title: context.tr("Appearance"),
-              icon: Icons.palette_outlined,
-            ),
-          ),
-          prefStagger(const _AppearanceCard()),
-          const SizedBox(height: Gap.xl),
+          for (final g in otherGroups) prefStagger(group(g)),
         ];
-        for (final group in [
-          (context.tr("Progress & community"), settings.take(3)),
-          (context.tr("Preferences"), settings.skip(3).take(2)),
-          (context.tr("App & privacy"), settings.skip(5)),
-        ]) {
-          final section = prefStagger(
-            _ProfileSection(
-              title: group.$1,
-              icon: group.$1 == 'Progress & community'
-                  ? Icons.explore_outlined
-                  : group.$1 == 'Preferences'
-                  ? Icons.settings_outlined
-                  : Icons.tune_rounded,
-              children: [
-                for (final (i, spec) in group.$2.indexed) ...[
-                  if (i > 0)
-                    Divider(
-                      color: t.outlineVariant.withValues(alpha: 0.4),
-                      height: 1,
-                      indent: 72,
-                      endIndent: Gap.lg,
-                    ),
-                  _SettingTile(
-                    spec: spec,
-                    onTap: () => unawaited(_openSetting(context, ref, spec)),
-                  ),
-                ],
-              ],
-            ),
-          );
-          if (wide && group.$2.first == settings.first) {
-            identity.add(section);
-          } else {
-            prefs.add(section);
-          }
-        }
 
         return Align(
           alignment: Alignment.topCenter,
@@ -249,9 +236,9 @@ class ProfileScreen extends ConsumerWidget {
               maxWidth: wide ? Layout.readable * 2 + Gap.xl : Layout.readable,
             ),
             child: _TabEntrance(
-              // The entrance waits for the branch to be on screen; see [_TabEntrance].
-              // Keyed so the motion-capture harness can grab this vertical list
-              // directly instead of the horizontal subject carousel inside it.
+              // The entrance waits for the branch to be on screen; see
+              // [_TabEntrance]. Keyed so the motion-capture harness can grab
+              // this vertical list directly.
               child: ListView(
                 key: const ValueKey('profile-scroll'),
                 padding: EdgeInsets.fromLTRB(
@@ -274,6 +261,7 @@ class ProfileScreen extends ConsumerWidget {
                         const SizedBox(width: Gap.xl),
                         Expanded(
                           child: Column(
+                            key: const ValueKey('profile-settings'),
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: prefs,
                           ),
@@ -282,8 +270,11 @@ class ProfileScreen extends ConsumerWidget {
                     )
                   else ...[
                     ...identity,
-                    const SizedBox(height: Gap.xl),
-                    ...prefs,
+                    Column(
+                      key: const ValueKey('profile-settings'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: prefs,
+                    ),
                   ],
                 ],
               ),
@@ -596,9 +587,12 @@ class _AnonymousCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // One line of state and one action. The full account story lives on the
+    // Account screen; here it only has to say what is missing and fix it.
     return ContentCard(
       color: Color.alphaBlend(
-        t.secondary.withValues(alpha: .06),
+        t.primary.withValues(alpha: .06),
         t.surfaceContainerLow,
       ),
       child: Padding(
@@ -607,30 +601,27 @@ class _AnonymousCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconBadge(
                   icon: Icons.smartphone_rounded,
                   color: t.primary,
-                  size: 40,
-                  radius: 12,
+                  size: _SettingTile.badge,
+                  radius: Radii.tile - 2,
                 ),
-                const SizedBox(width: Gap.md),
+                const SizedBox(width: Gap.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        context.tr("Local account"),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
+                      Text(context.tr("Local account"), style: tt.titleSmall),
                       const SizedBox(height: 2),
                       Text(
                         context.tr(
-                          "You are using a local account. Everything you log stays on this device and is never uploaded.",
+                          "Study groups and the leaderboard need a linked account.",
                         ),
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: t.onSurfaceVariant),
+                        style: tt.bodySmall?.copyWith(
+                          color: t.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -638,39 +629,14 @@ class _AnonymousCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Gap.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.lock_outlined, size: 14, color: t.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    context.tr(
-                      "Study groups and the leaderboard need a linked account.",
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: t.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            // No Semantics wrapper: a FilledButton already announces itself as
-            // a button and takes its name from the label inside it. Wrapping
-            // it in a non-container `Semantics(button: true)` was worse than
-            // redundant — the wrapper has no boundary of its own, so it was
-            // absorbed by the card's node and the whole card came out as one
-            // button whose name was every word on it.
-            FilledButton(
+            // No Semantics wrapper: a button already announces itself and
+            // takes its name from its label. A non-container wrapper would be
+            // absorbed by the card's node and turn the whole card into one
+            // button named after every word on it.
+            FilledButton.tonalIcon(
               onPressed: () => unawaited(_link(context, ref)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.link_rounded, size: 18),
-                  SizedBox(width: Gap.sm),
-                  Flexible(child: Text(context.tr("Link an account"))),
-                ],
-              ),
+              icon: const Icon(Icons.link_rounded, size: 18),
+              label: Text(context.tr("Link an account")),
             ),
           ],
         ),
@@ -679,246 +645,65 @@ class _AnonymousCard extends ConsumerWidget {
   }
 }
 
-/// Everything about how the app looks: light/dark/system, the seed palette,
-/// and true black for OLED panels.
+/// A quiet label over one rounded group of rows — the inset-grouped list
+/// that a phone's own settings app uses.
 ///
-/// The badge and the trailing label both read from the live settings, so the
-/// row states the current choice without a second tap.
-class _AppearanceCard extends ConsumerWidget {
-  const _AppearanceCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = Theme.of(context).colorScheme;
-    final settings = ref.watch(themeSettingsProvider);
-    final notifier = ref.read(themeSettingsProvider.notifier);
-
-    // The *resolved* brightness, not the preference: with `system` selected,
-    // the AMOLED switch has to follow what the device is actually doing, and
-    // by this point the theme has already resolved it. Showing the switch in
-    // light mode would offer a control that cannot do anything.
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return ContentCard(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr("Theme"),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: Gap.md),
-            AppSegmentedControl<ThemePreference>(
-              options: {
-                for (final p in ThemePreference.values) p: context.tr(p.label),
-              },
-              selected: settings.mode,
-              onChanged: notifier.setMode,
-            ),
-            const SizedBox(height: Gap.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.tr("Accent color"),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Text(
-                  context.tr(settings.palette.label),
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: t.onSurfaceVariant),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            // Wrap rather than Row: six swatches fit on the tablet this app
-            // is built for, but a 320dp phone would clip the last one, and a
-            // picker that hides a choice is worse than one that uses two
-            // lines.
-            Wrap(
-              spacing: Gap.sm,
-              runSpacing: Gap.sm,
-              children: [
-                for (final p in AppPalette.values)
-                  _PaletteSwatch(
-                    palette: p,
-                    selected: p == settings.palette,
-                    onTap: () => notifier.setPalette(p),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Gap.lg),
-            Divider(height: 1, color: t.outlineVariant.withValues(alpha: .4)),
-            const SizedBox(height: Gap.sm),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.timer_outlined, color: t.onSurfaceVariant),
-              title: Text(context.tr("Clock face")),
-              subtitle: Text(context.tr(ref.watch(clockFaceProvider).label)),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => context.goNamed(AppRoutes.clockFace),
-            ),
-            if (isDark) ...[
-              const SizedBox(height: Gap.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr("True black"),
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        Text(
-                          context.tr("Use a black background in dark mode."),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: t.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  // The row's heading is the switch's name; without this it
-                  // is announced as an unlabelled switch next to some text.
-                  Semantics(
-                    label: context.tr("True black"),
-                    child: Switch(
-                      value: settings.amoled,
-                      onChanged: notifier.setAmoled,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One palette in the picker — the seed every colour in the app derives from.
-///
-/// Drawn as the *light* seed: the two seeds are the same hue, so showing both
-/// would be two circles pretending to be one choice. The dark seed still shows
-/// up, on the switch above, the moment the app goes dark.
-class _PaletteSwatch extends StatelessWidget {
-  const _PaletteSwatch({
-    required this.palette,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final AppPalette palette;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).colorScheme;
-    final color = palette.lightSeed;
-
-    final duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : Motion.base;
-    return Semantics(
-      label: context.tr(palette.label),
-      button: true,
-      selected: selected,
-      inMutuallyExclusiveGroup: true,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.tile),
-        child: Padding(
-          padding: const EdgeInsets.all(Gap.xs),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: duration,
-                curve: Motion.decelerate,
-                width: 48,
-                height: 48,
-                padding: const EdgeInsets.all(Gap.xs),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(selected ? 18 : 24),
-                  border: Border.all(
-                    color: selected ? t.onSurface : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: AnimatedContainer(
-                  duration: duration,
-                  curve: Motion.decelerate,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(selected ? 12 : 20),
-                  ),
-                  child: selected
-                      ? Icon(
-                          Icons.check_rounded,
-                          size: 18,
-                          color:
-                              ThemeData.estimateBrightnessForColor(color) ==
-                                  Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: Gap.xs),
-              Text(
-                context.tr(palette.label),
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Solid grouped settings rows with a quiet section heading.
-class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({
+/// The label sits outside the card and carries no icon: every row already has
+/// one, and a second glyph in the heading was a third thing to read before
+/// the first setting.
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({
     required this.title,
-    required this.icon,
-    required this.children,
+    required this.specs,
+    required this.onOpen,
   });
+
   final String title;
-  final IconData icon;
-  final List<Widget> children;
+  final List<_SettingSpec> specs;
+  final ValueChanged<_SettingSpec> onOpen;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: Gap.lg),
-      child: ContentCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Gap.lg,
-                Gap.lg,
-                Gap.lg,
-                Gap.sm,
-              ),
-              child: SectionHeader(title: title, icon: icon),
+      padding: const EdgeInsets.only(bottom: Gap.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              Gap.lg,
+              0,
+              Gap.lg,
+              Gap.sm,
             ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .4)),
-            ...children,
-          ],
-        ),
+            child: Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ),
+          ContentCard(
+            child: Column(
+              children: [
+                for (final (i, spec) in specs.indexed) ...[
+                  if (i > 0)
+                    Divider(
+                      color: cs.outlineVariant.withValues(alpha: 0.4),
+                      height: 1,
+                      // Starts under the label, not under the icon, so the
+                      // icons read as one column.
+                      indent: Gap.lg + _SettingTile.badge + Gap.lg,
+                    ),
+                  _SettingTile(spec: spec, onTap: () => onOpen(spec)),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -930,56 +715,102 @@ class _SettingSpec {
     required this.icon,
     required this.label,
     this.routeName,
-    this.trailing,
-    this.trailingColor,
+    this.value,
+    this.valueColor,
     this.locked = false,
   });
 
   final IconData icon;
   final String label;
   final String? routeName;
-  final String? trailing;
-  final Color? trailingColor;
+
+  /// The current state, shown at the row's end ("On", "#4", "v1.0.6").
+  final String? value;
+  final Color? valueColor;
 
   /// Marks a destination that needs a linked account, without hiding it.
   final bool locked;
 }
 
+/// A single-line row: icon, name, current value, chevron.
+///
+/// Built by hand rather than as a [ListTile] because a tile's trailing slot
+/// is unconstrained: a long translated value ("Auf diesem Gerät") would push
+/// the title off the row instead of giving way to it.
 class _SettingTile extends StatelessWidget {
   const _SettingTile({required this.spec, required this.onTap});
 
   final _SettingSpec spec;
   final VoidCallback onTap;
 
+  /// Side of the leading icon badge.
+  static const double badge = 36;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).colorScheme;
-    return ListTile(
-      onTap: onTap,
-      minVerticalPadding: Gap.md,
-      leading: IconBadge(
-        icon: spec.icon,
-        color: t.primary,
-        size: 40,
-        radius: Radii.tile,
-      ),
-      title: Text(spec.label, style: Theme.of(context).textTheme.titleSmall),
-      subtitle: spec.trailing == null
-          ? null
-          : Text(
-              spec.trailing!,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: spec.trailingColor ?? t.onSurfaceVariant),
+    final tt = Theme.of(context).textTheme;
+    return MergeSemantics(
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          // 56 dp rows: comfortably past the 48 dp target, and short enough
+          // that the whole list fits on one screen of a phone.
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              Gap.lg,
+              Gap.sm,
+              Gap.md,
+              Gap.sm,
             ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (spec.locked) ...[
-            Icon(Icons.lock_outlined, size: 16, color: t.onSurfaceVariant),
-            const SizedBox(width: Gap.xs),
-          ],
-          const AppChevron(),
-        ],
+            // The value gets at most half the row and gives way first, so
+            // the title is never cut while a value is shown in full, and the
+            // chevron always ends the row at the same x.
+            child: LayoutBuilder(
+              builder: (context, box) => Row(
+                children: [
+                  IconBadge(
+                    icon: spec.icon,
+                    color: t.primary,
+                    size: badge,
+                    radius: Radii.tile - 2,
+                  ),
+                  const SizedBox(width: Gap.lg),
+                  Expanded(child: Text(spec.label, style: tt.titleSmall)),
+                  if (spec.value != null) ...[
+                    const SizedBox(width: Gap.sm),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: box.maxWidth / 2.4),
+                      child: Text(
+                        spec.value!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: tt.bodyMedium?.copyWith(
+                          color: spec.valueColor ?? t.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (spec.locked) ...[
+                    const SizedBox(width: Gap.sm),
+                    Icon(
+                      Icons.lock_outlined,
+                      size: 16,
+                      color: t.onSurfaceVariant,
+                      semanticLabel: context.tr(
+                        "Study groups and the leaderboard need a linked account.",
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: Gap.xs),
+                  const AppChevron(),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

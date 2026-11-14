@@ -95,7 +95,7 @@
   "App list allowed · stays on this phone": "Liste d'apps autorisée · reste sur ce téléphone",
   "App names and time totals stay on this device. Message content is never read.": "Les noms d'applications et les durées totales restent sur cet appareil. Le contenu du message n'est jamais lu.",
   "App usage is off": "L'utilisation de l'application est désactivée",
-  "Appearance": "Apparence du",
+  "Appearance": "Apparence",
   "Apps blocked": "Applications bloquées",
   "April": "avril",
   "Arms both switches while a focus block runs. YouTube is free the rest of the day.": "Arme les deux commutateurs pendant qu'un bloc de mise au point fonctionne. YouTube est gratuit le reste de la journée.",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "Content de vous voir. On étudie quoi aujourd’hui ?",
   "There you are, {0}! I saved your spot.": "Vous voilà, {0} ! J’ai gardé votre place.",
   "There you are! I saved your spot.": "Vous voilà ! J’ai gardé votre place.",
-  "Not sure where to start? Tap me.": "Vous ne savez pas par où commencer ? Touchez-moi."
+  "Not sure where to start? Tap me.": "Vous ne savez pas par où commencer ? Touchez-moi.",
+  "On": "Activé"
 }

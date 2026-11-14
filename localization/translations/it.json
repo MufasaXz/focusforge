@@ -544,7 +544,7 @@
   "OPTIONAL ACCESS": "ACCESSO OPZIONALE",
   "Ocean": "Oceano",
   "October": "ottobre",
-  "Off": "spento",
+  "Off": "Spento",
   "Off — no score is published to this board": "Off: nessun punteggio viene pubblicato su questa scheda",
   "Off — notifications arrive at any hour": "Off: le notifiche arrivano a qualsiasi ora",
   "On this device": "Su questo dispositivo",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "Che bello vederti. Cosa studiamo oggi?",
   "There you are, {0}! I saved your spot.": "Eccoti, {0}! Ti ho tenuto il posto.",
   "There you are! I saved your spot.": "Eccoti! Ti ho tenuto il posto.",
-  "Not sure where to start? Tap me.": "Non sai da dove iniziare? Toccami."
+  "Not sure where to start? Tap me.": "Non sai da dove iniziare? Toccami.",
+  "On": "Acceso"
 }

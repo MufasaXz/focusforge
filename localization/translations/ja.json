@@ -95,7 +95,7 @@
   "App list allowed · stays on this phone": "アプリ一覧を許可済み · この端末内のみ",
   "App names and time totals stay on this device. Message content is never read.": "アプリ名と合計時間はこのデバイスに残ります。メッセージの内容は決して読まれません。",
   "App usage is off": "アプリの使用がオフになっています",
-  "Appearance": "の外観",
+  "Appearance": "外観",
   "Apps blocked": "アプリがブロックされました",
   "April": "4月",
   "Arms both switches while a focus block runs. YouTube is free the rest of the day.": "フォーカス ブロックの実行中に両方のスイッチを作動させます。 YouTube は残りの時間は無料です。",
@@ -1642,5 +1642,6 @@
   "Good to see you. What shall we study today?": "会えてうれしいです。今日は何を勉強しますか？",
   "There you are, {0}! I saved your spot.": "来ましたね、{0}さん！席を取っておきましたよ。",
   "There you are! I saved your spot.": "来ましたね！席を取っておきましたよ。",
-  "Not sure where to start? Tap me.": "何から始めるか迷っていますか？タップしてね。"
+  "Not sure where to start? Tap me.": "何から始めるか迷っていますか？タップしてね。",
+  "On": "オン"
 }
