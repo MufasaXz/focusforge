@@ -9,11 +9,15 @@ import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/core/services/auth_service.dart';
 import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/shared/widgets/email_auth_sheet.dart';
+import 'package:focusforge/shared/widgets/email_verification_panel.dart';
 
 class _PendingAuth extends LocalAuthService {
   _PendingAuth(super.store);
   bool pending = false;
   bool linkUsed = false;
+  DateTime? deadline;
+  @override
+  DateTime? get verificationResendAvailableAt => deadline;
   @override
   bool get usesRemoteCredentials => true;
   @override
@@ -37,6 +41,39 @@ class _PendingAuth extends LocalAuthService {
 }
 
 void main() {
+  testWidgets(
+    'resend ticks every second even when its deadline arrives after mount',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final auth = _PendingAuth(await LocalStore.open())..pending = true;
+      addTearDown(auth.dispose);
+      var now = DateTime.utc(2026, 11, 14);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EmailVerificationPanel(
+              service: auth,
+              now: () => now,
+              onVerified: (_) {},
+              onSignedOut: () {},
+            ),
+          ),
+        ),
+      );
+      auth.deadline = now.add(const Duration(seconds: 22));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Resend in 22s'), findsOneWidget);
+      for (final remaining in [21, 20, 19]) {
+        now = now.add(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('Resend in ${remaining}s'), findsOneWidget);
+      }
+      now = auth.deadline!;
+      await tester.pump(const Duration(seconds: 19));
+      expect(find.text('Send verification email'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
   testWidgets(
     'unverified sign-in shows verification actions instead of success',
     (tester) async {

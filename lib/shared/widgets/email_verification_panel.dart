@@ -17,8 +17,10 @@ class EmailVerificationPanel extends StatefulWidget {
     required this.service,
     required this.onVerified,
     required this.onSignedOut,
+    this.now = DateTime.now,
   });
   final AuthService service;
+  final DateTime Function() now;
   final ValueChanged<UserProfile> onVerified;
   final VoidCallback onSignedOut;
   @override
@@ -48,6 +50,7 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_busy) {
+      setState(() {});
       unawaited(_refresh(silent: true));
     }
   }
@@ -55,7 +58,7 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
   int get _secondsLeft {
     final next = widget.service.verificationResendAvailableAt;
     if (next == null) return 0;
-    return (next.difference(DateTime.now()).inMilliseconds / 1000).ceil().clamp(
+    return (next.difference(widget.now()).inMilliseconds / 1000).ceil().clamp(
       0,
       60,
     );
@@ -63,9 +66,8 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
 
   void _startCooldown() {
     _cooldown?.cancel();
-    if (_secondsLeft == 0) return;
     _cooldown = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted || _secondsLeft == 0) timer.cancel();
+      if (!mounted) timer.cancel();
       if (mounted) setState(() {});
     });
   }
@@ -191,19 +193,12 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
         const SizedBox(height: Gap.md),
         Text(
           context.tr(
-            "Open the verification email and follow the link, then return here. Check your spam folder if it has not arrived.",
+            "Open the link in your inbox, then come back to continue. If you don’t see it, check spam.",
           ),
           style: theme.textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: Gap.sm),
-        Text(
-          context.tr("Your study setup is kept while you verify your email."),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
-          ),
-          textAlign: TextAlign.center,
-        ),
+
         if (_message != null) ...[
           const SizedBox(height: Gap.md),
           Semantics(
@@ -224,11 +219,19 @@ class _EmailVerificationPanelState extends State<EmailVerificationPanel>
           onTap: _busy ? null : () => _refresh(),
         ),
         const SizedBox(height: Gap.sm),
-        GhostAction(
-          label: seconds > 0
-              ? context.tr("Resend in {0}s", [seconds])
-              : context.tr("Send verification email"),
-          onTap: _busy || seconds > 0 ? null : _send,
+        TextButton(
+          onPressed: _busy || seconds > 0 ? null : _send,
+          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+          child: Text(
+            seconds > 0
+                ? context.tr("Resend in {0}s", [seconds])
+                : context.tr("Send verification email"),
+            key: const ValueKey('verification-resend'),
+            style: const TextStyle(
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
         GhostAction(
           label: context.tr("Use a different account"),
