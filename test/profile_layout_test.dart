@@ -71,16 +71,15 @@ void main() {
           findsOneWidget,
         );
         expect(tester.takeException(), isNull);
-        // Appearance is one row that names the chosen palette; its controls
-        // live on their own page instead of a tall card here.
         await tester.scrollUntilVisible(
-          find.text('Appearance'),
+          find.text('Tide'),
           220,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
-        expect(find.text('Appearance').hitTestable(), findsOneWidget);
-        expect(find.text('Accent color'), findsNothing);
+        await tester.tap(find.text('Tide'));
+        await tester.pumpAndSettle();
+        expect(container.read(themeSettingsProvider).palette, AppPalette.tide);
         await tester.scrollUntilVisible(
           find.text('About FocusForge'),
           220,

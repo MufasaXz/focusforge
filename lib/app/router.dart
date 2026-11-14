@@ -17,7 +17,6 @@ import '../features/onboarding/onboarding_flow.dart';
 import '../features/onboarding/permissions_step.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/about_screen.dart';
-import '../features/settings/appearance_screen.dart';
 import '../features/settings/clock_face_screen.dart';
 import '../features/settings/achievements_screen.dart';
 import '../features/settings/leaderboard_screen.dart';
@@ -54,7 +53,6 @@ class AppRoutes {
   static const privacy = 'privacy';
   static const about = 'about';
   static const clockFace = 'clock-face';
-  static const appearance = 'appearance';
   static const permissions = 'permissions';
 
   static const paths = <String, String>{
@@ -74,7 +72,6 @@ class AppRoutes {
     notifications: '/profile/notifications',
     privacy: '/profile/privacy',
     clockFace: '/profile/clock-face',
-    appearance: '/profile/appearance',
     permissions: '/profile/permissions',
     about: '/profile/about',
   };
@@ -286,11 +283,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ),
                       ),
                     ),
-                  ),
-                  GoRoute(
-                    path: 'appearance',
-                    name: AppRoutes.appearance,
-                    builder: (context, state) => const AppearanceScreen(),
                   ),
                   GoRoute(
                     path: 'clock-face',

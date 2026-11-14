@@ -473,7 +473,10 @@ void main() {
 
       final goals = tester.getRect(find.byKey(const ValueKey('profile-hero')));
       final appearance = tester.getRect(
-        find.byKey(const ValueKey('profile-settings')),
+        find.descendant(
+          of: find.byType(SectionHeader),
+          matching: find.text('Appearance'),
+        ),
       );
 
       expect(
@@ -498,7 +501,10 @@ void main() {
 
       final goals = tester.getRect(find.byKey(const ValueKey('profile-hero')));
       final appearance = tester.getRect(
-        find.byKey(const ValueKey('profile-settings')),
+        find.descendant(
+          of: find.byType(SectionHeader),
+          matching: find.text('Appearance'),
+        ),
       );
 
       expect(
