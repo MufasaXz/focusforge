@@ -260,8 +260,8 @@ void main() {
       expect(find.text('Time stays hidden'), findsOneWidget);
       expect(find.text('20:00'), findsNothing);
       expect(find.text('40:00'), findsNothing);
-      await tester.ensureVisible(find.text('Full screen'));
-      await tester.tap(find.text('Full screen'));
+      await tester.ensureVisible(find.byTooltip('Full screen'));
+      await tester.tap(find.byTooltip('Full screen'));
       await tester.pumpAndSettle();
       expect(find.text('Time stays hidden'), findsWidgets);
       expect(find.text('20:00'), findsNothing);

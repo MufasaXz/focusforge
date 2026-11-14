@@ -1,0 +1,223 @@
+// Reproducible UI review captures with bundled fonts and fictional local data.
+// Run: flutter test tool/capture_ui_test.dart
+// Writes PNGs to build/ui-review; never changes a user's stored data.
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:focusforge/app/app.dart';
+import 'package:focusforge/app/router.dart';
+import 'package:focusforge/app/theme/app_theme.dart';
+import 'package:focusforge/core/models/study.dart';
+import 'package:focusforge/core/models/shield.dart';
+import 'package:focusforge/core/services/app_catalog.dart';
+import 'package:focusforge/core/models/user.dart';
+import 'package:focusforge/core/providers/app_providers.dart';
+import 'package:focusforge/core/providers/shield_providers.dart';
+import 'package:focusforge/core/providers/study_providers.dart';
+import 'package:focusforge/core/providers/usage_providers.dart';
+import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/shield_service.dart';
+import 'package:focusforge/features/onboarding/focus_step.dart';
+import 'package:focusforge/features/onboarding/auth_screen.dart';
+import 'package:focusforge/features/onboarding/profile_step.dart';
+import 'package:focusforge/features/onboarding/subjects_step.dart';
+import 'package:focusforge/features/onboarding/permissions_step.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('capture the primary screens at 360dp', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    // A phone's status bar and gesture bar, so headers sit where they do on a device.
+    tester.view.padding = const FakeViewPadding(top: 28, bottom: 16);
+    addTearDown(tester.view.reset);
+    // Load the bundled icon font too: widget tests do not do this themselves.
+    final manifest =
+        jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+    for (final entry in manifest.cast<Map<String, dynamic>>()) {
+      final loader = FontLoader(entry['family'] as String);
+      for (final font
+          in (entry['fonts'] as List).cast<Map<String, dynamic>>()) {
+        loader.addFont(rootBundle.load(font['asset'] as String));
+      }
+      await loader.load();
+    }
+    // The capture harness is a test kept outside the default suite.
+    // ignore: invalid_use_of_visible_for_testing_member
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    await store.setBool(StoreKeys.coachSeen, true);
+    final engine = RecordingShieldService();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        shieldServiceProvider.overrideWithValue(engine),
+        installedAppsProvider.overrideWith(
+          (ref) async => const [
+            InstalledApp(
+              packageId: 'com.example.social',
+              name: 'Social',
+              isSystem: false,
+            ),
+            InstalledApp(
+              packageId: 'com.example.video',
+              name: 'Video',
+              isSystem: false,
+            ),
+            InstalledApp(
+              packageId: 'com.example.reader',
+              name: 'Reader',
+              isSystem: false,
+            ),
+          ],
+        ),
+        appUsageTodayProvider.overrideWith((ref) async => const {}),
+        usageAccessProvider.overrideWith((ref) async => false),
+        shieldEnabledProvider.overrideWith((ref) async => false),
+      ],
+    );
+    addTearDown(container.dispose);
+    addTearDown(engine.dispose);
+    container
+        .read(userProvider.notifier)
+        .hydrate(
+          const UserProfile(
+            displayName: 'Alex Morgan',
+            onboardingComplete: true,
+          ),
+        );
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(packageId: 'com.example.social', name: 'Social');
+    await container
+        .read(whitelistProvider.notifier)
+        .addInstalledApp(
+          packageId: 'com.example.video',
+          name: 'Video',
+          tier: WhitelistTier.budgeted,
+        );
+    container.read(timerProvider.notifier).setSubject('math');
+    final now = DateTime.now();
+    final sessions = [
+      for (var day = 6; day >= 0; day--)
+        for (var block = 0; block < (day % 3) + 2; block++)
+          FocusSession(
+            id: 'review-$day-$block',
+            subjectId: block.isEven ? 'math' : 'physics',
+            startedAt: DateTime(now.year, now.month, now.day - day, 9 + block),
+            minutes: block.isEven ? 25 : 50,
+          ),
+    ];
+    container
+        .read(sessionsProvider.notifier)
+        .hydrate(sessions.map((session) => session.toJson()).toList());
+    container
+        .read(statsProvider.notifier)
+        .hydrate(
+          GamificationStats(
+            xp: 650,
+            level: 3,
+            totalFocusHours:
+                sessions.fold<int>(0, (sum, s) => sum + s.minutes) / 60,
+            totalSessions: sessions.length,
+          ),
+        );
+
+    final boundary = GlobalKey();
+    Widget scope(Widget child) => UncontrolledProviderScope(
+      container: container,
+      child: RepaintBoundary(key: boundary, child: child),
+    );
+    Future<void> capture(String name) async {
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final render =
+          boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      await tester.runAsync(() async {
+        final image = await render.toImage(pixelRatio: 2);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        final file = File('build/lowdpi/$name.png');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+
+    await container.read(themeSettingsProvider.notifier).setAmoled(false);
+    for (final mode in [ThemePreference.dark, ThemePreference.light]) {
+      await container.read(themeSettingsProvider.notifier).setMode(mode);
+      await tester.pumpWidget(scope(const FocusForgeApp()));
+      for (final route in ['dashboard', 'shield', 'focus', 'profile']) {
+        container.read(routerProvider).go('/$route');
+        await tester.pumpAndSettle();
+        for (final state in tester.stateList<ScrollableState>(
+          find.byType(Scrollable),
+        )) {
+          if (state.position.axis == Axis.vertical) state.position.jumpTo(0);
+        }
+        await capture('$route-${mode.name}');
+        if (route == 'focus') {
+          expect(find.text('25:00'), findsWidgets);
+          expect(container.read(timerProvider).subjectId, 'math');
+        }
+        if (route == 'profile') {
+          await tester.scrollUntilVisible(
+            find.text('Tide'),
+            180,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await capture('appearance-${mode.name}');
+        }
+      }
+    }
+    await container.read(themeSettingsProvider.notifier).setAmoled(false);
+    for (final mode in [ThemePreference.dark, ThemePreference.light]) {
+      for (final page in <String, Widget>{
+        'login': const AuthScreen(),
+        'setup-profile': ProfileStep(onNext: () {}),
+        'setup-subjects': SubjectsStep(onNext: () {}),
+        'permissions': PermissionsStep(onNext: () {}),
+      }.entries) {
+        await tester.pumpWidget(
+          scope(
+            MaterialApp(
+              theme: mode == ThemePreference.dark
+                  ? AppTheme.dark()
+                  : AppTheme.light(),
+              home: Scaffold(body: SafeArea(child: page.value)),
+            ),
+          ),
+        );
+        await capture('${page.key}-${mode.name}');
+      }
+    }
+    await tester.pumpWidget(
+      scope(
+        MaterialApp(
+          theme: AppTheme.dark(amoled: true),
+          home: Scaffold(
+            body: SafeArea(child: FocusStep(onNext: () {})),
+          ),
+        ),
+      ),
+    );
+    await capture('setup-dark');
+    tester.view.physicalSize = const Size(1280, 900);
+    await tester.pumpWidget(scope(const FocusForgeApp()));
+    container.read(routerProvider).go('/dashboard');
+    await capture('dashboard-tablet');
+    container.read(routerProvider).go('/profile');
+    await capture('profile-tablet');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+}

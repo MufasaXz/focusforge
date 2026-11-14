@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../core/localization/display_labels.dart';
 import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -235,9 +237,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         // fixed 252dp frame used to push the dial/caption into the dock on
         // compact windows and large text. Keep a readable minimum while
         // deriving the frame from the actual column width.
-        final clockSize = (columnWidth - (Gap.lg + 8))
-            .clamp(176.0, 272.0)
-            .toDouble();
         final compactDock = columnWidth < (wide ? 430 : 360);
         final labelledPlay =
             columnWidth >= (wide ? 440 : 390) &&
@@ -247,6 +246,24 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             ? Gap.lg + safeBottom
             : kNavBarClearance + safeBottom;
         final listBottom = dockBottom + _dockHeight + Gap.lg;
+        // The clock must also fit the *height* above the pinned dock. On a
+        // 360x800 phone a width-sized dial pushed its own caption under the
+        // dock, so the phase name was hidden until the page was scrolled.
+        // The rows above and the caption below scale with the text size;
+        // what is left is the dial's.
+        final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14)
+            .clamp(1.0, 1.6);
+        final chrome = 150 * textScale + 110 + Gap.xl;
+        final byHeight =
+            constraints.maxHeight -
+            MediaQuery.paddingOf(context).top -
+            Gap.lg -
+            listBottom -
+            chrome;
+        final clockSize = math
+            .min(columnWidth - (Gap.lg + 8), wide ? 272.0 : byHeight)
+            .clamp(176.0, 272.0)
+            .toDouble();
         final timerContent = <Widget>[
           // No headline. The screen opens on the preset and the subject
           // tags and then the clock, which is what the tab is for; a
@@ -259,43 +276,65 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           // Preset ------------------------------------------------------
           Stagger(
             index: 0,
-            child: Center(
-              child: Semantics(
-                button: true,
-                label: context.tr("Preset: {0}. Change preset", [
-                  presetDisplayName(context, preset),
-                ]),
-                excludeSemantics: true,
-                onTap: () => _showPresetSheet(context),
-                child: FilterChip(
-                  onSelected: (_) => _showPresetSheet(context),
-                  // A menu trigger, not a filter: a selected state and a
-                  // checkmark would misstate what the chip does.
-                  showCheckmark: false,
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(preset.icon, size: 15, color: accent),
-                      const SizedBox(width: 7),
-                      Flexible(
-                        child: Text(
-                          presetDisplayName(context, preset),
-                          overflow: TextOverflow.ellipsis,
+            // The preset in the middle, full screen at the end of the same
+            // row: the button used to sit under the clock, where it cost a
+            // whole row of height on a short phone.
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 48),
+                  child: Center(
+                    child: Semantics(
+                      button: true,
+                      label: context.tr("Preset: {0}. Change preset", [
+                        presetDisplayName(context, preset),
+                      ]),
+                      excludeSemantics: true,
+                      onTap: () => _showPresetSheet(context),
+                      child: FilterChip(
+                        onSelected: (_) => _showPresetSheet(context),
+                        // A menu trigger, not a filter: a selected state and a
+                        // checkmark would misstate what the chip does.
+                        showCheckmark: false,
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(preset.icon, size: 15, color: accent),
+                            const SizedBox(width: 7),
+                            Flexible(
+                              child: Text(
+                                presetDisplayName(context, preset),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.expand_more_rounded,
+                              size: 16,
+                              color: t.onSurfaceVariant,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.expand_more_rounded,
-                        size: 16,
-                        color: t.onSurfaceVariant,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                // A visible, keyboard-accessible alternative to the clock's
+                // double tap.
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: IconButton(
+                    onPressed: () => showFullscreenClock(context),
+                    tooltip: context.tr("Full screen"),
+                    icon: const Icon(Icons.open_in_full_rounded, size: 20),
+                    color: t.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: Gap.lg),
+          const SizedBox(height: Gap.md),
 
           // Subject tags ------------------------------------------------
           Stagger(index: 1, child: SubjectPicker(accent: accent)),
@@ -448,19 +487,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                               },
                       ),
                     ),
-                  ),
-                ),
-                // A visible, keyboard-accessible alternative to the
-                // clock's double tap, kept outside its figures.
-                const SizedBox(height: Gap.md),
-                TextButton.icon(
-                  onPressed: () => showFullscreenClock(context),
-                  icon: const Icon(Icons.open_in_full_rounded, size: 15),
-                  label: Text(context.tr("Full screen")),
-                  style: TextButton.styleFrom(
-                    foregroundColor: t.onSurfaceVariant,
-                    minimumSize: const Size(48, 48),
-                    textStyle: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
               ],

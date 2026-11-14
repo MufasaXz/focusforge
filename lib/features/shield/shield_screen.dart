@@ -149,9 +149,12 @@ class _ShieldScreenState extends ConsumerState<ShieldScreen>
                         armed: armed,
                         onTap: _showStatusSheet,
                       );
+                      // Side by side until the text is very large: on a
+                      // 360dp phone with a big font the stacked header cost a
+                      // whole row of height for a pill that fits beside it.
                       final stacked =
-                          constraints.maxWidth < 330 ||
-                          MediaQuery.textScalerOf(context).scale(14) > 20;
+                          constraints.maxWidth < 300 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 24;
                       if (stacked) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,54 +274,58 @@ class _ShieldStatusPill extends StatelessWidget {
         child: Pressable(
           scale: 0.94,
           onTap: onTap,
-          // Premium status pill: the armed state lifts with a quiet tertiary
-          // glow, so protection reads as active rather than outlined.
-          child: Container(
-            decoration: ShapeDecoration(
-              shape: StadiumBorder(
-                side: BorderSide(
-                  color: on ? cs.tertiary : cs.outlineVariant,
-                  width: on ? 1.5 : 1,
+          // The pill itself is 36dp; the transparent box around it keeps
+          // the 48dp hit target. No glow: the tertiary rim and dot already
+          // say the shield is on.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Center(
+              widthFactor: 1,
+              child: Container(
+                decoration: ShapeDecoration(
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: on ? cs.tertiary : cs.outlineVariant,
+                      width: on ? 1.5 : 1,
+                    ),
+                  ),
+                  color: on
+                      ? Color.alphaBlend(
+                          cs.tertiary.withValues(alpha: .10),
+                          cs.surfaceContainerLow,
+                        )
+                      : cs.surfaceContainerLow,
                 ),
-              ),
-              color: cs.surfaceContainerLow,
-              shadows: on
-                  ? [
-                      BoxShadow(
-                        color: cs.tertiary.withValues(alpha: 0.28),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Gap.md,
-                vertical: 16,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: color,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gap.md,
+                    vertical: Gap.sm,
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      text,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w600,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          text,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
