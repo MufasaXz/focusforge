@@ -209,6 +209,8 @@ abstract final class OfflineTutor {
     StudySnapshot s, {
     OfflineContext? context,
   }) {
+    final safe = OfflineSafety.reply(input);
+    if (safe != null) return OfflineTurn(_text(safe));
     if (input.length > OfflineText.maxInputLength) {
       return OfflineTurn(
         _text(
@@ -217,8 +219,6 @@ abstract final class OfflineTutor {
         ),
       );
     }
-    final safe = OfflineSafety.reply(input);
-    if (safe != null) return OfflineTurn(_text(safe));
     final text = OfflineText.normalize(input);
     final previous = context?.fresh(s.now) == true ? context : null;
     if (previous != null &&

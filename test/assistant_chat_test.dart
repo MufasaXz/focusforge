@@ -50,10 +50,7 @@ void main() {
 
   setUp(() async => store.clearAll());
 
-  Future<ProviderContainer> pumpChat(
-    WidgetTester tester, {
-    String? uid,
-  }) async {
+  Future<ProviderContainer> pumpChat(WidgetTester tester, {String? uid}) async {
     tester.view.physicalSize = const Size(420, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -237,6 +234,49 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.send);
     await wait(tester);
   }
+
+  testWidgets('compound app questions keep the explicit lock card flow', (
+    tester,
+  ) async {
+    const channel = MethodChannel('dev.focusforge/shield');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async => true);
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+    final container = await pumpChat(tester);
+    await wait(tester);
+    final before = container.read(whitelistProvider);
+    await ask(tester, 'what is strict mode and how do I block instagram');
+    await wait(tester, 8);
+    final entries = container.read(chatProvider).entries;
+    final explanation = entries.indexWhere(
+      (e) => e.fromPip && (e.copy?.key.startsWith('Strict') ?? false),
+    );
+    final selection = entries.indexWhere((e) => e.card is LockCard);
+    expect(explanation, greaterThanOrEqualTo(0));
+    expect(selection, greaterThan(explanation));
+    expect(
+      (entries[selection].card! as LockCard).preselected,
+      contains('com.instagram.android'),
+    );
+    expect(container.read(whitelistProvider), before);
+    await tester.scrollUntilVisible(
+      find.text('Lock while focusing'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Lock while focusing'));
+    await wait(tester);
+    expect(
+      container
+          .read(whitelistProvider)
+          .singleWhere((e) => e.packageId == 'com.instagram.android')
+          .tier,
+      WhitelistTier.focusOnly,
+    );
+  });
 
   testWidgets('clearing chat discards the pending local quiz', (tester) async {
     final container = await pumpChat(tester);

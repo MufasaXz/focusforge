@@ -465,7 +465,15 @@ abstract final class OfflineKnowledge {
     OfflineLesson(
       'newton',
       'Newton’s laws',
-      ['newton', 'newtons', 'newtons laws', 'force and acceleration'],
+      [
+        'newton',
+        'newtons',
+        'newtons laws',
+        'newtons first law',
+        'newton first law',
+        'newtons 1st law',
+        'force and acceleration',
+      ],
       'An object maintains constant velocity unless a net external force acts. For constant mass, net force F = ma. Interaction forces come in equal and opposite pairs acting on different objects.',
       'A 3 kg trolley with net force 12 N accelerates at 12/3 = 4 m/s².',
       'Equal and opposite interaction forces do not cancel on one object because they act on different objects. Use net force, not just one force.',
@@ -829,6 +837,8 @@ abstract final class OfflineKnowledge {
       'cells',
       'Cells and organelles',
       [
+        'cell',
+        'cells',
         'cell biology',
         'cell organelles',
         'organelles',

@@ -151,32 +151,77 @@ class ChatController extends Notifier<ChatState> {
 
   Future<void> send(String text) async {
     final said = text.trim();
-    if (said.isEmpty) return;
-    final local = OfflineTutor.isFollowUp(said, _offlineContext, DateTime.now())
-        ? AssistantAction(Act.coach, said: said)
-        : brain.parse(said);
-    _add(
-      ChatEntry(
-        id: _ids++,
-        fromPip: false,
-        text: said,
-      ),
-    );
-    if (local.act != Act.coach) _offlineContext = null;
-    return run(local);
+    final message = brain.parseMessage(said);
+    _add(ChatEntry(id: _ids++, fromPip: false, text: said));
+    if (message.actions.length == 1 && message.skipped == 0) {
+      return run(_withFollowUp(message.actions.single));
+    }
+    // One generation owns the entire turn. A new send, chip, clear or account
+    // reset cancels all remaining parts, not just the current answer.
+    final generation = ++_generation;
+    state = state.copyWith(suggestions: const [], clearGoTo: true);
+    final suggestions = <Suggestion>[];
+    for (final (index, action) in message.actions.indexed) {
+      if (generation != _generation) return;
+      final request = _withFollowUp(action);
+      final confirmation = brain.compoundConfirmation(request);
+      if (confirmation != null) {
+        _offlineContext = null;
+        await say(confirmation, generation: generation);
+      } else {
+        await _reply(request, generation);
+      }
+      if (generation != _generation) return;
+      // Keep independent earlier suggestions beside their answer. Contextual
+      // quiz/lesson chips belong only to the last active tutoring context.
+      suggestions
+        ..clear()
+        ..addAll(state.suggestions);
+      final independent = suggestions
+          .where(
+            (chip) => !OfflineTutor.isFollowUp(
+              chip.action.said ?? '',
+              _offlineContext,
+              DateTime.now(),
+            ),
+          )
+          .toList();
+      if (index < message.actions.length - 1 && independent.isNotEmpty) {
+        await say(
+          AssistantReply([Say.card(ActionCard(independent))]),
+          generation: generation,
+        );
+      }
+    }
+    if (generation != _generation) return;
+    if (message.skipped > 0) {
+      await say(
+        AssistantReply([
+          Say(
+            Copy(
+              'I answered the first four parts. Please send the rest in another message.',
+            ),
+          ),
+        ], suggestions: suggestions),
+        generation: generation,
+      );
+    }
   }
+
+  AssistantAction _withFollowUp(AssistantAction action) =>
+      OfflineTutor.isFollowUp(
+        action.said ?? '',
+        _offlineContext,
+        DateTime.now(),
+      )
+      ? AssistantAction(Act.coach, said: action.said)
+      : action;
 
   static ui.Locale _locale() =>
       AppStrings.resolve(ui.PlatformDispatcher.instance.locales);
 
   Future<void> choose(Suggestion suggestion) async {
-    _add(
-      ChatEntry(
-        id: _ids++,
-        fromPip: false,
-        copy: suggestion.label,
-      ),
-    );
+    _add(ChatEntry(id: _ids++, fromPip: false, copy: suggestion.label));
     await run(suggestion.action);
   }
 
@@ -258,6 +303,7 @@ class ChatController extends Notifier<ChatState> {
 
   /// Thinks, reads the user's data and answers [action].
   Future<void> _reply(AssistantAction action, int generation) async {
+    if (action.act != Act.coach) _offlineContext = null;
     final steps = brain.thinkingFor(action.act);
     for (final (index, step) in steps.indexed) {
       if (generation != _generation) return;

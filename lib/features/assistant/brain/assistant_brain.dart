@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../mascot/mascot.dart' show kBuddyName;
 import 'assistant_models.dart';
+import 'compound_message.dart';
 import 'exam_guide.dart';
 import 'reminders.dart';
 import 'study_snapshot.dart';
 import 'timetable.dart';
 import 'offline_coach.dart';
 import 'offline_tutor.dart';
+import 'offline_safety.dart';
+import 'offline_text.dart';
 
 /// Pip's reasoning: what a message means, and what to say back.
 ///
@@ -22,6 +25,50 @@ class AssistantBrain {
   const AssistantBrain();
 
   // -- Understanding ----------------------------------------------------------
+
+  /// Check the entire message before splitting, including any skipped tail.
+  /// The original one-request parser remains the route for every part.
+  ({List<AssistantAction> actions, int skipped}) parseMessage(String input) {
+    if (OfflineSafety.reply(input) != null ||
+        input.length > OfflineText.maxInputLength) {
+      return (actions: [AssistantAction(Act.coach, said: input)], skipped: 0);
+    }
+    final parts = CompoundMessage.split(input);
+    return (
+      actions: [
+        for (final part in parts.take(CompoundMessage.maxParts))
+          normalize(part).isEmpty
+              ? AssistantAction(Act.unknown, said: part)
+              : parse(part),
+      ],
+      skipped: math.max(0, parts.length - CompoundMessage.maxParts),
+    );
+  }
+
+  /// These routes mutate state immediately in run(), unlike editable cards.
+  /// In a compound turn each gets its own explicit confirmation first.
+  AssistantReply? compoundConfirmation(AssistantAction action) {
+    if (!const {
+      Act.focusNow,
+      Act.reminder,
+      Act.reminderOff,
+      Act.examReminder,
+      Act.examReminderOff,
+      Act.timetableOff,
+      Act.goalSet,
+      Act.examPick,
+    }.contains(action.act)) {
+      return null;
+    }
+    return AssistantReply([
+      Say(Copy.raw(action.said ?? '')),
+      Say.card(
+        ActionCard([
+          Suggestion(const Copy('Confirm'), Icons.check_rounded, action),
+        ]),
+      ),
+    ]);
+  }
 
   AssistantAction parse(String input) {
     if (OfflineTutor.recognizes(input)) {
@@ -738,7 +785,7 @@ class AssistantBrain {
         Act.openShield ||
         Act.openFocus ||
         Act.openLeaderboard ||
-        Act.reminderDate => const AssistantReply([]),
+        Act.reminderDate => respond(const AssistantAction(Act.unknown), s),
       };
 
   /// What to show while working a request out. Empty for small talk.
