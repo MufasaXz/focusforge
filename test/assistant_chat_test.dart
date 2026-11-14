@@ -267,6 +267,10 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
+    // Built is not the same as on screen: bring it fully into view, clear
+    // of the composer, before tapping.
+    await tester.ensureVisible(find.text('Lock while focusing'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Lock while focusing'));
     await wait(tester);
     expect(
