@@ -18,6 +18,7 @@ import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
 import '../brain/assistant_models.dart';
 import '../brain/study_snapshot.dart';
+import '../brain/offline_tutor.dart';
 import '../brain/reminders.dart';
 import '../brain/timetable.dart';
 import '../nudges/pip_nudges.dart';
@@ -54,6 +55,7 @@ class ChatEntry {
     this.text,
     this.card,
     this.online = false,
+    this.localOnly = false,
     this.at,
   });
 
@@ -67,6 +69,10 @@ class ChatEntry {
 
   /// Whether Pip's line came from the online model.
   final bool online;
+
+  /// Tutor prompts and answers remain local even if a later message uses
+  /// cloud coaching. They are not included in the cloud conversation history.
+  final bool localOnly;
 
   /// When the line was added, so only new lines animate in.
   final DateTime? at;
@@ -137,6 +143,7 @@ class ChatController extends Notifier<ChatState> {
   int _ids = 0;
   int _generation = 0;
   int _turn = 0;
+  OfflineContext? _offlineContext;
 
   /// A question held while the user answers the online-answers question.
   String? _pending;
@@ -163,6 +170,7 @@ class ChatController extends Notifier<ChatState> {
     _suggestedSignIn = false;
     _pendingExamReminder = false;
     _pendingReminder = null;
+    _offlineContext = null;
     return const ChatState();
   }
 
@@ -182,8 +190,18 @@ class ChatController extends Notifier<ChatState> {
   Future<void> send(String text) async {
     final said = text.trim();
     if (said.isEmpty) return;
-    _add(ChatEntry(id: _ids++, fromPip: false, text: said));
-    final local = brain.parse(said);
+    final local = OfflineTutor.isFollowUp(said, _offlineContext, DateTime.now())
+        ? AssistantAction(Act.coach, said: said)
+        : brain.parse(said);
+    _add(
+      ChatEntry(
+        id: _ids++,
+        fromPip: false,
+        text: said,
+        localOnly: local.act == Act.coach,
+      ),
+    );
+    if (local.act != Act.coach) _offlineContext = null;
     if (!brain.wantsOnline(said, local)) return run(local);
 
     // Online answers need a signed-in account, the backend and the user's
@@ -379,7 +397,9 @@ class ChatController extends Notifier<ChatState> {
     if (lines.isNotEmpty && !lines.last.fromPip) lines.removeLast();
     final turns = <Map<String, String>>[
       for (final entry in lines)
-        if (entry.card == null && (!entry.fromPip || entry.online))
+        if (!entry.localOnly &&
+            entry.card == null &&
+            (!entry.fromPip || entry.online))
           if ((entry.text ?? entry.copy?.resolve(strings)) case final text?
               when text.trim().isNotEmpty)
             {
@@ -415,13 +435,21 @@ class ChatController extends Notifier<ChatState> {
   }
 
   Future<void> choose(Suggestion suggestion) async {
-    _add(ChatEntry(id: _ids++, fromPip: false, copy: suggestion.label));
+    _add(
+      ChatEntry(
+        id: _ids++,
+        fromPip: false,
+        copy: suggestion.label,
+        localOnly: suggestion.action.act == Act.coach,
+      ),
+    );
     await run(suggestion.action);
   }
 
   /// Answers [action]: does what it asks that needs no screen, then replies.
   Future<void> run(AssistantAction action) async {
     final generation = ++_generation;
+    if (action.act != Act.coach) _offlineContext = null;
     state = state.copyWith(suggestions: const []);
     final memory = ref.read(assistantMemoryProvider.notifier);
     switch (action.act) {
@@ -546,7 +574,19 @@ class ChatController extends Notifier<ChatState> {
       _startTimer(subject);
       request = AssistantAction(Act.focusNow, arg: subject);
     }
-    final reply = brain.respond(request, snapshot, turn: _turn++);
+    final AssistantReply reply;
+    if (request.act == Act.coach) {
+      final response = OfflineTutor.converse(
+        request.said ?? '',
+        snapshot,
+        context: _offlineContext,
+      );
+      _offlineContext = response.context;
+      reply = response.reply;
+    } else {
+      _offlineContext = null;
+      reply = brain.respond(request, snapshot, turn: _turn++);
+    }
     await say(reply, generation: generation);
     if (action.act == Act.focusNow && generation == _generation) {
       state = state.copyWith(goTo: ChatDestination.focus);
@@ -805,6 +845,7 @@ class ChatController extends Notifier<ChatState> {
 
   void clear() {
     _generation++;
+    _offlineContext = null;
     state = const ChatState();
   }
 

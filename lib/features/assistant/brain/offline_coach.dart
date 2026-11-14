@@ -17,6 +17,7 @@ class OfflineCoach {
       Act.plan,
       Act.tip,
       Act.motivate,
+      Act.examAsk,
     }.contains(action.act)) {
       return null;
     }
@@ -130,19 +131,31 @@ class OfflineCoach {
       }
     } else if (has([
       'exam tomorrow',
+      'exam today',
       'last minute',
       'exam stress',
       'exam anxiety',
     ])) {
-      final days = s.daysToExam;
+      final explicitTomorrow = text.contains('exam tomorrow');
+      final explicitToday = text.contains('exam today');
+      final days = explicitTomorrow
+          ? 1
+          : explicitToday
+          ? 0
+          : s.daysToExam;
+      final when = explicitTomorrow
+          ? 'For your exam tomorrow'
+          : explicitToday
+          ? 'For your exam today'
+          : days == null
+          ? 'If your exam is close'
+          : days == 0
+          ? 'Your saved exam is today'
+          : 'Your saved exam is in $days day${days == 1 ? '' : 's'}';
       lines.add(
         Say(
           Copy.raw(
-            '${days == null
-                ? 'If your exam is close'
-                : days == 0
-                ? 'Your saved exam is today'
-                : 'Your saved exam is in $days day${days == 1 ? '' : 's'}'}: revise familiar material, check a short mistake list, and avoid an all-night catch-up. Pack what you need and leave time to rest. One calm revision block is a useful next step.',
+            '$when: revise familiar material, check a short mistake list, and avoid an all-night catch-up. Pack what you need and leave time to rest. One calm revision block is a useful next step.',
           ),
         ),
       );
@@ -179,7 +192,7 @@ class OfflineCoach {
       lines.add(
         Say(
           Copy.raw(
-            'I can help locally with study plans, subject progress, exam countdowns, reminders, and focus habits. ${s.todayMinutes > 0 ? 'You have already logged ${s.todayMinutes} focus minutes today.' : 'Start small: one topic and a short focus block.'} Try “I have 40 minutes”, “help me remember”, or “what next”.',
+            'I can help locally with study plans, subject progress, exam countdowns, reminders, subject explanations, worked maths, and practice quizzes. ${s.todayMinutes > 0 ? 'You have already logged ${s.todayMinutes} focus minutes today.' : 'Start small: one topic and a short focus block.'} Try “I have 40 minutes”, “explain derivatives”, “quiz me on genetics”, or “what next”. My bundled study library may not cover every topic or the latest syllabus.',
           ),
         ),
       );

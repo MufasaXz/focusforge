@@ -132,6 +132,9 @@ enum Act {
   bye,
   unknown,
 
+  // Bundled subject tutoring, practice, and calculations; always on device.
+  coach,
+
   // Reminders and the timetable.
   examReminder,
   examReminderOff,

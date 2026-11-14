@@ -10,6 +10,7 @@ import 'reminders.dart';
 import 'study_snapshot.dart';
 import 'timetable.dart';
 import 'offline_coach.dart';
+import 'offline_tutor.dart';
 
 /// Pip's reasoning: what a message means, and what to say back.
 ///
@@ -24,6 +25,9 @@ class AssistantBrain {
   // -- Understanding ----------------------------------------------------------
 
   AssistantAction parse(String input) {
+    if (OfflineTutor.recognizes(input)) {
+      return AssistantAction(Act.coach, said: input);
+    }
     final text = normalize(input);
     if (text.isEmpty) return const AssistantAction(Act.help);
     final tokens = text.split(' ');
@@ -678,6 +682,7 @@ class AssistantBrain {
         Act.examDate => _examDated(s),
         Act.motivate => _motivate(s, action.said, turn),
         Act.tip => _tip(turn),
+        Act.coach => OfflineTutor.converse(action.said ?? '', s).reply,
         Act.goal => _goal(s),
         Act.goalSet => AssistantReply(
           [
@@ -2189,7 +2194,8 @@ class AssistantBrain {
     switch (local.act) {
       case Act.unknown:
         return true;
-      case Act.lock ||
+      case Act.coach ||
+          Act.lock ||
           Act.leaderboard ||
           Act.subjectStats ||
           Act.periodStats ||

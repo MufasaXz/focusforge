@@ -55,4 +55,12 @@ void main() {
     );
     expect(answer('unrecognised message'), contains('I can help locally'));
   });
+  test(
+    'an explicit exam date in the question takes priority over the saved date',
+    () {
+      expect(answer('exam tomorrow'), contains('For your exam tomorrow'));
+      expect(answer('exam today'), contains('For your exam today'));
+      expect(answer('exam tomorrow'), isNot(contains('in 5 days')));
+    },
+  );
 }

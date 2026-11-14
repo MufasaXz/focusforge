@@ -253,6 +253,58 @@ void main() {
     await wait(tester);
   }
 
+  testWidgets(
+    'offline tutoring handles follow-ups without calling an available cloud backend',
+    (tester) async {
+      final backend = _FakeBackend(reply: 'This should not be requested.');
+      final container = await pumpChat(
+        tester,
+        backend: backend,
+        uid: 'u1',
+        firstChoice: true,
+      );
+      await wait(tester);
+      await ask(tester, 'explain derivatives');
+      await ask(tester, 'quiz me');
+      await ask(tester, 'hint');
+      expect(find.textContaining('Hint:', findRichText: true), findsOneWidget);
+      await ask(tester, 'show answer');
+      expect(
+        find.textContaining('Practice check:', findRichText: true),
+        findsOneWidget,
+      );
+      expect(backend.questions, isEmpty);
+      expect(
+        container
+            .read(chatProvider)
+            .entries
+            .where((e) => !e.fromPip)
+            .every((e) => e.localOnly),
+        isTrue,
+      );
+      await ask(tester, question);
+      expect(backend.questions, [question]);
+      expect(
+        backend.histories.single,
+        isEmpty,
+        reason: 'Local tutoring never enters a later cloud request',
+      );
+    },
+  );
+
+  testWidgets('clearing chat discards the pending local quiz', (tester) async {
+    final container = await pumpChat(tester);
+    await wait(tester);
+    await ask(tester, 'quiz me on fractions');
+    container.read(chatProvider.notifier).clear();
+    await ask(tester, 'B');
+    expect(find.textContaining('Not quite', findRichText: true), findsNothing);
+    expect(
+      find.textContaining('Practice check:', findRichText: true),
+      findsNothing,
+    );
+  });
+
   testWidgets('a long question goes online once the user agrees', (
     tester,
   ) async {
