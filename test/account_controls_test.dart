@@ -453,8 +453,9 @@ void main() {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('dev.focusforge/privacy'),
         (call) async {
-          if (call.method == 'erase')
+          if (call.method == 'erase') {
             throw PlatformException(code: 'cleanup-failed');
+          }
           return <String, dynamic>{};
         },
       );
