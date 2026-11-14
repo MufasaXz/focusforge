@@ -46,9 +46,6 @@ class FocusScreen extends ConsumerStatefulWidget {
 }
 
 class _FocusScreenState extends ConsumerState<FocusScreen> {
-  /// Space the pinned dock occupies, plus the clearance above it.
-  static const double _dockHeight = 78;
-
   /// How wide the dock and the completion banner are allowed to get.
   ///
   /// Both are pinned over the whole tab, and the tab is the width of a tablet
@@ -229,6 +226,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       builder: (context, constraints) {
         // Portrait and split windows keep a single-column reading order.
         final wide = constraints.maxWidth >= 900;
+        final pinnedDock =
+            wide ||
+            (constraints.maxWidth >= 600 && constraints.maxHeight < 500);
         final columnWidth = wide
             ? (constraints.maxWidth - Gap.xl) / 2
             : constraints.maxWidth;
@@ -245,26 +245,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             wide || MediaQuery.sizeOf(context).width >= AppShell.railBreakpoint
             ? Gap.lg + safeBottom
             : kNavBarClearance + safeBottom;
-        final listBottom = dockBottom + _dockHeight + Gap.lg;
-        // The clock must also fit the *height* above the pinned dock. On a
-        // 360x800 phone a width-sized dial pushed its own caption under the
-        // dock, so the phase name was hidden until the page was scrolled.
-        // The rows above and the caption below scale with the text size;
-        // what is left is the dial's.
-        final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14)
-            .clamp(1.0, 1.6);
-        // Rows above, the caption and the Full screen button below.
-        final chrome = 150 * textScale + 84 + Gap.xl;
-        final byHeight =
-            constraints.maxHeight -
-            MediaQuery.paddingOf(context).top -
-            Gap.lg -
-            listBottom -
-            chrome;
-        final clockSize = math
-            .min(columnWidth - (Gap.lg + 8), wide ? 272.0 : byHeight)
-            .clamp(176.0, 272.0)
-            .toDouble();
+
+        // Keep the face readable and prominent. On short windows the content
+        // scrolls; the dial must not collapse into a miniature to fit the dock.
+        final clockSize = (columnWidth - 48).clamp(240.0, 320.0).toDouble();
         final timerContent = <Widget>[
           // No headline. The screen opens on the preset and the subject
           // tags and then the clock, which is what the tab is for; a
@@ -404,7 +388,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                                 ClockFace.retro ||
                                 ClockFace.analog => _AnalogFace(
                                   face: face,
-                                  maxSide: wide ? 340 : byHeight,
+                                  maxSide: clockSize,
                                   remaining: timer.remaining,
                                   accent: accent,
                                   phase: timer.phase,
@@ -538,279 +522,249 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             ),
           ),
         ];
-        final timerPane = Stack(
-          children: [
-            Positioned.fill(
-              child: ListView(
-                key: const ValueKey('focus-timer-scroll'),
-                padding: EdgeInsets.fromLTRB(
-                  Gap.lg + 4,
-                  MediaQuery.paddingOf(context).top + Gap.lg,
-                  Gap.lg + 4,
-                  listBottom,
-                ),
-                children: [...timerContent, if (!wide) ...ambientContent],
-              ),
+        final sessionDock = Center(
+          child: ConstrainedBox(
+            // The bar keeps its own width and the ±5 controls sit outside
+            // it. On a narrow screen the bar gives up width instead: a nudge
+            // that scrolled off the row would be worse than a shorter pill.
+            constraints: const BoxConstraints(
+              maxWidth: _dockWidth + 2 * (_nudgeSize + Gap.sm),
             ),
-            // Completion banner ---------------------------------------------------
-            Positioned(
-              left: Gap.lg + 4,
-              right: Gap.lg + 4,
-              bottom: dockBottom + _dockHeight + Gap.sm,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: _dockWidth),
-                  child: IgnorePointer(
-                    ignoring: _celebration == null,
-                    child: AnimatedSwitcher(
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 340),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, 0.25),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
+            child: Row(
+              children: [
+                _DockNudge(
+                  minutes: -5,
+                  enabled: canShrink,
+                  color: t.onSurfaceVariant,
+                  semanticLabel: context.tr("Take five minutes off the {0}", [
+                    phaseNoun,
+                  ]),
+                  onTap: () => ref
+                      .read(timerProvider.notifier)
+                      .nudge(const Duration(minutes: -5)),
+                ),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  // An opaque base under the frosted glass: the dock
+                  // rebuilds every tick and on every tab switch, and a
+                  // bare BackdropFilter shows one transparent frame
+                  // before the blur re-renders. The solid tint beneath
+                  // means the bar can never flash.
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      color: t.surfaceContainerHigh,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: GlassCard(
+                      color: t.surfaceContainerHigh,
+                      shape: const StadiumBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compactDock ? Gap.xs : Gap.sm,
+                          vertical: Gap.sm,
+                        ),
+                        // Centred rather than spread. The bar keeps its full
+                        // width — it is a surface the thumb lands on, and a
+                        // shrink-wrapped pill floating over the page reads as
+                        // a tooltip — but the three controls sit together in
+                        // the middle of it, because Reset and Skip are one
+                        // gesture away from the play button, not a reach away
+                        // from it.
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _DockAction(
+                              icon: Icons.refresh_rounded,
+                              label: context.tr("Reset"),
+                              semanticLabel: context.tr("Reset timer"),
+                              color: t.onSurfaceVariant,
+                              onTap: () => _changeTimer(
+                                title: context.tr("Reset this focus block?"),
+                                confirmLabel: context.tr("Reset block"),
+                                apply: () =>
+                                    ref.read(timerProvider.notifier).reset(),
+                              ),
+                            ),
+                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
+                            Semantics(
+                              button: true,
+                              label: timer.running
+                                  ? context.tr("Pause {0} timer", [phaseNoun])
+                                  : context.tr("Start {0} timer", [phaseNoun]),
+                              excludeSemantics: true,
+                              onTap: toggleTimer,
+                              child: Pressable(
+                                onTap: toggleTimer,
+                                scale: 0.92,
+                                child: AnimatedContainer(
+                                  duration:
+                                      MediaQuery.disableAnimationsOf(context)
+                                      ? Duration.zero
+                                      : Motion.base,
+                                  width: labelledPlay ? 104 : 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      timer.running ? 28 : 18,
+                                    ),
+                                    color: accent,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: accent.withValues(alpha: 0.26),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: AnimatedSwitcher(
+                                    duration:
+                                        MediaQuery.disableAnimationsOf(context)
+                                        ? Duration.zero
+                                        : Motion.quick,
+                                    switchInCurve: Motion.decelerate,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    transitionBuilder: (child, animation) =>
+                                        FadeTransition(
+                                          opacity: animation,
+                                          child: ScaleTransition(
+                                            scale: Tween<double>(
+                                              begin: 0.8,
+                                              end: 1,
+                                            ).animate(animation),
+                                            child: child,
+                                          ),
+                                        ),
+                                    child: Row(
+                                      key: ValueKey(timer.running),
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          timer.running
+                                              ? Icons.pause_rounded
+                                              : Icons.play_arrow_rounded,
+                                          size: labelledPlay ? 22 : 27,
+                                          color: _onPhaseColor(t, timer.phase),
+                                        ),
+                                        if (labelledPlay) ...[
+                                          const SizedBox(width: Gap.xs),
+                                          Text(
+                                            timer.running
+                                                ? context.tr("Pause")
+                                                : context.tr("Start"),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  color: _onPhaseColor(
+                                                    t,
+                                                    timer.phase,
+                                                  ),
+                                                ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: compactDock ? Gap.xs : Gap.sm),
+                            _DockAction(
+                              icon: Icons.skip_next_rounded,
+                              label: context.tr("Skip"),
+                              semanticLabel: context.tr("Skip to next phase"),
+                              color: t.onSurfaceVariant,
+                              onTap: () => _changeTimer(
+                                title: context.tr("Skip this focus block?"),
+                                confirmLabel: context.tr("Skip block"),
+                                apply: () =>
+                                    ref.read(timerProvider.notifier).skip(),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: _celebration == null
-                          ? const SizedBox.shrink(
-                              key: ValueKey('no-celebration'),
-                            )
-                          : KeyedSubtree(
-                              key: ValueKey('celebration-$_celebrationId'),
-                              child: _buildBanner(t, _celebration!),
-                            ),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(width: Gap.sm),
+                _DockNudge(
+                  minutes: 5,
+                  enabled: canGrow,
+                  color: t.onSurfaceVariant,
+                  semanticLabel: context.tr("Add five minutes to the {0}", [
+                    phaseNoun,
+                  ]),
+                  onTap: () => ref
+                      .read(timerProvider.notifier)
+                      .nudge(const Duration(minutes: 5)),
+                ),
+              ],
             ),
-
-            // Pinned session dock --------------------------------------------------
-            Positioned(
-              left: Gap.lg + 4,
-              right: Gap.lg + 4,
-              bottom: dockBottom,
-              child: Center(
-                child: ConstrainedBox(
-                  // The bar keeps its own width and the ±5 controls sit outside
-                  // it. On a narrow screen the bar gives up width instead: a nudge
-                  // that scrolled off the row would be worse than a shorter pill.
-                  constraints: const BoxConstraints(
-                    maxWidth: _dockWidth + 2 * (_nudgeSize + Gap.sm),
-                  ),
-                  child: Row(
-                    children: [
-                      _DockNudge(
-                        minutes: -5,
-                        enabled: canShrink,
-                        color: t.onSurfaceVariant,
-                        semanticLabel: context.tr(
-                          "Take five minutes off the {0}",
-                          [phaseNoun],
-                        ),
-                        onTap: () => ref
-                            .read(timerProvider.notifier)
-                            .nudge(const Duration(minutes: -5)),
+          ),
+        );
+        final timerList = ListView(
+          key: const ValueKey('focus-timer-scroll'),
+          padding: EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            MediaQuery.paddingOf(context).top + Gap.lg,
+            Gap.lg + 4,
+            pinnedDock ? dockBottom + 100 : dockBottom,
+          ),
+          children: [
+            ...timerContent,
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _dockWidth),
+                child: IgnorePointer(
+                  ignoring: _celebration == null,
+                  child: AnimatedSwitcher(
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 340),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.25),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
                       ),
-                      const SizedBox(width: Gap.sm),
-                      Expanded(
-                        // An opaque base under the frosted glass: the dock
-                        // rebuilds every tick and on every tab switch, and a
-                        // bare BackdropFilter shows one transparent frame
-                        // before the blur re-renders. The solid tint beneath
-                        // means the bar can never flash.
-                        child: DecoratedBox(
-                          decoration: ShapeDecoration(
-                            color: t.surfaceContainerHigh,
-                            shape: const StadiumBorder(),
+                    ),
+                    child: _celebration == null
+                        ? const SizedBox.shrink(key: ValueKey('no-celebration'))
+                        : KeyedSubtree(
+                            key: ValueKey('celebration-$_celebrationId'),
+                            child: _buildBanner(t, _celebration!),
                           ),
-                          child: GlassCard(
-                            color: t.surfaceContainerHigh,
-                            shape: const StadiumBorder(),
-                            clipBehavior: Clip.antiAlias,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: compactDock ? Gap.xs : Gap.sm,
-                                vertical: Gap.sm,
-                              ),
-                              // Centred rather than spread. The bar keeps its full
-                              // width — it is a surface the thumb lands on, and a
-                              // shrink-wrapped pill floating over the page reads as
-                              // a tooltip — but the three controls sit together in
-                              // the middle of it, because Reset and Skip are one
-                              // gesture away from the play button, not a reach away
-                              // from it.
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _DockAction(
-                                    icon: Icons.refresh_rounded,
-                                    label: context.tr("Reset"),
-                                    semanticLabel: context.tr("Reset timer"),
-                                    color: t.onSurfaceVariant,
-                                    onTap: () => _changeTimer(
-                                      title: context.tr(
-                                        "Reset this focus block?",
-                                      ),
-                                      confirmLabel: context.tr("Reset block"),
-                                      apply: () => ref
-                                          .read(timerProvider.notifier)
-                                          .reset(),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: compactDock ? Gap.xs : Gap.sm,
-                                  ),
-                                  Semantics(
-                                    button: true,
-                                    label: timer.running
-                                        ? context.tr("Pause {0} timer", [
-                                            phaseNoun,
-                                          ])
-                                        : context.tr("Start {0} timer", [
-                                            phaseNoun,
-                                          ]),
-                                    excludeSemantics: true,
-                                    onTap: toggleTimer,
-                                    child: Pressable(
-                                      onTap: toggleTimer,
-                                      scale: 0.92,
-                                      child: AnimatedContainer(
-                                        duration:
-                                            MediaQuery.disableAnimationsOf(
-                                              context,
-                                            )
-                                            ? Duration.zero
-                                            : Motion.base,
-                                        width: labelledPlay ? 104 : 56,
-                                        height: 56,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            timer.running ? 28 : 18,
-                                          ),
-                                          color: accent,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: accent.withValues(
-                                                alpha: 0.26,
-                                              ),
-                                              blurRadius: 14,
-                                              offset: const Offset(0, 6),
-                                            ),
-                                          ],
-                                        ),
-                                        child: AnimatedSwitcher(
-                                          duration:
-                                              MediaQuery.disableAnimationsOf(
-                                                context,
-                                              )
-                                              ? Duration.zero
-                                              : Motion.quick,
-                                          switchInCurve: Motion.decelerate,
-                                          switchOutCurve: Curves.easeInCubic,
-                                          transitionBuilder:
-                                              (child, animation) =>
-                                                  FadeTransition(
-                                                    opacity: animation,
-                                                    child: ScaleTransition(
-                                                      scale: Tween<double>(
-                                                        begin: 0.8,
-                                                        end: 1,
-                                                      ).animate(animation),
-                                                      child: child,
-                                                    ),
-                                                  ),
-                                          child: Row(
-                                            key: ValueKey(timer.running),
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                timer.running
-                                                    ? Icons.pause_rounded
-                                                    : Icons.play_arrow_rounded,
-                                                size: labelledPlay ? 22 : 27,
-                                                color: _onPhaseColor(
-                                                  t,
-                                                  timer.phase,
-                                                ),
-                                              ),
-                                              if (labelledPlay) ...[
-                                                const SizedBox(width: Gap.xs),
-                                                Text(
-                                                  timer.running
-                                                      ? context.tr("Pause")
-                                                      : context.tr("Start"),
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .labelLarge
-                                                      ?.copyWith(
-                                                        color: _onPhaseColor(
-                                                          t,
-                                                          timer.phase,
-                                                        ),
-                                                      ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: compactDock ? Gap.xs : Gap.sm,
-                                  ),
-                                  _DockAction(
-                                    icon: Icons.skip_next_rounded,
-                                    label: context.tr("Skip"),
-                                    semanticLabel: context.tr(
-                                      "Skip to next phase",
-                                    ),
-                                    color: t.onSurfaceVariant,
-                                    onTap: () => _changeTimer(
-                                      title: context.tr(
-                                        "Skip this focus block?",
-                                      ),
-                                      confirmLabel: context.tr("Skip block"),
-                                      apply: () => ref
-                                          .read(timerProvider.notifier)
-                                          .skip(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      _DockNudge(
-                        minutes: 5,
-                        enabled: canGrow,
-                        color: t.onSurfaceVariant,
-                        semanticLabel: context.tr(
-                          "Add five minutes to the {0}",
-                          [phaseNoun],
-                        ),
-                        onTap: () => ref
-                            .read(timerProvider.notifier)
-                            .nudge(const Duration(minutes: 5)),
-                      ),
-                    ],
                   ),
                 ),
               ),
             ),
+            if (!pinnedDock) sessionDock,
+            const SizedBox(height: Gap.xl),
+            if (!wide) ...ambientContent,
           ],
         );
+        final timerPane = pinnedDock
+            ? Stack(
+                children: [
+                  Positioned.fill(child: timerList),
+                  Positioned(
+                    left: Gap.lg + 4,
+                    right: Gap.lg + 4,
+                    bottom: dockBottom,
+                    child: sessionDock,
+                  ),
+                ],
+              )
+            : timerList;
+
         return _TabEntrance(
           child: wide
               ? Row(
