@@ -12,6 +12,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/goal_planner_providers.dart';
 import '../../../core/providers/study_providers.dart';
 import '../../../core/services/ai_backend_service.dart';
+import '../../../core/services/ai_privacy.dart';
 import '../../../core/services/local_store.dart';
 import '../assistant_memory.dart';
 import '../brain/assistant_brain.dart';
@@ -188,7 +189,7 @@ class ChatController extends Notifier<ChatState> {
     // Online answers need a signed-in account, the backend and the user's
     // say-so. Without any of them the phone answers, as it always can.
     final consent = ref.read(assistantMemoryProvider).aiConsent;
-    if (consent == false) return run(local);
+    if (consent != true) return run(local);
     final backend = ref.read(aiBackendProvider);
     if (ref.read(accountUidProvider) == null) {
       if (!_suggestedSignIn) {
@@ -198,10 +199,6 @@ class ChatController extends Notifier<ChatState> {
       return run(local);
     }
     if (backend == null) return run(local);
-    if (consent == null) {
-      _pending = said;
-      return say(brain.aiConsentAsk());
-    }
     if (!_claimOnlineAnswer()) return _outOfEnergy(local);
     return _askOnline(said, local, backend);
   }
@@ -234,7 +231,7 @@ class ChatController extends Notifier<ChatState> {
     state = state.copyWith(step: const Copy('Thinking…'), trail: [reading]);
     try {
       final reply = await backend.askAiAssistant(
-        userMessage: said,
+        userMessage: _privateText(said, maxChars: 300),
         extraContext: brain.aiContext(snapshot),
         history: history,
         locale: _locale().languageCode,
@@ -322,14 +319,27 @@ class ChatController extends Notifier<ChatState> {
     final index = entries.indexWhere((e) => e.id == entryId);
     if (index < 0) return false;
     final strings = AppStrings(_locale());
-    final reply = entries[index].copy?.resolve(strings) ?? '';
-    final question = entries
+    final reply = _privateText(
+      entries[index].copy?.resolve(strings) ?? '',
+      maxChars: 900,
+    );
+    final rawQuestion = entries
         .take(index)
         .lastWhere((e) => !e.fromPip, orElse: () => entries[index])
         .text;
+    final question = rawQuestion == null
+        ? null
+        : _privateText(rawQuestion, maxChars: 300);
     final store = ref.read(localStoreProvider);
-    final kept = store.getMap(StoreKeys.assistantReports)?['items'];
+    final now = DateTime.now();
+    final owner = ref.read(userProvider).uid;
+    final cached = store.getMap(StoreKeys.assistantReports);
+    final kept = AiPrivacy.reports(
+      cached?['ownerUid'] == owner ? cached : null,
+      now: now,
+    )['items'];
     await store.setMap(StoreKeys.assistantReports, {
+      'ownerUid': owner,
       'items': [
         // The most recent 50, this one included.
         if (kept is List) ...kept.skip(kept.length > 49 ? kept.length - 49 : 0),
@@ -337,7 +347,7 @@ class ChatController extends Notifier<ChatState> {
           'reason': reason,
           'reply': reply,
           'question': ?question,
-          'at': DateTime.now().toIso8601String(),
+          'at': now.toIso8601String(),
         },
       ],
     });
@@ -372,17 +382,37 @@ class ChatController extends Notifier<ChatState> {
         if (entry.card == null && (!entry.fromPip || entry.online))
           if ((entry.text ?? entry.copy?.resolve(strings)) case final text?
               when text.trim().isNotEmpty)
-            {'role': entry.fromPip ? 'pip' : 'user', 'text': text},
+            {
+              'role': entry.fromPip ? 'pip' : 'user',
+              'text': _privateText(text),
+            },
     ];
     return turns.length > 8 ? turns.sublist(turns.length - 8) : turns;
+  }
+
+  String _privateText(String text, {int maxChars = 500}) {
+    final profile = ref.read(userProvider);
+    return AiPrivacy.text(
+      text,
+      maxChars: maxChars,
+      privateValues: [profile.displayName, profile.uid],
+    );
   }
 
   static ui.Locale _locale() =>
       AppStrings.resolve(ui.PlatformDispatcher.instance.locales);
 
   /// Turns online answers on or off from the chat menu.
-  Future<void> setOnlineAnswers(bool allowed) =>
-      ref.read(assistantMemoryProvider.notifier).setAiConsent(allowed);
+  Future<void> setOnlineAnswers(bool allowed) async {
+    // Retire any in-flight answer immediately on withdrawal. Already sent
+    // requests cannot be recalled, but no late result is displayed or reused.
+    if (!allowed) {
+      _generation++;
+      _pending = null;
+      state = state.copyWith(status: ChatStatus.idle, clearStep: true);
+    }
+    await ref.read(assistantMemoryProvider.notifier).setAiConsent(allowed);
+  }
 
   Future<void> choose(Suggestion suggestion) async {
     _add(ChatEntry(id: _ids++, fromPip: false, copy: suggestion.label));

@@ -168,12 +168,24 @@ class AssistantMemoryNotifier extends Notifier<AssistantMemory> {
   LocalStore get _store => ref.read(localStoreProvider);
 
   @override
-  AssistantMemory build() =>
-      AssistantMemory.fromJson(_store.getMap(StoreKeys.assistant));
+  AssistantMemory build() {
+    final saved = AssistantMemory.fromJson(_store.getMap(StoreKeys.assistant));
+    // Preserve existing choices when upgrading. The active-account mirror is
+    // replaced on account switch, so one student's choice cannot enable
+    // cloud processing for another student on a shared device.
+    return saved.copyWith(
+      aiConsent: _store.getBool('pip_cloud_consent') ?? saved.aiConsent,
+    );
+  }
 
-  Future<void> _save(AssistantMemory next) {
+  Future<void> _save(AssistantMemory next) async {
     state = next;
-    return _store.setMap(StoreKeys.assistant, next.toJson());
+    if (next.aiConsent case final allowed?) {
+      await _store.setBool('pip_cloud_consent', allowed);
+    } else {
+      await _store.remove('pip_cloud_consent');
+    }
+    await _store.setMap(StoreKeys.assistant, next.toJson());
   }
 
   /// Moves Pip's memory from account [from] to account [to] on this device.

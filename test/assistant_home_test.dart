@@ -101,6 +101,9 @@ void main() {
     expect(find.text(intro), findsNothing);
 
     await tester.tap(dock);
+    await wait(tester, const Duration(seconds: 1));
+    expect(find.text('Enable Cloud Study Coach?'), findsOneWidget);
+    await tester.tap(find.text('Disagree (Offline Mode)'));
     // Long enough for Pip to finish typing its introduction.
     await wait(tester, const Duration(seconds: 8));
     expect(find.text('Message Pip'), findsOneWidget);

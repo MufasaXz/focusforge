@@ -31,6 +31,7 @@ import '../mascot/mascot_rig.dart';
 import '../nudges/pip_nudges.dart';
 import 'chat_cards.dart';
 import 'chat_controller.dart';
+import 'cloud_consent_dialog.dart';
 
 /// The conversation with Pip.
 ///
@@ -68,8 +69,17 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
       _avatarLife.start();
       _heroLife.start();
       _hero.wave();
-      unawaited(_chat.open(action: widget.initial));
+      unawaited(_openChat());
     });
+  }
+
+  Future<void> _openChat() async {
+    if (ref.read(assistantMemoryProvider).aiConsent == null) {
+      final choice = await showPipCloudConsent(context);
+      if (!mounted) return;
+      if (choice != null) await _chat.setOnlineAnswers(choice);
+    }
+    if (mounted) await _chat.open(action: widget.initial);
   }
 
   @override
@@ -256,35 +266,8 @@ class _AssistantChatScreenState extends ConsumerState<AssistantChatScreen> {
   /// own question does; turning them off needs no confirmation.
   Future<void> _changeOnlineAnswers(bool on) async {
     if (!on) return _chat.setOnlineAnswers(false);
-    final signedIn = ref.read(accountUidProvider) != null;
-    final allow = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr('Answer with AI when online')),
-        content: Text(
-          [
-            context.tr(
-              'Your question, the last few messages and a short study summary go to an AI service. Never your name or email.',
-            ),
-            if (!signedIn)
-              context.tr(
-                'Online answers also need a linked account. Until then, answers stay on this phone.',
-              ),
-          ].join('\n\n'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('Keep it on this phone')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('Allow')),
-          ),
-        ],
-      ),
-    );
-    if (allow == true && mounted) await _chat.setOnlineAnswers(true);
+    final choice = await showPipCloudConsent(context);
+    if (choice != null && mounted) await _chat.setOnlineAnswers(choice);
   }
 
   @override

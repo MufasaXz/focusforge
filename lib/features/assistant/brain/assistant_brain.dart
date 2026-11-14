@@ -9,6 +9,7 @@ import 'exam_guide.dart';
 import 'reminders.dart';
 import 'study_snapshot.dart';
 import 'timetable.dart';
+import 'offline_coach.dart';
 
 /// Pip's reasoning: what a message means, and what to say back.
 ///
@@ -658,67 +659,71 @@ class AssistantBrain {
     AssistantAction action,
     StudySnapshot s, {
     int turn = 0,
-  }) => switch (action.act) {
-    Act.greet => _greet(s),
-    Act.intro => _intro(s),
-    Act.help => AssistantReply(const [
-      Say(Copy('Here’s what I can do:')),
-    ], suggestions: defaults(s)),
-    Act.plan => _plan(s, action.arg, action.value ?? 0),
-    Act.report => _report(s),
-    Act.distractions => _distractions(s),
-    Act.lock => _lock(s, action.arg),
-    Act.focusNow => _focusNow(s, action.arg),
-    Act.examAsk => _examAsk(s),
-    Act.exam => _exam(s, action.arg),
-    Act.examPick => _examPicked(s),
-    Act.examDate => _examDated(s),
-    Act.motivate => _motivate(s, action.said, turn),
-    Act.tip => _tip(turn),
-    Act.goal => _goal(s),
-    Act.goalSet => AssistantReply(
-      [
-        Say(
-          Copy('Done. Today’s goal is now {0}.', [Minutes(action.value ?? 0)]),
+  }) =>
+      OfflineCoach.respond(action, s) ??
+      switch (action.act) {
+        Act.greet => _greet(s),
+        Act.intro => _intro(s),
+        Act.help => AssistantReply(const [
+          Say(Copy('Here’s what I can do:')),
+        ], suggestions: defaults(s)),
+        Act.plan => _plan(s, action.arg, action.value ?? 0),
+        Act.report => _report(s),
+        Act.distractions => _distractions(s),
+        Act.lock => _lock(s, action.arg),
+        Act.focusNow => _focusNow(s, action.arg),
+        Act.examAsk => _examAsk(s),
+        Act.exam => _exam(s, action.arg),
+        Act.examPick => _examPicked(s),
+        Act.examDate => _examDated(s),
+        Act.motivate => _motivate(s, action.said, turn),
+        Act.tip => _tip(turn),
+        Act.goal => _goal(s),
+        Act.goalSet => AssistantReply(
+          [
+            Say(
+              Copy('Done. Today’s goal is now {0}.', [
+                Minutes(action.value ?? 0),
+              ]),
+            ),
+          ],
+          suggestions: [_planChip],
         ),
-      ],
-      suggestions: [_planChip],
-    ),
-    Act.streak => _streak(s),
-    Act.thanks => AssistantReply(
-      const [Say(Copy('Anytime. You do the work — I just keep count.'))],
-      suggestions: [_planChip, _reportChip],
-    ),
-    Act.bye => const AssistantReply([
-      Say(Copy('See you soon. Your plan will be here.')),
-    ]),
-    Act.unknown => AssistantReply(const [
-      Say(Copy('I didn’t quite get that. Here’s what I can help with:')),
-    ], suggestions: defaults(s)),
-    Act.timetable => timetableReply(s, action.said),
-    Act.timetableOff => AssistantReply(
-      const [Say(Copy('Timetable removed. I won’t remind you about it.'))],
-      suggestions: [_timetableChip, _planChip],
-    ),
-    Act.examReminder => _examReminder(s, notifications: action.value != 0),
-    Act.leaderboard => _leaderboard(s),
-    Act.subjectStats => _subjectStats(s, action.arg ?? 'top:week'),
-    Act.periodStats => _periodStats(s, action.arg ?? 'week'),
-    Act.examPlan => examPlanReply(s, action.said),
-    Act.reminders => remindersReply(s),
-    Act.reminder || Act.reminderOff => remindersReply(s),
-    Act.examReminderOff => AssistantReply(const [
-      Say(Copy('Okay, no more exam reminders.')),
-    ], suggestions: defaults(s)),
-    Act.aiAllow ||
-    Act.aiDecline ||
-    Act.usageAccess ||
-    Act.appList ||
-    Act.openShield ||
-    Act.openFocus ||
-    Act.openLeaderboard ||
-    Act.reminderDate => const AssistantReply([]),
-  };
+        Act.streak => _streak(s),
+        Act.thanks => AssistantReply(
+          const [Say(Copy('Anytime. You do the work — I just keep count.'))],
+          suggestions: [_planChip, _reportChip],
+        ),
+        Act.bye => const AssistantReply([
+          Say(Copy('See you soon. Your plan will be here.')),
+        ]),
+        Act.unknown => AssistantReply(const [
+          Say(Copy('I didn’t quite get that. Here’s what I can help with:')),
+        ], suggestions: defaults(s)),
+        Act.timetable => timetableReply(s, action.said),
+        Act.timetableOff => AssistantReply(
+          const [Say(Copy('Timetable removed. I won’t remind you about it.'))],
+          suggestions: [_timetableChip, _planChip],
+        ),
+        Act.examReminder => _examReminder(s, notifications: action.value != 0),
+        Act.leaderboard => _leaderboard(s),
+        Act.subjectStats => _subjectStats(s, action.arg ?? 'top:week'),
+        Act.periodStats => _periodStats(s, action.arg ?? 'week'),
+        Act.examPlan => examPlanReply(s, action.said),
+        Act.reminders => remindersReply(s),
+        Act.reminder || Act.reminderOff => remindersReply(s),
+        Act.examReminderOff => AssistantReply(const [
+          Say(Copy('Okay, no more exam reminders.')),
+        ], suggestions: defaults(s)),
+        Act.aiAllow ||
+        Act.aiDecline ||
+        Act.usageAccess ||
+        Act.appList ||
+        Act.openShield ||
+        Act.openFocus ||
+        Act.openLeaderboard ||
+        Act.reminderDate => const AssistantReply([]),
+      };
 
   /// What to show while working a request out. Empty for small talk.
   List<Copy> thinkingFor(Act act) => switch (act) {
@@ -2215,7 +2220,7 @@ class AssistantBrain {
   AssistantReply aiConsentAsk() => const AssistantReply([
     Say(
       Copy(
-        'When you’re online, I can give you smarter answers using an AI service. I’d share only your question, our last few messages and a short study summary. Never your name or email. Is that okay?',
+        'Cloud Study Coach is optional. Redacted questions, recent messages and study totals are processed online. Keep personal details out of questions. Offline coaching is always available. You can switch modes in Settings.',
       ),
     ),
     Say.card(
@@ -2269,38 +2274,17 @@ class AssistantBrain {
     _ => false,
   };
 
-  /// The study summary sent with an online question: numbers and names of
-  /// subjects, never the user's name or email.
-  static String? _topSubject(StudySnapshot s) {
-    final ranked = s.subjects.where((t) => t.thisWeek > 0).toList()
-      ..sort((a, b) => b.thisWeek.compareTo(a.thisWeek));
-    return ranked.firstOrNull?.name;
-  }
-
+  /// Numeric study totals only. Custom labels can contain personal details;
+  /// app-usage metrics are covered by a local-only permission disclosure.
   Map<String, dynamic> aiContext(StudySnapshot s) {
-    final exam = examById(s.memory.examId);
     final days = s.daysToExam;
     return {
-      'exam': ?exam?.name,
       'daysToExam': ?days,
       'todayMinutes': s.todayMinutes,
       'goalMinutes': s.goalMinutes,
       'weekMinutes': s.weekMinutes,
       'lastWeekSameDaysMinutes': s.lastWeekSpanMinutes,
       'streak': s.streak,
-      'localHour': s.now.hour,
-      'subjects': [
-        for (final t in s.subjects.take(8))
-          {
-            'name': t.name,
-            'thisWeekMinutes': t.thisWeek,
-            'lastWeekSameDaysMinutes': t.lastWeekSpan,
-          },
-      ],
-      'topSubject': ?_topSubject(s),
-      // Screen time goes as one total. App names and packages stay on the
-      // phone: they say more about a person than their study does.
-      if (s.usageReady) 'distractingMinutesToday': s.distractingMinutes,
     };
   }
 

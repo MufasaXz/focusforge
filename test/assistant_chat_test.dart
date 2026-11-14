@@ -57,6 +57,7 @@ void main() {
     WidgetTester tester, {
     AiBackend? backend,
     String? uid,
+    bool? firstChoice = false,
   }) async {
     tester.view.physicalSize = const Size(420, 900);
     tester.view.devicePixelRatio = 1;
@@ -124,6 +125,14 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    if (firstChoice != null &&
+        find.text('Enable Cloud Study Coach?').evaluate().isNotEmpty) {
+      await tester.tap(
+        find.text(firstChoice ? 'Agree & Enable' : 'Disagree (Offline Mode)'),
+      );
+      await tester.pump();
+    }
     return container;
   }
 
@@ -250,19 +259,17 @@ void main() {
     final backend = _FakeBackend(
       reply: 'One 40 minute block of Physics tonight. Start small.',
     );
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
-    await wait(tester);
-
-    await ask(tester, question);
-    expect(backend.questions, isEmpty);
-    expect(
-      find.textContaining('smarter answers', findRichText: true),
-      findsOneWidget,
+    final container = await pumpChat(
+      tester,
+      backend: backend,
+      uid: 'u1',
+      firstChoice: null,
     );
-
-    await tester.ensureVisible(find.text('Allow'));
-    await tester.tap(find.text('Allow'));
+    expect(find.text('Enable Cloud Study Coach?'), findsOneWidget);
+    expect(backend.questions, isEmpty);
+    await tester.tap(find.text('Agree & Enable'));
     await wait(tester);
+    await ask(tester, question);
 
     expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
     expect(backend.questions, [question]);
@@ -272,9 +279,48 @@ void main() {
     );
     // The study summary carries numbers, never who the user is.
     expect(jsonOf(backend.contexts.single), isNot(contains('Rivera')));
-    expect(backend.histories.single, isNotEmpty);
+    expect(backend.histories.single, isEmpty);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'known profile identifiers stay out of online questions and history',
+    (tester) async {
+      final backend = _FakeBackend(reply: 'Study in short blocks.');
+      final container = await pumpChat(tester, backend: backend, uid: 'u1');
+      await container
+          .read(userProvider.notifier)
+          .save(
+            const UserProfile(
+              uid: 'account-private-id',
+              displayName: 'Sam Lee',
+              isAnonymous: false,
+            ),
+          );
+      await container.read(assistantMemoryProvider.notifier).setAiConsent(true);
+      await wait(tester);
+      const personal =
+          'Sam Lee student@example.com account-private-id asks for revision advice';
+      await ask(tester, personal);
+      await ask(tester, question);
+      final sent =
+          '${backend.questions} ${backend.histories} ${backend.contexts}';
+      for (final value in [
+        'Sam Lee',
+        'student@example.com',
+        'account-private-id',
+      ]) {
+        expect(sent, isNot(contains(value)));
+      }
+      expect(
+        container
+            .read(chatProvider)
+            .entries
+            .any((entry) => entry.text == personal),
+        isTrue,
+      );
+    },
+  );
 
   testWidgets('only the user\'s words and online answers are sent', (
     tester,
@@ -305,11 +351,11 @@ void main() {
     await tester.tap(find.text('Answer with AI when online'));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Never your name or email.'),
+      find.textContaining('Redaction may miss personal details'),
       findsOneWidget,
       reason: 'what would be sent is said before it is allowed',
     );
-    await tester.tap(find.text('Keep it on this phone'));
+    await tester.tap(find.text('Disagree (Offline Mode)'));
     await tester.pumpAndSettle();
     expect(container.read(assistantMemoryProvider).aiConsent, isNot(true));
     expect(find.text('Answers stay on this phone'), findsOneWidget);
@@ -318,7 +364,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Answer with AI when online'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Allow'));
+    await tester.tap(find.text('Agree & Enable'));
     await tester.pumpAndSettle();
     expect(container.read(assistantMemoryProvider).aiConsent, isTrue);
     expect(find.text('Online answers on'), findsOneWidget);
@@ -363,7 +409,11 @@ void main() {
     tester,
   ) async {
     final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(tester, backend: backend);
+    final container = await pumpChat(
+      tester,
+      backend: backend,
+      firstChoice: true,
+    );
     await wait(tester);
 
     await ask(tester, question);
@@ -387,18 +437,64 @@ void main() {
     tester,
   ) async {
     final backend = _FakeBackend(reply: 'unused');
-    final container = await pumpChat(tester, backend: backend, uid: 'u1');
+    final container = await pumpChat(
+      tester,
+      backend: backend,
+      uid: 'u1',
+      firstChoice: null,
+    );
     await wait(tester);
 
-    await ask(tester, question);
-    await tester.ensureVisible(find.text('Keep it on this phone'));
-    await tester.tap(find.text('Keep it on this phone'));
+    await tester.ensureVisible(find.text('Disagree (Offline Mode)'));
+    await tester.tap(find.text('Disagree (Offline Mode)'));
     await wait(tester);
     await ask(tester, 'what should I study first tomorrow morning then?');
 
     expect(container.read(assistantMemoryProvider).aiConsent, isFalse);
     expect(backend.questions, isEmpty);
   });
+  testWidgets('an offline choice does not prompt again when the chat reopens', (
+    tester,
+  ) async {
+    await pumpChat(tester);
+    await wait(tester);
+    await tester.pumpWidget(const SizedBox());
+    await pumpChat(tester);
+    await wait(tester);
+    expect(find.text('Enable Cloud Study Coach?'), findsNothing);
+    expect(store.getBool('pip_cloud_consent'), isFalse);
+  });
+
+  testWidgets(
+    'withdrawing cloud consent discards an in-flight reply and blocks later calls',
+    (tester) async {
+      final backend = _FakeBackend(reply: 'Late cloud response');
+      final c = await pumpChat(
+        tester,
+        backend: backend,
+        uid: 'u1',
+        firstChoice: true,
+      );
+      await wait(tester);
+      final controller = c.read(chatProvider.notifier);
+      final response = controller.send(question);
+      for (var i = 0; i < 30 && backend.questions.isEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(backend.questions, hasLength(1));
+      await controller.setOnlineAnswers(false);
+      await wait(tester);
+      await response;
+      expect(c.read(chatProvider).entries.where((e) => e.online), isEmpty);
+      final local = controller.send(
+        'what should I study first tomorrow morning then?',
+      );
+      await wait(tester);
+      await local;
+      expect(backend.questions, hasLength(1));
+    },
+  );
+
   test('an online answer loses its Markdown marks and keeps its list', () {
     expect(
       tidyAnswer(
@@ -576,7 +672,11 @@ void main() {
 
     await ask(tester, question);
     expect(backend.contexts.single!.containsKey('topDistractingApps'), isFalse);
-    expect(backend.contexts.single!['distractingMinutesToday'], 48);
+    expect(
+      backend.contexts.single!.containsKey('distractingMinutesToday'),
+      isFalse,
+    );
+    expect(backend.contexts.single!.containsKey('subjects'), isFalse);
 
     await tester.tap(find.byTooltip('Report this answer'));
     await tester.pumpAndSettle();
