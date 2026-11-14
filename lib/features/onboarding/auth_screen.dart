@@ -12,11 +12,14 @@ import '../../app/theme/app_theme.dart';
 import '../../core/models/user.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/services/auth_service.dart';
-import '../../shared/widgets/app_mark.dart';
 import '../../shared/widgets/email_auth_sheet.dart';
 import '../../shared/widgets/provider_marks.dart';
 import '../../shared/widgets/stagger.dart';
 import '../../shared/widgets/privacy_policy_link.dart';
+import '../assistant/mascot/mascot.dart';
+import '../assistant/mascot/mascot_painter.dart';
+import '../assistant/mascot/mascot_rig.dart';
+import 'fill_wordmark.dart';
 import 'onboarding_chrome.dart';
 
 /// Screen 1 — the account fork.
@@ -52,6 +55,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   String? _done;
 
   AuthService get _auth => ref.read(authServiceProvider);
+
+  /// Pip stands in the welcome and waves — nothing else, and only twice, so
+  /// the page settles.
+  final _pip = MascotRig();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pip.wave(seconds: 2.4);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pip.dispose();
+    super.dispose();
+  }
 
   Future<void> _run(String id, Future<UserProfile?> Function() action) async {
     if (_busy != null) return;
@@ -248,45 +270,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ? () => _run('restore', _auth.restore)
                           : null,
                     ),
+                  // The welcome sits in the middle of the screen: Pip, the
+                  // words, then the choices right under them.
+                  const Spacer(),
                   const SizedBox(height: Gap.lg),
-                  // A small brand line instead of a big logo: the name is
-                  // enough, and the space goes to the words and the choice.
                   Stagger(
                     index: 0,
-                    child: Row(
-                      children: [
-                        const AppMark(size: 28),
-                        const SizedBox(width: Gap.sm),
-                        Flexible(
-                          child: Text(
-                            'FocusForge',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -.2,
-                            ),
-                          ),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: GestureDetector(
+                        onTap: () => _pip.wave(seconds: 2.4),
+                        child: ExcludeSemantics(
+                          child: Mascot(rig: _pip, width: 76),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: Gap.xxl + Gap.lg),
+                  const SizedBox(height: Gap.lg),
                   Stagger(
                     index: 1,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            context.tr("Welcome to FocusForge"),
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1,
-                              height: 1.1,
-                            ),
+                        _WelcomeHeadline(
+                          text: context.tr("Welcome to FocusForge"),
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1,
+                            height: 1.1,
                           ),
+                          fill: MascotColors.of(theme).body,
                         ),
                         const SizedBox(height: Gap.md),
                         Text(
@@ -300,8 +313,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ],
                     ),
                   ),
-                  // The choices sit low, where a thumb already is.
-                  const Spacer(),
                   const SizedBox(height: Gap.xxl),
                   Stagger(
                     index: 2,
@@ -335,9 +346,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       onTap: _busy == null && emailLive ? _email : null,
                     ),
                   ),
+                  const SizedBox(height: Gap.lg),
+                  Stagger(index: 4, child: _OrDivider(label: context.tr("or"))),
                   const SizedBox(height: Gap.sm),
                   Stagger(
-                    index: 4,
+                    index: 5,
                     child: Center(
                       child: TextButton(
                         onPressed: _busy == null ? _skip : null,
@@ -357,14 +370,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                     ),
                   ),
-                  Text(
-                    note,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                  // Only when a sign-in route is missing does the page need
+                  // to explain itself; the usual "optional" note is gone.
+                  if (!googleLive)
+                    Text(
+                      note,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: Gap.md),
+                  const Spacer(),
+                  const SizedBox(height: Gap.lg),
                   const _LegalLinks(),
                 ],
               ),
@@ -498,6 +515,88 @@ class _SignInButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final line = Expanded(child: Divider(color: cs.outlineVariant, height: 1));
+    return ExcludeSemantics(
+      child: Row(
+        children: [
+          line,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          line,
+        ],
+      ),
+    );
+  }
+}
+
+/// "Welcome to FocusForge", with the product name filled in letter by
+/// letter. The rest of the (translated) sentence is ordinary text; a language
+/// that does not keep the name verbatim gets the plain sentence.
+class _WelcomeHeadline extends StatelessWidget {
+  const _WelcomeHeadline({
+    required this.text,
+    required this.style,
+    required this.fill,
+  });
+
+  static const _name = 'FocusForge';
+
+  final String text;
+  final TextStyle? style;
+  final Color fill;
+
+  @override
+  Widget build(BuildContext context) {
+    final at = text.indexOf(_name);
+    final base = style ?? DefaultTextStyle.of(context).style;
+    return Semantics(
+      header: true,
+      label: text,
+      excludeSemantics: true,
+      child: at < 0
+          ? Text(text, style: base)
+          : Text.rich(
+              TextSpan(
+                style: base,
+                children: [
+                  if (at > 0) TextSpan(text: text.substring(0, at)),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    // One word cannot wrap, so on a narrow phone with very
+                    // large text it shrinks to the line instead of overflowing.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: FillWordmark(
+                        text: _name,
+                        style: base,
+                        color: fill,
+                      ),
+                    ),
+                  ),
+                  if (at + _name.length < text.length)
+                    TextSpan(text: text.substring(at + _name.length)),
+                ],
+              ),
+            ),
     );
   }
 }
