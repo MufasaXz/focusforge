@@ -202,15 +202,8 @@ void main() {
       await tester.scrollUntilVisible(find.text('Show app pause screens'), 180);
       await tester.pumpAndSettle();
       expect(find.text('Show app pause screens').hitTestable(), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('How to allow pause screens'),
-        180,
-      );
-      await tester.pumpAndSettle();
-      expect(
-        find.text('How to allow pause screens').hitTestable(),
-        findsOneWidget,
-      );
+      // Each permission is one row with its action at the end.
+      expect(find.text('Allow'), findsWidgets);
       await tester.scrollUntilVisible(find.text('Continue for now'), 180);
       await tester.pumpAndSettle();
       expect(find.text('Continue for now').hitTestable(), findsOneWidget);

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,11 +100,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      final cardAllow = find.widgetWithText(FilledButton, 'Allow');
       expect(find.text('Allow app usage'), findsOneWidget);
       expect(manager.requests, isEmpty);
       // First time: one dialog, the app-list disclosure, which already
       // covers what usage access reads. Declining it requests nothing.
-      await tester.tap(find.text('Allow app usage'));
+      await tester.tap(cardAllow);
       await tester.pumpAndSettle();
       expect(
         find.text('Allow FocusForge to read your app list?'),
@@ -111,12 +113,12 @@ void main() {
       );
       expect(find.text('Why FocusForge asks for app usage'), findsNothing);
       expect(find.textContaining('never uploaded or shared'), findsOneWidget);
-      await tester.tap(find.text('Not now'));
+      await tester.tap(find.text('Not now').last);
       await tester.pumpAndSettle();
       expect(manager.requests, isEmpty);
       expect(container.read(appListConsentProvider), isFalse);
 
-      await tester.tap(find.text('Allow app usage'));
+      await tester.tap(cardAllow);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Agree'));
       await tester.pumpAndSettle();
@@ -137,19 +139,19 @@ void main() {
 
       // Already agreed: the guide is the one sheet, and Not now still
       // sends nobody to Settings.
-      await tester.tap(find.text('Allow app usage'));
+      await tester.tap(cardAllow);
       await tester.pumpAndSettle();
       expect(find.text('Turn on Usage access'), findsOneWidget);
       expect(
         find.text('Allow FocusForge to read your app list?'),
         findsNothing,
       );
-      await tester.ensureVisible(find.text('Not now'));
+      await tester.ensureVisible(find.text('Not now').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Not now'));
+      await tester.tap(find.text('Not now').last);
       await tester.pumpAndSettle();
       expect(manager.requests, [AppPermission.usageAccess]);
-      await tester.tap(find.text('Allow app usage'));
+      await tester.tap(cardAllow);
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Open settings'));
       await tester.pumpAndSettle();
@@ -162,4 +164,86 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     },
   );
+
+  testWidgets('Not now hides the usage card until the next launch', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        usageAccessProvider.overrideWith((ref) async => false),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: UsageAccessCard()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    expect(find.text('Allow app usage'), findsNothing);
+    expect(container.read(usageCardDismissedProvider), isTrue);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('signing back in asks again for missing permissions', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channels = [
+      MethodChannel('dev.focusforge/shield'),
+      MethodChannel('usage_stats'),
+      MethodChannel('flutter.baseflow.com/permissions/methods'),
+    ];
+    for (final channel in channels) {
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => channel.name.contains('permissions') ? 0 : false,
+      );
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    }
+    SharedPreferences.setMockInitialValues({});
+    final store = await LocalStore.open();
+    await store.setBool(StoreKeys.coachSeen, true);
+    final container = ProviderContainer(
+      overrides: [
+        localStoreProvider.overrideWithValue(store),
+        usageAccessProvider.overrideWith((ref) async => false),
+        appUsageTodayProvider.overrideWith((ref) async => const {}),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(askPermissionsAfterSignInProvider.notifier).state = true;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: DashboardScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Make room for focus'), findsWidgets);
+    expect(find.text('Show app pause screens'), findsOneWidget);
+    expect(container.read(askPermissionsAfterSignInProvider), isFalse);
+    // Continue closes it and it does not come back on its own.
+    await tester.tap(find.text('Continue for now'));
+    await tester.pumpAndSettle();
+    expect(find.text('Show app pause screens'), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
+  });
 }

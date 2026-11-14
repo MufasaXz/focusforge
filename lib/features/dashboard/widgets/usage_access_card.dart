@@ -8,6 +8,12 @@ import '../../../core/providers/usage_providers.dart';
 import '../../../core/services/native_shield_service.dart';
 import '../../../core/services/permission_manager.dart';
 import '../../shield/shield_access.dart';
+import '../../../shared/widgets/glass_surface.dart';
+import '../../../shared/widgets/icon_badge.dart';
+
+/// Hidden by "Not now" until the next launch: a dismissal is an answer for
+/// today, not a promise never to ask.
+final usageCardDismissedProvider = StateProvider<bool>((ref) => false);
 
 /// Optional, prominent explanation before opening Android's Usage Access page.
 class UsageAccessCard extends ConsumerStatefulWidget {
@@ -47,32 +53,79 @@ class _UsageAccessCardState extends ConsumerState<UsageAccessCard>
         access.valueOrNull == true) {
       return const SizedBox.shrink();
     }
+    if (ref.watch(usageCardDismissedProvider)) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // The ask the way system-grade apps make it: what it is, one line of
+    // why, and two plain answers. The longer explanation still comes before
+    // Android's settings page opens.
     return Padding(
       padding: const EdgeInsets.only(top: Gap.lg),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(Radii.card),
-          border: Border.all(color: cs.outlineVariant),
-        ),
+      child: ContentCard(
         child: Padding(
-          padding: const EdgeInsets.all(Gap.lg),
+          padding: const EdgeInsets.fromLTRB(
+            Gap.lg + 4,
+            Gap.lg + 4,
+            Gap.lg,
+            Gap.sm,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              FilledButton.tonalIcon(
-                onPressed: _opening ? null : _request,
-                icon: const Icon(Icons.timelapse_rounded),
-                label: Text(context.tr("Allow app usage")),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconBadge(
+                    icon: Icons.query_stats_rounded,
+                    color: cs.primary,
+                    size: 44,
+                    radius: 14,
+                  ),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr("Allow app usage"),
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          context.tr(
+                            "See your screen time and let your app limits work. It stays on this phone.",
+                          ),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: Gap.sm),
-              Text(
-                context.tr(
-                  "Let your selected app boundaries and daily budgets detect which app is open. App usage stays on this device. Your focus timer works without this access.",
-                ),
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: Gap.sm,
+                children: [
+                  TextButton(
+                    onPressed: _opening
+                        ? null
+                        : () =>
+                              ref
+                                      .read(usageCardDismissedProvider.notifier)
+                                      .state =
+                                  true,
+                    child: Text(context.tr("Not now")),
+                  ),
+                  FilledButton(
+                    onPressed: _opening ? null : _request,
+                    child: Text(context.tr("Allow")),
+                  ),
+                ],
               ),
             ],
           ),

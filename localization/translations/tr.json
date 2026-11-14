@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "İşte buradasınız, {0}! Yerinizi ayırdım.",
   "There you are! I saved your spot.": "İşte buradasınız! Yerinizi ayırdım.",
   "Not sure where to start? Tap me.": "Nereden başlayacağınızı bilmiyor musunuz? Bana dokunun.",
-  "On": "Açık"
+  "On": "Açık",
+  "Shows a pause screen over the apps you choose.": "Seçtiğin uygulamaların üzerinde bir mola ekranı gösterir.",
+  "Keeps your running timer in a quiet notification.": "Çalışan zamanlayıcını sessiz bir bildirimde tutar.",
+  "Shows your screen time and spots the apps you limit.": "Ekran süreni gösterir ve sınırladığın uygulamaları algılar.",
+  "See your screen time and let your app limits work. It stays on this phone.": "Ekran süreni gör ve uygulama sınırlarını etkinleştir. Bu telefonda kalır."
 }

@@ -253,7 +253,7 @@ void main() {
       final usageCard = find
           .ancestor(
             of: find.text('Understand your screen time'),
-            matching: find.byType(Padding),
+            matching: find.byType(LayoutBuilder),
           )
           .first;
       await tester.scrollUntilVisible(
@@ -263,7 +263,7 @@ void main() {
       await tester.pumpAndSettle();
       final enable = find.descendant(
         of: usageCard,
-        matching: find.text('Enable'),
+        matching: find.text('Allow'),
       );
       await tester.scrollUntilVisible(enable, 180);
       await tester.pumpAndSettle();

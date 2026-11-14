@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "Akhirnya datang juga, {0}! Tempat Anda sudah saya jaga.",
   "There you are! I saved your spot.": "Akhirnya datang juga! Tempat Anda sudah saya jaga.",
   "Not sure where to start? Tap me.": "Bingung mulai dari mana? Ketuk saya.",
-  "On": "Nyala"
+  "On": "Nyala",
+  "Shows a pause screen over the apps you choose.": "Menampilkan layar jeda di atas aplikasi yang kamu pilih.",
+  "Keeps your running timer in a quiet notification.": "Menampilkan timer yang berjalan dalam notifikasi yang tenang.",
+  "Shows your screen time and spots the apps you limit.": "Menampilkan waktu layar dan mengenali aplikasi yang kamu batasi.",
+  "See your screen time and let your app limits work. It stays on this phone.": "Lihat waktu layarmu dan aktifkan batas aplikasi. Data tetap di ponsel ini."
 }

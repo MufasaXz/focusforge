@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "There you are, {0}! I saved your spot.",
   "There you are! I saved your spot.": "There you are! I saved your spot.",
   "Not sure where to start? Tap me.": "Not sure where to start? Tap me.",
-  "On": "On"
+  "On": "On",
+  "Shows a pause screen over the apps you choose.": "Shows a pause screen over the apps you choose.",
+  "Keeps your running timer in a quiet notification.": "Keeps your running timer in a quiet notification.",
+  "Shows your screen time and spots the apps you limit.": "Shows your screen time and spots the apps you limit.",
+  "See your screen time and let your app limits work. It stays on this phone.": "See your screen time and let your app limits work. It stays on this phone."
 }

@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "你来啦，{0}！我给你留了位置。",
   "There you are! I saved your spot.": "你来啦！我给你留了位置。",
   "Not sure where to start? Tap me.": "不知道从哪儿开始？点我。",
-  "On": "开启"
+  "On": "开启",
+  "Shows a pause screen over the apps you choose.": "在你选择的应用上显示暂停界面。",
+  "Keeps your running timer in a quiet notification.": "在安静的通知中显示正在运行的计时器。",
+  "Shows your screen time and spots the apps you limit.": "显示屏幕使用时间，并识别你限制的应用。",
+  "See your screen time and let your app limits work. It stays on this phone.": "查看屏幕使用时间并启用应用限制。数据只保存在这部手机上。"
 }

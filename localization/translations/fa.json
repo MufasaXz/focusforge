@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "آمدید، {0}! جایتان را نگه داشته‌ام.",
   "There you are! I saved your spot.": "آمدید! جایتان را نگه داشته‌ام.",
   "Not sure where to start? Tap me.": "نمی‌دانید از کجا شروع کنید؟ رویم بزنید.",
-  "On": "روشن"
+  "On": "روشن",
+  "Shows a pause screen over the apps you choose.": "روی برنامه‌هایی که انتخاب می‌کنید صفحهٔ مکث نشان می‌دهد.",
+  "Keeps your running timer in a quiet notification.": "تایمر در حال اجرا را در یک اعلان آرام نگه می‌دارد.",
+  "Shows your screen time and spots the apps you limit.": "زمان صفحه را نشان می‌دهد و برنامه‌های محدودشده را تشخیص می‌دهد.",
+  "See your screen time and let your app limits work. It stays on this phone.": "زمان صفحه‌تان را ببینید و محدودیت برنامه‌ها را فعال کنید. روی همین گوشی می‌ماند."
 }

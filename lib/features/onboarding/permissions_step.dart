@@ -155,22 +155,37 @@ class _PermissionsStepState extends ConsumerState<PermissionsStep>
           ),
           const SizedBox(height: Gap.lg),
         ],
-        for (var i = 0; i < permissions.length; i++)
+        if (permissions.isNotEmpty)
           Stagger(
-            index: 2 + i,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: Gap.md),
-              child: _PermissionCard(
-                permission: permissions[i],
-                status: _status[permissions[i].kind],
-                busy: _requesting == permissions[i].kind,
-                onEnable: _requesting == null
-                    ? () => _enable(permissions[i].kind)
-                    : null,
-                onOpenSettings: _openSettings,
+            index: 2,
+            // One grouped list, the way a phone's own settings app asks: a
+            // row per permission with its state at the end, instead of a
+            // card of paragraphs each.
+            child: ContentCard(
+              child: Column(
+                children: [
+                  for (var i = 0; i < permissions.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: Gap.lg + 40 + Gap.md,
+                        color: cs.outlineVariant.withValues(alpha: .4),
+                      ),
+                    _PermissionRow(
+                      permission: permissions[i],
+                      status: _status[permissions[i].kind],
+                      busy: _requesting == permissions[i].kind,
+                      onEnable: _requesting == null
+                          ? () => _enable(permissions[i].kind)
+                          : null,
+                      onOpenSettings: _openSettings,
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
+        const SizedBox(height: Gap.lg),
         const SizedBox(height: Gap.xs),
         Stagger(
           index: 6,
@@ -202,16 +217,14 @@ class _Permission {
     required this.title,
     required this.icon,
     required this.why,
-    required this.privacy,
-    required this.platform,
   });
 
   final AppPermission kind;
   final String title;
   final IconData icon;
+
+  /// One line: what turning it on gives the user.
   final String why;
-  final String privacy;
-  final String platform;
 }
 
 final _permissions = <_Permission>[
@@ -219,34 +232,29 @@ final _permissions = <_Permission>[
     kind: AppPermission.overlay,
     title: tr("Show app pause screens"),
     icon: Icons.layers_outlined,
-    why: 'Draws the pause screen over apps you choose. Normal app boundaries also need Usage access to detect which app is open.',
-    privacy: 'Pause screens run on your device. Android settings and emergency apps are never covered.',
-    platform: 'Android',
+    why: tr("Shows a pause screen over the apps you choose."),
   ),
   _Permission(
     kind: AppPermission.notifications,
     title: tr("Keep your timer in view"),
-    icon: Icons.notifications_active_rounded,
-    why: 'Shows your running countdown and subject in a quiet ongoing notification. Compatible dynamic bars can pick it up.',
-    privacy:
-        'Notifications are generated on-device. Nothing is pushed from a '
-        'server.',
-    platform: 'All platforms',
+    icon: Icons.notifications_active_outlined,
+    why: tr("Keeps your running timer in a quiet notification."),
   ),
   _Permission(
     kind: AppPermission.usageAccess,
     title: tr("Understand your screen time"),
     icon: Icons.query_stats_rounded,
-    why:
-        'Reads screen time per app so the dashboard can show where your day '
-        'actually went. It also detects when a chosen app opens for normal app boundaries.',
-    privacy: 'Usage history never leaves this device and is never uploaded.',
-    platform: 'Android',
+    why: tr("Shows your screen time and spots the apps you limit."),
   ),
 ];
 
-class _PermissionCard extends StatelessWidget {
-  const _PermissionCard({
+/// One permission: icon, name, one line of reason and its state at the end.
+///
+/// The state is what the operating system says, never a guess: "Allow" until
+/// it is granted, a tick after, and a way to Settings once Android has
+/// stopped asking.
+class _PermissionRow extends StatelessWidget {
+  const _PermissionRow({
     required this.permission,
     required this.status,
     required this.onEnable,
@@ -266,210 +274,132 @@ class _PermissionCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final granted = status == PermissionOutcome.granted;
 
-    return ContentCard(
-      child: Padding(
-        padding: const EdgeInsets.all(Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconBadge(
-                  icon: permission.icon,
-                  color: granted ? cs.tertiary : cs.primary,
-                  size: 40,
-                  radius: Radii.tile,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(
-                    permission.title,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            Text(
-              permission.why,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: Gap.sm),
-            if (permission.kind == AppPermission.overlay) ...[
-              Text(
-                context.tr("How to allow pause screens"),
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: Gap.xs),
-              Text(
-                context.tr(
-                  "1. Open Draw over other apps settings.\n2. Choose FocusForge and allow access.\n3. Return here. Usage access is also needed for app boundaries.",
-                ),
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: Gap.md),
-            ],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.lock_outline_rounded, size: 13, color: cs.tertiary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    permission.privacy,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.tertiary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.md),
-            _Action(
-              status: status,
-              busy: busy,
-              title: permission.title,
-              onEnable: onEnable,
-              onOpenSettings: onOpenSettings,
-            ),
-          ],
+    // The line under the title changes with the state, so a row that is
+    // waiting on Settings says so where the reason was.
+    final line = switch (status) {
+      _ when busy => context.tr("Opening permission…"),
+      null => context.tr("Checking access…"),
+      PermissionOutcome.openedSettings => context.tr(
+        "Waiting for you to turn it on in Settings",
+      ),
+      PermissionOutcome.permanentlyDenied => context.tr(
+        "Turned off — only Settings can change it",
+      ),
+      PermissionOutcome.unsupported => context.tr(
+        "Not available on this device",
+      ),
+      _ => permission.why,
+    };
+
+    final Widget action = switch (status) {
+      _ when busy || status == null => const SizedBox.square(
+        dimension: 48,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         ),
       ),
-    );
-  }
-}
-
-/// The status line under a permission card.
-///
-/// Five outcomes, five different things to say — and the one thing none of
-/// them may say is "done" before the operating system has said so.
-class _Action extends StatelessWidget {
-  const _Action({
-    required this.status,
-    required this.title,
-    required this.onEnable,
-    required this.onOpenSettings,
-    required this.busy,
-  });
-
-  final PermissionOutcome? status;
-  final String title;
-  final VoidCallback? onEnable;
-  final VoidCallback onOpenSettings;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    if (status == null || busy) {
-      return Row(
-        children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+      PermissionOutcome.granted => Semantics(
+        label: context.tr("{0} granted", [permission.title]),
+        excludeSemantics: true,
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_rounded, size: 20, color: cs.tertiary),
+              const SizedBox(width: Gap.xs),
+              Text(
+                context.tr("Granted"),
+                style: theme.textTheme.labelLarge?.copyWith(color: cs.tertiary),
+              ),
+            ],
           ),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: Text(
-              busy
-                  ? context.tr("Opening permission…")
-                  : context.tr("Checking access…"),
-              style: theme.textTheme.labelMedium,
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (status == PermissionOutcome.granted) {
-      return Semantics(
-        label: context.tr("{0} granted", [title]),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, size: 18, color: cs.tertiary),
-            const SizedBox(width: Gap.sm),
-            Text(
-              context.tr("Granted"),
-              style: theme.textTheme.labelLarge?.copyWith(color: cs.tertiary),
-            ),
-          ],
         ),
-      );
-    }
+      ),
+      PermissionOutcome.unsupported => const SizedBox.shrink(),
+      PermissionOutcome.permanentlyDenied => TextButton(
+        onPressed: onOpenSettings,
+        child: Text(context.tr("Open Settings")),
+      ),
+      PermissionOutcome.openedSettings => TextButton(
+        onPressed: onEnable,
+        child: Text(context.tr("Open again")),
+      ),
+      _ => FilledButton.tonal(
+        onPressed: onEnable,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(72, 40),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+        ),
+        child: Text(context.tr("Allow")),
+      ),
+    };
 
-    if (status == PermissionOutcome.unsupported) {
-      return Row(
-        children: [
-          Icon(
-            Icons.remove_circle_outline,
-            size: 18,
+    final icon = IconBadge(
+      icon: permission.icon,
+      color: granted ? cs.tertiary : cs.primary,
+      size: 40,
+      radius: Radii.tile,
+    );
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(permission.title, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 2),
+        Text(
+          line,
+          style: theme.textTheme.bodySmall?.copyWith(
             color: cs.onSurfaceVariant,
           ),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: Text(
-              context.tr("Not available on this device"),
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: cs.onSurfaceVariant,
+        ),
+      ],
+    );
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        Gap.lg,
+        Gap.md,
+        Gap.md,
+        Gap.md,
+      ),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          // Side by side while the action fits beside a readable title; on a
+          // narrow phone with large text it drops under the reason instead
+          // of squeezing the title to a word per line.
+          final roomy =
+              box.maxWidth >= 250 &&
+              MediaQuery.textScalerOf(context).scale(14) <= 18;
+          if (roomy) {
+            return Row(
+              children: [
+                icon,
+                const SizedBox(width: Gap.md),
+                Expanded(child: text),
+                const SizedBox(width: Gap.sm),
+                action,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  icon,
+                  const SizedBox(width: Gap.md),
+                  Expanded(child: text),
+                ],
               ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // A permanent refusal means the platform has stopped asking. Offering
-    // "Enable" again would do nothing at all, so the button goes to the only
-    // screen that can still change the answer.
-    if (status == PermissionOutcome.permanentlyDenied) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.tr("Turned off — only Settings can change it"),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: Gap.sm),
-          TextButton(
-            onPressed: onOpenSettings,
-            child: Text(context.tr("Open Settings")),
-          ),
-        ],
-      );
-    }
-
-    if (status == PermissionOutcome.openedSettings) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.tr("Waiting for you to turn it on in Settings"),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: Gap.sm),
-          TextButton(
-            onPressed: onEnable,
-            child: Text(context.tr("Open again")),
-          ),
-        ],
-      );
-    }
-
-    return Align(
-      alignment: AlignmentDirectional.centerEnd,
-      child: FilledButton.tonalIcon(
-        onPressed: onEnable,
-        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-        label: Text(context.tr("Enable")),
+              Align(alignment: AlignmentDirectional.centerEnd, child: action),
+            ],
+          );
+        },
       ),
     );
   }

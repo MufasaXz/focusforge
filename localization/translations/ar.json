@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "ها أنت ذا يا {0}! حجزت لك مكانك.",
   "There you are! I saved your spot.": "ها أنت ذا! حجزت لك مكانك.",
   "Not sure where to start? Tap me.": "لا تعرف من أين تبدأ؟ المسني.",
-  "On": "مفعلة"
+  "On": "مفعلة",
+  "Shows a pause screen over the apps you choose.": "يعرض شاشة توقف فوق التطبيقات التي تختارها.",
+  "Keeps your running timer in a quiet notification.": "يبقي المؤقت الجاري في إشعار هادئ.",
+  "Shows your screen time and spots the apps you limit.": "يعرض وقت الشاشة ويرصد التطبيقات التي تحددها.",
+  "See your screen time and let your app limits work. It stays on this phone.": "اطّلع على وقت الشاشة وفعّل حدود التطبيقات. تبقى البيانات على هذا الهاتف."
 }

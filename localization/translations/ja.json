@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "来ましたね、{0}さん！席を取っておきましたよ。",
   "There you are! I saved your spot.": "来ましたね！席を取っておきましたよ。",
   "Not sure where to start? Tap me.": "何から始めるか迷っていますか？タップしてね。",
-  "On": "オン"
+  "On": "オン",
+  "Shows a pause screen over the apps you choose.": "選んだアプリの上に一時停止画面を表示します。",
+  "Keeps your running timer in a quiet notification.": "実行中のタイマーを控えめな通知に表示します。",
+  "Shows your screen time and spots the apps you limit.": "スクリーンタイムを表示し、制限したアプリを検知します。",
+  "See your screen time and let your app limits work. It stays on this phone.": "スクリーンタイムを確認し、アプリの制限を有効にします。データはこのスマホに残ります。"
 }

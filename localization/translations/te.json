@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "వచ్చేశారా, {0}! మీ చోటు అలాగే ఉంచాను.",
   "There you are! I saved your spot.": "వచ్చేశారా! మీ చోటు అలాగే ఉంచాను.",
   "Not sure where to start? Tap me.": "ఎక్కడ మొదలుపెట్టాలో తెలియడం లేదా? నన్ను ట్యాప్ చేయండి.",
-  "On": "ఆన్"
+  "On": "ఆన్",
+  "Shows a pause screen over the apps you choose.": "మీరు ఎంచుకున్న యాప్‌లపై విరామ స్క్రీన్‌ను చూపుతుంది.",
+  "Keeps your running timer in a quiet notification.": "నడుస్తున్న టైమర్‌ను నిశ్శబ్ద నోటిఫికేషన్‌లో ఉంచుతుంది.",
+  "Shows your screen time and spots the apps you limit.": "మీ స్క్రీన్ టైమ్‌ను చూపి, పరిమితి పెట్టిన యాప్‌లను గుర్తిస్తుంది.",
+  "See your screen time and let your app limits work. It stays on this phone.": "మీ స్క్రీన్ టైమ్ చూడండి, యాప్ పరిమితులు పనిచేయనివ్వండి. ఇది ఈ ఫోన్‌లోనే ఉంటుంది."
 }

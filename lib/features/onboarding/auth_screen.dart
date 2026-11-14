@@ -110,6 +110,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
     final profile = ref.read(userProvider);
     if (profile.onboardingComplete) {
+      // Setup is skipped for a returning account, but this phone may never
+      // have granted its permissions. Home asks once.
+      ref.read(askPermissionsAfterSignInProvider.notifier).state = true;
       context.goNamed(AppRoutes.dashboard);
       showAppSnack(
         context,
@@ -245,30 +248,51 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ? () => _run('restore', _auth.restore)
                           : null,
                     ),
-                  const SizedBox(height: Gap.xxl),
+                  const SizedBox(height: Gap.lg),
+                  // A small brand line instead of a big logo: the name is
+                  // enough, and the space goes to the words and the choice.
                   Stagger(
                     index: 0,
-                    child: Column(
+                    child: Row(
                       children: [
-                        const AppMark(size: 72),
-                        const SizedBox(height: Gap.xl),
+                        const AppMark(size: 28),
+                        const SizedBox(width: Gap.sm),
+                        Flexible(
+                          child: Text(
+                            'FocusForge',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: Gap.xxl + Gap.lg),
+                  Stagger(
+                    index: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Semantics(
                           header: true,
                           child: Text(
                             context.tr("Welcome to FocusForge"),
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.headlineMedium?.copyWith(
+                            style: theme.textTheme.headlineLarge?.copyWith(
                               fontWeight: FontWeight.w700,
-                              letterSpacing: -.6,
+                              letterSpacing: -1,
+                              height: 1.1,
                             ),
                           ),
                         ),
-                        const SizedBox(height: Gap.sm),
+                        const SizedBox(height: Gap.md),
                         Text(
                           context.tr(
                             "Sign in to back up your progress and use it on any phone.",
                           ),
-                          textAlign: TextAlign.center,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -276,12 +300,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ],
                     ),
                   ),
+                  // The choices sit low, where a thumb already is.
+                  const Spacer(),
                   const SizedBox(height: Gap.xxl),
                   Stagger(
-                    index: 1,
+                    index: 2,
                     child: _SignInButton(
                       label: context.tr("Continue with Google"),
-                      leading: const GoogleMark(size: 22),
+                      leading: const GoogleMark(size: 20),
+                      primary: true,
                       busy: _busy == 'google',
                       done: _done == 'google',
                       // A disabled button that stays in place explains itself;
@@ -296,20 +323,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                   const SizedBox(height: Gap.md),
                   Stagger(
-                    index: 2,
+                    index: 3,
                     child: _SignInButton(
                       label: context.tr("Continue with Email"),
                       leading: Icon(
                         Icons.mail_outline_rounded,
-                        size: 22,
+                        size: 20,
                         color: cs.onSurface,
                       ),
                       busy: _busy == 'email',
                       onTap: _busy == null && emailLive ? _email : null,
                     ),
                   ),
-                  const SizedBox(height: Gap.lg),
-                  Stagger(index: 3, child: _OrDivider(label: context.tr("or"))),
                   const SizedBox(height: Gap.sm),
                   Stagger(
                     index: 4,
@@ -318,6 +343,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         onPressed: _busy == null ? _skip : null,
                         style: TextButton.styleFrom(
                           minimumSize: const Size(48, 48),
+                          foregroundColor: cs.onSurface,
                           textStyle: theme.textTheme.titleSmall,
                         ),
                         child: _busy == 'skip'
@@ -331,7 +357,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: Gap.xs),
                   Text(
                     note,
                     textAlign: TextAlign.center,
@@ -339,8 +364,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                  const Spacer(),
-                  const SizedBox(height: Gap.xl),
+                  const SizedBox(height: Gap.md),
                   const _LegalLinks(),
                 ],
               ),
@@ -397,6 +421,7 @@ class _SignInButton extends StatelessWidget {
     required this.onTap,
     this.busy = false,
     this.done = false,
+    this.primary = false,
   });
 
   final String label;
@@ -404,6 +429,10 @@ class _SignInButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool busy;
   final bool done;
+
+  /// The recommended way in: a solid high-contrast button rather than an
+  /// outline, so the first choice reads as the first choice.
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
@@ -419,16 +448,18 @@ class _SignInButton extends StatelessWidget {
         duration: Motion.quick,
         opacity: enabled ? 1 : .45,
         child: Material(
-          color: cs.surface,
+          color: primary ? cs.inverseSurface : cs.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.pill),
-            side: BorderSide(color: cs.outline.withValues(alpha: .55)),
+            side: primary
+                ? BorderSide.none
+                : BorderSide(color: cs.outline.withValues(alpha: .55)),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              height: 56,
+              height: 52,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
                 child: Row(
@@ -445,6 +476,7 @@ class _SignInButton extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: primary ? cs.onInverseSurface : cs.onSurface,
                         ),
                       ),
                     ),
@@ -470,34 +502,6 @@ class _SignInButton extends StatelessWidget {
   }
 }
 
-class _OrDivider extends StatelessWidget {
-  const _OrDivider({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final line = Expanded(child: Divider(color: cs.outlineVariant, height: 1));
-    return ExcludeSemantics(
-      child: Row(
-        children: [
-          line,
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          line,
-        ],
-      ),
-    );
-  }
-}
-
 /// Privacy policy and terms, side by side at the foot of the screen.
 class _LegalLinks extends StatelessWidget {
   const _LegalLinks();
@@ -508,7 +512,7 @@ class _LegalLinks extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TextButton.styleFrom(
       minimumSize: const Size(48, 44),
-      textStyle: Theme.of(context).textTheme.labelLarge,
+      textStyle: Theme.of(context).textTheme.labelMedium,
       foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
     );
     return Wrap(

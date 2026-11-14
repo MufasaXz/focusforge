@@ -22,6 +22,14 @@ final authServiceProvider = Provider<AuthService>(
 /// Stops optional sharing while account cleanup is in progress.
 final accountMutationProvider = StateProvider<bool>((ref) => false);
 
+/// Set when someone signs back in to an account that already finished setup.
+///
+/// Their cloud profile skips onboarding, and with it the permission step, so
+/// a fresh install or a re-login used to land on Home with app boundaries
+/// and screen time silently off. Home reads this once, asks for whatever is
+/// still missing on this phone, and clears it.
+final askPermissionsAfterSignInProvider = StateProvider<bool>((ref) => false);
+
 // -- Account -----------------------------------------------------------------
 
 class UserNotifier extends Notifier<UserProfile> {

@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "Vous voilà, {0} ! J’ai gardé votre place.",
   "There you are! I saved your spot.": "Vous voilà ! J’ai gardé votre place.",
   "Not sure where to start? Tap me.": "Vous ne savez pas par où commencer ? Touchez-moi.",
-  "On": "Activé"
+  "On": "Activé",
+  "Shows a pause screen over the apps you choose.": "Affiche un écran de pause sur les applis que vous choisissez.",
+  "Keeps your running timer in a quiet notification.": "Garde votre minuteur dans une notification discrète.",
+  "Shows your screen time and spots the apps you limit.": "Affiche votre temps d’écran et repère les applis limitées.",
+  "See your screen time and let your app limits work. It stays on this phone.": "Voyez votre temps d’écran et activez vos limites d’applis. Tout reste sur ce téléphone."
 }

@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "এই তো আপনি, {0}! আপনার জায়গাটা রেখে দিয়েছি।",
   "There you are! I saved your spot.": "এই তো আপনি! আপনার জায়গাটা রেখে দিয়েছি।",
   "Not sure where to start? Tap me.": "কোথা থেকে শুরু করবেন বুঝতে পারছেন না? আমাকে ট্যাপ করুন।",
-  "On": "চালু"
+  "On": "চালু",
+  "Shows a pause screen over the apps you choose.": "আপনার বাছাই করা অ্যাপের ওপর বিরতির স্ক্রিন দেখায়।",
+  "Keeps your running timer in a quiet notification.": "চলমান টাইমারকে একটি শান্ত বিজ্ঞপ্তিতে রাখে।",
+  "Shows your screen time and spots the apps you limit.": "আপনার স্ক্রিন টাইম দেখায় এবং সীমিত অ্যাপ চিনে নেয়।",
+  "See your screen time and let your app limits work. It stays on this phone.": "আপনার স্ক্রিন টাইম দেখুন এবং অ্যাপের সীমা চালু রাখুন। এটি এই ফোনেই থাকে।"
 }

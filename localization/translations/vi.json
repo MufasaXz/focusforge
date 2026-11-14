@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "Bạn đây rồi, {0}! Mình giữ chỗ cho bạn rồi đó.",
   "There you are! I saved your spot.": "Bạn đây rồi! Mình giữ chỗ cho bạn rồi đó.",
   "Not sure where to start? Tap me.": "Chưa biết bắt đầu từ đâu? Chạm vào mình nhé.",
-  "On": "Bật"
+  "On": "Bật",
+  "Shows a pause screen over the apps you choose.": "Hiển thị màn hình tạm dừng trên các ứng dụng bạn chọn.",
+  "Keeps your running timer in a quiet notification.": "Giữ bộ hẹn giờ đang chạy trong một thông báo yên lặng.",
+  "Shows your screen time and spots the apps you limit.": "Hiển thị thời gian sử dụng và nhận biết ứng dụng bạn giới hạn.",
+  "See your screen time and let your app limits work. It stays on this phone.": "Xem thời gian sử dụng và bật giới hạn ứng dụng. Dữ liệu ở lại trên điện thoại này."
 }

@@ -29,6 +29,8 @@ import 'widgets/goal_ring.dart';
 import 'widgets/session_shortcut.dart';
 import 'widgets/study_week.dart';
 import 'widgets/usage_access_card.dart';
+import '../onboarding/permissions_step.dart';
+import '../../core/services/permission_manager.dart';
 
 /// Tab 1 — the all-in-one analytics dashboard.
 ///
@@ -55,6 +57,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       const Duration(minutes: 1),
       (_) => DateTime.now(),
     ).listen((_) => ref.read(focusCalendarDateProvider.notifier).refresh());
+    ref.listenManual<bool>(askPermissionsAfterSignInProvider, (_, ask) {
+      if (ask) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => unawaited(_askPermissionsOnce()),
+        );
+      }
+    }, fireImmediately: true);
+  }
+
+  /// After a sign-in that skipped setup, show the permission checklist once
+  /// if anything this phone supports is still off.
+  Future<void> _askPermissionsOnce() async {
+    final flag = ref.read(askPermissionsAfterSignInProvider.notifier);
+    if (!flag.state) return;
+    flag.state = false;
+    const manager = PermissionManager();
+    var missing = false;
+    for (final permission in AppPermission.values) {
+      if (!manager.supports(permission)) continue;
+      final outcome = await manager
+          .check(permission)
+          .timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => PermissionOutcome.granted,
+          );
+      if (outcome != PermissionOutcome.granted &&
+          outcome != PermissionOutcome.unsupported) {
+        missing = true;
+        break;
+      }
+    }
+    if (!missing || !mounted) return;
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (context) => Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: PermissionsStep(
+                  onNext: () => Navigator.of(context).maybePop(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (mounted) ref.invalidate(usageAccessProvider);
   }
 
   @override
@@ -672,40 +724,53 @@ class _PlanGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    // Premium empty state: a soft primary wash with a quiet lift, so the
-    // first-run goal reads as an invitation rather than an empty card.
+    // A compact invitation: icon, the ask and one line beside it, then the
+    // action. The centred stack it replaces spent half a small screen on a
+    // single button.
     return HeroSurface(
-      accentStrength: 0.12,
+      accentStrength: 0.08,
+      padding: const EdgeInsets.all(Gap.lg + 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: IconBadge(
-              icon: Icons.flag_outlined,
-              color: cs.primary,
-              size: 52,
-              radius: 17,
-            ),
-          ),
-          const SizedBox(height: Gap.md),
-          Text(
-            savedGoalMinutes == null
-                ? context.tr("Make room for focus")
-                : context.tr("Your goal · {0}", [
-                    formatMinutes(savedGoalMinutes!),
-                  ]),
-            textAlign: TextAlign.center,
-            style: tt.headlineSmall,
-          ),
-          const SizedBox(height: Gap.sm),
-          Text(
-            savedGoalMinutes == null
-                ? context.tr(
-                    "Choose your focus time for today. Subject targets are optional.",
-                  )
-                : context.tr("Your saved target is ready whenever you are."),
-            textAlign: TextAlign.center,
-            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          Row(
+            children: [
+              IconBadge(
+                icon: Icons.flag_outlined,
+                color: cs.primary,
+                size: 44,
+                radius: 14,
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      savedGoalMinutes == null
+                          ? context.tr("Make room for focus")
+                          : context.tr("Your goal · {0}", [
+                              formatMinutes(savedGoalMinutes!),
+                            ]),
+                      style: tt.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      savedGoalMinutes == null
+                          ? context.tr(
+                              "Choose your focus time for today. Subject targets are optional.",
+                            )
+                          : context.tr(
+                              "Your saved target is ready whenever you are.",
+                            ),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: Gap.lg),
           FilledButton.icon(

@@ -1643,5 +1643,9 @@
   "There you are, {0}! I saved your spot.": "А ось і ви, {0}! Я притримав для вас місце.",
   "There you are! I saved your spot.": "А ось і ви! Я притримав для вас місце.",
   "Not sure where to start? Tap me.": "Не знаєте, з чого почати? Торкніться мене.",
-  "On": "Увімк"
+  "On": "Увімк",
+  "Shows a pause screen over the apps you choose.": "Показує екран паузи поверх вибраних застосунків.",
+  "Keeps your running timer in a quiet notification.": "Показує запущений таймер у тихому сповіщенні.",
+  "Shows your screen time and spots the apps you limit.": "Показує екранний час і помічає обмежені застосунки.",
+  "See your screen time and let your app limits work. It stays on this phone.": "Переглядайте екранний час і вмикайте ліміти застосунків. Дані залишаються на цьому телефоні."
 }
