@@ -8,6 +8,7 @@ import '../../app/theme/app_theme.dart';
 import '../../core/app_version.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/icon_badge.dart';
+import '../../shared/widgets/app_update_gate.dart';
 import 'settings_support.dart';
 
 /// About FocusForge.
@@ -81,6 +82,13 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Gap.xl),
+          AppSection(
+            title: context.tr('Updates'),
+            footnote: context.tr(
+              'This GitHub edition checks public releases once a day. GitHub receives your IP address; your account and study data are not sent.',
+            ),
+            children: const [CheckForUpdatesTile()],
+          ),
           AppSection(
             title: context.tr("Links"),
             footnote: context.tr(

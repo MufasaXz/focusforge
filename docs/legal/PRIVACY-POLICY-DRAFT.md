@@ -58,6 +58,17 @@ Pip's authored explanations and automated calculations may be wrong or incomplet
 
 ## 5. Service providers and international transfers
 
+The GitHub edition checks `api.github.com` for a newer public FocusForge release
+on launch/resume, at most once per 24 hours, or when you request a manual check
+in About. GitHub receives ordinary network information such as your IP address
+and a generic app request header. No account identifier, study data, installed
+app list or authentication token is attached. The last check time and last
+shown release/build are stored locally in `ff.updates.lastCheck` and
+`ff.updates.shownRelease`; clearing app data removes them. Choosing View update
+opens the official GitHub release page in your browser. The Play Store branch
+does not contain this update feature. [FILL IN: confirm GitHub's applicable
+privacy/retention terms and the legal basis for release checks].
+
 We use Google/Firebase for account authentication, private Firestore records, Google sign-in and app integrity; Cloudflare for historical Pip feedback export/erasure and scheduled delivery calls; and Vercel for website/account endpoints. Branded password-reset messages are delivered through the configured Gmail/SMTP service. Google Play and Android provide distribution, integrity and operating-system permission services. The app bundles its fonts/assets; no remote Google Fonts or advertising CDN integration was found in the inspected app code. Opening an external help or legal link connects to the destination you chose.
 
 The current Firestore database inspected for this release is in India's `asia-south2` region. This does not mean all authentication, edge processing, historical AI requests, email or operational records remain in India. Providers and their subprocessors may process information in other countries, including countries with different privacy laws. [FILL IN: verified processor/subprocessor list, transfer countries and applicable agreements].

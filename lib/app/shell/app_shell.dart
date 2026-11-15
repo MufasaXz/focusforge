@@ -1,5 +1,6 @@
 import '../../core/localization/app_strings.dart';
 import '../../shared/widgets/glass_surface.dart';
+import '../../shared/widgets/app_update_gate.dart';
 import '../../core/services/widget_service.dart';
 
 import 'dart:async';
@@ -237,7 +238,9 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
         );
       },
-      child: RepaintBoundary(child: widget.navigationShell),
+      child: AppUpdateGate(
+        child: RepaintBoundary(child: widget.navigationShell),
+      ),
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
