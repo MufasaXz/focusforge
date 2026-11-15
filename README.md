@@ -18,7 +18,7 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 
 **Free & open source** · No ads · No subscriptions
 
-<sub>Version 1.0.1 · Android 7.0+ · MIT licensed</sub>
+<sub>Version 1.0.7 · Android 7.0+ · MIT licensed</sub>
 
 <br>
 
@@ -70,6 +70,12 @@ The timer also works without an account. Optional study groups and the weekly le
 3. **Start your clock.** Enable the permissions for Shield when you want to block distractions.
 
 Need help installing an APK? Follow the [installation guide](docs/play-protect.md).
+
+The GitHub edition offers a dismissible notice when a newer published build is
+available. Checks run on launch/resume at most once a day, and About has a manual
+check. The [`playstore` branch](https://github.com/MufasaXz/focusforge/tree/playstore)
+keeps version 1.0.1 and has no GitHub update checker. See the
+[release workflow](docs/github-updates.md).
 
 ---
 

@@ -6,11 +6,7 @@
 /// licences page — used to hold their own copies, which is how the readouts
 /// drifted a release behind the build.
 ///
-/// Google Play counts its own versions from 1.0.0, while GitHub releases carry
-/// on from 1.0.5. A GitHub build passes its number with
-/// `--build-name=1.0.6 --dart-define=APP_VERSION=1.0.6`; a Play build passes
-/// nothing and shows pubspec's version.
-const kAppVersion = String.fromEnvironment(
-  'APP_VERSION',
-  defaultValue: '1.0.1',
-);
+/// The main branch ships GitHub releases. The separate playstore branch keeps
+/// its own version and excludes the GitHub update checker entirely.
+const kAppVersion = '1.0.7';
+const kAppBuildNumber = 3003;
