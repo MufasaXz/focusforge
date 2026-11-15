@@ -9,7 +9,7 @@
 
 FocusForge helps you block distractions, build a study routine, and keep track of the effort that turns into progress.
 
-**Now live on Google Play.**
+**[Available on Google Play](https://play.google.com/store/apps/details?id=dev.focusforge.focusforge).**
 
 <p>
   <a href="https://play.google.com/store/apps/details?id=dev.focusforge.focusforge"><img src="docs/readme/play-store.png" width="216" height="84" alt="Get it on Google Play"></a>
@@ -18,7 +18,7 @@ FocusForge helps you block distractions, build a study routine, and keep track o
 
 **Free & open source** · No ads · No subscriptions
 
-<sub>Version 1.0.6 · Android 7.0+ · MIT licensed</sub>
+<sub>Version 1.0.1 · Android 7.0+ · MIT licensed</sub>
 
 <br>
 
@@ -78,5 +78,7 @@ Need help installing an APK? Follow the [installation guide](docs/play-protect.m
 **Make room for what matters.**
 
 [Release notes](CHANGELOG.md) · [Report an issue](https://github.com/MufasaXz/focusforge/issues) · [Firebase setup](docs/firebase-setup.md) · [Security notes](docs/security-audit-2026-10-12.md) · [MIT license](LICENSE)
+
+**[Join the FocusForge Telegram group](https://t.me/FocusforgeApp)**
 
 </div>
