@@ -396,13 +396,27 @@ class _HeroCard extends StatelessWidget {
                     _Avatar(user: user, level: stats.level),
                     const SizedBox(width: Gap.lg),
                     Expanded(
-                      child: _ProfileIdentity(user: user, stats: stats),
+                      child: Text(
+                        user.displayName.trim().isEmpty
+                            ? context.tr('Your profile')
+                            : user.displayName,
+                        key: const ValueKey('profile-display-name'),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -.6,
+                            ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: Gap.sm),
                     const _EditProfileButton(),
                   ],
                 ),
-                const SizedBox(height: Gap.xl),
+                const SizedBox(height: Gap.md),
+                _ProfileIdentity(user: user, stats: stats),
+                const SizedBox(height: Gap.lg),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     color: t.surfaceContainerLow,
@@ -465,16 +479,6 @@ class _ProfileIdentity extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          user.displayName.trim().isEmpty
-              ? context.tr("Your profile")
-              : user.displayName,
-          style: tt.headlineSmall?.copyWith(
-            letterSpacing: -.8,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: Gap.sm),
         Semantics(
           key: const ValueKey('profile-achievements'),
           button: true,
@@ -1356,7 +1360,7 @@ class _CommunityTile extends StatelessWidget {
       return height;
     }
 
-    var diameter = 40.0;
+    var diameter = 52.0;
     // Each label has at most two lines. Starting small and only growing
     // reaches a stable size, shared by both tiles when they occupy a row.
     for (var pass = 0; pass < specs.length * 4; pass++) {

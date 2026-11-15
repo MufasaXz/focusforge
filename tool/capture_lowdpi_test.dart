@@ -1,7 +1,5 @@
 // Reproducible UI review captures with bundled fonts and fictional local data.
-// Run with a second test file to keep Flutter's socket-free runner enabled:
-// flutter test --no-pub --experimental-faster-testing --concurrency=1 \
-//   tool/capture_lowdpi_test.dart test/profile_community_tiles_test.dart
+// Run: flutter test --no-pub tool/capture_lowdpi_test.dart
 // Writes PNGs to build/lowdpi; never changes a user's stored data.
 import 'dart:convert';
 import 'dart:io';
@@ -173,6 +171,14 @@ void main() {
         if (route == 'focus') {
           expect(find.text('25:00'), findsWidgets);
           expect(container.read(timerProvider).subjectId, 'math');
+          final fullScreen = tester.getRect(
+            find.widgetWithText(TextButton, 'Full screen'),
+          );
+          final play = tester.getRect(
+            find.bySemanticsLabel('Start focus timer'),
+          );
+          expect(fullScreen.bottom, lessThan(play.top));
+          expect(find.text('Full screen').hitTestable(), findsOneWidget);
         }
         if (route == 'profile') {
           for (final route in ['leaderboard', 'groups']) {
@@ -180,7 +186,7 @@ void main() {
               tester
                   .getSize(find.byKey(ValueKey('profile-$route-tile')))
                   .height,
-              56,
+              68,
             );
           }
           await tester.scrollUntilVisible(

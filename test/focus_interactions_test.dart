@@ -108,6 +108,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'floating timer and nudge controls stay put while the page scrolls',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final scope = container();
+      await tester.pumpWidget(wrap(scope, const FocusScreen()));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      final play = find.bySemanticsLabel('Start focus timer');
+      final before = tester.getRect(play);
+      final nudge = find.bySemanticsLabel('Add five minutes to the focus');
+      final plusBefore = tester.getRect(nudge);
+      await tester.drag(
+        find.byKey(const ValueKey('focus-timer-scroll')),
+        const Offset(0, -250),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(play), before);
+      expect(tester.getRect(nudge), plusBefore);
+      expect(play.hitTestable(), findsOneWidget);
+      expect(nudge.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('focus clock gets a larger hero frame on a regular phone', (
     tester,
   ) async {

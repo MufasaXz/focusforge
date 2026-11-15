@@ -15,6 +15,7 @@ import 'package:focusforge/core/services/local_store.dart';
 import 'package:focusforge/core/services/shield_service.dart';
 import 'package:focusforge/features/settings/leaderboard_screen.dart';
 import 'package:focusforge/shared/widgets/icon_badge.dart';
+import 'package:focusforge/features/profile/widgets/avatar_sheet.dart';
 import 'package:focusforge/features/settings/study_groups_screen.dart';
 
 void main() {
@@ -95,6 +96,11 @@ void main() {
     tester,
   ) async {
     await pumpProfile(tester);
+    final name = tester.getRect(
+      find.byKey(const ValueKey('profile-display-name')),
+    );
+    final avatar = tester.getRect(find.byType(AvatarDisc));
+    expect(name.center.dy, closeTo(avatar.center.dy, 1));
     final hero = tester.getRect(find.byKey(const ValueKey('profile-hero')));
     final left = tester.getRect(tile(AppRoutes.leaderboard));
     final right = tester.getRect(tile(AppRoutes.groups));
@@ -102,7 +108,7 @@ void main() {
     expect(left.top, right.top);
     expect(left.width, right.width);
     expect(left.height, right.height);
-    expect(left.height, greaterThanOrEqualTo(56));
+    expect(left.height, greaterThanOrEqualTo(68));
     for (final route in [AppRoutes.leaderboard, AppRoutes.groups]) {
       final material = tester.widget<Material>(
         find.descendant(of: tile(route), matching: find.byType(Material)),

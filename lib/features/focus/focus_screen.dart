@@ -193,7 +193,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final canShrink =
         !hiddenTime && planned - nudge >= TimerNotifier.minSegment;
     final canGrow = !hiddenTime && planned + nudge <= TimerNotifier.maxSegment;
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    // Scaffold.extendBody includes the navigation bar in padding.bottom.
+    // Only add the physical gesture inset here; dockBottom already reserves
+    // space for the bar, so using padding would count navigation twice.
+    final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
     // The engine emits focus completions on the stream. A break ending is only
     // visible as a phase change, so it is recognised by the break's target
     // instant having passed — a skipped break still has its target in the
@@ -226,9 +229,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       builder: (context, constraints) {
         // Portrait and split windows keep a single-column reading order.
         final wide = constraints.maxWidth >= 900;
-        final pinnedDock =
-            wide ||
-            (constraints.maxWidth >= 600 && constraints.maxHeight < 500);
         final columnWidth = wide
             ? (constraints.maxWidth - Gap.xl) / 2
             : constraints.maxWidth;
@@ -301,7 +301,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
 
           // Subject tags ------------------------------------------------
           Stagger(index: 1, child: SubjectPicker(accent: accent)),
-          const SizedBox(height: Gap.xl),
+          const SizedBox(height: Gap.md),
 
           // Timer -------------------------------------------------------
           Stagger(
@@ -711,7 +711,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             Gap.lg + 4,
             MediaQuery.paddingOf(context).top + Gap.lg,
             Gap.lg + 4,
-            pinnedDock ? dockBottom + 100 : dockBottom,
+            dockBottom + 100,
           ),
           children: [
             ...timerContent,
@@ -746,24 +746,21 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 ),
               ),
             ),
-            if (!pinnedDock) sessionDock,
             const SizedBox(height: Gap.xl),
             if (!wide) ...ambientContent,
           ],
         );
-        final timerPane = pinnedDock
-            ? Stack(
-                children: [
-                  Positioned.fill(child: timerList),
-                  Positioned(
-                    left: Gap.lg + 4,
-                    right: Gap.lg + 4,
-                    bottom: dockBottom,
-                    child: sessionDock,
-                  ),
-                ],
-              )
-            : timerList;
+        final timerPane = Stack(
+          children: [
+            Positioned.fill(child: timerList),
+            Positioned(
+              left: Gap.lg + 4,
+              right: Gap.lg + 4,
+              bottom: dockBottom,
+              child: sessionDock,
+            ),
+          ],
+        );
 
         return _TabEntrance(
           child: wide
