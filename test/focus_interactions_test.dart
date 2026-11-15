@@ -115,11 +115,27 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final scope = container();
-      await tester.pumpWidget(wrap(scope, const FocusScreen()));
+      await tester.pumpWidget(
+        wrap(
+          scope,
+          Builder(
+            builder: (context) => MediaQuery(
+              // Scaffold's extended body contributes navigation padding separately
+              // from the physical gesture inset, as in the 1.0.5 screen.
+              data: MediaQuery.of(context).copyWith(
+                padding: const EdgeInsets.only(bottom: 96),
+                viewPadding: const EdgeInsets.only(bottom: 16),
+              ),
+              child: const FocusScreen(),
+            ),
+          ),
+        ),
+      );
       await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
       final play = find.bySemanticsLabel('Start focus timer');
       final before = tester.getRect(play);
+      expect(before.bottom, 632); // Original 1.0.5 dock placement at 390 × 844.
       final nudge = find.bySemanticsLabel('Add five minutes to the focus');
       final plusBefore = tester.getRect(nudge);
       await tester.drag(
