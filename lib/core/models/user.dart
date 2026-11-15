@@ -277,6 +277,7 @@ class UserProfile {
     bool clearPhoto = false,
     int? dailyGoalMinutes,
     bool clearAvatar = false,
+    bool clearAvatarColor = false,
     DateTime? createdAt,
   }) => UserProfile(
     uid: uid ?? this.uid,
@@ -289,7 +290,7 @@ class UserProfile {
     // than a missing value — so clearing it has to be asked for
     // explicitly, or `copyWith` could never take the glyph away.
     avatarIcon: clearAvatar ? null : (avatarIcon ?? this.avatarIcon),
-    avatarColor: avatarColor ?? this.avatarColor,
+    avatarColor: clearAvatarColor ? null : avatarColor ?? this.avatarColor,
     avatarPhoto: clearPhoto ? null : avatarPhoto ?? this.avatarPhoto,
     dailyGoalMinutes: dailyGoalMinutes ?? this.dailyGoalMinutes,
     createdAt: createdAt ?? this.createdAt,

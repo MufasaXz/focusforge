@@ -1,186 +1,136 @@
-// The avatar editor (lib/features/profile/widgets/avatar_sheet.dart).
-//
-// WHAT INVARIANT: choosing a mark or a colour writes the profile immediately,
-// the preview shows the same disc the profile header will, and the initials
-// are always one tap away — including after a mark has been chosen.
-//
-// WHY IT MATTERS: the avatar is the one piece of profile data with no text
-// field behind it, so a wrong write is invisible in any diff and only shows up
-// as an avatar that does not change. The clear path is the subtle one: "no
-// glyph" means "use my initials", which `copyWith` cannot express with a null
-// argument unless the caller says so explicitly.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/user.dart';
+import 'package:focusforge/core/models/study_avatar.dart';
 import 'package:focusforge/core/providers/app_providers.dart';
 import 'package:focusforge/core/services/local_store.dart';
+import 'package:focusforge/core/services/leaderboard_service.dart';
 import 'package:focusforge/features/profile/widgets/avatar_sheet.dart';
-import 'package:focusforge/core/services/profile_photo.dart';
-import 'package:image/image.dart' as img;
-
-import 'dart:typed_data';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
   late LocalStore store;
-
-  setUpAll(() async {
+  late ProviderContainer container;
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
     store = await LocalStore.open();
-  });
-
-  setUp(() async {
     await store.clearAll();
-  });
-
-  ProviderContainer freshContainer() {
-    final container = ProviderContainer(
+    container = ProviderContainer(
       overrides: [localStoreProvider.overrideWithValue(store)],
     );
-    addTearDown(container.dispose);
-    return container;
-  }
-
-  Widget wrap(ProviderContainer container, Widget child) =>
+  });
+  tearDown(() => container.dispose());
+  Future<void> mount(WidgetTester tester, {double scale = 1}) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: AppTheme.light(),
-          home: Scaffold(body: child),
+          theme: AppTheme.dark(),
+          home: const Scaffold(body: AvatarSheet()),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
         ),
-      );
-
-  /// Opens the sheet the way the profile does, over a plain page.
-  Future<void> openSheet(WidgetTester tester) async {
-    await tester.tap(find.byType(ElevatedButton));
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
-  Widget host(ProviderContainer container) => wrap(
-    container,
-    Builder(
-      builder: (context) => ElevatedButton(
-        onPressed: () => showAvatarSheet(context),
-        child: const Text('open'),
-      ),
-    ),
-  );
-
-  testWidgets('a mark is written as it is tapped, with no save step', (
-    tester,
-  ) async {
-    final container = freshContainer();
-    await container
-        .read(userProvider.notifier)
-        .save(const UserProfile(displayName: 'Sam Rivera'));
-
-    await tester.pumpWidget(host(container));
-    await openSheet(tester);
-    expect(find.text('Your avatar'), findsOneWidget);
-
-    // The initials tile comes first, then the glyphs in table order.
-    final glyphs = find.byType(Icon);
-    expect(glyphs, findsWidgets);
-    await tester.tap(find.byIcon(Icons.star_rounded).first);
-    await tester.pumpAndSettle();
-
-    expect(
-      container.read(userProvider).avatarIcon,
-      'star',
-      reason: 'the tap is the write',
-    );
-    expect(
-      store.getMap(StoreKeys.user)?['avatarIcon'],
-      'star',
-      reason: 'and it is persisted, not just held in memory',
-    );
-    expect(tester.takeException(), isNull);
+  test('a starter and every five-level milestone have distinct stable IDs', () {
+    expect(StudyAvatar.values.map((a) => a.unlockLevel), [
+      1,
+      5,
+      10,
+      15,
+      20,
+      25,
+      30,
+      35,
+      40,
+      45,
+      50,
+    ]);
+    expect(StudyAvatar.values.map((a) => a.id).toSet().length, 11);
+    for (final avatar in StudyAvatar.values) {
+      expect(avatar.unlockedAt(avatar.unlockLevel), isTrue);
+      expect(avatar.unlockedAt(avatar.unlockLevel - 1), isFalse);
+      expect(BoardRow.validIcon(avatar.id), avatar.id);
+    }
+    expect(StudyAvatar.forProfile(StudyAvatar.zenith.id, 1), StudyAvatar.scout);
+    expect(StudyAvatar.fromId('arbitrary'), isNull);
   });
-
-  testWidgets('the initials can be taken back after a mark is chosen', (
-    tester,
-  ) async {
-    final container = freshContainer();
-    await container
-        .read(userProvider.notifier)
-        .save(const UserProfile(displayName: 'Sam Rivera', avatarIcon: 'star'));
-
-    await tester.pumpWidget(host(container));
-    await openSheet(tester);
-
-    // The initials tile is the one that draws text rather than a glyph.
-    await tester.tap(find.text('SR').first);
-    await tester.pumpAndSettle();
-
-    expect(
-      container.read(userProvider).avatarIcon,
-      isNull,
-      reason: '"use my initials" has to be reachable, not just the default',
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('a colour is written without disturbing the mark', (
-    tester,
-  ) async {
-    final container = freshContainer();
-    await container
-        .read(userProvider.notifier)
-        .save(const UserProfile(displayName: 'Sam Rivera', avatarIcon: 'book'));
-
-    await tester.pumpWidget(host(container));
-    await openSheet(tester);
-
-    final before = container.read(userProvider).avatarColor;
-    // The colour row is the second Wrap; its dots are the only tappable
-    // circles on it.
-    final dots = find.byType(AnimatedContainer);
-    expect(dots, findsWidgets);
-    await tester.tap(dots.last);
-    await tester.pumpAndSettle();
-
-    final after = container.read(userProvider);
-    expect(after.avatarColor, isNotNull);
-    expect(after.avatarColor, isNot(before));
-    expect(
-      after.avatarIcon,
-      'book',
-      reason: 'picking a colour must not clear the mark',
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets(
-    'changing colour preserves a chosen photo until explicit removal',
-    (tester) async {
-      final container = freshContainer();
-      final photo = ProfilePhoto.encode(
-        Uint8List.fromList(img.encodePng(img.Image(width: 128, height: 128))),
+  test(
+    'locked selection is rejected by the notifier and unlocked choice persists',
+    () async {
+      await expectLater(
+        container.read(userProvider.notifier).setStudyAvatar(StudyAvatar.ember),
+        throwsStateError,
       );
+      expect(store.getMap(StoreKeys.user), isNull);
+      container
+          .read(statsProvider.notifier)
+          .hydrate(const GamificationStats(level: 5));
       await container
           .read(userProvider.notifier)
-          .save(UserProfile(displayName: 'Sam Rivera', avatarPhoto: photo));
-      await tester.pumpWidget(host(container));
-      await openSheet(tester);
-      final dot = find.byType(AnimatedContainer).last;
-      await tester.ensureVisible(dot);
-      await tester.tap(dot);
+          .save(const UserProfile(avatarColor: 0xFF008800));
+      await container
+          .read(userProvider.notifier)
+          .setStudyAvatar(StudyAvatar.ember);
+      final saved = UserProfile.fromJson(store.getMap(StoreKeys.user)!);
+      expect(saved.avatarIcon, StudyAvatar.ember.id);
+      expect(saved.avatarColor, isNull);
+    },
+  );
+  testWidgets('picker shows level locks and no old icon or colour controls', (
+    tester,
+  ) async {
+    await mount(tester);
+    expect(find.text('Your avatar'), findsOneWidget);
+    expect(find.text('Level 5'), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey(StudyAvatar.ember.id)));
+    await tester.pumpAndSettle();
+    expect(container.read(userProvider).avatarIcon, isNull);
+    await tester.tap(find.byKey(ValueKey(StudyAvatar.scout.id)));
+    await tester.pumpAndSettle();
+    expect(container.read(userProvider).avatarIcon, StudyAvatar.scout.id);
+    expect(find.text('Colour'), findsNothing);
+    expect(find.text('Icon'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'reaching level five enables the fox without reopening the picker',
+    (tester) async {
+      await mount(tester);
+      container
+          .read(statsProvider.notifier)
+          .hydrate(const GamificationStats(level: 5));
       await tester.pumpAndSettle();
-      expect(container.read(userProvider).avatarColor, isNotNull);
-      expect(container.read(userProvider).avatarPhoto, photo);
-      expect(store.getMap(StoreKeys.user)?['avatarPhoto'], photo);
-      final remove = find.text('Remove photo');
-      await tester.ensureVisible(remove);
-      await tester.tap(remove);
+      await tester.tap(find.byKey(ValueKey(StudyAvatar.ember.id)));
       await tester.pumpAndSettle();
-      expect(container.read(userProvider).avatarPhoto, isNull);
-      expect(store.getMap(StoreKeys.user)?['avatarPhoto'], isNull);
+      expect(store.getMap(StoreKeys.user)?['avatarIcon'], StudyAvatar.ember.id);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'large-text picker scrolls to the final reward without overflow',
+    (tester) async {
+      await mount(tester, scale: 2);
+      await tester.scrollUntilVisible(
+        find.byKey(ValueKey(StudyAvatar.zenith.id)),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Level 50'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 }

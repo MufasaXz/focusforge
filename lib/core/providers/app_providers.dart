@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'social_providers.dart';
 
 import '../models/user.dart';
+import '../models/study_avatar.dart';
 import '../services/auth_service.dart';
 import '../services/local_store.dart';
 
@@ -108,6 +109,19 @@ class UserNotifier extends Notifier<UserProfile> {
       clearPhoto: true,
     ),
   );
+
+  Future<void> setStudyAvatar(StudyAvatar avatar) async {
+    if (!avatar.unlockedAt(ref.read(statsProvider).level)) {
+      throw StateError('This avatar has not been unlocked');
+    }
+    await save(
+      state.copyWith(
+        avatarIcon: avatar.id,
+        clearPhoto: true,
+        clearAvatarColor: true,
+      ),
+    );
+  }
 
   Future<void> setPhoto(String? photo) =>
       save(state.copyWith(avatarPhoto: photo, clearPhoto: photo == null));

@@ -1,3 +1,5 @@
+import '../../core/models/study_avatar.dart';
+import '../../shared/widgets/avatars/study_portrait.dart';
 import '../../core/localization/app_strings.dart';
 import '../../core/services/profile_photo.dart';
 import '../../shared/widgets/glass_surface.dart';
@@ -1001,6 +1003,13 @@ class _BoardAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (StudyAvatar.fromId(entry.avatarIcon) != null &&
+        entry.avatarPhoto == null) {
+      return StudyPortrait(
+        avatar: StudyAvatar.forProfile(entry.avatarIcon, entry.level ?? 1),
+        size: radius * 2,
+      );
+    }
     final cs = Theme.of(context).colorScheme;
     final chosen = entry.avatarColor;
     final color = chosen != null

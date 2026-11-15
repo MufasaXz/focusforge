@@ -15,6 +15,7 @@ import 'package:image/image.dart' as img;
 import 'package:focusforge/app/theme/app_theme.dart';
 import 'package:focusforge/core/models/user.dart';
 import 'package:focusforge/features/profile/widgets/avatar_sheet.dart';
+import 'package:focusforge/shared/widgets/avatars/study_portrait.dart';
 
 void main() {
   final photo = base64Encode(
@@ -37,14 +38,14 @@ void main() {
     await tester.pumpWidget(app(fallback));
   }
 
-  testWidgets('an unnamed profile shows a person, not an empty disc', (
+  testWidgets('an unnamed profile falls back to the starter portrait', (
     tester,
   ) async {
     await pumpFallback(
       tester,
       UserProfile(uid: 'u', displayName: '', avatarPhoto: photo),
     );
-    expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+    expect(find.byType(StudyPortrait), findsOneWidget);
   });
 
   testWidgets('a named profile shows its initials', (tester) async {
@@ -55,7 +56,9 @@ void main() {
     expect(find.text('SR'), findsOneWidget);
   });
 
-  testWidgets('a chosen glyph is kept', (tester) async {
+  testWidgets('a retired glyph falls back to the starter portrait', (
+    tester,
+  ) async {
     await pumpFallback(
       tester,
       UserProfile(
@@ -66,6 +69,6 @@ void main() {
       ),
     );
     expect(find.text('SR'), findsNothing);
-    expect(find.byType(Icon), findsOneWidget);
+    expect(find.byType(StudyPortrait), findsOneWidget);
   });
 }

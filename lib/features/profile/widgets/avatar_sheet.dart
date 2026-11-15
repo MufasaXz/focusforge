@@ -8,45 +8,34 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/profile_photo.dart';
-
 import '../../../app/theme/app_theme.dart';
-import '../../../core/models/icon_registry.dart';
 import '../../../core/models/user.dart';
+import '../../../core/models/study_avatar.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/avatars/study_portrait.dart';
 import '../../../shared/widgets/sheet_chrome.dart';
 
-/// Opens the sheet that chooses the avatar's mark and colour.
-Future<void> showAvatarSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) => const AvatarSheet(),
-  );
-}
+Future<void> showAvatarSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AvatarSheet(),
+    );
 
-/// The avatar, as a glyph on a colour — or the initials, which are the default
-/// and stay one tap away.
-///
-/// Every change is written as it is made rather than on a Save button: there
-/// is nothing to get wrong, the preview at the top is the real thing, and a
-/// form with one control that has already applied itself is a form that lies.
 class AvatarSheet extends ConsumerStatefulWidget {
   const AvatarSheet({super.key});
-
   @override
   ConsumerState<AvatarSheet> createState() => _AvatarSheetState();
 }
 
 class _AvatarSheetState extends ConsumerState<AvatarSheet> {
-  bool _picking = false;
-
+  bool _busy = false;
   Future<void> _choosePhoto() async {
-    if (_picking) return;
+    if (_busy) return;
     final uid = ref.read(userProvider).uid;
-    setState(() => _picking = true);
+    setState(() => _busy = true);
     try {
       final image = await ImagePicker().pickImage(
         source: ImageSource.gallery,
@@ -73,26 +62,26 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
         );
       }
     } finally {
-      if (mounted) setState(() => _picking = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  /// The colours on offer: the subject palette plus the scheme's own primary,
-  /// so an avatar can match a subject or the app.
-  List<Color> _colors(ColorScheme cs) => [
-    cs.primary,
-    ...SubjectPalette.harmonized(cs.primary),
-    cs.secondary,
-    cs.tertiary,
-  ];
-
-  /// The name of colour [i] of [_colors], for a screen reader: the theme's
-  /// own three around the subject palette's named ones.
-  static String _colorName(BuildContext context, int i, int count) {
-    if (i == 0) return context.tr("Theme colour {0}", [1]);
-    if (i == count - 2) return context.tr("Theme colour {0}", [2]);
-    if (i == count - 1) return context.tr("Theme colour {0}", [3]);
-    return context.tr(SubjectPalette.names[i - 1]);
+  Future<void> _select(StudyAvatar avatar) async {
+    if (_busy || !avatar.unlockedAt(ref.read(statsProvider).level)) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(userProvider.notifier).setStudyAvatar(avatar);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save your avatar. Try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -100,135 +89,175 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final user = ref.watch(userProvider);
-    final notifier = ref.read(userProvider.notifier);
-    final colors = _colors(cs);
-    final selected = user.avatarColor == null
-        ? null
-        : colors.indexWhere((c) => c.toARGB32() == user.avatarColor);
-    final mark = user.avatarIcon;
-
-    return SheetSurface(
-      padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.lg, Gap.xl, Gap.xl),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
+    final level = ref.watch(statsProvider.select((s) => s.level));
+    final selected = user.avatarPhoto == null
+        ? StudyAvatar.fromId(user.avatarIcon)
+        : null;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .85,
+        child: SheetSurface(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SheetHandle(),
-              const SizedBox(height: Gap.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(context.tr("Your avatar"), style: tt.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(
-                          context.tr(
-                            "Your photo is backed up with your account and shared when leaderboard sharing is on.",
-                          ),
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SheetCloseButton(
-                    label: context.tr("Done"),
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Gap.lg),
-              Center(
-                child: AvatarDisc(
-                  user: user,
-                  size: 96,
-                  level: ref.watch(statsProvider).level,
-                ),
-              ),
               const SizedBox(height: Gap.md),
-              FilledButton.tonalIcon(
-                onPressed: _picking ? null : _choosePhoto,
-                icon: _picking
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_photo_alternate_outlined),
-                label: Text(context.tr('Choose photo')),
-              ),
-              if (user.avatarPhoto != null)
-                TextButton(
-                  onPressed: _picking ? null : () => notifier.setPhoto(null),
-                  child: Text(context.tr('Remove photo')),
-                ),
-              const SizedBox(height: Gap.xl),
-              _FieldLabel(text: context.tr("Mark")),
-              const SizedBox(height: Gap.sm),
-              Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
-                children: [
-                  // Initials first, and always available: they are what the
-                  // avatar is before anything is chosen, so they have to be
-                  // something it can go back to.
-                  _MarkChoice(
-                    label: user.initials.isEmpty
-                        ? context.tr("{0} icon", [context.tr("Person")])
-                        : context.tr("Initials"),
-                    selected: mark == null,
-                    accent: user.avatarColor == null
-                        ? cs.primary
-                        : Color(user.avatarColor!),
-                    onTap: () =>
-                        notifier.setAvatar(icon: null, color: user.avatarColor),
-                    child: user.initials.isEmpty
-                        ? const Icon(Icons.person_rounded, size: 20)
-                        : Text(
-                            user.initials,
-                            style: tt.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+              const SheetHandle(),
+              Padding(
+                padding: const EdgeInsets.all(Gap.lg),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr('Your avatar'),
+                            style: tt.headlineSmall,
+                          ),
+                          const SizedBox(height: Gap.xs),
+                          Text(
+                            context.tr(
+                              'A new companion every 5 levels. You’re at level {0}.',
+                              [level],
+                            ),
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
-                  ),
-                  for (final name in AppIcons.curated)
-                    _MarkChoice(
-                      label: context.tr("{0} icon", [
-                        context.tr(AppIcons.curatedLabels[name]!),
-                      ]),
-                      selected: mark == name,
-                      accent: user.avatarColor == null
-                          ? cs.primary
-                          : Color(user.avatarColor!),
-                      onTap: () => notifier.setAvatar(
-                        icon: name,
-                        color: user.avatarColor,
+                        ],
                       ),
-                      child: Icon(AppIcons.resolve(name), size: 19),
                     ),
-                ],
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: context.tr('Close'),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: Gap.xl),
-              _FieldLabel(text: context.tr("Colour")),
-              const SizedBox(height: Gap.sm),
-              Wrap(
-                spacing: Gap.sm,
-                runSpacing: Gap.sm,
-                children: [
-                  for (var i = 0; i < colors.length; i++)
-                    _ColorChoice(
-                      color: colors[i],
-                      label: _colorName(context, i, colors.length),
-                      selected: selected == i,
-                      onTap: () =>
-                          notifier.setAvatarColor(colors[i].toARGB32()),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, bounds) {
+                    final largeText =
+                        MediaQuery.textScalerOf(context).scale(14) > 20;
+                    final columns = largeText || bounds.maxWidth < 340 ? 2 : 3;
+                    return GridView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisExtent:
+                            124 +
+                            MediaQuery.textScalerOf(context).scale(20) * 2 +
+                            MediaQuery.textScalerOf(context).scale(16) * 2,
+                        crossAxisSpacing: Gap.sm,
+                        mainAxisSpacing: Gap.sm,
+                      ),
+                      itemCount: StudyAvatar.values.length,
+                      itemBuilder: (context, i) {
+                        final avatar = StudyAvatar.values[i];
+                        final unlocked = avatar.unlockedAt(level);
+                        final active = selected == avatar;
+                        final detail = unlocked
+                            ? (active ? 'Selected' : 'Unlocked')
+                            : 'Level ${avatar.unlockLevel}';
+                        return Semantics(
+                          button: true,
+                          selected: active,
+                          enabled: unlocked && !_busy,
+                          label: '${avatar.label}, $detail',
+                          excludeSemantics: true,
+                          child: Material(
+                            color: active
+                                ? cs.primaryContainer.withValues(alpha: .4)
+                                : cs.surfaceContainerLow,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: active
+                                    ? cs.primary
+                                    : cs.outlineVariant.withValues(alpha: .4),
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              key: ValueKey(avatar.id),
+                              onTap: unlocked && !_busy
+                                  ? () => _select(avatar)
+                                  : null,
+                              child: Padding(
+                                padding: const EdgeInsets.all(Gap.sm),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Opacity(
+                                      opacity: unlocked ? 1 : .55,
+                                      child: StudyPortrait(
+                                        avatar: avatar,
+                                        size: 78,
+                                      ),
+                                    ),
+                                    const SizedBox(height: Gap.sm),
+                                    Text(
+                                      avatar.label,
+                                      style: tt.labelLarge,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          unlocked
+                                              ? (active
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons.check_rounded)
+                                              : Icons.lock_outline_rounded,
+                                          size: 13,
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            context.tr(detail),
+                                            style: tt.labelSmall,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(Gap.md),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: Gap.sm,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _busy ? null : _choosePhoto,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: Text(context.tr('Use your photo')),
                     ),
-                ],
+                    if (user.avatarPhoto != null)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _select(StudyAvatar.scout),
+                        child: Text(context.tr('Remove photo')),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -238,11 +267,6 @@ class _AvatarSheetState extends ConsumerState<AvatarSheet> {
   }
 }
 
-/// The avatar itself, wherever it is drawn.
-///
-/// One widget for the profile header and the sheet's preview, so what the
-/// user is choosing and what they will see afterwards cannot be two different
-/// things.
 class AvatarDisc extends StatelessWidget {
   const AvatarDisc({
     super.key,
@@ -270,19 +294,15 @@ class AvatarDisc extends StatelessWidget {
   /// to show before the first session.
   final bool frame;
 
-  /// The chosen glyph, else the initials, else a person when there is no name.
+  /// A chosen portrait, with initials retained for existing named profiles.
   Widget _mark(BuildContext context, String? icon, Color onColor) {
-    if (icon != null) {
-      return Center(
-        child: Icon(AppIcons.resolve(icon), size: size * 0.46, color: onColor),
+    if (icon != null || user.initials.isEmpty) {
+      return StudyPortrait(
+        avatar: StudyAvatar.forProfile(icon, level),
+        size: size,
       );
     }
     final initials = user.initials;
-    if (initials.isEmpty) {
-      return Center(
-        child: Icon(Icons.person_rounded, size: size * 0.5, color: onColor),
-      );
-    }
     return Center(
       child: Text(
         initials,
@@ -298,12 +318,8 @@ class AvatarDisc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final color = user.avatarColor == null
-        ? cs.primaryContainer
-        : Color(user.avatarColor!);
-    final onColor = user.avatarColor == null
-        ? cs.onPrimaryContainer
-        : _inkOn(color);
+    final color = cs.primaryContainer;
+    final onColor = cs.onPrimaryContainer;
     final icon = user.avatarIcon;
     final photo = ProfilePhoto.bytes(user.avatarPhoto);
     final tier = (level.clamp(1, GamificationStats.maxLevel) - 1) ~/ 10;
@@ -377,14 +393,6 @@ class AvatarDisc extends StatelessWidget {
       ),
     );
   }
-
-  /// Black or white ink for [background], by its own luminance.
-  ///
-  /// The colour is a free choice — any of the palette, plus the scheme's own
-  /// accents — so the ink cannot be looked up in the scheme the way a
-  /// container colour's can.
-  static Color _inkOn(Color background) =>
-      background.computeLuminance() > 0.45 ? Colors.black87 : Colors.white;
 }
 
 class _AvatarFrame extends CustomPainter {
@@ -439,137 +447,4 @@ class _AvatarFrame extends CustomPainter {
 
   @override
   bool shouldRepaint(_AvatarFrame oldDelegate) => oldDelegate.tier != tier;
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-      letterSpacing: 1.3,
-      fontSize: 10.5,
-      fontWeight: FontWeight.w700,
-    ),
-  );
-}
-
-class _MarkChoice extends StatelessWidget {
-  const _MarkChoice({
-    required this.label,
-    required this.selected,
-    required this.accent,
-    required this.onTap,
-    required this.child,
-  });
-
-  /// What a screen reader calls this choice; nothing on screen shows it.
-  final String label;
-  final bool selected;
-  final Color accent;
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: selected
-                  ? accent.withValues(alpha: 0.18)
-                  : cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(Radii.tile),
-              border: Border.all(
-                color: selected ? accent : cs.outlineVariant,
-                width: selected ? 1.4 : 1,
-              ),
-            ),
-            child: Center(
-              child: IconTheme(
-                data: IconThemeData(
-                  color: selected ? accent : cs.onSurfaceVariant,
-                ),
-                child: DefaultTextStyle.merge(
-                  style: TextStyle(
-                    color: selected ? accent : cs.onSurfaceVariant,
-                  ),
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColorChoice extends StatelessWidget {
-  const _ColorChoice({
-    required this.color,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-
-  /// What a screen reader calls this colour; nothing on screen shows it.
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          scale: 0.88,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: selected ? 0.22 : 0.10),
-              border: Border.all(
-                color: selected ? color : cs.outlineVariant,
-                width: selected ? 2 : 1,
-              ),
-            ),
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: selected ? 16 : 13,
-                height: selected ? 16 : 13,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

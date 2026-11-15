@@ -1,3 +1,5 @@
+import '../models/study_avatar.dart';
+
 import 'dart:async';
 
 import '../models/icon_registry.dart';
@@ -50,7 +52,10 @@ class BoardRow {
   /// written by someone else's phone, so a name outside the table is dropped
   /// rather than drawn as a placeholder.
   static String? validIcon(Object? raw) =>
-      raw is String && AppIcons.names.contains(raw) ? raw : null;
+      raw is String &&
+          (AppIcons.names.contains(raw) || StudyAvatar.fromId(raw) != null)
+      ? raw
+      : null;
 
   /// [raw] as a solid colour, or null. Alpha is forced full: a see-through
   /// avatar would let a stranger's row blend into the page.
