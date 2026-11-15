@@ -1,3 +1,6 @@
+import 'offline_language.dart';
+import 'offline_student_coach.dart';
+
 import 'package:flutter/material.dart';
 
 import 'assistant_models.dart';
@@ -80,6 +83,8 @@ abstract final class OfflineTutor {
     'aur samjhao',
     'समझाओ',
     'और समझाओ',
+    'explain',
+    'aur explain',
   ];
 
   static bool recognizes(String input) {
@@ -87,6 +92,7 @@ abstract final class OfflineTutor {
         OfflineSafety.reply(input) != null) {
       return true;
     }
+    input = OfflineLanguage.understand(input);
     final text = OfflineText.normalize(input);
     if (_followUps.contains(text)) return true;
     // Preserve existing permission, reminder, and timer action flows.
@@ -194,6 +200,7 @@ abstract final class OfflineTutor {
   static bool isFollowUp(String input, OfflineContext? context, DateTime now) {
     if (input.length > OfflineText.maxInputLength) return false;
     if (context == null || !context.fresh(now)) return false;
+    input = OfflineLanguage.understand(input);
     final text = OfflineText.normalize(input);
     return _followUps.contains(text) ||
         context.question != null &&
@@ -219,6 +226,9 @@ abstract final class OfflineTutor {
         ),
       );
     }
+    final coaching = OfflineStudentCoach.reply(input, s);
+    if (coaching != null) return OfflineTurn(coaching);
+    input = OfflineLanguage.understand(input);
     final text = OfflineText.normalize(input);
     final previous = context?.fresh(s.now) == true ? context : null;
     if (previous != null &&
@@ -588,6 +598,7 @@ abstract final class OfflineTutor {
   );
 
   static int? _option(String input, OfflineQuestion q) {
+    input = OfflineLanguage.understand(input);
     final text = OfflineText.normalize(input);
     // Preserve mathematical signs and separators. Normalising prose would
     // collapse −2 and 2, or 1/2 and 12, into the same answer.

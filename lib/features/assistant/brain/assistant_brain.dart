@@ -13,6 +13,8 @@ import 'offline_coach.dart';
 import 'offline_tutor.dart';
 import 'offline_safety.dart';
 import 'offline_text.dart';
+import 'offline_language.dart';
+import 'offline_student_coach.dart';
 
 /// Pip's reasoning: what a message means, and what to say back.
 ///
@@ -71,6 +73,38 @@ class AssistantBrain {
   }
 
   AssistantAction parse(String input) {
+    if (input.length > OfflineText.maxInputLength ||
+        OfflineSafety.reply(input) != null) {
+      return AssistantAction(Act.coach, said: input);
+    }
+    if (OfflineStudentCoach.kind(input) != null) {
+      return AssistantAction(Act.coach, said: input);
+    }
+    final guard = OfflineLanguage.actionGuard(input);
+    final action = _parseUnderstood(OfflineLanguage.understand(input));
+    final mutates = const {
+      Act.focusNow,
+      Act.reminder,
+      Act.reminderOff,
+      Act.examReminder,
+      Act.examReminderOff,
+      Act.timetableOff,
+      Act.goalSet,
+      Act.examPick,
+    }.contains(action.act);
+    if (guard != null &&
+        (mutates ||
+            action.act == Act.reminders ||
+            guard == 'declined' &&
+                (action.act != Act.coach ||
+                    RegExp(r'\b(timer|reminders?|timetable)\b|टाइमर')
+                        .hasMatch(input.toLowerCase())))) {
+      return AssistantAction(Act.unknown, arg: 'guard:$guard', said: input);
+    }
+    return action.copyWith(said: input);
+  }
+
+  AssistantAction _parseUnderstood(String input) {
     if (OfflineTutor.recognizes(input)) {
       return AssistantAction(Act.coach, said: input);
     }
@@ -164,13 +198,8 @@ class AssistantBrain {
     return AssistantAction(best ?? Act.unknown, said: input);
   }
 
-  static String normalize(String input) => input
-      .toLowerCase()
-      .replaceAll(RegExp(r'[’‘`]'), "'")
-      .replaceAll("'", '')
-      .replaceAll(RegExp(r'[^\p{L}\p{N}\s]', unicode: true), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  static String normalize(String input) =>
+      OfflineText.normalize(OfflineLanguage.understand(input));
 
   static double _score(String text, List<String> tokens, List<String> words) {
     var score = 0.0;
@@ -717,6 +746,30 @@ class AssistantBrain {
     Act.bye: ['bye', 'goodbye', 'see you', 'good night', 'later', 'tata', 'gn'],
   };
 
+  AssistantReply? _guardReply(AssistantAction action) {
+    if (action.arg == 'guard:declined') {
+      return const AssistantReply([
+        Say(
+          Copy(
+            'Understood. I haven’t started, changed, or removed anything. Tell me what you would like help with instead.',
+          ),
+        ),
+      ]);
+    }
+    if (action.arg == 'guard:explain') {
+      final text = normalize(action.said ?? '');
+      final answer = text.contains('remind')
+          ? 'A reminder needs a task and a time. You can review reminders in Pip. To add one, say “remind me to revise at 6 pm”; to remove them, ask explicitly. I haven’t changed your reminders.'
+          : text.contains('lock') || text.contains('block app')
+          ? 'Open Shield, choose the apps you want to limit, and review the access explanation before enabling it. I haven’t changed any app rules.'
+          : text.contains('timetable') || text.contains('schedule')
+          ? 'A timetable organises subjects into study blocks with breaks. Ask “make a timetable” to review a plan. Nothing has been saved or removed.'
+          : 'Use the play button on Focus to start your selected session, and tap it again to pause. The −5 and +5 buttons adjust the current block. I haven’t started or changed the timer.';
+      return AssistantReply([Say(Copy.raw(answer))]);
+    }
+    return null;
+  }
+
   // -- Answering --------------------------------------------------------------
 
   AssistantReply respond(
@@ -724,6 +777,7 @@ class AssistantBrain {
     StudySnapshot s, {
     int turn = 0,
   }) =>
+      _guardReply(action) ??
       OfflineCoach.respond(action, s) ??
       switch (action.act) {
         Act.greet => _greet(s),

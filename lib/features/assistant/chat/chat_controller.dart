@@ -1,3 +1,5 @@
+import '../brain/offline_language.dart';
+
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -242,7 +244,10 @@ class ChatController extends Notifier<ChatState> {
         await memory.markIntroduced();
       case Act.reminder:
         return _setReminder(
-          ReminderRequest.parse(action.said ?? '', DateTime.now()),
+          ReminderRequest.parse(
+            OfflineLanguage.understand(action.said ?? ''),
+            DateTime.now(),
+          ),
           generation,
         );
       case Act.reminderOff:

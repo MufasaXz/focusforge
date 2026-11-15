@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'assistant_models.dart';
 import 'study_snapshot.dart';
+import 'offline_language.dart';
 
 /// Deterministic coaching, using only the current local snapshot. No model,
 /// downloads, telemetry, or network dependencies are involved.
@@ -21,7 +22,7 @@ class OfflineCoach {
     }.contains(action.act)) {
       return null;
     }
-    final text = (action.said ?? '').toLowerCase();
+    final text = OfflineLanguage.understand(action.said ?? '').toLowerCase();
     bool has(List<String> words) => words.any(text.contains);
     final subjects = [...s.subjects]
       ..sort((a, b) {
