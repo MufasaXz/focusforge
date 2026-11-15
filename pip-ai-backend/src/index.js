@@ -71,7 +71,11 @@ async function callProvider(name, url, init, read, fetchImpl) {
       console.warn(JSON.stringify({event: 'provider_error', provider: name, status: response.status}));
       return {failed: true, status: response.status};
     }
-    const reply = read(await response.json());
+    // Limit upstream responses too: output-token limits are not byte limits
+    // and do not constrain a provider's metadata or malformed JSON body.
+    const body = await readBounded(response, 256 * 1024);
+    if (body === null) return {failed: true};
+    const reply = read(JSON.parse(body));
     if (reply.empty) {
       console.warn(JSON.stringify({event: 'provider_empty', provider: name}));
       return {failed: true};

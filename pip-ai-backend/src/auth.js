@@ -25,6 +25,7 @@ let cachedKeys = null;
 let cachedUntil = 0;
 let fetchedAt = -Infinity;
 let inFlight = null;
+let failedAt = -Infinity;
 
 /** Clears the signing-key cache. For tests. */
 export function resetKeyCache() {
@@ -32,6 +33,7 @@ export function resetKeyCache() {
   cachedUntil = 0;
   fetchedAt = -Infinity;
   inFlight = null;
+  failedAt = -Infinity;
 }
 
 async function downloadKeys(fetchImpl, nowMs) {
@@ -53,9 +55,15 @@ async function downloadKeys(fetchImpl, nowMs) {
 async function signingKeys(fetchImpl, nowMs, refresh) {
   const stale = !cachedKeys || nowMs >= cachedUntil;
   if (!stale && !(refresh && nowMs - fetchedAt >= REFRESH_COOLDOWN_MS)) return cachedKeys;
+  if (!inFlight && nowMs - failedAt < REFRESH_COOLDOWN_MS) {
+    throw new AuthError('signing keys temporarily unavailable');
+  }
   if (!inFlight) {
     fetchedAt = nowMs;
-    inFlight = downloadKeys(fetchImpl, nowMs).finally(() => {
+    inFlight = downloadKeys(fetchImpl, nowMs).catch(() => {
+      failedAt = nowMs;
+      throw new AuthError('signing keys temporarily unavailable');
+    }).finally(() => {
       inFlight = null;
     });
   }
@@ -63,6 +71,7 @@ async function signingKeys(fetchImpl, nowMs, refresh) {
 }
 
 function base64UrlBytes(segment) {
+  if (!/^[A-Za-z0-9_-]+$/.test(segment)) throw new AuthError('malformed token');
   const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -87,6 +96,7 @@ export async function verifyIdToken(token, projectId, {fetchImpl = fetch, nowMs 
   if (parts.length !== 3) throw new AuthError('malformed token');
   const header = base64UrlJson(parts[0]);
   const claims = base64UrlJson(parts[1]);
+  const signature = base64UrlBytes(parts[2]);
 
   if (header?.alg !== 'RS256' || typeof header.kid !== 'string') throw new AuthError('wrong algorithm');
   const now = Math.floor(nowMs / 1000);
@@ -97,14 +107,14 @@ export async function verifyIdToken(token, projectId, {fetchImpl = fetch, nowMs 
   }
   if (!Number.isFinite(claims.exp) || claims.exp <= now - SKEW) throw new AuthError('expired');
   if (!Number.isFinite(claims.iat) || claims.iat > now + SKEW) throw new AuthError('issued in the future');
-  if (Number.isFinite(claims.auth_time) && claims.auth_time > now + SKEW) {
+  if (!Number.isFinite(claims.auth_time) || claims.auth_time > now + SKEW) {
     throw new AuthError('signed in in the future');
   }
   // FocusForge guests stay on the device and never hold a Firebase account,
   // so an anonymous token can only come from outside the app. Email
   // accounts must be verified, as the app itself requires.
   const provider = claims.firebase?.sign_in_provider;
-  if (provider === 'anonymous') throw new AuthError('anonymous');
+  if (typeof provider !== 'string' || !provider || provider === 'anonymous') throw new AuthError('anonymous');
   if (provider === 'password' && claims.email_verified !== true) throw new AuthError('unverified email');
 
   let jwk = (await signingKeys(fetchImpl, nowMs, false)).get(header.kid);
@@ -122,7 +132,7 @@ export async function verifyIdToken(token, projectId, {fetchImpl = fetch, nowMs 
   const valid = await crypto.subtle.verify(
     'RSASSA-PKCS1-v1_5',
     key,
-    base64UrlBytes(parts[2]),
+    signature,
     new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
   );
   if (!valid) throw new AuthError('bad signature');

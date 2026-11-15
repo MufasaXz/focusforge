@@ -315,3 +315,12 @@ test('legacy data export and erasure filter ownership across all pages', async (
  assert.equal(rows.size, 1);
  assert.equal(rows.get('old:b').reply, 'private other');
 });
+
+test('oversized upstream JSON fails safely without returning content', async () => {
+  const {answer} = await import('../src/index.js');
+  const request = {message: 'study tips', context: {}, history: []};
+  const huge = new Response(JSON.stringify({candidates: [], metadata: 'x'.repeat(300000)}));
+  const result = await answer(request, {GEMINI_API_KEY: 'test-only'}, async () => huge);
+  assert.equal(result.failed, true);
+  assert.equal(result.reply, undefined);
+});

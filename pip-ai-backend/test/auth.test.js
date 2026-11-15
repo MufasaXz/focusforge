@@ -100,3 +100,24 @@ test('a key Google rotates in is still picked up', async () => {
   assert.deepEqual(await verifyIdToken(fresh, PROJECT, {fetchImpl: impl, nowMs: later}), {uid: 'user-123'});
   assert.equal(rotating.calls.length, 2);
 });
+
+test('a signing-key outage is cached, so sequential requests cannot amplify downloads', async () => {
+  let calls = 0;
+  const failing = async () => { calls++; throw new Error('offline'); };
+  const now = Date.now(), token = await signer.token();
+  for (let i = 0; i < 20; i++) {
+    await assert.rejects(verifyIdToken(token, PROJECT, {fetchImpl: failing, nowMs: now + i}), AuthError);
+  }
+  assert.equal(calls, 1);
+  await assert.rejects(verifyIdToken(token, PROJECT, {fetchImpl: failing, nowMs: now + REFRESH_COOLDOWN_MS}), AuthError);
+  assert.equal(calls, 2);
+});
+
+test('malformed signature and missing authentication claims fail closed', async () => {
+  const token = await signer.token();
+  const parts = token.split('.');
+  await assert.rejects(verify(`${parts[0]}.${parts[1]}.%bad`), AuthError);
+  for (const claims of [{auth_time: null}, {firebase: {}}, {firebase: null}]) {
+    await assert.rejects(verify(await signer.token(claims)), AuthError);
+  }
+});
