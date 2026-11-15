@@ -396,27 +396,13 @@ class _HeroCard extends StatelessWidget {
                     _Avatar(user: user, level: stats.level),
                     const SizedBox(width: Gap.lg),
                     Expanded(
-                      child: Text(
-                        user.displayName.trim().isEmpty
-                            ? context.tr('Your profile')
-                            : user.displayName,
-                        key: const ValueKey('profile-display-name'),
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -.6,
-                            ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: _ProfileIdentity(user: user, stats: stats),
                     ),
                     const SizedBox(width: Gap.sm),
                     const _EditProfileButton(),
                   ],
                 ),
-                const SizedBox(height: Gap.md),
-                _ProfileIdentity(user: user, stats: stats),
-                const SizedBox(height: Gap.lg),
+                const SizedBox(height: Gap.xl),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     color: t.surfaceContainerLow,
@@ -479,6 +465,20 @@ class _ProfileIdentity extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            user.displayName.trim().isEmpty
+                ? context.tr('Your profile')
+                : user.displayName,
+            key: const ValueKey('profile-display-name'),
+            style: tt.headlineSmall?.copyWith(
+              letterSpacing: -.8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
         Semantics(
           key: const ValueKey('profile-achievements'),
           button: true,

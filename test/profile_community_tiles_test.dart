@@ -100,7 +100,12 @@ void main() {
       find.byKey(const ValueKey('profile-display-name')),
     );
     final avatar = tester.getRect(find.byType(AvatarDisc));
-    expect(name.center.dy, closeTo(avatar.center.dy, 1));
+    final level = tester.getRect(
+      find.byKey(const ValueKey('profile-achievements')),
+    );
+    expect(name.left, greaterThan(avatar.right));
+    expect(level.left, name.left);
+    expect(level.top, greaterThan(name.bottom));
     final hero = tester.getRect(find.byKey(const ValueKey('profile-hero')));
     final left = tester.getRect(tile(AppRoutes.leaderboard));
     final right = tester.getRect(tile(AppRoutes.groups));
