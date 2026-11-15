@@ -402,7 +402,7 @@ void main() {
           find.textContaining('Allow app usage · Your app rules are saved.'),
           findsOneWidget,
         );
-        expect(find.text('Allow app usage on Home'), findsOneWidget);
+        expect(find.text('Allow app usage'), findsOneWidget);
         expect(find.text('Allow app usage'), findsOneWidget);
         expect(find.text('0m of 30m used today'), findsNothing);
         expect(find.text('Check overlay access'), findsNothing);

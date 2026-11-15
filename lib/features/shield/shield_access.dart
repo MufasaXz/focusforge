@@ -12,17 +12,13 @@ import '../../shared/widgets/app_list_disclosure.dart';
 import '../../shared/widgets/settings_guide.dart';
 import '../settings/settings_support.dart';
 
-import 'package:go_router/go_router.dart';
-
-import '../../app/router.dart';
-
 /// Shared by the Shield prompts so requesting access is injectable in tests.
 final shieldPermissionManagerProvider = Provider<PermissionManager>(
   (ref) => const PermissionManager(),
 );
 
-/// Checks access for a local rule. Whole-app rules may be saved pending Home
-/// usage consent, but are only enforced after both Android grants are present.
+/// Checks access before enabling a local rule. App-list consent does not
+/// grant Android Usage Access; usage and overlay are checked separately.
 ///
 /// Browser and desktop previews can still configure rules without Android APIs.
 Future<bool> ensureShieldAccess(
@@ -51,6 +47,14 @@ Future<bool> ensureShieldAccess(
     return true;
   }
 
+  ref.invalidate(usageAccessProvider);
+  final usage = await _granted(ref.read(usageAccessProvider.future));
+  if (!context.mounted) return false;
+  if (!usage) {
+    await requestShieldPermission(context, ref, AppPermission.usageAccess);
+    // Opening settings is not a grant. A subsequent enable rechecks Android.
+    return false;
+  }
   ref.invalidate(overlayAccessProvider);
   final overlay = await _granted(ref.read(overlayAccessProvider.future));
   if (!context.mounted) return false;
@@ -58,12 +62,6 @@ Future<bool> ensureShieldAccess(
     await _offerAccess(context, ref, AppPermission.overlay);
     return false;
   }
-  // Usage consent belongs on Home. Saving this rule never sends the user to
-  // Usage settings; the native engine remains inactive without that grant.
-  ref.invalidate(usageAccessProvider);
-  final usage = await _granted(ref.read(usageAccessProvider.future));
-  if (!context.mounted) return false;
-  if (!usage) return true;
   // An explicit rule enable can resume a notification-paused engine. Background sync cannot.
   final started = await NativeShieldService().resumeAppBlocking();
   if (!context.mounted) return false;
@@ -111,13 +109,6 @@ Future<void> requestShieldPermission(
     return;
   }
   if (!context.mounted) return;
-  if (permission == AppPermission.usageAccess &&
-      GoRouter.maybeOf(context)?.routeInformationProvider.value.uri.path
-              .contains('shield') ==
-          true) {
-    await showUsageHomeGuidance(context);
-    return;
-  }
   if (permission == AppPermission.accessibility &&
       !await confirmShieldAccess(context, feature: feature)) {
     return;
@@ -153,31 +144,4 @@ Future<void> requestShieldPermission(
           : context.tr("Open Android Settings → Usage access → FocusForge."),
     );
   }
-}
-
-/// Missing usage leaves the rule disabled; permission consent lives on Home.
-Future<void> showUsageHomeGuidance(BuildContext context) async {
-  final home = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(context.tr("App usage is off")),
-      scrollable: true,
-      content: Text(
-        context.tr(
-          "Shield needs usage access to see which app is open. Your rule is saved and starts working once you allow it from Home.",
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(context.tr("Later")),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(context.tr("Go to Home")),
-        ),
-      ],
-    ),
-  );
-  if (home == true && context.mounted) context.goNamed(AppRoutes.dashboard);
 }

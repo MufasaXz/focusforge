@@ -1,4 +1,5 @@
 import '../../core/localization/app_strings.dart';
+import '../../core/services/permission_manager.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,7 +73,7 @@ class ShieldOverview extends ConsumerWidget {
                 : rules.isNotEmpty && !enabled
                 ? !usage
                       ? context.tr(
-                          "Allow app usage · Your app rules are saved. Enable access on Home to detect and pause these apps.",
+                          "Allow app usage · Your app rules are saved. Enable Usage access to detect and pause these apps.",
                         )
                       : !overlay
                       ? context.tr(
@@ -91,9 +92,13 @@ class ShieldOverview extends ConsumerWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: () => showUsageHomeGuidance(context),
-                icon: const Icon(Icons.home_outlined),
-                label: Text(context.tr("Allow app usage on Home")),
+                onPressed: () => requestShieldPermission(
+                  context,
+                  ref,
+                  AppPermission.usageAccess,
+                ),
+                icon: const Icon(Icons.settings_outlined),
+                label: Text(context.tr("Allow app usage")),
               ),
             ),
           ],

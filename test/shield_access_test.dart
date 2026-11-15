@@ -41,6 +41,7 @@ void main() {
   ProviderContainer containerFor({
     bool accessible = false,
     bool usage = false,
+    bool Function()? usageCheck,
     bool? overlay,
     bool? running,
     Future<bool> Function()? runningCheck,
@@ -68,7 +69,9 @@ void main() {
         ),
         if (manager != null)
           shieldPermissionManagerProvider.overrideWithValue(manager),
-        usageAccessProvider.overrideWith((ref) async => usage),
+        usageAccessProvider.overrideWith(
+          (ref) async => usageCheck?.call() ?? usage,
+        ),
         if (overlay != null)
           overlayAccessProvider.overrideWith((ref) async => overlay),
         if (running != null || runningCheck != null)
@@ -107,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('enabling an app without usage access requests overlay only', (
+  testWidgets('enabling an app requests missing usage before overlay', (
     tester,
   ) async {
     final container = containerFor(overlay: false);
@@ -124,8 +127,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(whitelistProvider), isEmpty);
-    // The overlay guide explains the access and shows where to turn it on.
-    expect(find.text('Turn on Display over other apps'), findsOneWidget);
+    expect(find.text('Turn on Usage access'), findsOneWidget);
     expect(find.text('Open settings'), findsOneWidget);
     expect(find.text('Go to Home'), findsNothing);
     expect(find.text('Open usage settings'), findsNothing);
@@ -134,10 +136,15 @@ void main() {
   });
 
   testWidgets(
-    'overlay grant saves a pending app rule without requesting usage access',
+    'app-list and overlay grants still require usage before enabling a rule',
     (tester) async {
       final manager = SettingsPermissionManager();
-      final container = containerFor(overlay: true, manager: manager);
+      var usageGranted = false;
+      final container = containerFor(
+        overlay: true,
+        manager: manager,
+        usageCheck: () => usageGranted,
+      );
       await mount(tester, container, const ShieldScreen());
       final row = find.ancestor(
         of: find.text('Instagram'),
@@ -148,20 +155,34 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(container.read(whitelistProvider), hasLength(1));
+      expect(container.read(whitelistProvider), isEmpty);
       expect(manager.requests, isEmpty);
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(
-        find.descendant(of: row, matching: find.text('Allow app usage')),
-        findsOneWidget,
+      expect(find.text('Turn on Usage access'), findsOneWidget);
+      await tester.ensureVisible(find.text('Open settings'));
+      await tester.tap(find.text('Open settings'));
+      await tester.pumpAndSettle();
+      expect(manager.requests, [AppPermission.usageAccess]);
+      expect(container.read(whitelistProvider), isEmpty);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(container.read(whitelistProvider), isEmpty);
+      usageGranted = true;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('dev.focusforge/shield'),
+            (call) async => call.method == 'resumeAppBlocking',
+          );
+      await tester.tap(
+        find.descendant(of: row, matching: find.byType(GestureDetector)).last,
       );
-      expect(find.text('A quieter phone starts here'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(container.read(whitelistProvider), hasLength(1));
       expect(tester.takeException(), isNull);
       debugDefaultTargetPlatformOverride = null;
     },
   );
 
-  testWidgets('an inactive saved rule offers Home usage guidance', (
+  testWidgets('an inactive saved rule offers Usage access directly', (
     tester,
   ) async {
     final container = containerFor(usage: false, overlay: true, running: false);
@@ -173,11 +194,11 @@ void main() {
           tier: WhitelistTier.blocked,
         );
     await mount(tester, container, const ShieldOverview());
-    final action = find.text('Allow app usage on Home');
+    final action = find.text('Allow app usage');
     expect(action, findsOneWidget);
     await tester.tap(action);
     await tester.pumpAndSettle();
-    expect(find.text('Go to Home'), findsOneWidget);
+    expect(find.text('Turn on Usage access'), findsOneWidget);
     expect(find.text('Open usage settings'), findsNothing);
     expect(container.read(whitelistProvider), hasLength(1));
     expect(tester.takeException(), isNull);
@@ -387,7 +408,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(whitelistProvider), isEmpty);
-    expect(find.text('Turn on Display over other apps'), findsOneWidget);
+    expect(find.text('Turn on Usage access'), findsOneWidget);
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });

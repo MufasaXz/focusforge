@@ -656,7 +656,7 @@ class _AppsViewState extends ConsumerState<_AppsView> {
                   icon: Icons.timelapse_rounded,
                   title: context.tr("Time budgets are not counting"),
                   body: context.tr(
-                    "A budget needs to read how long an app has been open. Use Allow app usage on Home before enabling this rule.",
+                    "A budget needs to read how long an app has been open. Allow Usage access before enabling this rule.",
                   ),
                   action: context.tr("Review app usage on Home"),
                   permission: AppPermission.usageAccess,
