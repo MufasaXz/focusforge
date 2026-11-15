@@ -1,20 +1,18 @@
 # Changelog
 
-## [1.0.7](https://github.com/MufasaXz/focusforge/releases/tag/1.0.7) — 2026-11-15 (build 3003)
+## [1.0.7](https://github.com/MufasaXz/focusforge/releases/tag/1.0.7) — 2026-11-15
 
-- [Available on Google Play](https://play.google.com/store/apps/details?id=dev.focusforge.focusforge).
-- Expanded offline Pip tutoring, practice, study planning, Hindi/Hinglish
-  understanding and lesson follow-ups; smoother movements and quieter thoughts.
-- Restored the compact profile identity layout and familiar floating Focus
-  controls. Larger community tiles and new level-unlocked illustrated avatars.
-- Unified sign-in screens, improved returning-account setup and verification
-  countdown, and isolated signed-out accounts from new guest sessions.
-- Ask for missing Usage Access directly when enabling Shield app rules.
-- Improved account data controls and security, including bounded photo decoding.
-- Optional GitHub update notices and a manual About check. The separate
-  `playstore` branch remains 1.0.1 with no GitHub updater.
-- [Full release notes](docs/releases/1.0.7.md).
-- [Join the Telegram group](https://t.me/FocusforgeApp).
+[Available on Google Play](https://play.google.com/store/apps/details?id=dev.focusforge.focusforge)
+
+- Pip has more offline lessons, practice questions and better Hindi/Hinglish support, with smoother movements and fewer thoughts.
+- Restored the familiar profile layout and floating timer controls, with a larger dial and Full screen below it.
+- Added new avatars that unlock every five levels and larger Leaderboard and Study Groups tiles.
+- Improved sign-in, email verification and returning-account setup. Fixed old account details appearing in guest mode.
+- Shield now asks for missing Usage Access when you enable an app rule.
+- Added optional GitHub update notices and a manual check in About.
+- Improved privacy, security and app stability.
+
+[Join the FocusForge Telegram group](https://t.me/FocusforgeApp)
 
 ## [1.0.6](https://github.com/MufasaXz/focusforge/releases/tag/1.0.6) — 2026-11-06 (build 2035)
 
