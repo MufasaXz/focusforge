@@ -11,7 +11,19 @@ class ProfilePhoto {
     if (source.length > 12 * 1024 * 1024) {
       throw const FormatException('Image too large');
     }
-    final decoded = img.decodeImage(source);
+    // A small compressed file can expand to gigabytes. Inspect dimensions
+    // before allocating pixels, and decode only the first animation frame.
+    final decoder = img.findDecoderForData(source);
+    final info = decoder?.startDecode(source);
+    if (info == null ||
+        info.width < 1 ||
+        info.height < 1 ||
+        info.width > 8192 ||
+        info.height > 8192 ||
+        info.width * info.height > 16000000) {
+      throw const FormatException('Image dimensions are too large');
+    }
+    final decoded = decoder!.decodeFrame(0);
     if (decoded == null) throw const FormatException('Image unavailable');
     final oriented = img.bakeOrientation(decoded);
     final thumbnail = img.copyResizeCropSquare(oriented, size: 128);

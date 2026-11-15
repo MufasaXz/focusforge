@@ -30,6 +30,26 @@ void main() {
     },
   );
 
+  test('compressed image with hostile dimensions is rejected before pixel decoding', () {
+    final jpeg = Uint8List.fromList(
+      img.encodeJpg(img.Image(width: 8, height: 8)),
+    );
+    var found = false;
+    for (var i = 0; i < jpeg.length - 9; i++) {
+      if (jpeg[i] == 0xff && jpeg[i + 1] == 0xc0) {
+        // SOF0 dimensions: a tiny file claiming a 10000 x 10000 image.
+        jpeg[i + 5] = 0x27;
+        jpeg[i + 6] = 0x10;
+        jpeg[i + 7] = 0x27;
+        jpeg[i + 8] = 0x10;
+        found = true;
+        break;
+      }
+    }
+    expect(found, isTrue);
+    expect(() => ProfilePhoto.encode(jpeg), throwsFormatException);
+  });
+
   test('invalid and oversized photos use initials without throwing', () {
     expect(ProfilePhoto.bytes('invalid'), isNull);
     expect(ProfilePhoto.bytes('A' * (ProfilePhoto.maxLength + 1)), isNull);
