@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/material.dart' show DateUtils, Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_strings.dart';
@@ -251,15 +251,11 @@ class ChatController extends Notifier<ChatState> {
           generation,
         );
       case Act.reminderOff:
-        final asked = ReminderRequest.parse(
-          action.said ?? '',
+        final request = ReminderRequest.parse(
+          OfflineLanguage.understand(action.said ?? ''),
           DateTime.now(),
-        ).title.toLowerCase().split(' ').where((w) => w.length >= 3).toSet();
-        final match = ref
-            .read(assistantMemoryProvider)
-            .reminders
-            .where((r) => r.title.toLowerCase().split(' ').any(asked.contains))
-            .firstOrNull;
+        );
+        final match = _matchReminder(action.arg, request);
         if (match != null) {
           await memory.removeReminder(match.id);
           _syncReminders();
@@ -484,6 +480,30 @@ class ChatController extends Notifier<ChatState> {
       ),
       ++_generation,
     );
+  }
+
+  StudyReminder? _matchReminder(String? title, ReminderRequest request) {
+    final asked = AssistantBrain.normalize(title ?? '');
+    if (asked.isEmpty || request.invalidDate) return null;
+    final words = asked.split(' ');
+    final exact = <StudyReminder>[];
+    final partial = <StudyReminder>[];
+    for (final reminder in ref.read(assistantMemoryProvider).reminders) {
+      final date = request.at;
+      if (date != null && !DateUtils.isSameDay(date, reminder.at)) continue;
+      final time = request.time;
+      if (time != null && time != (reminder.at.hour, reminder.at.minute)) {
+        continue;
+      }
+      final name = AssistantBrain.normalize(reminder.title);
+      if (name == asked) {
+        exact.add(reminder);
+      } else if (words.every(name.split(' ').contains)) {
+        partial.add(reminder);
+      }
+    }
+    final matches = exact.isEmpty ? partial : exact;
+    return matches.length == 1 ? matches.single : null;
   }
 
   /// Removes a reminder from the reminders card.

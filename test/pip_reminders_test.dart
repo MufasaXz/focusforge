@@ -65,6 +65,24 @@ void main() {
       expect(read('maths test tomorrow at 6').at, DateTime(2026, 11, 7, 18));
       expect(read('biology quiz kal subah').at, DateTime(2026, 11, 7, 8));
       expect(read('biology quiz kal subah').exam, isTrue);
+      expect(
+        read('revise physics tomorrow at 07:30').at,
+        DateTime(2026, 11, 7, 7, 30),
+      );
+      expect(
+        read('revise physics tomorrow 06:30').at,
+        DateTime(2026, 11, 7, 6, 30),
+      );
+    });
+
+    test('explicit numeric dates must exist in the given calendar year', () {
+      for (final date in ['31/11/2026', '29/02/2027', '31/11', '25/13/2026']) {
+        final reminder = read('remind me to revise physics on $date at 8pm');
+        expect(reminder.at, isNull, reason: date);
+        expect(reminder.title, 'Revise physics', reason: date);
+        expect(reminder.time, (20, 0), reason: date);
+      }
+      expect(read('test on 29/02/2028').at, DateTime(2028, 2, 29, 18));
     });
 
     test('everyday words are not read as months', () {
@@ -74,6 +92,21 @@ void main() {
   });
 
   group('understanding', () {
+    test('relative reminder dates do not make a command hypothetical', () {
+      const request = 'remind me to revise physics 2 days later';
+      expect(brain.parseMessage(request).actions.single.act, Act.reminder);
+      expect(read(request).at, DateTime(2026, 11, 8, 18));
+      expect(
+        brain.parse('maybe remind me to revise physics 2 days later').act,
+        Act.unknown,
+      );
+      expect(brain.parse('start timer later').act, Act.unknown);
+      expect(
+        brain.parse('remind me about NEET on 31/11/2026').act,
+        Act.reminder,
+      );
+    });
+
     test('leaderboard questions and reminder kinds are told apart', () {
       expect(brain.parse('check my leaderboard position').act, Act.leaderboard);
       expect(brain.parse('what is my rank').act, Act.leaderboard);
