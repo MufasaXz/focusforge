@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -147,13 +149,108 @@ void main() {
       now: () => now,
       clientFactory: () => throw StateError('must not connect'),
     );
-    expect(await restarted.check(), isNull);
+    expect((await restarted.check())?.id, newer.id);
     expect(restarted.wasShown(newer), isTrue);
     now = now.add(const Duration(hours: 25));
     await service.check();
     expect(calls, 2);
     await service.check(force: true);
     expect(calls, 3);
+  });
+
+  test('an unseen release is restored within the daily cooldown', () async {
+    var requests = 0;
+    final now = DateTime.utc(2026, 11, 18);
+    AppUpdateService launch() => AppUpdateService(
+      store,
+      now: () => now,
+      clientFactory: () => MockClient((_) async {
+        requests++;
+        return http.Response(jsonEncode(release()), 200);
+      }),
+    );
+
+    final first = await launch().check();
+    expect(first?.id, '1.0.8+3004');
+    final restarted = launch();
+    final cached = await restarted.check();
+    expect(cached?.id, first!.id);
+    expect(cached?.page, first.page);
+    expect(cached?.notes, first.notes);
+    expect(restarted.wasShown(cached!), isFalse);
+    expect(requests, 1);
+  });
+
+  testWidgets('deferred updates appear after leaving a settings route', (
+    tester,
+  ) async {
+    var requests = 0;
+    final response = Completer<http.Response>();
+    final service = AppUpdateService(
+      store,
+      clientFactory: () => MockClient((_) {
+        requests++;
+        return response.future;
+      }),
+    );
+    final router = GoRouter(
+      initialLocation: '/profile',
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, shell) => AppUpdateGate(child: shell),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/profile',
+                  builder: (context, _) => Scaffold(
+                    body: TextButton(
+                      onPressed: () => context.push('/profile/permissions'),
+                      child: const Text('Open permissions'),
+                    ),
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'permissions',
+                      builder: (context, _) => Scaffold(
+                        body: TextButton(
+                          onPressed: () => context.pop(),
+                          child: const Text('Return to profile'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appUpdateServiceProvider.overrideWithValue(service),
+          appUpdatePromptAllowedProvider.overrideWithValue(true),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requests, 1);
+    await tester.tap(find.text('Open permissions'));
+    await tester.pumpAndSettle();
+    response.complete(http.Response(jsonEncode(release()), 200));
+    await tester.pumpAndSettle();
+    final prompt = find.text('A new FocusForge is ready');
+    expect(prompt, findsNothing);
+    expect(store.getString(AppUpdateService.shownReleaseKey), isNull);
+
+    await tester.tap(find.text('Return to profile'));
+    await tester.pumpAndSettle();
+    expect(prompt, findsOneWidget);
+    expect(requests, 1);
   });
 
   test('disabled checks make no network requests even when forced', () async {

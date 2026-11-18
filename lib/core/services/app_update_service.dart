@@ -130,6 +130,7 @@ class AppUpdateService {
   final DateTime Function() _now;
   static const lastCheckKey = 'updates.lastCheck';
   static const shownReleaseKey = 'updates.shownRelease';
+  static const _cachedReleaseKey = 'updates.cachedRelease';
   static const maxBytes = 256 * 1024;
   AppRelease? _cached;
   Future<AppRelease?>? _inFlight;
@@ -151,21 +152,29 @@ class AppUpdateService {
         last != null &&
         now >= last &&
         now - last < const Duration(hours: 24).inMilliseconds) {
-      return _cached;
+      return _cached ??= AppRelease.parse(store.getMap(_cachedReleaseKey));
     }
+    _cached = null;
+    await store.remove(_cachedReleaseKey);
     await store.setInt(lastCheckKey, now);
     final client = _clientFactory();
     try {
-      return _cached = await _fetch(client).timeout(const Duration(seconds: 8));
+      final metadata = await _fetch(client).timeout(const Duration(seconds: 8));
+      final release = AppRelease.parse(metadata);
+      if (release != null) {
+        _cached = release;
+        await store.setMap(_cachedReleaseKey, metadata!);
+      }
+      return release;
     } catch (_) {
       // Offline, rate-limited, malformed or unavailable: leave the app usable.
-      return null;
+      return _cached;
     } finally {
       client.close();
     }
   }
 
-  Future<AppRelease?> _fetch(http.Client client) async {
+  Future<Map<String, dynamic>?> _fetch(http.Client client) async {
     final response = await client.send(
       http.Request(
           'GET',
@@ -190,6 +199,7 @@ class AppUpdateService {
       if (bytes.length + chunk.length > maxBytes) return null;
       bytes.addAll(chunk);
     }
-    return AppRelease.parse(jsonDecode(utf8.decode(bytes)));
+    final metadata = jsonDecode(utf8.decode(bytes));
+    return metadata is Map<String, dynamic> ? metadata : null;
   }
 }

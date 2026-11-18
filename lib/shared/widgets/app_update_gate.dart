@@ -20,15 +20,30 @@ class AppUpdateGate extends ConsumerStatefulWidget {
 class _AppUpdateGateState extends ConsumerState<AppUpdateGate>
     with WidgetsBindingObserver {
   bool _busy = false;
+  GoRouterDelegate? _router;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_check()));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.maybeOf(context)?.routerDelegate;
+    if (router != _router) {
+      _router?.removeListener(_scheduleCheck);
+      _router = router;
+      _router?.addListener(_scheduleCheck);
+    }
+    // Depend on route visibility so a dismissed dialog can release a prompt.
+    if (ModalRoute.isCurrentOf(context) != false) _scheduleCheck();
   }
 
   @override
   void dispose() {
+    _router?.removeListener(_scheduleCheck);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -44,17 +59,19 @@ class _AppUpdateGateState extends ConsumerState<AppUpdateGate>
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
       return false;
     }
-    if (ModalRoute.of(context)?.isCurrent == false ||
+    if (ModalRoute.isCurrentOf(context) == false ||
         Navigator.of(context, rootNavigator: true).canPop()) {
       return false;
     }
-    final path = GoRouter.maybeOf(context)
-        ?.routeInformationProvider
-        .value
-        .uri
-        .path;
+    final path = _router?.state.uri.path;
     return path == null ||
         const ['/dashboard', '/shield', '/focus', '/profile'].contains(path);
+  }
+
+  void _scheduleCheck() {
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) => unawaited(_check()));
+    binding.ensureVisualUpdate();
   }
 
   Future<void> _check() async {
@@ -84,11 +101,7 @@ class _AppUpdateGateState extends ConsumerState<AppUpdateGate>
   @override
   Widget build(BuildContext context) {
     ref.listen(appUpdatePromptAllowedProvider, (previous, next) {
-      if (next && previous != true) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => unawaited(_check()),
-        );
-      }
+      if (next && previous != true) _scheduleCheck();
     });
     return widget.child;
   }
