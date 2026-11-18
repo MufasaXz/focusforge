@@ -80,8 +80,11 @@ class AssistantBrain {
     if (OfflineStudentCoach.kind(input) != null) {
       return AssistantAction(Act.coach, said: input);
     }
-    final guard = OfflineLanguage.actionGuard(input);
     final action = _parseUnderstood(OfflineLanguage.understand(input));
+    final guard = OfflineLanguage.actionGuard(
+      input,
+      allowsReminderDate: action.act == Act.reminder,
+    );
     final mutates = const {
       Act.focusNow,
       Act.reminder,
@@ -163,12 +166,14 @@ class AssistantBrain {
         final examOnly = about.isNotEmpty && about.every(_examWord.contains);
         return AssistantAction(
           exam != null || examOnly ? Act.examReminderOff : Act.reminderOff,
+          arg: about.join(' '),
           said: input,
         );
       }
       // A named exam from the guide ("reminder for NEET") or just "my exam",
       // with no date: the exam countdown, which knows or asks the date.
       if (request.at == null &&
+          !request.invalidDate &&
           (exam != null ||
               (generic && _score(text, tokens, _keywords[Act.examAsk]!) > 0))) {
         return AssistantAction(Act.examReminder, arg: exam, said: input);

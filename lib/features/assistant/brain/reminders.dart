@@ -59,6 +59,7 @@ class ReminderRequest {
     required this.exam,
     this.at,
     this.time,
+    this.invalidDate = false,
   });
 
   final String title;
@@ -66,6 +67,7 @@ class ReminderRequest {
 
   /// The day and time asked for, or null when no date was given.
   final DateTime? at;
+  final bool invalidDate;
 
   /// The hour and minute the user named, kept even when no date came with
   /// it, so the day picked afterwards still gets this time.
@@ -82,7 +84,19 @@ class ReminderRequest {
     final today = DateTime(now.year, now.month, now.day);
     final used = <String>{};
 
-    final day = _day(text, today, used);
+    final numeric = _numericDate.firstMatch(text);
+    final DateTime? day;
+    if (numeric == null) {
+      day = _day(text, today, used);
+    } else {
+      used.add(numeric[0]!);
+      final month = int.parse(numeric[2]!);
+      final number = int.parse(numeric[1]!);
+      final year = int.tryParse(numeric[3] ?? '');
+      day = year == null
+          ? _future(today, month, number)
+          : _calendarDate(year < 100 ? year + 2000 : year, month, number);
+    }
     final time = _time(text, used);
     DateTime? at;
     if (day != null) {
@@ -106,8 +120,19 @@ class ReminderRequest {
         ? ''
         : '${words.first[0].toUpperCase()}${words.first.substring(1)}'
               '${words.length > 1 ? ' ${words.skip(1).join(' ')}' : ''}';
-    return ReminderRequest(title: title, exam: exam, at: at, time: time);
+    return ReminderRequest(
+      title: title,
+      exam: exam,
+      at: at,
+      time: time,
+      invalidDate: numeric != null && day == null,
+    );
   }
+
+  // "25/11", "25-11-2026": day first, as dates are written in India.
+  static final _numericDate = RegExp(
+    r'\b(\d{1,2})[/\-](\d{1,2})(?:[/\-](\d{2,4}))?\b',
+  );
 
   static String _clean(String said) => said
       .toLowerCase()
@@ -204,23 +229,6 @@ class ReminderRequest {
       return _future(today, month, number);
     }
 
-    // "25/11", "25-11-2026": day first, as dates are written in India.
-    final numeric = RegExp(r'\b(\d{1,2})[/\-](\d{1,2})(?:[/\-](\d{2,4}))?\b')
-        .firstMatch(text);
-    if (numeric != null) {
-      final d = int.parse(numeric.group(1)!);
-      final m = int.parse(numeric.group(2)!);
-      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-        used.add(numeric.group(0)!);
-        final y = numeric.group(3);
-        if (y != null) {
-          final year = int.parse(y) < 100 ? 2000 + int.parse(y) : int.parse(y);
-          return DateTime(year, m, d);
-        }
-        return _future(today, m, d);
-      }
-    }
-
     final inDays = RegExp(
       r'\b(?:in|after) (\d{1,3}) days?\b|\b(\d{1,3}) (?:din|days?) (?:baad|bad|mein|me|later)\b',
     ).firstMatch(text);
@@ -264,11 +272,16 @@ class ReminderRequest {
 
   /// [month]/[day] this year, or next year once this year's has passed.
   static DateTime? _future(DateTime today, int month, int day) {
-    if (day < 1 || day > 31) return null;
-    var date = DateTime(today.year, month, day);
-    if (date.month != month) return null;
-    if (date.isBefore(today)) date = DateTime(today.year + 1, month, day);
-    return date;
+    final date = _calendarDate(today.year, month, day);
+    if (date == null || !date.isBefore(today)) return date;
+    return _calendarDate(today.year + 1, month, day);
+  }
+
+  static DateTime? _calendarDate(int year, int month, int day) {
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day
+        ? date
+        : null;
   }
 
   static (int, int)? _time(String text, Set<String> used) {
@@ -284,8 +297,12 @@ class ReminderRequest {
       if (hour <= 23 && minute <= 59) {
         if (suffix == 'pm' && hour < 12) hour += 12;
         if (suffix == 'am' && hour == 12) hour = 0;
-        // "at 6" with no am or pm: a study reminder at 6 is the evening.
-        if (suffix != 'am' && suffix != 'pm' && hour >= 1 && hour <= 7) {
+        // A bare "at 6" defaults to evening. A clock time keeps its hour.
+        if (minuteText == null &&
+            suffix != 'am' &&
+            suffix != 'pm' &&
+            hour >= 1 &&
+            hour <= 7) {
           hour += 12;
         }
         used.addAll(clock.group(0)!.split(' '));

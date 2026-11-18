@@ -97,7 +97,7 @@ abstract final class OfflineLanguage {
 
   /// A denied, hypothetical or explanatory action must not start a timer or
   /// remove reminders. A subsequent explicit command remains available.
-  static String? actionGuard(String input) {
+  static String? actionGuard(String input, {bool allowsReminderDate = false}) {
     final text = understand(input).toLowerCase().replaceAll("'", '');
     final command = RegExp(
       r'\b(start|begin|lock|block|remind|reminder|reminders|timetable|schedule|goal|delete|remove|stop|turn off)\b',
@@ -109,10 +109,13 @@ abstract final class OfflineLanguage {
         text.contains('नहीं करना')) {
       return 'declined';
     }
+    final hypothetical = allowsReminderDate
+        ? text.replaceAll(RegExp(r'\b\d{1,3} (?:din|days?) later\b'), '')
+        : text;
     if (RegExp(
           r'\b(how do i|how to|how can i|how does|what happens if|what if|why does|why did|can you explain|explain how)\b',
         ).hasMatch(text) ||
-        RegExp(r'\b(if|unless|maybe|later)\b').hasMatch(text)) {
+        RegExp(r'\b(if|unless|maybe|later)\b').hasMatch(hypothetical)) {
       return 'explain';
     }
     return null;

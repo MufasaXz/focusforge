@@ -413,6 +413,46 @@ void main() {
     expect(revise.at, DateTime(day.year, day.month, day.day, 8));
   });
 
+  testWidgets(
+    'typed reminder removal prefers the full title and keeps ambiguous matches',
+    (tester) async {
+      final container = await pumpChat(tester);
+      await wait(tester);
+      final memory = container.read(assistantMemoryProvider.notifier);
+      final today = DateTime.now();
+      await memory.addReminder(
+        title: 'Revise chemistry',
+        at: today.add(const Duration(days: 1)),
+        exam: false,
+      );
+      await memory.addReminder(
+        title: 'Revise physics',
+        at: today.add(const Duration(days: 2)),
+        exam: false,
+      );
+      await memory.addReminder(
+        title: 'Revise physics chapters',
+        at: today.add(const Duration(days: 3)),
+        exam: false,
+      );
+      List<String> titles() => container
+          .read(assistantMemoryProvider)
+          .reminders
+          .map((r) => r.title)
+          .toList();
+
+      await ask(tester, 'remove my reminder to revise physics');
+      expect(titles(), ['Revise chemistry', 'Revise physics chapters']);
+      await ask(tester, 'remove reminder to revise biology');
+      expect(titles(), ['Revise chemistry', 'Revise physics chapters']);
+      await ask(tester, 'remove reminder to revise');
+      expect(titles(), ['Revise chemistry', 'Revise physics chapters']);
+      expect(find.text('Your reminders'), findsWidgets);
+      await ask(tester, 'remove physics reminder');
+      expect(titles(), ['Revise chemistry']);
+    },
+  );
+
   testWidgets('“check my leaderboard position” gets a leaderboard answer', (
     tester,
   ) async {
